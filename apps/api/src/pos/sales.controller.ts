@@ -1,10 +1,8 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { z } from 'zod';
 import {
-  ApprovePriceOverrideSchema,
   CreateSaleSchema,
   MoneySchema,
-  type ApprovePriceOverrideInput,
   type AuthContext,
   type CreateSaleInput,
 } from '@wilinwi/types';
@@ -13,6 +11,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { SalesService } from './sales.service';
 
 const AddPaymentSchema = z.object({ montant: MoneySchema });
+const ApproveSaleSchema = z.object({ approuve: z.boolean() });
 
 @Controller('pos')
 export class SalesController {
@@ -33,6 +32,13 @@ export class SalesController {
     return this.sales.list(user);
   }
 
+  // Ventes en attente de validation gérant (écran « à valider »).
+  @RequireCapabilities('sale:override_floor_price')
+  @Get('sales/pending')
+  pending(@CurrentUser() user: AuthContext) {
+    return this.sales.pendingSales(user);
+  }
+
   @RequireCapabilities('sale:read')
   @Get('sales/:id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string) {
@@ -49,18 +55,14 @@ export class SalesController {
     return this.sales.addPayment(user, id, dto.montant);
   }
 
+  // Validation (ou rejet) gérant d'une vente sous le plancher.
   @RequireCapabilities('sale:override_floor_price')
-  @Get('overrides/pending')
-  pendingOverrides(@CurrentUser() user: AuthContext) {
-    return this.sales.pendingOverrides(user);
-  }
-
-  @RequireCapabilities('sale:override_floor_price')
-  @Post('overrides/approve')
-  approveOverride(
+  @Post('sales/:id/approve')
+  approve(
     @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(ApprovePriceOverrideSchema)) dto: ApprovePriceOverrideInput,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(ApproveSaleSchema)) dto: { approuve: boolean },
   ) {
-    return this.sales.approveOverride(user, dto);
+    return this.sales.approveSale(user, id, dto.approuve);
   }
 }

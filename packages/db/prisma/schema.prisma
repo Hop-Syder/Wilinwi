@@ -58,7 +58,8 @@ enum PaymentMethod {
 
 enum SaleStatus {
   COMPLETED
-  PENDING_PAYMENT // acompte / crédit en cours
+  PENDING_PAYMENT  // acompte / crédit en cours
+  PENDING_APPROVAL // vente sous le plancher en attente de validation gérant
   CANCELLED
 }
 

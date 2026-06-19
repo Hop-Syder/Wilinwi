@@ -1,29 +1,32 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   hasCapability,
-  type ApprovePriceOverrideInput,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
 } from '@wilinwi/types';
+import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { toSaleDto, toSaleDtoList } from './sale.mapper';
 
 @Injectable()
 export class SalesService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Crée une vente : décrémente le stock, fige le coût, gère le paiement
-   * (acompte/crédit) et la traçabilité des prix sous le plancher (§5.3 / §5.5).
+   * Crée une vente. Trois cas :
+   *  - lignes ≥ plancher (ou vendeur autorisé) → vente finalisée (stock décrémenté, paiement).
+   *  - vendeur NON autorisé avec une ligne sous le plancher → vente `PENDING_APPROVAL`,
+   *    stock NON décrémenté tant qu'un gérant n'a pas validé (§5.5, anti-fraude bloquant).
    * Idempotent via clientGeneratedId pour la synchronisation hors-ligne.
    */
   async create(ctx: AuthContext, input: CreateSaleInput) {
-    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      // Idempotence offline : si la vente a déjà été synchronisée, on la renvoie.
+    const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      // Idempotence offline : si la vente existe déjà, on la renvoie.
       if (input.clientGeneratedId) {
         const existing = await tx.sale.findFirst({
           where: { tenantId: ctx.tenantId, clientGeneratedId: input.clientGeneratedId },
-          include: { items: true, installment: true },
+          include: { items: { include: { priceOverride: true } }, installment: true },
         });
         if (existing) return existing;
       }
@@ -41,7 +44,6 @@ export class SalesService {
         motif?: string;
       }[] = [];
 
-      // Validation + préparation des lignes
       for (const item of input.items) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, tenantId: ctx.tenantId },
@@ -68,27 +70,30 @@ export class SalesService {
         });
       }
 
-      const { montantVerse, status } = this.resolvePayment(input, total);
+      // Acompte : validé tôt (échoue vite) pour les deux flux.
+      const intendedAcompte = this.validateAcompte(input, total);
+      const needsApproval = !canOverride && lines.some((l) => l.sousPlancher);
 
-      const sale = await tx.sale.create({
+      // Création de la vente + lignes + dérogations éventuelles.
+      const created = await tx.sale.create({
         data: {
           tenantId: ctx.tenantId,
           vendeurId: ctx.userId,
           clientId: input.clientId ?? null,
-          status,
+          status: needsApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
           paymentMethod: input.paymentMethod,
           total,
-          montantVerse,
+          // Acompte voulu mémorisé (appliqué à la finalisation).
+          montantVerse: input.paymentMethod === 'INSTALLMENT' ? intendedAcompte : 0,
           clientGeneratedId: input.clientGeneratedId ?? null,
         },
       });
 
-      // Lignes + décrément de stock + traçabilité prix
       for (const line of lines) {
         const saleItem = await tx.saleItem.create({
           data: {
             tenantId: ctx.tenantId,
-            saleId: sale.id,
+            saleId: created.id,
             productId: line.productId,
             variantId: line.variantId,
             quantite: line.quantite,
@@ -96,23 +101,6 @@ export class SalesService {
             coutUnitaire: line.coutUnitaire,
           },
         });
-
-        await tx.stockMovement.create({
-          data: {
-            tenantId: ctx.tenantId,
-            productId: line.productId,
-            variantId: line.variantId,
-            type: 'OUT',
-            quantite: -line.quantite,
-            motif: `Vente ${sale.id}`,
-            saleId: sale.id,
-          },
-        });
-        await tx.product.update({
-          where: { id: line.productId },
-          data: { stock: { decrement: line.quantite } },
-        });
-
         if (line.sousPlancher) {
           await tx.priceOverride.create({
             data: {
@@ -121,56 +109,119 @@ export class SalesService {
               prixPlancher: line.prixPlancher,
               prixApplique: line.prixReel,
               motif: line.motif!,
-              // Si le vendeur a déjà le droit de valider, c'est auto-approuvé.
-              status: canOverride ? 'APPROVED' : 'PENDING',
+              status: 'PENDING',
               requestedBy: ctx.userId,
-              approvedBy: canOverride ? ctx.userId : null,
-              approvedAt: canOverride ? new Date() : null,
             },
           });
         }
       }
 
-      // Acompte → suivi du solde
-      if (input.paymentMethod === 'INSTALLMENT' || input.paymentMethod === 'CREDIT') {
-        await tx.saleInstallment.create({
-          data: {
-            tenantId: ctx.tenantId,
-            saleId: sale.id,
-            montantTotal: total,
-            montantVerse,
-            soldeRestant: total - montantVerse,
-            status: this.installmentStatus(total, montantVerse),
-          },
-        });
+      // Vendeur autorisé ou aucune ligne sous le plancher → finaliser tout de suite.
+      // Sinon : on s'arrête en PENDING_APPROVAL (stock intact) jusqu'à validation gérant.
+      if (!needsApproval) {
+        await this.finalize(tx, ctx, created.id);
       }
 
       return tx.sale.findUnique({
-        where: { id: sale.id },
+        where: { id: created.id },
         include: { items: { include: { priceOverride: true } }, installment: true },
       });
     });
+
+    return sale ? toSaleDto(sale, ctx.role) : sale;
   }
 
-  /** Validation gérant d'une vente sous le prix plancher (§5.5). */
-  async approveOverride(ctx: AuthContext, input: ApprovePriceOverrideInput) {
+  /**
+   * Validation gérant d'une vente en attente (§5.5).
+   * Approuvée → finalisation (stock décrémenté, paiement). Rejetée → annulée.
+   */
+  async approveSale(ctx: AuthContext, saleId: string, approuve: boolean) {
     if (!hasCapability(ctx.role, 'sale:override_floor_price')) {
       throw new ForbiddenException('Seul un gérant peut valider une vente sous le plancher');
     }
-    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const override = await tx.priceOverride.findFirst({
-        where: { saleItemId: input.saleItemId, tenantId: ctx.tenantId },
+    const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const target = await tx.sale.findFirst({
+        where: { id: saleId, tenantId: ctx.tenantId },
       });
-      if (!override) throw new NotFoundException('Demande de dérogation introuvable');
-      return tx.priceOverride.update({
-        where: { saleItemId: input.saleItemId },
-        data: {
-          status: input.approuve ? 'APPROVED' : 'REJECTED',
-          approvedBy: ctx.userId,
-          approvedAt: new Date(),
-        },
+      if (!target) throw new NotFoundException('Vente introuvable');
+      if (target.status !== 'PENDING_APPROVAL') {
+        throw new BadRequestException("Cette vente n'est pas en attente de validation");
+      }
+
+      if (approuve) {
+        await this.finalize(tx, ctx, saleId);
+      } else {
+        await tx.priceOverride.updateMany({
+          where: { saleItem: { saleId } },
+          data: { status: 'REJECTED', approvedBy: ctx.userId, approvedAt: new Date() },
+        });
+        await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
+      }
+
+      return tx.sale.findUnique({
+        where: { id: saleId },
+        include: { items: { include: { priceOverride: true } }, installment: true },
       });
     });
+    return sale ? toSaleDto(sale, ctx.role) : sale;
+  }
+
+  /**
+   * Finalise une vente persistée : décrément du stock + mouvements, approbation des
+   * dérogations, résolution du paiement (acompte/crédit) et statut final.
+   */
+  private async finalize(tx: TenantTx, ctx: AuthContext, saleId: string) {
+    const sale = await tx.sale.findUniqueOrThrow({
+      where: { id: saleId },
+      include: { items: true },
+    });
+
+    for (const item of sale.items) {
+      await tx.stockMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          productId: item.productId,
+          variantId: item.variantId,
+          type: 'OUT',
+          quantite: -item.quantite,
+          motif: `Vente ${saleId}`,
+          saleId,
+        },
+      });
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { decrement: item.quantite } },
+      });
+    }
+
+    // Dérogations de cette vente → approuvées par le gérant courant.
+    await tx.priceOverride.updateMany({
+      where: { saleItem: { saleId }, status: 'PENDING' },
+      data: { status: 'APPROVED', approvedBy: ctx.userId, approvedAt: new Date() },
+    });
+
+    const { montantVerse, status } = this.resolvePayment(
+      sale.paymentMethod,
+      sale.total,
+      sale.montantVerse,
+    );
+
+    if (sale.paymentMethod === 'INSTALLMENT' || sale.paymentMethod === 'CREDIT') {
+      await tx.saleInstallment.upsert({
+        where: { saleId },
+        update: { montantVerse, soldeRestant: sale.total - montantVerse, status: this.installmentStatus(sale.total, montantVerse) },
+        create: {
+          tenantId: ctx.tenantId,
+          saleId,
+          montantTotal: sale.total,
+          montantVerse,
+          soldeRestant: sale.total - montantVerse,
+          status: this.installmentStatus(sale.total, montantVerse),
+        },
+      });
+    }
+
+    await tx.sale.update({ where: { id: saleId }, data: { montantVerse, status } });
   }
 
   /** Versement supplémentaire sur un acompte. */
@@ -188,24 +239,24 @@ export class SalesService {
         where: { saleId },
         data: { montantVerse, soldeRestant, status },
       });
-      if (status === 'SETTLED') {
-        await tx.sale.update({ where: { id: saleId }, data: { status: 'COMPLETED', montantVerse } });
-      } else {
-        await tx.sale.update({ where: { id: saleId }, data: { montantVerse } });
-      }
+      await tx.sale.update({
+        where: { id: saleId },
+        data: { montantVerse, ...(status === 'SETTLED' ? { status: 'COMPLETED' } : {}) },
+      });
       return updated;
     });
   }
 
   async list(ctx: AuthContext) {
-    return this.prisma.forTenant(ctx.tenantId, (tx) =>
+    const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({
         where: { tenantId: ctx.tenantId },
         orderBy: { createdAt: 'desc' },
         take: 100,
-        include: { items: true, installment: true },
+        include: { items: { include: { priceOverride: true } }, installment: true },
       }),
     );
+    return toSaleDtoList(sales, ctx.role);
   }
 
   async get(ctx: AuthContext, id: string) {
@@ -216,31 +267,38 @@ export class SalesService {
       }),
     );
     if (!sale) throw new NotFoundException('Vente introuvable');
-    return sale;
+    return toSaleDto(sale, ctx.role);
   }
 
-  /** Dérogations en attente de validation gérant. */
-  async pendingOverrides(ctx: AuthContext) {
-    return this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.priceOverride.findMany({
-        where: { tenantId: ctx.tenantId, status: 'PENDING' },
-        include: { saleItem: { include: { product: true } } },
+  /** Ventes en attente de validation gérant (écran « à valider »). */
+  async pendingSales(ctx: AuthContext) {
+    const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.sale.findMany({
+        where: { tenantId: ctx.tenantId, status: 'PENDING_APPROVAL' },
         orderBy: { createdAt: 'asc' },
+        include: { items: { include: { priceOverride: true, product: true } } },
       }),
     );
+    return toSaleDtoList(sales, ctx.role);
+  }
+
+  private validateAcompte(input: CreateSaleInput, total: number): number {
+    if (input.paymentMethod !== 'INSTALLMENT') return 0;
+    const verse = input.montantVerse ?? 0;
+    if (verse <= 0) throw new BadRequestException("Le montant de l'acompte doit être positif");
+    if (verse > total) throw new BadRequestException("L'acompte dépasse le total");
+    return verse;
   }
 
   private resolvePayment(
-    input: CreateSaleInput,
+    paymentMethod: CreateSaleInput['paymentMethod'],
     total: number,
+    intendedAcompte: number,
   ): { montantVerse: number; status: 'COMPLETED' | 'PENDING_PAYMENT' } {
-    if (input.paymentMethod === 'INSTALLMENT') {
-      const verse = input.montantVerse ?? 0;
-      if (verse <= 0) throw new BadRequestException('Le montant de l\'acompte doit être positif');
-      if (verse > total) throw new BadRequestException('L\'acompte dépasse le total');
-      return { montantVerse: verse, status: verse >= total ? 'COMPLETED' : 'PENDING_PAYMENT' };
+    if (paymentMethod === 'INSTALLMENT') {
+      return { montantVerse: intendedAcompte, status: intendedAcompte >= total ? 'COMPLETED' : 'PENDING_PAYMENT' };
     }
-    if (input.paymentMethod === 'CREDIT') {
+    if (paymentMethod === 'CREDIT') {
       return { montantVerse: 0, status: 'PENDING_PAYMENT' };
     }
     return { montantVerse: total, status: 'COMPLETED' };

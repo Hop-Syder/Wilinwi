@@ -8,6 +8,7 @@ import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
+import { useAuth } from '@/lib/auth-context';
 
 interface CartLine {
   product: ProductDto;
@@ -17,6 +18,8 @@ interface CartLine {
 
 export default function PosPage() {
   const { refreshPending } = useSync();
+  const { user } = useAuth();
+  const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -86,10 +89,14 @@ export default function PosPage() {
     };
 
     try {
-      await apiPost('/api/pos/sales', payload);
+      const sale = await apiPost<{ status?: string }>('/api/pos/sales', payload);
       setCart([]);
       setMontantVerse('');
-      setMessage({ tone: 'ok', text: 'Vente enregistrée ✓' });
+      if (sale?.status === 'PENDING_APPROVAL') {
+        setMessage({ tone: 'offline', text: '⏳ Vente en attente de validation gérant.' });
+      } else {
+        setMessage({ tone: 'ok', text: 'Vente enregistrée ✓' });
+      }
     } catch (e) {
       if (e instanceof ApiError) {
         // Vente sous le prix plancher : demander une preuve puis réessayer.
@@ -121,6 +128,12 @@ export default function PosPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      {isManager && (
+        <div className="lg:col-span-2">
+          <ManagerApprovalPanel />
+        </div>
+      )}
+
       {/* Catalogue */}
       <div>
         <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
@@ -255,5 +268,90 @@ export default function PosPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+interface PendingSale {
+  id: string;
+  total: number;
+  items: {
+    id: string;
+    quantite: number;
+    prixReel: number;
+    product?: { nom: string };
+    priceOverride?: { prixPlancher?: number; motif: string } | null;
+  }[];
+}
+
+/** Panneau gérant : ventes sous le plancher en attente de validation (§5.5). */
+function ManagerApprovalPanel() {
+  const [pending, setPending] = useState<PendingSale[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setPending(await apiGet<PendingSale[]>('/api/pos/sales/pending'));
+    } catch {
+      /* silencieux */
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function decide(id: string, approuve: boolean) {
+    setBusyId(id);
+    try {
+      await apiPost(`/api/pos/sales/${id}/approve`, { approuve });
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (pending.length === 0) return null;
+
+  return (
+    <Card className="border-gold-200 bg-gold-50/40">
+      <h2 className="font-display text-lg font-semibold text-gold-700">
+        Ventes à valider ({pending.length})
+      </h2>
+      <p className="mb-3 text-sm text-slate-500">
+        Ventes sous le prix plancher en attente de votre approbation.
+      </p>
+      <ul className="space-y-3">
+        {pending.map((s) => (
+          <li key={s.id} className="rounded-lg border border-gold-200 bg-white p-3">
+            <div className="flex items-center justify-between">
+              <span className="tabular font-semibold text-brand">{formatFCFA(s.total)}</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="emerald" disabled={busyId === s.id} onClick={() => decide(s.id, true)}>
+                  Approuver
+                </Button>
+                <Button size="sm" variant="danger" disabled={busyId === s.id} onClick={() => decide(s.id, false)}>
+                  Rejeter
+                </Button>
+              </div>
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+              {s.items.map((it) => (
+                <li key={it.id} className="flex flex-wrap items-center gap-x-2">
+                  <span className="font-medium">{it.product?.nom ?? 'Produit'}</span>
+                  <span className="tabular">
+                    {it.quantite} × {formatFCFA(it.prixReel)}
+                  </span>
+                  {it.priceOverride?.prixPlancher !== undefined && (
+                    <Badge tone="warning">plancher {formatFCFA(it.priceOverride.prixPlancher)}</Badge>
+                  )}
+                  {it.priceOverride?.motif && (
+                    <span className="italic text-slate-400">« {it.priceOverride.motif} »</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
