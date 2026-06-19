@@ -1,0 +1,16 @@
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { cors: true });
+  app.setGlobalPrefix('api');
+  // La validation des entrées se fait par route via ZodValidationPipe (pas de class-validator).
+
+  const port = Number(process.env.API_PORT ?? 4000);
+  await app.listen(port);
+  Logger.log(`🚀 Wilinwi API démarrée sur http://localhost:${port}/api`, 'Bootstrap');
+}
+
+void bootstrap();

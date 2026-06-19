@@ -1,0 +1,63 @@
+-- ============================================================================
+-- Wilinwi — Row-Level Security (l'ADN)
+-- À exécuter APRÈS `prisma migrate deploy`. Idempotent.
+--
+-- Principe : chaque requête applicative ouvre une transaction et fait
+--   SET LOCAL app.current_tenant_id = '<uuid>';
+-- Les policies n'autorisent que les lignes du tenant courant.
+-- FORCE ROW LEVEL SECURITY garantit que même le propriétaire de la table
+-- (rôle de connexion Prisma) est soumis aux policies — défense réelle.
+-- ============================================================================
+
+-- Schéma applicatif pour les helpers
+CREATE SCHEMA IF NOT EXISTS app;
+
+-- Tenant courant lu depuis la variable de session (NULL si non défini).
+CREATE OR REPLACE FUNCTION app.current_tenant_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
+$$;
+
+-- Active RLS + policy tenant-scopée sur une table donnée.
+CREATE OR REPLACE FUNCTION app.enable_tenant_rls(target regclass)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  tbl text := target::text;
+BEGIN
+  EXECUTE format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY', tbl);
+  EXECUTE format('ALTER TABLE %s FORCE ROW LEVEL SECURITY', tbl);
+
+  EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %s', tbl);
+  EXECUTE format(
+    'CREATE POLICY tenant_isolation ON %s
+       USING (tenant_id = app.current_tenant_id())
+       WITH CHECK (tenant_id = app.current_tenant_id())',
+    tbl
+  );
+END;
+$$;
+
+-- Applique la policy à toutes les tables multi-tenant.
+SELECT app.enable_tenant_rls('public.users');
+SELECT app.enable_tenant_rls('public.products');
+SELECT app.enable_tenant_rls('public.product_variants');
+SELECT app.enable_tenant_rls('public.stock_movements');
+SELECT app.enable_tenant_rls('public.inventories');
+SELECT app.enable_tenant_rls('public.inventory_items');
+SELECT app.enable_tenant_rls('public.sales');
+SELECT app.enable_tenant_rls('public.sale_items');
+SELECT app.enable_tenant_rls('public.sale_installments');
+SELECT app.enable_tenant_rls('public.price_overrides');
+
+-- La table `tenants` n'a pas de tenant_id : on la restreint à la ligne courante.
+ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenants FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_self ON public.tenants;
+CREATE POLICY tenant_self ON public.tenants
+  USING (id = app.current_tenant_id())
+  WITH CHECK (id = app.current_tenant_id());

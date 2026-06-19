@@ -1,0 +1,306 @@
+// Wilinwi — schéma de données MVP1 « Le Socle »
+// Monolithe modulaire, multi-tenant. Toutes les tables (sauf Tenant) portent
+// un tenantId et sont protégées par RLS (cf. prisma/migrations/.../rls.sql).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum Role {
+  OWNER
+  MANAGER
+  SELLER
+  CASHIER
+  DELIVERY
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUST
+}
+
+enum InventoryStatus {
+  OPEN
+  VALIDATED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  MTN_MOMO
+  MOOV_MONEY
+  BANK_TRANSFER
+  CREDIT
+  INSTALLMENT
+}
+
+enum SaleStatus {
+  COMPLETED
+  PENDING_PAYMENT // acompte / crédit en cours
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIAL
+  SETTLED
+  OVERDUE
+}
+
+enum PriceOverrideStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────── ADN ─────────────────────────────────
+
+model Tenant {
+  id                 String             @id @default(uuid()) @db.Uuid
+  nom                String
+  plan               Plan               @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  users           User[]
+  products        Product[]
+  stockMovements  StockMovement[]
+  inventories     Inventory[]
+  sales           Sale[]
+  saleInstallments SaleInstallment[]
+  priceOverrides  PriceOverride[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @db.Uuid // = id Supabase Auth (auth.users)
+  tenantId  String   @map("tenant_id") @db.Uuid
+  nom       String
+  email     String
+  role      Role     @default(SELLER)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ventesEffectuees  Sale[]          @relation("VendeurVentes")
+  inventoriesValid  Inventory[]     @relation("InventoryValidator")
+  overridesDemandes PriceOverride[] @relation("OverrideRequester")
+  overridesValides  PriceOverride[] @relation("OverrideApprover")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ───────────────────────────── Stock ─────────────────────────────────
+
+model Product {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  nom           String
+  sku           String?
+  categorie     String?
+  photos        String[] @default([])
+  prixAchat     Int      @map("prix_achat") // sensible
+  prixPlancher  Int      @map("prix_plancher") // sensible
+  prixCatalogue Int      @map("prix_catalogue")
+  stock         Int      @default(0)
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variants  ProductVariant[]
+  movements StockMovement[]
+  saleItems SaleItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  attributs Json // { taille: 'L', couleur: 'rouge' }
+  sku       String?
+  stock     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model StockMovement {
+  id        String            @id @default(uuid()) @db.Uuid
+  tenantId  String            @map("tenant_id") @db.Uuid
+  productId String            @map("product_id") @db.Uuid
+  variantId String?           @map("variant_id") @db.Uuid
+  type      StockMovementType
+  quantite  Int // signé selon le type
+  motif     String
+  saleId    String?           @map("sale_id") @db.Uuid
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+// ───────────────────────── Inventaire physique ───────────────────────
+
+model Inventory {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  libelle     String?
+  status      InventoryStatus @default(OPEN)
+  motif       String?
+  validatedBy String?         @map("validated_by") @db.Uuid
+  validatedAt DateTime?       @map("validated_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  validator User?           @relation("InventoryValidator", fields: [validatedBy], references: [id])
+  items     InventoryItem[]
+
+  @@index([tenantId])
+  @@map("inventories")
+}
+
+model InventoryItem {
+  id               String  @id @default(uuid()) @db.Uuid
+  tenantId         String  @map("tenant_id") @db.Uuid
+  inventoryId      String  @map("inventory_id") @db.Uuid
+  productId        String  @map("product_id") @db.Uuid
+  variantId        String? @map("variant_id") @db.Uuid
+  quantiteTheorique Int    @map("quantite_theorique")
+  quantiteReelle   Int?    @map("quantite_reelle")
+  ecart            Int? // reelle - theorique, calculé à la saisie
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([inventoryId])
+  @@map("inventory_items")
+}
+
+// ───────────────────────────── Ventes ────────────────────────────────
+
+model Sale {
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  vendeurId        String        @map("vendeur_id") @db.Uuid
+  clientId         String?       @map("client_id") @db.Uuid // CRM en MVP2
+  status           SaleStatus    @default(COMPLETED)
+  paymentMethod    PaymentMethod @map("payment_method")
+  total            Int // somme des lignes (prix réel)
+  montantVerse     Int           @default(0) @map("montant_verse")
+  /// Identifiant généré côté client pour l'idempotence de la sync offline.
+  clientGeneratedId String?      @map("client_generated_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vendeur     User             @relation("VendeurVentes", fields: [vendeurId], references: [id])
+  items       SaleItem[]
+  installment SaleInstallment?
+
+  @@unique([tenantId, clientGeneratedId])
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  saleId    String  @map("sale_id") @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  variantId String? @map("variant_id") @db.Uuid
+  quantite  Int
+  prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié
+  /// Coût figé au moment de la vente (prix d'achat), pour le calcul de marge.
+  coutUnitaire Int  @map("cout_unitaire")
+
+  sale          Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product       Product        @relation(fields: [productId], references: [id])
+  priceOverride PriceOverride?
+
+  @@index([tenantId])
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+model SaleInstallment {
+  id            String            @id @default(uuid()) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  saleId        String            @unique @map("sale_id") @db.Uuid
+  montantTotal  Int               @map("montant_total")
+  montantVerse  Int               @map("montant_verse")
+  soldeRestant  Int               @map("solde_restant")
+  status        InstallmentStatus @default(PARTIAL)
+  echeance      DateTime?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("sale_installments")
+}
+
+// ──────────────── Traçabilité des prix négociés (§5.5) ────────────────
+
+model PriceOverride {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  saleItemId        String              @unique @map("sale_item_id") @db.Uuid
+  prixPlancher      Int                 @map("prix_plancher") // figé au moment de la vente
+  prixApplique      Int                 @map("prix_applique")
+  motif             String // preuve obligatoire
+  status            PriceOverrideStatus @default(PENDING)
+  requestedBy       String              @map("requested_by") @db.Uuid
+  approvedBy        String?             @map("approved_by") @db.Uuid
+  approvedAt        DateTime?           @map("approved_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  saleItem  SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  requester User     @relation("OverrideRequester", fields: [requestedBy], references: [id])
+  approver  User?    @relation("OverrideApprover", fields: [approvedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("price_overrides")
+}

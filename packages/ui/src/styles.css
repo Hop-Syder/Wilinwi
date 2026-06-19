@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #12355b;
+    --emerald: #00a86b;
+    --gold: #f59e0b;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: var(--font-sans, Inter), system-ui, sans-serif;
+  }
+
+  /* Données chiffrées (prix, quantités) en DM Mono (§11.2). */
+  .tabular {
+    font-family: var(--font-mono, 'DM Mono'), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Respecte la préférence de réduction d'animation. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

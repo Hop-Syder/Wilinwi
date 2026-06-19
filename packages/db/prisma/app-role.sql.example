@@ -1,0 +1,24 @@
+-- Rôle applicatif Wilinwi — à exécuter UNE fois, en tant que `postgres`, après les
+-- migrations. Garantit que la RLS s'applique réellement : ce rôle n'a PAS BYPASSRLS
+-- (contrairement au rôle `postgres` du pooler Supabase, qui contourne la RLS).
+--
+-- 1. Remplacez __PASSWORD__ par un mot de passe fort.
+-- 2. Exécutez :  prisma db execute --url "$DIRECT_URL" --file app-role.sql
+-- 3. Mettez DATABASE_URL (app) sur ce rôle, via le pooler en mode session (5432) :
+--      postgresql://wilinwi_app.<PROJECT_REF>:__PASSWORD__@<region>.pooler.supabase.com:5432/postgres
+--    Laissez DIRECT_URL sur le rôle `postgres` (les migrations ont besoin du propriétaire).
+
+DROP ROLE IF EXISTS wilinwi_app;
+CREATE ROLE wilinwi_app LOGIN PASSWORD '__PASSWORD__' NOBYPASSRLS;
+
+GRANT USAGE ON SCHEMA public TO wilinwi_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO wilinwi_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO wilinwi_app;
+GRANT USAGE ON SCHEMA app TO wilinwi_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO wilinwi_app;
+
+-- Tables/séquences créées plus tard par les migrations (rôle postgres) :
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO wilinwi_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO wilinwi_app;

@@ -1,0 +1,24 @@
+{
+  "name": "@wilinwi/offline",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dexie": "^4.0.11"
+  },
+  "peerDependencies": {
+    "@wilinwi/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@wilinwi/types": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
