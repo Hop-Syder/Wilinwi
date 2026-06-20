@@ -56,10 +56,8 @@ export default function PosReturnsPage() {
     setSuccess(false);
 
     try {
-      // Pour une vraie app, on a besoin d'un endpoint pour fetch une seule vente, 
-      // ou on récupère la liste et on filtre
-      const sales = await apiGet<SaleDto[]>('/api/pos/sales');
-      const found = sales.find(s => s.id.startsWith(searchId) || s.id === searchId);
+      // Recherche d'une seule vente via l'API
+      const found = await apiGet<SaleDto>(`/api/pos/sales/${searchId}`);
       
       if (!found) {
         setError("Vente introuvable avec cet ID");

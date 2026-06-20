@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle, Lock, Star, Command } from 'lucide-react';
-import type { CreateSaleInput, PaymentMethod, ProductDto } from '@wilinwi/types';
+import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import Link from 'next/link';
@@ -21,7 +21,7 @@ import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
-import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
+import { CheckoutModal, SaleSuccessModal, type CheckoutResult } from '@/components/pos-checkout';
 import { RotateCcw } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -42,19 +42,16 @@ export default function PosPage() {
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'FAVORITES'>('ALL');
-  const [payment, setPayment] = useState<PaymentMethod>('CASH');
-  const [montantVerse, setMontantVerse] = useState('');
   const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
     null,
   );
   const [busy, setBusy] = useState(false);
-  const [clients, setClients] = useState<{ id: string; nom: string }[]>([]);
-  const [clientId, setClientId] = useState('');
-  const [isLocked, setIsLocked] = useState(false);
-  const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [variantSelectionProduct, setVariantSelectionProduct] = useState<ProductDto | null>(null);
-  const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
+  
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastSaleTotal, setLastSaleTotal] = useState(0);
 
   const tourSteps: TourStep[] = [
     {
@@ -100,17 +97,6 @@ export default function PosPage() {
     apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
       .then(setClients)
       .catch(() => setClients([]));
-      
-    // Liste des utilisateurs pour le Mode Kiosque
-    apiGet<PinUser[]>('/api/users')
-      .then(setPinUsers)
-      .catch(() => {
-        // Fallback temporaire MVP
-        setPinUsers([
-          { id: '1', nom: 'Alice', role: 'CASHIER' },
-          { id: '2', nom: 'Bob (Gérant)', role: 'MANAGER' }
-        ]);
-      });
   }, []);
 
   // Raccourci clavier Cmd+K pour le champ de recherche
@@ -126,17 +112,12 @@ export default function PosPage() {
   }, []);
 
   const displayProducts = useMemo(() => {
-    let list = products;
-    if (activeTab === 'FAVORITES') {
-      // Simulation des favoris (ex: les 6 premiers produits)
-      list = products.slice(0, 6);
-    }
-    return list.filter(
+    return products.filter(
       (p) =>
         p.nom.toLowerCase().includes(query.toLowerCase()) ||
         (p.sku ?? '').toLowerCase().includes(query.toLowerCase()),
     );
-  }, [products, query, activeTab]);
+  }, [products, query]);
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
 
@@ -167,41 +148,41 @@ export default function PosPage() {
     }
   }
 
-  function updateLine(productId: string, variantId: string | undefined, patch: Partial<CartLine>) {
-    setCart((c) => c.map((l) => (l.product.id === productId && l.variantId === variantId ? { ...l, ...patch } : l)));
+  function updateQuantity(line: CartLine, delta: number) {
+    const newQ = line.quantite + delta;
+    if (newQ <= 0) setCart(c => c.filter(x => x !== line));
+    else setExactQuantity(line, newQ);
+  }
+  function setExactQuantity(line: CartLine, newQ: number) {
+    if (newQ <= 0) return;
+    const stockToCheck = line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
+    if (newQ > stockToCheck) {
+      setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
+      newQ = stockToCheck;
+    }
+    setCart(c => c.map(l => l === line ? { ...l, quantite: newQ } : l));
+  }
+  function setExactPrice(line: CartLine, newPrice: number) {
+    setCart(c => c.map(l => l === line ? { ...l, prixReel: newPrice } : l));
   }
   function removeLine(productId: string, variantId: string | undefined) {
     setCart((c) => c.filter((l) => !(l.product.id === productId && l.variantId === variantId)));
   }
-
-  async function checkout() {
+  function openCheckout() {
     if (cart.length === 0) return;
+    setShowCheckoutModal(true);
+  }
+
+  async function handleConfirmCheckout(result: CheckoutResult) {
+    setShowCheckoutModal(false);
     setBusy(true);
     setMessage(null);
 
-    // Validation stricte du prix plancher (côté client uniquement si le rôle voit
-    // le plancher ; sinon le serveur reste l'autorité qui refuse).
-    const hasUnderFloor = cart.some(
-      (l) => l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher,
-    );
-    if (hasUnderFloor) {
-      setMessage({ tone: 'err', text: 'Opération refusée : un produit est en dessous de son prix plancher fixe.' });
-      setBusy(false);
-      return;
-    }
-
-    const hasOutOfStock = cart.some((l) => l.quantite > (l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock));
-    if (hasOutOfStock) {
-      setMessage({ tone: 'err', text: 'Opération refusée : stock insuffisant pour un ou plusieurs produits.' });
-      setBusy(false);
-      return;
-    }
-
     const payload: CreateSaleInput = {
       clientGeneratedId: crypto.randomUUID(),
-      paymentMethod: payment,
-      montantVerse: payment === 'INSTALLMENT' ? Number(montantVerse || 0) : undefined,
-      clientId: clientId || undefined,
+      paymentMethod: result.paymentMethod,
+      montantVerse: result.montantVerse,
+      clientId: result.clientId,
       items: cart.map((l) => ({
         productId: l.product.id,
         variantId: l.variantId,
@@ -211,18 +192,12 @@ export default function PosPage() {
     };
 
     try {
-      // Offline-First : Enregistrement systématique en local via IndexedDB
       await syncEngine.enqueueSale(payload);
-      
-      // On vide le panier immédiatement pour enchaîner la vente suivante
+      setLastSaleTotal(total);
       setCart([]);
-      setMontantVerse('');
-      setClientId('');
-      setMessage({ tone: 'ok', text: 'Vente enregistrée ✓' });
+      setShowSuccessModal(true);
       
       await refreshPending();
-
-      // Synchronisation asynchrone en arrière-plan (sans bloquer l'UI)
       if (navigator.onLine) {
         syncEngine.flush().then(() => refreshPending()).catch(() => {});
       }
@@ -235,28 +210,11 @@ export default function PosPage() {
 
   const [showHistory, setShowHistory] = useState(false);
 
-  if (isLocked) {
-    return (
-      <PinSwitchModal 
-        users={pinUsers}
-        onUnlock={(userId, pin) => {
-          // Dans une vraie app, on appelle une API pour vérifier le PIN
-          // Si succès : apiPost('/api/auth/switch', { userId, pin })
-          // Puis on met à jour le contexte Auth (useAuth)
-          setIsLocked(false);
-        }}
-        onCancel={() => setIsLocked(false)}
-      />
-    );
-  }
+
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-      {isManager && (
-        <div className="lg:col-span-2">
-          <ManagerApprovalPanel />
-        </div>
-      )}
+      
 
       {/* Catalogue */}
       <div>
@@ -282,10 +240,7 @@ export default function PosPage() {
                 { title: 'Retour de marchandise', description: 'Ouvrez l\'historique des ventes, sélectionnez la vente concernée et indiquez la quantité retournée pour chaque produit. Le stock sera automatiquement réajusté.' }
               ]}
             />
-            <Button variant="outline" size="sm" onClick={() => setIsLocked(true)}>
-              <Lock className="mr-1 h-4 w-4" />
-              Verrouiller
-            </Button>
+            
           </div>
         </div>
         <div className="relative mt-4" id="tour-search">
@@ -295,11 +250,17 @@ export default function PosPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && displayProducts.length > 0) {
-                handleProductClick(displayProducts[0]);
-                setQuery('');
-              }
-            }}
+    if (e.key === 'Enter') {
+      const exactMatch = products.find(p => p.sku?.toLowerCase() === query.toLowerCase());
+      if (exactMatch) {
+        handleProductClick(exactMatch);
+        setQuery('');
+      } else if (displayProducts.length > 0) {
+        handleProductClick(displayProducts[0]);
+        setQuery('');
+      }
+    }
+  }}
             placeholder="Rechercher un produit..."
             className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-12 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
           />
@@ -312,25 +273,9 @@ export default function PosPage() {
           <TodaySalesPanel onClose={() => setShowHistory(false)} />
         ) : (
           <>
-            {/* Filtres de catégories / favoris */}
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="tour-categories">
-              <Button 
-                variant={activeTab === 'ALL' ? 'primary' : 'outline'} 
-                size="sm" 
-                className="rounded-full shrink-0"
-                onClick={() => setActiveTab('ALL')}
-              >
-                Toutes les catégories
-              </Button>
-              <Button 
-                variant={activeTab === 'FAVORITES' ? 'primary' : 'outline'} 
-                size="sm" 
-                className="rounded-full shrink-0"
-                onClick={() => setActiveTab('FAVORITES')}
-              >
-                <Star className={`mr-1.5 h-3.5 w-3.5 ${activeTab === 'FAVORITES' ? 'fill-white' : 'fill-amber-400 text-amber-400'}`} />
-                Favoris / Top Ventes
-              </Button>
+            {/* Titre du Catalogue */}
+            <div className="mt-4 flex items-center justify-between pb-2" id="tour-categories">
+              <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Catalogue des produits</span>
             </div>
 
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -378,47 +323,49 @@ export default function PosPage() {
                     <Trash2 className="h-4 w-4 text-slate-400 hover:text-red-500" />
                   </button>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock}
-                    value={l.quantite}
-                    onChange={(e) => {
-                      const maxStock = l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock;
-                      updateLine(l.product.id, l.variantId, { quantite: Math.max(1, Math.min(maxStock, Number(e.target.value))) })
-                    }}
-                    className="tabular w-16 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                  />
-                  <span className="text-slate-400">×</span>
-                  <div className="flex flex-col">
-                    <input
-                      type="number"
-                      min={l.product.prixPlancher ?? 0}
-                      value={l.prixReel}
-                      onChange={(e) => updateLine(l.product.id, l.variantId, { prixReel: Number(e.target.value) })}
-                      onBlur={(e) => {
-                        const plancher = l.product.prixPlancher;
-                        if (plancher !== undefined && Number(e.target.value) < plancher) {
-                          updateLine(l.product.id, l.variantId, { prixReel: plancher });
-                        }
-                      }}
-                      className={`tabular w-24 rounded-md border px-2 py-1 text-sm ${
-                        l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher
-                          ? 'border-red-500 bg-red-50 text-red-700'
-                          : 'border-slate-300'
-                      }`}
-                      title={
-                        l.product.prixPlancher !== undefined
-                          ? `Prix réel négocié (min: ${l.product.prixPlancher})`
-                          : 'Prix réel négocié'
-                      }
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center border rounded-md bg-white">
+                    <button 
+                      className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-r"
+                      onClick={() => updateQuantity(l, -1)}
+                    >-</button>
+                    <input 
+                      type="number" 
+                      value={l.quantite} 
+                      onChange={(e) => setExactQuantity(l, Number(e.target.value))}
+                      className="w-10 text-center text-xs border-none focus:ring-0 p-1 focus:outline-none tabular"
                     />
-                    {l.product.prixPlancher !== undefined && (
-                      <span className="text-[10px] text-slate-500">
-                        Min: {formatFCFA(l.product.prixPlancher)}
-                      </span>
-                    )}
+                    <button 
+                      className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-l"
+                      onClick={() => updateQuantity(l, 1)}
+                    >+</button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end">
+                      <input
+                        type="number"
+                        min={l.product.prixPlancher ?? 0}
+                        value={l.prixReel}
+                        onChange={(e) => setExactPrice(l, Number(e.target.value))}
+                        onBlur={(e) => {
+                          const plancher = l.product.prixPlancher;
+                          if (plancher !== undefined && Number(e.target.value) < plancher) {
+                            setExactPrice(l, plancher);
+                          }
+                        }}
+                        className={`tabular w-24 text-right rounded-md border px-2 py-1 text-xs ${
+                          l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher
+                            ? 'border-red-500 bg-red-50 text-red-700 font-medium'
+                            : 'border-slate-300'
+                        }`}
+                      />
+                      {l.product.prixPlancher !== undefined && (
+                        <span className="text-[9px] text-slate-500 mt-0.5">
+                          Min: {formatFCFA(l.product.prixPlancher)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </li>
@@ -427,80 +374,26 @@ export default function PosPage() {
         )}
 
         <div className="mt-4 border-t border-slate-200 pt-4" id="tour-checkout">
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-slate-600">Mode de paiement</span>
-            <select
-              value={payment}
-              onChange={(e) => setPayment(e.target.value as PaymentMethod)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+          <div className="rounded-xl border bg-slate-50 p-4">
+            <div className="flex justify-between items-end mb-4">
+              <span className="text-sm font-medium text-slate-500">Total à payer</span>
+              <span className="text-3xl font-black text-brand">{total.toLocaleString()} F</span>
+            </div>
+
+            {!navigator.onLine && (
+              <div className="mb-4 text-xs font-medium text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 flex justify-center">
+                Hors ligne (synchronisation en attente)
+              </div>
+            )}
+
+            <Button
+              className="w-full h-12 text-lg"
+              disabled={cart.length === 0 || busy}
+              onClick={openCheckout}
             >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {PAYMENT_METHOD_LABELS[m]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {requiresClient && (
-            <label className="mt-3 block text-sm">
-              <span className="mb-1 block font-medium text-slate-600">Client (crédit/dette)</span>
-              <select
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-              >
-                <option value="">— Sans client nommé —</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nom}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {payment === 'INSTALLMENT' && (
-            <label className="mt-3 block text-sm">
-              <span className="mb-1 block font-medium text-slate-600">Acompte versé</span>
-              <input
-                type="number"
-                value={montantVerse}
-                onChange={(e) => setMontantVerse(e.target.value)}
-                className="tabular w-full rounded-lg border border-slate-300 px-3 py-2"
-              />
-            </label>
-          )}
-
-          <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm text-slate-500">Total</span>
-            <span className="tabular text-xl font-bold text-brand">{formatFCFA(total)}</span>
+              Encaisser
+            </Button>
           </div>
-
-          {message && (
-            <p
-              className={`mt-3 flex items-center gap-1 text-sm ${
-                message.tone === 'ok'
-                  ? 'text-emerald-700'
-                  : message.tone === 'offline'
-                    ? 'text-gold-700'
-                    : 'text-red-600'
-              }`}
-            >
-              {message.tone === 'offline' && <CloudOff className="h-4 w-4" />}
-              {message.text}
-            </p>
-          )}
-
-          <Button
-            onClick={() => checkout()}
-            variant="emerald"
-            size="lg"
-            className="mt-4 w-full"
-            disabled={busy || cart.length === 0}
-          >
-            {busy ? 'Traitement…' : 'Encaisser'}
-          </Button>
         </div>
       </Card>
 
