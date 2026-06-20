@@ -12,7 +12,7 @@
 // ──────────────────────────────────
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Trash2, ShoppingCart, CloudOff } from 'lucide-react';
+import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle } from 'lucide-react';
 import type { CreateSaleInput, PaymentMethod, ProductDto } from '@wilinwi/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
@@ -34,6 +34,7 @@ export default function PosPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [productToAdd, setProductToAdd] = useState<ProductDto | null>(null);
   const [payment, setPayment] = useState<PaymentMethod>('CASH');
   const [montantVerse, setMontantVerse] = useState('');
   const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
@@ -73,13 +74,14 @@ export default function PosPage() {
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
 
-  function addToCart(product: ProductDto) {
+  function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue) {
     setCart((c) => {
       const existing = c.find((l) => l.product.id === product.id);
       if (existing)
-        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: l.quantite + 1 } : l));
-      return [...c, { product, quantite: 1, prixReel: product.prixCatalogue }];
+        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: l.quantite + quantite, prixReel } : l));
+      return [...c, { product, quantite, prixReel }];
     });
+    setProductToAdd(null);
   }
 
   function updateLine(id: string, patch: Partial<CartLine>) {
@@ -89,10 +91,21 @@ export default function PosPage() {
     setCart((c) => c.filter((l) => l.product.id !== id));
   }
 
-  async function checkout(motifs: Record<string, string> = {}) {
+  async function checkout() {
     if (cart.length === 0) return;
     setBusy(true);
     setMessage(null);
+
+    // Validation stricte du prix plancher (côté client uniquement si le rôle voit
+    // le plancher ; sinon le serveur reste l'autorité qui refuse).
+    const hasUnderFloor = cart.some(
+      (l) => l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher,
+    );
+    if (hasUnderFloor) {
+      setMessage({ tone: 'err', text: 'Opération refusée : un produit est en dessous de son prix plancher fixe.' });
+      setBusy(false);
+      return;
+    }
 
     const payload: CreateSaleInput = {
       clientGeneratedId: crypto.randomUUID(),
@@ -103,49 +116,33 @@ export default function PosPage() {
         productId: l.product.id,
         quantite: l.quantite,
         prixReel: l.prixReel,
-        motifSousPlancher: motifs[l.product.id],
       })),
     };
 
     try {
-      const sale = await apiPost<{ status?: string }>('/api/pos/sales', payload);
+      // Offline-First : Enregistrement systématique en local via IndexedDB
+      await syncEngine.enqueueSale(payload);
+      
+      // On vide le panier immédiatement pour enchaîner la vente suivante
       setCart([]);
       setMontantVerse('');
       setClientId('');
-      if (sale?.status === 'PENDING_APPROVAL') {
-        setMessage({ tone: 'offline', text: '⏳ Vente en attente de validation gérant.' });
-      } else {
-        setMessage({ tone: 'ok', text: 'Vente enregistrée ✓' });
+      setMessage({ tone: 'ok', text: 'Vente enregistrée ✓' });
+      
+      await refreshPending();
+
+      // Synchronisation asynchrone en arrière-plan (sans bloquer l'UI)
+      if (navigator.onLine) {
+        syncEngine.flush().then(() => refreshPending()).catch(() => {});
       }
     } catch (e) {
-      if (e instanceof ApiError) {
-        // Vente sous le prix plancher : demander une preuve puis réessayer.
-        if (e.status === 400 && /plancher/i.test(e.message)) {
-          const motif = window.prompt(
-            'Vente sous le prix plancher. Indiquez le motif (preuve obligatoire) :',
-          );
-          if (motif) {
-            const all = Object.fromEntries(cart.map((l) => [l.product.id, motif]));
-            setBusy(false);
-            return checkout(all);
-          }
-          setMessage({ tone: 'err', text: 'Vente annulée : motif requis.' });
-        } else {
-          setMessage({ tone: 'err', text: e.message });
-        }
-      } else {
-        // Réseau indisponible → enregistrement hors-ligne (§5.4).
-        await syncEngine.enqueueSale(payload);
-        await refreshPending();
-        setCart([]);
-        setMontantVerse('');
-      setClientId('');
-        setMessage({ tone: 'offline', text: 'Hors-ligne : vente enregistrée localement.' });
-      }
+      setMessage({ tone: 'err', text: "Erreur lors de l'enregistrement local." });
     } finally {
       setBusy(false);
     }
   }
+
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
@@ -157,7 +154,12 @@ export default function PosPage() {
 
       {/* Catalogue */}
       <div>
-        <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
+          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
+            Historique du jour
+          </Button>
+        </div>
         <div className="relative mt-4">
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <input
@@ -168,11 +170,15 @@ export default function PosPage() {
           />
         </div>
 
+        {showHistory ? (
+          <TodaySalesPanel onClose={() => setShowHistory(false)} />
+        ) : (
+
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {filtered.map((p) => (
             <button
               key={p.id}
-              onClick={() => addToCart(p)}
+              onClick={() => setProductToAdd(p)}
               className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md"
             >
               <div className="font-medium text-slate-900">{p.nom}</div>
@@ -185,7 +191,38 @@ export default function PosPage() {
             </button>
           ))}
         </div>
+        )}
       </div>
+
+      {/* Modal d'ajout au panier */}
+      {productToAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setProductToAdd(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-xl font-bold text-slate-900">{productToAdd.nom}</h3>
+            
+            <div className="mt-4 rounded-xl bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-600">Prix catalogue</span>
+                <span className="tabular text-lg font-bold text-emerald-600">{formatFCFA(productToAdd.prixCatalogue)}</span>
+              </div>
+              
+              {productToAdd.prixPlancher !== undefined && (
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                  <span className="flex items-center gap-1 text-sm font-medium text-amber-600">
+                    <AlertTriangle className="h-4 w-4" /> Prix plancher
+                  </span>
+                  <span className="tabular text-lg font-bold text-amber-600">{formatFCFA(productToAdd.prixPlancher)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setProductToAdd(null)}>Annuler</Button>
+              <Button className="flex-1" onClick={() => addToCart(productToAdd)}>Ajouter</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Panier */}
       <Card className="h-fit lg:sticky lg:top-20">
@@ -216,13 +253,35 @@ export default function PosPage() {
                     className="tabular w-16 rounded-md border border-slate-300 px-2 py-1 text-sm"
                   />
                   <span className="text-slate-400">×</span>
-                  <input
-                    type="number"
-                    value={l.prixReel}
-                    onChange={(e) => updateLine(l.product.id, { prixReel: Number(e.target.value) })}
-                    className="tabular w-24 rounded-md border border-slate-300 px-2 py-1 text-sm"
-                    title="Prix réel négocié"
-                  />
+                  <div className="flex flex-col">
+                    <input
+                      type="number"
+                      min={l.product.prixPlancher ?? 0}
+                      value={l.prixReel}
+                      onChange={(e) => updateLine(l.product.id, { prixReel: Number(e.target.value) })}
+                      onBlur={(e) => {
+                        const plancher = l.product.prixPlancher;
+                        if (plancher !== undefined && Number(e.target.value) < plancher) {
+                          updateLine(l.product.id, { prixReel: plancher });
+                        }
+                      }}
+                      className={`tabular w-24 rounded-md border px-2 py-1 text-sm ${
+                        l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher
+                          ? 'border-red-500 bg-red-50 text-red-700'
+                          : 'border-slate-300'
+                      }`}
+                      title={
+                        l.product.prixPlancher !== undefined
+                          ? `Prix réel négocié (min: ${l.product.prixPlancher})`
+                          : 'Prix réel négocié'
+                      }
+                    />
+                    {l.product.prixPlancher !== undefined && (
+                      <span className="text-[10px] text-slate-500">
+                        Min: {formatFCFA(l.product.prixPlancher)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             ))}
@@ -403,6 +462,123 @@ function ManagerApprovalPanel() {
           </li>
         ))}
       </ul>
+    </Card>
+  );
+}
+
+function TodaySalesPanel({ onClose }: { onClose: () => void }) {
+  const [sales, setSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await apiGet<any[]>('/api/pos/sales/today');
+        setSales(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  function printReceipt(sale: any) {
+    const receiptHtml = `
+      <html>
+        <head>
+          <title>Ticket de Caisse</title>
+          <style>
+            body { font-family: monospace; width: 300px; margin: 0 auto; padding: 20px; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="center bold">WILINWI</div>
+          <div class="center">Ticket de caisse</div>
+          <div class="divider"></div>
+          <div>Date: ${new Date(sale.createdAt).toLocaleString()}</div>
+          <div>Vente #: ${sale.id.slice(0, 8).toUpperCase()}</div>
+          <div class="divider"></div>
+          ${sale.items.map((i: any) => `
+            <div class="item">
+              <span>${i.quantite}x ${i.product?.nom || 'Produit'}</span>
+              <span>${formatFCFA(i.prixReel * i.quantite)}</span>
+            </div>
+          `).join('')}
+          <div class="divider"></div>
+          <div class="item bold">
+            <span>TOTAL</span>
+            <span>${formatFCFA(sale.total)}</span>
+          </div>
+          <div class="item">
+            <span>Payé (${sale.paymentMethod})</span>
+            <span>${formatFCFA(sale.montantVerse)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="center">Merci de votre visite !</div>
+        </body>
+      </html>
+    `;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  }
+
+  return (
+    <Card className="mt-4 border-brand/20 bg-brand/5 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold text-brand">Ventes du jour</h2>
+        <Button variant="ghost" size="sm" onClick={onClose}>Fermer</Button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-500">Chargement...</p>
+      ) : sales.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucune vente aujourd'hui.</p>
+      ) : (
+        <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+          {sales.map((s) => (
+            <li key={s.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="tabular font-semibold text-slate-900">{formatFCFA(s.total)}</span>
+                  <Badge tone={s.status === 'COMPLETED' ? 'success' : s.status === 'PENDING_APPROVAL' ? 'warning' : 'neutral'} className="ml-2">
+                    {s.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">
+                    {new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => printReceipt(s)}>
+                    Imprimer
+                  </Button>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-slate-600 border-t border-slate-100 pt-2">
+                {s.items.map((it: any) => (
+                  <li key={it.id} className="flex justify-between">
+                    <span>{it.quantite} × {it.product?.nom ?? 'Produit'}</span>
+                    <span className="tabular text-slate-500">{formatFCFA(it.prixReel * it.quantite)}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

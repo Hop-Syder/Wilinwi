@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  AuthContext,
-  CreateClientInput,
-  RecordClientPaymentInput,
-  UpdateClientInput,
+import {
+  accountForPayment,
+  type AuthContext,
+  type CreateClientInput,
+  type RecordClientPaymentInput,
+  type UpdateClientInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
@@ -87,6 +88,19 @@ export class ClientsService {
       const updated = await tx.client.update({
         where: { id },
         data: { soldeCredit: { decrement: input.montant } },
+      });
+      // Trésorerie : le remboursement entre dans le compte du mode de paiement.
+      const compte = accountForPayment(input.methode ?? 'CASH') ?? 'CAISSE';
+      await tx.cashMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          type: 'IN',
+          compte,
+          montant: input.montant,
+          source: 'REPAYMENT',
+          note: `Remboursement client ${client.nom}`,
+          createdBy: ctx.userId,
+        },
       });
       return { payment, client: toClientDto(updated, ctx.role) };
     });

@@ -19,6 +19,7 @@ import { StockModule } from './stock/stock.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SalesModule } from './pos/sales.module';
 import { CrmModule } from './crm/crm.module';
+import { TreasuryModule } from './treasury/treasury.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SyncModule } from './sync/sync.module';
 
@@ -50,6 +51,7 @@ class HealthController {
     InventoryModule,
     SalesModule,
     CrmModule,
+    TreasuryModule,
     AnalyticsModule,
     SyncModule,
   ],

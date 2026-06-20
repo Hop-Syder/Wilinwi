@@ -14,7 +14,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutGrid, Package, ShoppingCart, BarChart3, Users, LogOut } from 'lucide-react';
+import { LayoutGrid, Package, ShoppingCart, BarChart3, Users, Wallet, LogOut } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
@@ -26,6 +26,7 @@ const NAV = [
   { href: '/stock', label: 'Stock', icon: Package },
   { href: '/pos', label: 'Caisse', icon: ShoppingCart },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/tresorerie', label: 'Trésorerie', icon: Wallet },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

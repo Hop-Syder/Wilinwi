@@ -46,6 +46,7 @@ export const CAPABILITIES = [
   'sale:create',
   'sale:read',
   'sale:override_floor_price', // valider une vente sous le prix plancher
+  'sale:cancel', // annuler une vente (ré-entrée stock + reversal)
   // Caisse
   'cash:collect',
   'cash:close',
@@ -54,6 +55,9 @@ export const CAPABILITIES = [
   'client:write', // créer/modifier les clients, définir le plafond
   'client:view_credit', // voir solde de crédit & plafond (donnée sensible)
   'client:collect_payment', // enregistrer un remboursement de dette
+  // Trésorerie — Wilinwi Pay (MVP2)
+  'treasury:read', // voir soldes & mouvements
+  'treasury:write', // enregistrer dépenses / mouvements / virements
   // Livraisons (MVP2)
   'delivery:update',
   // Rapports
@@ -73,12 +77,15 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'sale:create',
     'sale:read',
     'sale:override_floor_price',
+    'sale:cancel',
     'cash:collect',
     'cash:close',
     'client:read',
     'client:write',
     'client:view_credit',
     'client:collect_payment',
+    'treasury:read',
+    'treasury:write',
     'reports:read',
     'reports:read_full',
   ],

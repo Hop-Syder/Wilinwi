@@ -106,6 +106,8 @@ model Tenant {
   priceOverrides  PriceOverride[]
   clients         Client[]
   clientPayments  ClientPayment[]
+  cashMovements   CashMovement[]
+  cashCloses      CashClose[]
 
   @@map("tenants")
 }
@@ -361,4 +363,64 @@ model ClientPayment {
   @@index([tenantId])
   @@index([clientId])
   @@map("client_payments")
+}
+
+// ─────────────────────── Trésorerie — Wilinwi Pay (MVP2) ───────────────────────
+
+enum CashAccount {
+  CAISSE // espèces
+  MOBILE_MONEY // MTN MoMo / Moov Money
+  BANQUE // virement / banque
+}
+
+enum CashFlowType {
+  IN
+  OUT
+}
+
+enum CashMovementSource {
+  SALE // encaissement d'une vente
+  EXPENSE // dépense (loyer, salaire, réappro…)
+  REPAYMENT // remboursement de dette client / acompte
+  TRANSFER // virement entre comptes
+  ADJUSTMENT // ajustement (écart de clôture)
+  OPENING // solde d'ouverture
+}
+
+model CashMovement {
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @map("tenant_id") @db.Uuid
+  type      CashFlowType
+  compte    CashAccount
+  montant   Int // toujours positif ; le sens est porté par `type`
+  source    CashMovementSource
+  categorie String? // pour EXPENSE : loyer/électricité/salaire/réappro/autre
+  note      String?
+  saleId    String?            @map("sale_id") @db.Uuid
+  createdBy String             @map("created_by") @db.Uuid
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, compte])
+  @@index([tenantId, createdAt])
+  @@map("cash_movements")
+}
+
+model CashClose {
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  compte         CashAccount @default(CAISSE)
+  soldeTheorique Int         @map("solde_theorique")
+  soldeReel      Int         @map("solde_reel")
+  ecart          Int // soldeReel - soldeTheorique
+  note           String?
+  closedBy       String      @map("closed_by") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("cash_closes")
 }

@@ -64,7 +64,7 @@ const MODULES: ModuleDef[] = [
     key: 'PAY',
     label: 'Pay',
     desc: 'Mobile Money, trésorerie',
-    href: null,
+    href: '/tresorerie',
     icon: CreditCard,
     accent: 'bg-slate-100 text-slate-500',
   },

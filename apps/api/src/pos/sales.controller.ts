@@ -43,6 +43,12 @@ export class SalesController {
     return this.sales.list(user);
   }
 
+  @RequireCapabilities('sale:read')
+  @Get('sales/today')
+  todaySales(@CurrentUser() user: AuthContext) {
+    return this.sales.todaySales(user);
+  }
+
   // Ventes en attente de validation gérant (écran « à valider »).
   @RequireCapabilities('sale:override_floor_price')
   @Get('sales/pending')
@@ -75,5 +81,12 @@ export class SalesController {
     @Body(new ZodValidationPipe(ApproveSaleSchema)) dto: { approuve: boolean },
   ) {
     return this.sales.approveSale(user, id, dto.approuve);
+  }
+
+  // Annulation d'une vente (ré-entrée stock + reversal) — gérant/propriétaire.
+  @RequireCapabilities('sale:cancel')
+  @Post('sales/:id/cancel')
+  cancel(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.sales.cancelSale(user, id);
   }
 }

@@ -341,81 +341,6 @@ export class SalesService {
     });
   }
 
-  /**
-   * Annule une vente : ré-entrée du stock + reversal de la trésorerie et de la
-   * dette client (capacité sale:cancel). Inverse exactement `finalize`.
-   */
-  async cancelSale(ctx: AuthContext, saleId: string) {
-    const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const target = await tx.sale.findFirst({
-        where: { id: saleId, tenantId: ctx.tenantId },
-        include: { items: true },
-      });
-      if (!target) throw new NotFoundException('Vente introuvable');
-      if (target.status === 'CANCELLED') throw new BadRequestException('Vente déjà annulée');
-
-      // Une vente non finalisée (PENDING_APPROVAL) n'a touché ni stock ni trésorerie.
-      if (target.status !== 'PENDING_APPROVAL') {
-        for (const item of target.items) {
-          await tx.stockMovement.create({
-            data: {
-              tenantId: ctx.tenantId,
-              productId: item.productId,
-              variantId: item.variantId,
-              type: 'IN',
-              quantite: item.quantite,
-              motif: `Annulation vente ${saleId}`,
-              saleId,
-            },
-          });
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantite } },
-          });
-        }
-
-        // Reversal trésorerie : on ressort la part encaissée.
-        const compte = accountForPayment(target.paymentMethod);
-        if (compte && target.montantVerse > 0) {
-          await tx.cashMovement.create({
-            data: {
-              tenantId: ctx.tenantId,
-              type: 'OUT',
-              compte,
-              montant: target.montantVerse,
-              source: 'ADJUSTMENT',
-              note: `Annulation vente ${saleId}`,
-              saleId,
-              createdBy: ctx.userId,
-            },
-          });
-        }
-
-        // Reversal dette client : on retire la part impayée (bornée au solde courant).
-        const impaye = target.total - target.montantVerse;
-        if (target.clientId && impaye > 0) {
-          const client = await tx.client.findFirst({
-            where: { id: target.clientId, tenantId: ctx.tenantId },
-          });
-          const dec = client ? Math.min(impaye, client.soldeCredit) : 0;
-          if (dec > 0) {
-            await tx.client.update({
-              where: { id: target.clientId },
-              data: { soldeCredit: { decrement: dec } },
-            });
-          }
-        }
-      }
-
-      await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
-      return tx.sale.findUnique({
-        where: { id: saleId },
-        include: { items: { include: { priceOverride: true } }, installment: true },
-      });
-    });
-    return sale ? toSaleDto(sale, ctx.role) : sale;
-  }
-
   async list(ctx: AuthContext) {
     const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({
@@ -423,21 +348,6 @@ export class SalesService {
         orderBy: { createdAt: 'desc' },
         take: 100,
         include: { items: { include: { priceOverride: true } }, installment: true },
-      }),
-    );
-    return toSaleDtoList(sales, ctx.role);
-  }
-
-  async todaySales(ctx: AuthContext) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.sale.findMany({
-        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
-        orderBy: { createdAt: 'desc' },
-        take: 200,
-        include: { items: { include: { priceOverride: true, product: true } }, installment: true, client: true },
       }),
     );
     return toSaleDtoList(sales, ctx.role);

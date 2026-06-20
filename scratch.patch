@@ -1,0 +1,24 @@
+--- apps/api/src/pos/sales.service.ts
++++ apps/api/src/pos/sales.service.ts
+@@ -351,6 +351,21 @@
+       }),
+     );
+     return toSaleDtoList(sales, ctx.role);
+   }
+ 
++  async todaySales(ctx: AuthContext) {
++    const startOfDay = new Date();
++    startOfDay.setHours(0, 0, 0, 0);
++
++    const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
++      tx.sale.findMany({
++        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
++        orderBy: { createdAt: 'desc' },
++        take: 200,
++        include: { items: { include: { priceOverride: true, product: true } }, installment: true, client: true },
++      }),
++    );
++    return toSaleDtoList(sales, ctx.role);
++  }
++
+   async get(ctx: AuthContext, id: string) {
