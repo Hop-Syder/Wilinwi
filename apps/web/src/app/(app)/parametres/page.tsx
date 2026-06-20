@@ -1,0 +1,259 @@
+'use client';
+
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Paramètres du compte — gestion du plan d'abonnement et infos tenant.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
+import { useEffect, useState } from 'react';
+import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { PLAN_MODULES, MODULES, type Plan } from '@wilinwi/types';
+import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+import { apiGet, apiPatch, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+
+interface TenantInfo {
+  id: string;
+  nom: string;
+  plan: Plan;
+  subscriptionStatus: string;
+  createdAt: string;
+}
+
+const PLAN_INFO: Record<Plan, { label: string; color: string; icon: React.ElementType; desc: string; price: string }> = {
+  FREE: {
+    label: 'Gratuit',
+    color: 'text-slate-600 bg-slate-100',
+    icon: Package2,
+    desc: 'Caisse, Stock & Analytics. Idéal pour démarrer.',
+    price: '0 FCFA/mois',
+  },
+  PRO: {
+    label: 'Pro',
+    color: 'text-brand bg-brand/10',
+    icon: Zap,
+    desc: 'Tout Free + Pay, CRM et Market. Pour les boutiques en croissance.',
+    price: '15 000 FCFA/mois',
+  },
+  BUSINESS: {
+    label: 'Business',
+    color: 'text-amber-700 bg-amber-50',
+    icon: Crown,
+    desc: 'Tous les modules + IA. Pour les commerçants qui veulent tout.',
+    price: '35 000 FCFA/mois',
+  },
+};
+
+const MODULE_LABELS: Record<string, string> = {
+  POS: 'Caisse (POS)',
+  STOCK: 'Gestion Stock',
+  ANALYTICS: 'Analytics & Rapports',
+  PAY: 'Pay / Trésorerie',
+  CRM: 'CRM Clients',
+  MARKET: 'Market (WhatsApp)',
+  AI: 'Assistant IA',
+};
+
+export default function ParametresPage() {
+  const { user, refreshUser } = useAuth();
+  const [tenant, setTenant] = useState<TenantInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState<Plan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const t = await apiGet<TenantInfo>('/api/admin/tenant');
+      setTenant(t);
+    } catch (e) {
+      setError((e as ApiError).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function changePlan(plan: Plan) {
+    if (user?.role !== 'OWNER') {
+      setError('Seul le propriétaire peut modifier le plan.');
+      return;
+    }
+    setUpgrading(plan);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await apiPatch<{ message: string; tenant: TenantInfo }>('/api/admin/tenant/plan', { plan });
+      setTenant(res.tenant);
+      setSuccess(res.message);
+      // Rafraîchit le contexte auth pour que le plan soit mis à jour partout
+      if (refreshUser) await refreshUser();
+    } catch (e) {
+      setError((e as ApiError).message);
+    } finally {
+      setUpgrading(null);
+    }
+  }
+
+  const currentPlan = tenant?.plan ?? user?.plan ?? 'FREE';
+  const isOwner = user?.role === 'OWNER';
+
+  return (
+    <div className="space-y-6">
+      {/* En-tête */}
+      <div>
+        <h1 className="font-display text-2xl font-bold text-brand">Paramètres</h1>
+        <p className="mt-1 text-sm text-slate-500">Gestion du compte et du plan d'abonnement.</p>
+      </div>
+
+      {/* Infos boutique */}
+      <Card className="flex items-center justify-between p-5">
+        <div>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Votre boutique</p>
+          <p className="mt-1 font-display text-xl font-bold text-slate-800">
+            {loading ? '…' : tenant?.nom ?? 'Boutique'}
+          </p>
+          <p className="text-sm text-slate-500">
+            Statut : <span className="font-medium">{loading ? '…' : tenant?.subscriptionStatus}</span>
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-slate-400">Plan actuel</p>
+          {currentPlan && (
+            <span
+              className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${PLAN_INFO[currentPlan].color}`}
+            >
+              {(() => { const Icon = PLAN_INFO[currentPlan].icon; return <Icon className="h-3.5 w-3.5" />; })()}
+              {PLAN_INFO[currentPlan].label}
+            </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Alertes */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+        </div>
+      )}
+      {success && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
+        </div>
+      )}
+
+      {/* Sélection du plan */}
+      <div>
+        <h2 className="mb-3 font-display font-semibold text-slate-800">Choisir un plan</h2>
+        {!isOwner && (
+          <p className="mb-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">
+            Seul le propriétaire de la boutique peut changer le plan.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {(['FREE', 'PRO', 'BUSINESS'] as Plan[]).map((plan) => {
+            const info = PLAN_INFO[plan];
+            const Icon = info.icon;
+            const isCurrent = currentPlan === plan;
+            const modules = PLAN_MODULES[plan];
+            return (
+              <div
+                key={plan}
+                className={`relative flex flex-col rounded-2xl border p-5 transition-all ${
+                  isCurrent
+                    ? 'border-brand bg-brand/5 shadow-md'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                {isCurrent && (
+                  <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">
+                    <CheckCircle2 className="h-3 w-3" /> Actuel
+                  </span>
+                )}
+                <div className={`inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold ${info.color} w-fit`}>
+                  <Icon className="h-4 w-4" />
+                  {info.label}
+                </div>
+                <p className="mt-3 text-sm text-slate-600">{info.desc}</p>
+                <p className="mt-2 font-display text-lg font-bold text-slate-800">{info.price}</p>
+
+                <div className="mt-4 space-y-1.5">
+                  {MODULES.map((mod) => {
+                    const included = modules.includes(mod);
+                    return (
+                      <div key={mod} className={`flex items-center gap-2 text-xs ${included ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${included ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        {MODULE_LABELS[mod] ?? mod}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-auto pt-4">
+                  {isCurrent ? (
+                    <div className="w-full rounded-xl border border-brand/30 bg-brand/5 py-2 text-center text-sm font-medium text-brand">
+                      Plan actif ✓
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      variant={plan === 'BUSINESS' ? 'primary' : 'outline'}
+                      disabled={!isOwner || upgrading !== null}
+                      onClick={() => void changePlan(plan)}
+                    >
+                      {upgrading === plan ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Mise à jour…
+                        </span>
+                      ) : plan === 'FREE' ? (
+                        'Passer en Gratuit'
+                      ) : plan === 'PRO' ? (
+                        'Passer en Pro'
+                      ) : (
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" /> Activer BUSINESS
+                        </span>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modules inclus dans le plan actuel */}
+      <Card>
+        <h2 className="font-display font-semibold text-slate-800">Modules débloqués</h2>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {MODULES.map((mod) => {
+            const included = PLAN_MODULES[currentPlan]?.includes(mod);
+            return (
+              <div
+                key={mod}
+                className={`flex items-center gap-2 rounded-xl p-2.5 text-sm ${
+                  included ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                }`}
+              >
+                {included ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 text-center">—</span>}
+                {MODULE_LABELS[mod] ?? mod}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}

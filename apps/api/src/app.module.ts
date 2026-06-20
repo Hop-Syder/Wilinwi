@@ -22,6 +22,7 @@ import { CrmModule } from './crm/crm.module';
 import { TreasuryModule } from './treasury/treasury.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SyncModule } from './sync/sync.module';
+import { AdminModule } from './admin/admin.module';
 
 @Controller()
 class HealthController {
@@ -54,6 +55,7 @@ class HealthController {
     TreasuryModule,
     AnalyticsModule,
     SyncModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

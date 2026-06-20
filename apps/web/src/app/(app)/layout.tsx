@@ -23,6 +23,7 @@ import {
   Users,
   Wallet,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS } from '@wilinwi/types';
@@ -37,6 +38,7 @@ const NAV = [
   { href: '/ventes', label: 'Ventes', icon: Receipt },
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/tresorerie', label: 'Trésorerie', icon: Wallet },
+  { href: '/parametres', label: 'Paramètres', icon: Settings },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

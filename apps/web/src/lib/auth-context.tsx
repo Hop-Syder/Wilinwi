@@ -27,12 +27,14 @@ interface AuthState {
   user: SessionUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState>({
   user: null,
   loading: true,
   signOut: async () => {},
+  refreshUser: async () => {},
 });
 
 function userFromClaims(payload: Record<string, unknown> | undefined): SessionUser | null {
@@ -81,7 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  return <AuthCtx.Provider value={{ user, loading, signOut }}>{children}</AuthCtx.Provider>;
+  /**
+   * Force un refresh du token Supabase pour que les nouveaux claims (plan, rôle)
+   * soient reflétés dans le JWT sans avoir à se reconnecter.
+   */
+  const refreshUser = async () => {
+    const supabase = getSupabase();
+    const { data } = await supabase.auth.refreshSession();
+    if (data.session?.access_token) {
+      setUser(userFromClaims(decodeJwt(data.session.access_token)));
+    }
+  };
+
+  return <AuthCtx.Provider value={{ user, loading, signOut, refreshUser }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);
