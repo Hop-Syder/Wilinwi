@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Contrôleur Trésorerie — endpoints REST pour soldes, stats, dépenses, virements, mouvements filtrés, clôtures.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
   CashCloseSchema,
@@ -19,18 +30,44 @@ import { TreasuryService } from './treasury.service';
 export class TreasuryController {
   constructor(private readonly treasury: TreasuryService) {}
 
+  /** GET /api/treasury/balances — Soldes bruts par compte. */
   @RequireCapabilities('treasury:read')
   @Get('balances')
   balances(@CurrentUser() user: AuthContext) {
     return this.treasury.balances(user);
   }
 
+  /** GET /api/treasury/stats — Soldes détaillés + KPIs journaliers. */
   @RequireCapabilities('treasury:read')
-  @Get('movements')
-  movements(@CurrentUser() user: AuthContext, @Query('compte') compte?: CashAccount) {
-    return this.treasury.listMovements(user, compte);
+  @Get('stats')
+  stats(@CurrentUser() user: AuthContext) {
+    return this.treasury.stats(user);
   }
 
+  /**
+   * GET /api/treasury/movements
+   * Paramètres optionnels : compte, source, from (YYYY-MM-DD), to (YYYY-MM-DD)
+   */
+  @RequireCapabilities('treasury:read')
+  @Get('movements')
+  movements(
+    @CurrentUser() user: AuthContext,
+    @Query('compte') compte?: CashAccount,
+    @Query('source') source?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.treasury.listMovements(user, { compte, source, from, to });
+  }
+
+  /** GET /api/treasury/closes — Historique des clôtures. */
+  @RequireCapabilities('treasury:read')
+  @Get('closes')
+  closes(@CurrentUser() user: AuthContext, @Query('compte') compte?: CashAccount) {
+    return this.treasury.listCloses(user, compte);
+  }
+
+  /** POST /api/treasury/expenses — Enregistrer une dépense (sortie). */
   @RequireCapabilities('treasury:write')
   @Post('expenses')
   expense(
@@ -40,6 +77,7 @@ export class TreasuryController {
     return this.treasury.recordExpense(user, dto);
   }
 
+  /** POST /api/treasury/movements — Mouvement manuel (ajustement / ouverture). */
   @RequireCapabilities('treasury:write')
   @Post('movements')
   movement(
@@ -49,6 +87,7 @@ export class TreasuryController {
     return this.treasury.recordMovement(user, dto);
   }
 
+  /** POST /api/treasury/transfers — Virement entre comptes (avec vérification solde). */
   @RequireCapabilities('treasury:write')
   @Post('transfers')
   transfer(
@@ -58,7 +97,7 @@ export class TreasuryController {
     return this.treasury.transfer(user, dto);
   }
 
-  // Clôture de caisse — autorisée au caissier (cash:close).
+  /** POST /api/treasury/close — Clôture de caisse (motif obligatoire si écart). */
   @RequireCapabilities('cash:close')
   @Post('close')
   close(

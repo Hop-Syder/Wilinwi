@@ -112,7 +112,8 @@ packages/
 - **`DIRECT_URL`** (migrations) → reste sur le rôle `postgres` (propriétaire) qui bypasse la RLS.
 - Le rôle `postgres` contourne la RLS — ne jamais utiliser `DIRECT_URL` en production.
 - Vérifier l'isolation RLS : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolation.ts` → doit afficher "✅ RLS ENFORCÉE".
-- **Hors périmètre MVP1** : Trésorerie, dettes avancées, fournisseurs, livraisons, Market WhatsApp, fidélité, abonnements FedaPay, notifications, multi-boutiques, app Flutter, IA.
+- **Hors périmètre MVP1** : Fournisseurs, livraisons, Market WhatsApp, fidélité, abonnements FedaPay, notifications, multi-boutiques, app Flutter, IA.
 - Toujours utiliser `PrismaService.forTenant()` — ne jamais requêter en dehors de ce contexte.
 - **[AUDIT QA - 2026-06-19]** : L'architecture NestJS/Prisma implémentée par Claude est robuste et respecte les contraintes DEXTY. La fuite de marge a été colmatée via `sale.mapper.ts`. Le `PriceOverride` est bloquant (statut `PENDING_APPROVAL`).
-- **[DEXTY RULES]** : Les signatures Dexty sont désormais présentes sur les fichiers critiques (`prisma.service.ts`, `sale.mapper.ts`, `sales.service.ts`, `roles.ts`, `schema.prisma`).
+- **[AUDIT CRM - 2026-06-20]** : Refonte complète du module CRM client et de la gestion des dettes. Intégration d'un encaissement ciblé / FIFO automatique mettant à jour `SaleInstallment`, `Sale`, `Client` et `CashMovement` au sein d'une même transaction Prisma isolée par tenant. KPIs financiers et historique de vente complet intégrés à l'UI double-colonne.
+- **[DEXTY RULES]** : Les signatures Dexty sont désormais présentes sur les fichiers critiques (`prisma.service.ts`, `sale.mapper.ts`, `sales.service.ts`, `roles.ts`, `schema.prisma`, `clients.service.ts`, `client.mapper.ts`).

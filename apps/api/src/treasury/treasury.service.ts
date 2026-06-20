@@ -1,6 +1,18 @@
-import { Injectable } from '@nestjs/common';
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service Trésorerie — soldes, virements (avec vérif solde), clôtures (motif obligatoire sur écart), stats journalières, filtres avancés.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
+import { Injectable, BadRequestException } from '@nestjs/common';
 import {
   CASH_ACCOUNTS,
+  CASH_ACCOUNT_LABELS,
   type AuthContext,
   type CashAccount,
   type CashCloseInput,
@@ -13,14 +25,38 @@ import { PrismaService } from '../common/prisma.service';
 
 export type Balances = Record<CashAccount, number>;
 
+export interface TreasuryStats {
+  balances: Balances;
+  totalBalance: number;
+  today: { entrees: number; sorties: number; net: number };
+}
+
+export interface MovementWithBalance {
+  id: string;
+  type: 'IN' | 'OUT';
+  compte: CashAccount;
+  montant: number;
+  source: string;
+  categorie: string | null;
+  note: string | null;
+  createdAt: Date;
+  createdBy: string;
+  /** Solde cumulé du compte APRÈS ce mouvement (chronologique). */
+  soldeApres: number;
+}
+
+export interface MovementFilters {
+  compte?: CashAccount;
+  source?: string;
+  from?: string;
+  to?: string;
+}
+
 @Injectable()
 export class TreasuryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Soldes par compte = Σ(entrées) − Σ(sorties). */
-  async balances(ctx: AuthContext): Promise<Balances> {
-    return this.prisma.forTenant(ctx.tenantId, (tx) => this.computeBalances(tx, ctx.tenantId));
-  }
+  // ─── Soldes ───────────────────────────────────────────────────────────────
 
   private async computeBalances(tx: TenantTx, tenantId: string): Promise<Balances> {
     const rows = await tx.cashMovement.groupBy({
@@ -35,6 +71,41 @@ export class TreasuryService {
     }
     return balances;
   }
+
+  /** Soldes par compte = Σ(entrées) − Σ(sorties). */
+  async balances(ctx: AuthContext): Promise<Balances> {
+    return this.prisma.forTenant(ctx.tenantId, (tx) => this.computeBalances(tx, ctx.tenantId));
+  }
+
+  // ─── Stats journalières ───────────────────────────────────────────────────
+
+  /** KPIs : soldes détaillés + résultat de la journée (entrées, sorties, net). */
+  async stats(ctx: AuthContext): Promise<TreasuryStats> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const balances = await this.computeBalances(tx, ctx.tenantId);
+      const totalBalance = Object.values(balances).reduce((s, v) => s + v, 0);
+
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const todayRows = await tx.cashMovement.groupBy({
+        by: ['type'],
+        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
+        _sum: { montant: true },
+      });
+
+      let entrees = 0;
+      let sorties = 0;
+      for (const r of todayRows) {
+        if (r.type === 'IN') entrees = r._sum.montant ?? 0;
+        else sorties = r._sum.montant ?? 0;
+      }
+
+      return { balances, totalBalance, today: { entrees, sorties, net: entrees - sorties } };
+    });
+  }
+
+  // ─── Dépense ──────────────────────────────────────────────────────────────
 
   /** Dépense (sortie). */
   async recordExpense(ctx: AuthContext, input: RecordExpenseInput) {
@@ -54,6 +125,8 @@ export class TreasuryService {
     );
   }
 
+  // ─── Mouvement manuel ─────────────────────────────────────────────────────
+
   /** Mouvement manuel (ajustement / solde d'ouverture). */
   async recordMovement(ctx: AuthContext, input: RecordCashMovementInput) {
     return this.prisma.forTenant(ctx.tenantId, (tx) =>
@@ -63,7 +136,7 @@ export class TreasuryService {
           type: input.type,
           compte: input.compte,
           montant: input.montant,
-          source: 'ADJUSTMENT',
+          source: input.source ?? 'ADJUSTMENT',
           note: input.note ?? null,
           createdBy: ctx.userId,
         },
@@ -71,9 +144,23 @@ export class TreasuryService {
     );
   }
 
-  /** Virement entre deux comptes. */
+  // ─── Virement ─────────────────────────────────────────────────────────────
+
+  /**
+   * Virement entre deux comptes.
+   * Lève une BadRequestException si le solde du compte source est insuffisant.
+   */
   async transfer(ctx: AuthContext, input: TransferInput) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      // Vérification du solde source
+      const balances = await this.computeBalances(tx, ctx.tenantId);
+      if (balances[input.from] < input.montant) {
+        const label = CASH_ACCOUNT_LABELS[input.from];
+        throw new BadRequestException(
+          `Solde insuffisant sur ${label} : ${balances[input.from].toLocaleString('fr-FR')} FCFA disponible, ${input.montant.toLocaleString('fr-FR')} FCFA requis.`,
+        );
+      }
+
       await tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -81,7 +168,7 @@ export class TreasuryService {
           compte: input.from,
           montant: input.montant,
           source: 'TRANSFER',
-          note: input.note ?? `Virement vers ${input.to}`,
+          note: input.note ?? `Virement vers ${CASH_ACCOUNT_LABELS[input.to]}`,
           createdBy: ctx.userId,
         },
       });
@@ -92,7 +179,7 @@ export class TreasuryService {
           compte: input.to,
           montant: input.montant,
           source: 'TRANSFER',
-          note: input.note ?? `Virement depuis ${input.from}`,
+          note: input.note ?? `Virement depuis ${CASH_ACCOUNT_LABELS[input.from]}`,
           createdBy: ctx.userId,
         },
       });
@@ -100,25 +187,75 @@ export class TreasuryService {
     });
   }
 
-  async listMovements(ctx: AuthContext, compte?: CashAccount) {
-    return this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.cashMovement.findMany({
-        where: { tenantId: ctx.tenantId, ...(compte ? { compte } : {}) },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-      }),
-    );
-  }
+  // ─── Historique des mouvements ────────────────────────────────────────────
 
   /**
-   * Clôture de caisse : compare le solde théorique au comptage réel, enregistre
-   * l'écart et aligne le solde sur la réalité (mouvement d'ajustement). (§6.1)
+   * Liste des mouvements avec filtres avancés et calcul du solde cumulé par compte.
+   * Les lignes sont retournées du plus récent au plus ancien.
+   */
+  async listMovements(ctx: AuthContext, filters: MovementFilters = {}): Promise<MovementWithBalance[]> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const where: Record<string, unknown> = { tenantId: ctx.tenantId };
+      if (filters.compte) where['compte'] = filters.compte;
+      if (filters.source) where['source'] = filters.source;
+      if (filters.from || filters.to) {
+        where['createdAt'] = {
+          ...(filters.from ? { gte: new Date(filters.from) } : {}),
+          ...(filters.to ? { lte: new Date(filters.to + 'T23:59:59') } : {}),
+        };
+      }
+
+      const rows = await tx.cashMovement.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+        take: 500,
+      });
+
+      // Calcul du solde cumulé par compte (chronologique ascendant, puis on inverse)
+      const runningBalances: Record<string, number> = {};
+
+      const enriched: MovementWithBalance[] = rows.map((m) => {
+        const key = m.compte as string;
+        const prev = runningBalances[key] ?? 0;
+        const next = m.type === 'IN' ? prev + m.montant : prev - m.montant;
+        runningBalances[key] = next;
+        return {
+          id: m.id,
+          type: m.type as 'IN' | 'OUT',
+          compte: m.compte as CashAccount,
+          montant: m.montant,
+          source: m.source,
+          categorie: m.categorie,
+          note: m.note,
+          createdAt: m.createdAt,
+          createdBy: m.createdBy,
+          soldeApres: next,
+        };
+      });
+
+      // Retourner du plus récent au plus ancien
+      return enriched.reverse();
+    });
+  }
+
+  // ─── Clôture de caisse ────────────────────────────────────────────────────
+
+  /**
+   * Clôture de caisse : compare le solde théorique au comptage réel.
+   * Si un écart est constaté, un motif (note) est obligatoire.
    */
   async close(ctx: AuthContext, input: CashCloseInput) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const balances = await this.computeBalances(tx, ctx.tenantId);
       const soldeTheorique = balances[input.compte];
       const ecart = input.soldeReel - soldeTheorique;
+
+      // Motif obligatoire en cas d'écart
+      if (ecart !== 0 && !input.note?.trim()) {
+        throw new BadRequestException(
+          `Un écart de ${ecart > 0 ? '+' : ''}${ecart} FCFA a été constaté. Veuillez saisir un motif explicatif.`,
+        );
+      }
 
       const cashClose = await tx.cashClose.create({
         data: {
@@ -141,12 +278,25 @@ export class TreasuryService {
             compte: input.compte,
             montant: Math.abs(ecart),
             source: 'ADJUSTMENT',
-            note: `Écart de clôture (${ecart > 0 ? '+' : ''}${ecart})`,
+            note: `Écart clôture : ${input.note ?? ''}`,
             createdBy: ctx.userId,
           },
         });
       }
       return { cashClose, soldeTheorique, soldeReel: input.soldeReel, ecart };
     });
+  }
+
+  // ─── Historique des clôtures ──────────────────────────────────────────────
+
+  /** Retourne les 50 dernières clôtures de tous les comptes. */
+  async listCloses(ctx: AuthContext, compte?: CashAccount) {
+    return this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.cashClose.findMany({
+        where: { tenantId: ctx.tenantId, ...(compte ? { compte } : {}) },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    );
   }
 }

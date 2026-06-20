@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Types partagés Zod pour la fiche client et les paiements CRM.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { z } from 'zod';
 import { IdSchema, MoneySchema } from './common.js';
 import { PaymentMethodSchema } from './sale.js';
@@ -12,7 +23,9 @@ export const CreateClientSchema = z.object({
 });
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
 
-export const UpdateClientSchema = CreateClientSchema.partial();
+export const UpdateClientSchema = CreateClientSchema.partial().extend({
+  actif: z.boolean().optional(),
+});
 export type UpdateClientInput = z.infer<typeof UpdateClientSchema>;
 
 /** Remboursement d'une dette client. */
@@ -33,6 +46,7 @@ export const ClientDtoSchema = z.object({
   nom: z.string(),
   telephone: z.string().nullable(),
   notes: z.string().nullable(),
+  actif: z.boolean().optional(),
   // Sensibles — présents seulement pour OWNER/MANAGER/CASHIER :
   soldeCredit: MoneySchema.optional(),
   plafondCredit: MoneySchema.nullable().optional(),

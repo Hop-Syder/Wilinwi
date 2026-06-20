@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Mapper pour transformer le modèle de base de données Client en DTO client, filtrant les informations de crédit sensibles selon le rôle.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { canSeeClientCredit, type ClientDto, type Role } from '@wilinwi/types';
 import type { Client } from '@wilinwi/db';
 
@@ -11,6 +22,7 @@ export function toClientDto(client: Client, role: Role): ClientDto {
     nom: client.nom,
     telephone: client.telephone,
     notes: client.notes,
+    actif: client.actif,
   };
   if (canSeeClientCredit(role)) {
     base.soldeCredit = client.soldeCredit;

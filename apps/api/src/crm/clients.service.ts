@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service NestJS pour la gestion des clients (CRM) : création, modification, archivage, calcul des KPIs et encaissement avec lettrage/FIFO.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   accountForPayment,
@@ -47,21 +58,31 @@ export class ClientsService {
     return toClientDto(client, ctx.role);
   }
 
-  /** Détail client : solde, ventes à crédit en cours, historique des remboursements. */
+  /** Détail client : solde, ventes en cours (crédit/acompte), historique complet des ventes et remboursements. */
   async get(ctx: AuthContext, id: string) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const client = await this.ensureClient(tx, ctx.tenantId, id);
       const sales = await tx.sale.findMany({
-        where: { tenantId: ctx.tenantId, clientId: id, status: 'PENDING_PAYMENT' },
+        where: { tenantId: ctx.tenantId, clientId: id },
         orderBy: { createdAt: 'desc' },
-        include: { installment: true },
+        include: {
+          installment: true,
+          items: {
+            include: {
+              product: {
+                select: { nom: true }
+              }
+            }
+          }
+        },
+        take: 100,
       });
       const payments = await tx.clientPayment.findMany({
         where: { tenantId: ctx.tenantId, clientId: id },
         orderBy: { createdAt: 'desc' },
         take: 50,
       });
-      return { client: toClientDto(client, ctx.role), ventesACredit: sales, remboursements: payments };
+      return { client: toClientDto(client, ctx.role), ventes: sales, remboursements: payments };
     });
   }
 
@@ -74,6 +95,90 @@ export class ClientsService {
           `Le remboursement (${input.montant}) dépasse la dette (${client.soldeCredit})`,
         );
       }
+
+      let remaining = input.montant;
+      
+      if (input.saleId) {
+        const sale = await tx.sale.findFirst({
+          where: { id: input.saleId, tenantId: ctx.tenantId, clientId: id },
+          include: { installment: true },
+        });
+        if (sale && sale.status === 'PENDING_PAYMENT' && sale.installment) {
+          const inst = sale.installment;
+          const soldeRestant = inst.soldeRestant;
+          if (soldeRestant > 0) {
+            const aPayer = Math.min(remaining, soldeRestant);
+            const newMontantVerse = inst.montantVerse + aPayer;
+            const newSoldeRestant = soldeRestant - aPayer;
+            const newInstStatus = newMontantVerse >= sale.total ? 'SETTLED' : 'PARTIAL';
+            const newSaleStatus = newSoldeRestant === 0 ? 'COMPLETED' : 'PENDING_PAYMENT';
+
+            await tx.saleInstallment.update({
+              where: { saleId: sale.id },
+              data: {
+                montantVerse: newMontantVerse,
+                soldeRestant: newSoldeRestant,
+                status: newInstStatus,
+              },
+            });
+
+            await tx.sale.update({
+              where: { id: sale.id },
+              data: {
+                montantVerse: newMontantVerse,
+                status: newSaleStatus,
+              },
+            });
+
+            remaining -= aPayer;
+          }
+        }
+      }
+
+      if (remaining > 0) {
+        const sales = await tx.sale.findMany({
+          where: { tenantId: ctx.tenantId, clientId: id, status: 'PENDING_PAYMENT' },
+          orderBy: { createdAt: 'asc' },
+          include: { installment: true },
+        });
+
+        for (const sale of sales) {
+          if (remaining <= 0) break;
+          if (input.saleId && sale.id === input.saleId) continue;
+          
+          const inst = sale.installment;
+          if (!inst) continue;
+
+          const soldeRestant = inst.soldeRestant;
+          if (soldeRestant <= 0) continue;
+
+          const aPayer = Math.min(remaining, soldeRestant);
+          const newMontantVerse = inst.montantVerse + aPayer;
+          const newSoldeRestant = soldeRestant - aPayer;
+          const newInstStatus = newMontantVerse >= sale.total ? 'SETTLED' : 'PARTIAL';
+          const newSaleStatus = newSoldeRestant === 0 ? 'COMPLETED' : 'PENDING_PAYMENT';
+
+          await tx.saleInstallment.update({
+            where: { saleId: sale.id },
+            data: {
+              montantVerse: newMontantVerse,
+              soldeRestant: newSoldeRestant,
+              status: newInstStatus,
+            },
+          });
+
+          await tx.sale.update({
+            where: { id: sale.id },
+            data: {
+              montantVerse: newMontantVerse,
+              status: newSaleStatus,
+            },
+          });
+
+          remaining -= aPayer;
+        }
+      }
+
       const payment = await tx.clientPayment.create({
         data: {
           tenantId: ctx.tenantId,
@@ -85,10 +190,12 @@ export class ClientsService {
           createdBy: ctx.userId,
         },
       });
+
       const updated = await tx.client.update({
         where: { id },
         data: { soldeCredit: { decrement: input.montant } },
       });
+
       // Trésorerie : le remboursement entre dans le compte du mode de paiement.
       const compte = accountForPayment(input.methode ?? 'CASH') ?? 'CAISSE';
       await tx.cashMovement.create({
@@ -103,6 +210,37 @@ export class ClientsService {
         },
       });
       return { payment, client: toClientDto(updated, ctx.role) };
+    });
+  }
+
+  async getKpis(ctx: AuthContext) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const clients = await tx.client.findMany({
+        where: { tenantId: ctx.tenantId, actif: true },
+      });
+
+      const todayPayments = await tx.clientPayment.findMany({
+        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
+      });
+
+      const totalDette = clients.reduce((sum, c) => sum + c.soldeCredit, 0);
+      const debiteurs = clients.filter(c => c.soldeCredit > 0).length;
+      const remboursementsAujourdhui = todayPayments.reduce((sum, p) => sum + p.montant, 0);
+      
+      const creditDisponible = clients.reduce((sum, c) => {
+        if (c.plafondCredit === null) return sum;
+        return sum + Math.max(c.plafondCredit - c.soldeCredit, 0);
+      }, 0);
+
+      return {
+        totalDette,
+        debiteurs,
+        remboursementsAujourdhui,
+        creditDisponible,
+      };
     });
   }
 

@@ -1,14 +1,27 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Définitions de types partagés Zod et utilitaires pour la trésorerie : comptes, dépenses, virements, et clôtures.
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { z } from 'zod';
 import { MoneySchema } from './common.js';
 import type { PaymentMethod } from './sale.js';
 
 /** Comptes de trésorerie (soldes séparés, §6.1). */
-export const CASH_ACCOUNTS = ['CAISSE', 'MOBILE_MONEY', 'BANQUE'] as const;
+export const CASH_ACCOUNTS = ['CAISSE', 'MOBILE_MONEY', 'MTN_MOMO', 'MOOV_MONEY', 'BANQUE'] as const;
 export type CashAccount = (typeof CASH_ACCOUNTS)[number];
 export const CashAccountSchema = z.enum(CASH_ACCOUNTS);
 export const CASH_ACCOUNT_LABELS: Record<CashAccount, string> = {
   CAISSE: 'Caisse (espèces)',
-  MOBILE_MONEY: 'Mobile Money',
+  MOBILE_MONEY: 'Mobile Money (Global)',
+  MTN_MOMO: 'MTN MoMo',
+  MOOV_MONEY: 'Moov Money',
   BANQUE: 'Banque',
 };
 
@@ -49,6 +62,7 @@ export const RecordCashMovementSchema = z.object({
   type: z.enum(['IN', 'OUT']),
   compte: CashAccountSchema,
   montant: PositiveMoney,
+  source: z.enum(['ADJUSTMENT', 'OPENING']).default('ADJUSTMENT'),
   note: z.string().optional(),
 });
 export type RecordCashMovementInput = z.infer<typeof RecordCashMovementSchema>;
@@ -82,8 +96,9 @@ export function accountForPayment(method: PaymentMethod): CashAccount | null {
     case 'INSTALLMENT':
       return 'CAISSE';
     case 'MTN_MOMO':
+      return 'MTN_MOMO';
     case 'MOOV_MONEY':
-      return 'MOBILE_MONEY';
+      return 'MOOV_MONEY';
     case 'BANK_TRANSFER':
       return 'BANQUE';
     case 'CREDIT':

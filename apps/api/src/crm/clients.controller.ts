@@ -32,6 +32,12 @@ export class ClientsController {
   }
 
   @RequireCapabilities('client:read')
+  @Get('kpis')
+  getKpis(@CurrentUser() user: AuthContext) {
+    return this.clients.getKpis(user);
+  }
+
+  @RequireCapabilities('client:read')
   @Get(':id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string) {
     return this.clients.get(user, id);

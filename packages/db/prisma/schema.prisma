@@ -372,7 +372,9 @@ model ClientPayment {
 
 enum CashAccount {
   CAISSE // espèces
-  MOBILE_MONEY // MTN MoMo / Moov Money
+  MOBILE_MONEY // MTN MoMo / Moov Money (gardé pour compatibilité)
+  MTN_MOMO // MTN MoMo
+  MOOV_MONEY // Moov Money
   BANQUE // virement / banque
 }
 
