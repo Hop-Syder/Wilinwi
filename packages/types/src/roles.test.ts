@@ -45,14 +45,11 @@ describe('capacités par rôle', () => {
 });
 
 describe('gating des modules par plan', () => {
-  it("le plan FREE n'inclut ni CRM ni AI", () => {
+  it("tous les plans incluent tous les modules pour test", () => {
     expect(planIncludesModule('FREE', 'POS')).toBe(true);
-    expect(planIncludesModule('FREE', 'CRM')).toBe(false);
-    expect(planIncludesModule('FREE', 'AI')).toBe(false);
-  });
-
-  it("seul le plan BUSINESS inclut l'IA", () => {
+    expect(planIncludesModule('FREE', 'CRM')).toBe(true);
+    expect(planIncludesModule('FREE', 'AI')).toBe(true);
+    expect(planIncludesModule('PRO', 'AI')).toBe(true);
     expect(planIncludesModule('BUSINESS', 'AI')).toBe(true);
-    expect(planIncludesModule('PRO', 'AI')).toBe(false);
   });
 });

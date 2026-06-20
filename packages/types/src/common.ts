@@ -31,8 +31,8 @@ export type ModuleKey = (typeof MODULES)[number];
 
 /** Modules inclus par plan — pilote le gating premium du Hub (§4.2). */
 export const PLAN_MODULES: Record<Plan, readonly ModuleKey[]> = {
-  FREE: ['POS', 'STOCK', 'ANALYTICS'],
-  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS'],
+  FREE: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
+  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
   BUSINESS: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
 };
 

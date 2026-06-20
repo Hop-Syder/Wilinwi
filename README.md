@@ -2,9 +2,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description README principal détaillant l'architecture, le CI/CD et les déploiements Vercel/Railway
+ * @description README principal détaillant l'architecture, le CI/CD, les déploiements Vercel/Railway et les correctifs DB
  * @created 2026-06-19
- * @updated 2026-06-19
+ * @updated 2026-06-20
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -25,7 +25,7 @@ Pour en savoir plus sur l'architecture complète, les conventions de code et les
 ## 🛠️ Stack Technologique
 
 - **Frontend** : Next.js 15 (App Router) · React 19 · TailwindCSS 3
-- **Backend** : NestJS 11 · Architecture modulaire
+- **Backend** : NestJS 11 · Architecture modulaire (modules: auth, stock, inventory, pos, crm, treasury, analytics, sync, admin)
 - **Base de Données** : PostgreSQL (Supabase) · Prisma ORM · Row-Level Security (RLS)
 - **Offline / Sync** : Dexie.js (IndexedDB) · SyncEngine
 - **Tooling & CI/CD** : Turborepo (Monorepo) · pnpm · GitHub Actions
@@ -56,6 +56,25 @@ pnpm dev
 
 ---
 
+## ⚙️ Corrections & Migrations en Production (Supabase)
+
+Si le conteneur de production Railway crash ou remonte des erreurs d'écarts de schéma Prisma (`P2022` ou valeur d'énumérateur `CashAccount` non reconnue), vous devez exécuter manuellement ce script SQL correctif dans le **SQL Editor** de votre tableau de bord Supabase :
+
+```sql
+-- 1. Ajout de la colonne seuil_alerte dans la table products si elle n'existe pas
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "seuil_alerte" INTEGER NOT NULL DEFAULT 5;
+
+-- 2. Ajout de la colonne quantite_retournee dans la table sale_items si elle n'existe pas
+ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "quantite_retournee" INTEGER NOT NULL DEFAULT 0;
+
+-- 3. Ajout des valeurs MTN_MOMO et MOOV_MONEY à l'énumération CashAccount (si non existantes)
+-- Note: PostgreSQL nécessite d'ajouter les valeurs d'énumération en dehors de transactions
+ALTER TYPE "CashAccount" ADD VALUE IF NOT EXISTS 'MTN_MOMO';
+ALTER TYPE "CashAccount" ADD VALUE IF NOT EXISTS 'MOOV_MONEY';
+```
+
+---
+
 ## ⚙️ Intégration Continue (GitHub Actions)
 
 L'intégration continue est automatisée via le fichier `.github/workflows/ci.yml`. À chaque `push` sur la branche `main` et pour chaque `pull_request`, les étapes suivantes sont exécutées :
@@ -66,8 +85,6 @@ L'intégration continue est automatisée via le fichier `.github/workflows/ci.ym
    - **Build** : Compilation du code TypeScript (Frontend et Backend).
    - **Typecheck** : Vérification statique des types.
    - **Test** : Exécution de la suite de tests unitaires via Vitest.
-
-_Note : Les variables d'environnement de connexion à Supabase utilisées par la CI sont des valeurs factices car le pipeline (`build`, `typecheck`, `test`) ne nécessite pas de connexion active à la base de données._
 
 ---
 

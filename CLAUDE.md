@@ -16,9 +16,9 @@ possibles ; pour MVP1, une seule app Next.js avec une section par module + un
 
 ```
 apps/
-  api/        NestJS — modules: auth, stock, inventory, pos, analytics, sync
-  web/        Next.js (App Router) — Hub + sections /pos /stock /dashboard
-packages/
+  api/        NestJS — modules: auth, stock, inventory, pos, crm, treasury, analytics, sync, admin
+  web/        Next.js (App Router) — Hub + sections /pos /stock /dashboard /ventes /clients /tresorerie /parametres
+packages:
   types/      Zod schemas + rôles/capacités + gating (source de vérité partagée)
   db/         Prisma schema + RLS (prisma/rls.sql) + seed + client withTenant()
   ui/         Design system Wilinwi (Tailwind preset + composants brandés)
@@ -97,6 +97,4 @@ Vérifier l'isolation : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolat
 
 ## Hors périmètre (MVP2/3)
 
-Trésorerie, dettes avancées, fournisseurs, livraisons, Market WhatsApp, fidélité,
-abonnements FedaPay, notifications, multi-boutiques, app Flutter, IA. Le découpage
-modulaire les anticipe sans réécriture.
+Fournisseurs, livraisons, Market WhatsApp, fidélité, abonnements FedaPay intégrés, notifications, multi-boutiques, app Flutter, IA. Le découpage modulaire les anticipe sans réécriture.
