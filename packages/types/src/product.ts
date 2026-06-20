@@ -33,7 +33,7 @@ export const ProductVariantInputSchema = z.object({
 });
 export type ProductVariantInput = z.infer<typeof ProductVariantInputSchema>;
 
-export const CreateProductSchema = z.object({
+const CreateProductSchemaBase = z.object({
   nom: z.string().min(1),
   sku: z.string().min(1).optional(),
   categorie: z.string().min(1).optional(),
@@ -42,11 +42,39 @@ export const CreateProductSchema = z.object({
   prixPlancher: MoneySchema,
   prixCatalogue: MoneySchema,
   stock: QuantitySchema.default(0),
+  seuilAlerte: QuantitySchema.default(5),
   variants: z.array(ProductVariantInputSchema).default([]),
+});
+
+export const CreateProductSchema = CreateProductSchemaBase.superRefine((data, ctx) => {
+  if (!(data.prixAchat <= data.prixPlancher && data.prixPlancher <= data.prixCatalogue)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Doit respecter : prix_achat ≤ prix_plancher ≤ prix_catalogue',
+      path: ['prixCatalogue'],
+    });
+  }
 });
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 
-export const UpdateProductSchema = CreateProductSchema.partial();
+export const UpdateProductSchema = CreateProductSchemaBase.partial().superRefine((data, ctx) => {
+  // If all three prices are provided, check the condition
+  if (
+    data.prixAchat !== undefined &&
+    data.prixPlancher !== undefined &&
+    data.prixCatalogue !== undefined
+  ) {
+    if (!(data.prixAchat <= data.prixPlancher && data.prixPlancher <= data.prixCatalogue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Doit respecter : prix_achat ≤ prix_plancher ≤ prix_catalogue',
+        path: ['prixCatalogue'],
+      });
+    }
+  }
+  // Note: if only one or two prices are updated, we can't reliably check against the missing one(s) here.
+  // The database constraints or service layer should ideally handle cross-field validation on partial updates.
+});
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 
 /**
@@ -61,6 +89,7 @@ export const ProductDtoSchema = z.object({
   photos: z.array(z.string()),
   prixCatalogue: MoneySchema,
   stock: QuantitySchema,
+  seuilAlerte: QuantitySchema,
   // Sensibles — présents seulement pour OWNER/MANAGER :
   prixAchat: MoneySchema.optional(),
   prixPlancher: MoneySchema.optional(),

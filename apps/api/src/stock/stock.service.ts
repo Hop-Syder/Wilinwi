@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AuthContext,
   CreateProductInput,
@@ -34,6 +34,13 @@ export class StockService {
     return products.map((p) => toProductDto(p, ctx.role));
   }
 
+  async getProduct(ctx: AuthContext, id: string) {
+    const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      return this.ensureProduct(tx, ctx.tenantId, id);
+    });
+    return toProductDto(product, ctx.role);
+  }
+
   async create(ctx: AuthContext, input: CreateProductInput) {
     const product = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.product.create({
@@ -47,6 +54,7 @@ export class StockService {
           prixPlancher: input.prixPlancher,
           prixCatalogue: input.prixCatalogue,
           stock: input.stock,
+          seuilAlerte: input.seuilAlerte,
           variants: {
             create: input.variants.map((v) => ({
               tenantId: ctx.tenantId,
@@ -77,8 +85,12 @@ export class StockService {
    */
   async addMovement(ctx: AuthContext, input: CreateStockMovementInput) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      await this.ensureProduct(tx, ctx.tenantId, input.productId);
+      const product = await this.ensureProduct(tx, ctx.tenantId, input.productId);
       const delta = this.signedDelta(input.type, input.quantite);
+
+      if (product.stock + delta < 0) {
+        throw new BadRequestException('Opération refusée : Le stock ne peut pas être négatif.');
+      }
 
       const movement = await tx.stockMovement.create({
         data: {

@@ -146,6 +146,7 @@ model Product {
   prixPlancher  Int      @map("prix_plancher") // sensible
   prixCatalogue Int      @map("prix_catalogue")
   stock         Int      @default(0)
+  seuilAlerte   Int      @default(5) @map("seuil_alerte")
   actif         Boolean  @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

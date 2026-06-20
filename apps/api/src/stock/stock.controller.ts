@@ -33,6 +33,12 @@ export class StockController {
     return this.stock.list(user);
   }
 
+  @RequireCapabilities('stock:read')
+  @Get('products/:id')
+  getProduct(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.stock.getProduct(user, id);
+  }
+
   @RequireCapabilities('stock:write')
   @Post('products')
   create(

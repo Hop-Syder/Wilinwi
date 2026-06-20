@@ -13,9 +13,10 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SupabaseAdminService } from './supabase-admin.service';
+import { UsersController } from './users.controller';
 
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, UsersController],
   providers: [AuthService, SupabaseAdminService],
   exports: [SupabaseAdminService],
 })

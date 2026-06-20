@@ -24,6 +24,7 @@ const product: Product = {
   prixPlancher: 11000,
   prixCatalogue: 15000,
   stock: 24,
+  seuilAlerte: 5,
   actif: true,
   createdAt: new Date(),
   updatedAt: new Date(),

@@ -22,7 +22,8 @@ import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, HelpCircle } from 'lucide-react';
+import { PosOnboarding, type TourStep } from '@/components/pos-onboarding';
 
 interface CartLine {
   product: ProductDto;
@@ -49,7 +50,42 @@ export default function PosPage() {
   const [clientId, setClientId] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
+  const [showTour, setShowTour] = useState(false);
   const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-search',
+      title: 'Recherche Rapide',
+      content: 'Utilisez la barre de recherche ou le raccourci Cmd+K pour trouver rapidement un produit. Entrée l\'ajoute directement au panier.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-categories',
+      title: 'Filtres et Favoris',
+      content: 'Filtrez par catégorie ou accédez rapidement à vos favoris (top ventes).',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-cart',
+      title: 'Votre Panier',
+      content: 'Modifiez la quantité ou négociez le prix (dans la limite du prix plancher autorisé).',
+      position: 'left',
+    },
+    {
+      targetId: 'tour-checkout',
+      title: 'Encaissement',
+      content: 'Choisissez le paiement, assignez un client si besoin et encaissez. Fonctionne même sans internet !',
+      position: 'left',
+    }
+  ];
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('wilinwi_pos_tour_done')) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => setShowTour(true), 500);
+    }
+  }, []);
 
   // Catalogue : depuis l'API si en ligne, sinon depuis le cache offline.
   useEffect(() => {
@@ -228,13 +264,17 @@ export default function PosPage() {
             <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
               Historique
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowTour(true)}>
+              <HelpCircle className="mr-1 h-4 w-4" />
+              Aide
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setIsLocked(true)}>
               <Lock className="mr-1 h-4 w-4" />
               Verrouiller
             </Button>
           </div>
         </div>
-        <div className="relative mt-4">
+        <div className="relative mt-4" id="tour-search">
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <input
             ref={searchInputRef}
@@ -259,7 +299,7 @@ export default function PosPage() {
         ) : (
           <>
             {/* Filtres de catégories / favoris */}
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="tour-categories">
               <Button 
                 variant={activeTab === 'ALL' ? 'primary' : 'outline'} 
                 size="sm" 
@@ -304,7 +344,7 @@ export default function PosPage() {
 
 
       {/* Panier */}
-      <Card className="h-fit lg:sticky lg:top-20">
+      <Card className="h-fit lg:sticky lg:top-20" id="tour-cart">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-brand">
           <ShoppingCart className="h-5 w-5" /> Panier
         </h2>
@@ -368,7 +408,7 @@ export default function PosPage() {
           </ul>
         )}
 
-        <div className="mt-4 border-t border-slate-200 pt-4">
+        <div className="mt-4 border-t border-slate-200 pt-4" id="tour-checkout">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-slate-600">Mode de paiement</span>
             <select
@@ -445,6 +485,16 @@ export default function PosPage() {
           </Button>
         </div>
       </Card>
+
+      {showTour && (
+        <PosOnboarding 
+          steps={tourSteps} 
+          onComplete={() => {
+            setShowTour(false);
+            localStorage.setItem('wilinwi_pos_tour_done', 'true');
+          }} 
+        />
+      )}
     </div>
   );
 }

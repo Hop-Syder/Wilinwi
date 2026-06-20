@@ -26,6 +26,7 @@ export function toProductDto(product: Product, role: Role): ProductDto {
     photos: product.photos,
     prixCatalogue: product.prixCatalogue,
     stock: product.stock,
+    seuilAlerte: product.seuilAlerte,
   };
 
   if (canSeeSensitivePricing(role)) {
