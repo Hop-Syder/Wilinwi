@@ -13,7 +13,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { jwtVerify } from 'jose';
-import { RoleSchema, type AuthContext, type Plan } from '@wilinwi/types';
+import { effectiveModules, RoleSchema, type AuthContext, type Plan } from '@wilinwi/types';
 import { IS_PUBLIC_KEY } from './decorators';
 import { PrismaService } from './prisma.service';
 
@@ -61,23 +61,36 @@ export class AuthGuard implements CanActivate {
     if (!userId || !tenantId) {
       throw new UnauthorizedException('Profil utilisateur incomplet');
     }
+    void roleRaw; // le rôle fait désormais autorité depuis la base (voir ci-dessous)
 
-    const role = RoleSchema.safeParse(roleRaw);
-    if (!role.success) throw new UnauthorizedException('Rôle invalide');
-
-    // Plan courant lu en base (source de vérité), dans le contexte tenant.
-    const plan = await this.prisma.forTenant(tenantId, async (tx) => {
+    // Contexte tenant : plan + utilisateur (rôle, statut actif, permissions) — toujours
+    // frais en base (DB = source de vérité, les changements s'appliquent immédiatement).
+    const resolved = await this.prisma.forTenant(tenantId, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
       if (!tenant) throw new UnauthorizedException('Boutique introuvable');
-      return tenant.plan as Plan;
+      const dbUser = await tx.user.findUnique({ where: { id: userId } });
+      if (!dbUser) throw new UnauthorizedException('Utilisateur introuvable');
+      if (!dbUser.actif) throw new UnauthorizedException('Compte désactivé');
+      const dbRole = RoleSchema.parse(dbUser.role);
+      return {
+        plan: tenant.plan as Plan,
+        role: dbRole,
+        modules: effectiveModules(
+          dbRole,
+          tenant.plan as Plan,
+          dbUser.customPermissions,
+          dbUser.permissions,
+        ),
+      };
     });
 
     const ctx: AuthContext = {
       userId,
       tenantId,
-      role: role.data,
+      role: resolved.role,
       email: (payload.email as string) ?? '',
-      plan,
+      plan: resolved.plan,
+      modules: resolved.modules,
     };
     req.user = ctx;
     return true;

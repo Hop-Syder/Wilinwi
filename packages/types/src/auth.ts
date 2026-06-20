@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { z } from 'zod';
-import { IdSchema, PlanSchema } from './common.js';
+import { IdSchema, PlanSchema, MODULES } from './common.js';
 import { RoleSchema } from './roles.js';
 
 /** Inscription d'un nouveau propriétaire : crée le tenant + l'utilisateur OWNER. */
@@ -43,5 +43,7 @@ export const AuthContextSchema = z.object({
   role: RoleSchema,
   email: z.string().email(),
   plan: PlanSchema,
+  /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
+  modules: z.array(z.enum(MODULES)).default([]),
 });
 export type AuthContext = z.infer<typeof AuthContextSchema>;

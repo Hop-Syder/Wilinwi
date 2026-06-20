@@ -17,3 +17,4 @@ export * from './inventory.js';
 export * from './sale.js';
 export * from './client.js';
 export * from './treasury.js';
+export * from './user.js';

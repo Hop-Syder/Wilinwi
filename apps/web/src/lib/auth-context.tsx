@@ -3,17 +3,13 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Composant Frontend Web : auth-context.tsx
- * @created 2026-06-20
- * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
- * 📧 daoudaabassichristian@gmail.com
+ * @description Contexte d'authentification : session (Supabase ou PIN) + permissions effectives
  */
-// ──────────────────────────────────
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Plan, Role } from '@wilinwi/types';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { ModuleKey, Plan, Role } from '@wilinwi/types';
 import { getSupabase } from './supabase';
+import { apiGet, clearPinToken, getPinToken, setPinToken } from './api';
 
 export interface SessionUser {
   userId: string;
@@ -21,6 +17,17 @@ export interface SessionUser {
   tenantId: string;
   role: Role;
   plan: Plan;
+  /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
+  modules: ModuleKey[];
+}
+
+interface MeResponse {
+  userId: string;
+  email: string;
+  tenantId: string;
+  role: Role;
+  plan: Plan;
+  modules: ModuleKey[];
 }
 
 interface AuthState {
@@ -28,6 +35,8 @@ interface AuthState {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Bascule de profil par PIN : stocke le jeton minté puis recharge la session. */
+  loginWithPin: (accessToken: string) => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState>({
@@ -35,67 +44,71 @@ const AuthCtx = createContext<AuthState>({
   loading: true,
   signOut: async () => {},
   refreshUser: async () => {},
+  loginWithPin: async () => {},
 });
-
-function userFromClaims(payload: Record<string, unknown> | undefined): SessionUser | null {
-  if (!payload) return null;
-  const meta = (payload.app_metadata ?? {}) as Record<string, unknown>;
-  if (!payload.sub || !meta.tenant_id) return null;
-  return {
-    userId: payload.sub as string,
-    email: (payload.email as string) ?? '',
-    tenantId: meta.tenant_id as string,
-    role: (meta.role as Role) ?? 'SELLER',
-    plan: (meta.plan as Plan) ?? 'FREE',
-  };
-}
-
-function decodeJwt(token: string): Record<string, unknown> | undefined {
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-  } catch {
-    return undefined;
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const supabase = getSupabase();
-
-    const apply = (token?: string) => {
-      setUser(token ? userFromClaims(decodeJwt(token)) : null);
+  /** Résout l'utilisateur courant depuis /api/auth/me (rôle + modules frais). */
+  const resolve = useCallback(async () => {
+    let hasSession = !!getPinToken();
+    if (!hasSession) {
+      const { data } = await getSupabase().auth.getSession();
+      hasSession = !!data.session;
+    }
+    if (!hasSession) {
+      setUser(null);
       setLoading(false);
-    };
-
-    supabase.auth.getSession().then(({ data }) => apply(data.session?.access_token));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
-      apply(session?.access_token),
-    );
-    return () => sub.subscription.unsubscribe();
+      return;
+    }
+    try {
+      const me = await apiGet<MeResponse>('/api/auth/me');
+      setUser({
+        userId: me.userId,
+        email: me.email,
+        tenantId: me.tenantId,
+        role: me.role,
+        plan: me.plan,
+        modules: me.modules ?? [],
+      });
+    } catch {
+      clearPinToken();
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    void resolve();
+    const { data: sub } = getSupabase().auth.onAuthStateChange(() => {
+      void resolve();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [resolve]);
+
   const signOut = async () => {
+    clearPinToken();
     await getSupabase().auth.signOut();
     setUser(null);
   };
 
-  /**
-   * Force un refresh du token Supabase pour que les nouveaux claims (plan, rôle)
-   * soient reflétés dans le JWT sans avoir à se reconnecter.
-   */
   const refreshUser = async () => {
-    const supabase = getSupabase();
-    const { data } = await supabase.auth.refreshSession();
-    if (data.session?.access_token) {
-      setUser(userFromClaims(decodeJwt(data.session.access_token)));
-    }
+    await resolve();
   };
 
-  return <AuthCtx.Provider value={{ user, loading, signOut, refreshUser }}>{children}</AuthCtx.Provider>;
+  const loginWithPin = async (accessToken: string) => {
+    setPinToken(accessToken);
+    await resolve();
+  };
+
+  return (
+    <AuthCtx.Provider value={{ user, loading, signOut, refreshUser, loginWithPin }}>
+      {children}
+    </AuthCtx.Provider>
+  );
 }
 
 export const useAuth = () => useContext(AuthCtx);

@@ -10,23 +10,28 @@
 // ──────────────────────────────────
 
 import { Global, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaService } from './prisma.service';
 import { AuthGuard } from './auth.guard';
 import { CapabilitiesGuard } from './capabilities.guard';
+import { ActivityService } from './activity.service';
+import { ActivityController } from './activity.controller';
+import { ActivityInterceptor } from './activity.interceptor';
 
 /**
- * Module global : expose PrismaService partout et installe les gardes
- * d'authentification + d'autorisation sur toutes les routes (ordre important :
- * AuthGuard d'abord, puis CapabilitiesGuard).
+ * Module global : expose PrismaService + ActivityService partout, installe les
+ * gardes (AuthGuard puis CapabilitiesGuard) et l'intercepteur d'audit.
  */
 @Global()
 @Module({
+  controllers: [ActivityController],
   providers: [
     PrismaService,
+    ActivityService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CapabilitiesGuard },
+    { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
-  exports: [PrismaService],
+  exports: [PrismaService, ActivityService],
 })
 export class CommonModule {}

@@ -11,7 +11,7 @@
 
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { hasCapability, type AuthContext, type Capability } from '@wilinwi/types';
+import { CAP_MODULE, hasCapability, type AuthContext, type Capability } from '@wilinwi/types';
 import { CAPABILITIES_KEY } from './decorators';
 
 /** Refuse l'accès si le rôle de l'utilisateur n'a pas toutes les capacités requises. */
@@ -30,10 +30,17 @@ export class CapabilitiesGuard implements CanActivate {
     const user = req.user as AuthContext | undefined;
     if (!user) throw new ForbiddenException('Non authentifié');
 
-    const missing = required.filter((cap) => !hasCapability(user.role, cap));
+    // Capacité accordée = le rôle la possède ET son module est accessible
+    // (les capacités ADMIN ne dépendent pas du gating modules).
+    const allowed = (cap: Capability) => {
+      if (!hasCapability(user.role, cap)) return false;
+      const mod = CAP_MODULE[cap];
+      return mod === 'ADMIN' || user.modules.includes(mod);
+    };
+    const missing = required.filter((cap) => !allowed(cap));
     if (missing.length > 0) {
       throw new ForbiddenException(
-        `Permission refusée pour votre rôle (${user.role}) : ${missing.join(', ')}`,
+        `Permission refusée (${user.role}) : ${missing.join(', ')}`,
       );
     }
     return true;

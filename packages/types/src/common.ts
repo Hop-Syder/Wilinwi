@@ -39,3 +39,10 @@ export const PLAN_MODULES: Record<Plan, readonly ModuleKey[]> = {
 export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {
   return PLAN_MODULES[plan].includes(module);
 }
+
+/** Limites par plan (§8). `maxDevices` défini ; enforcement appareils ultérieur. */
+export const PLAN_LIMITS: Record<Plan, { maxUsers: number; maxDevices: number }> = {
+  FREE: { maxUsers: 1, maxDevices: 1 },
+  PRO: { maxUsers: 5, maxDevices: 3 },
+  BUSINESS: { maxUsers: 30, maxDevices: 15 },
+};

@@ -10,6 +10,7 @@
 // ──────────────────────────────────
 
 import { z } from 'zod';
+import { MODULES, PLAN_MODULES, type ModuleKey, type Plan } from './common.js';
 
 /**
  * Les 5 rôles Wilinwi (cf. §3 du plan de projet — l'ADN).
@@ -37,6 +38,7 @@ export const CAPABILITIES = [
   'tenant:configure',
   'users:manage',
   'subscription:manage',
+  'activity:read', // consulter le journal d'activité (audit)
   // Stock
   'stock:read',
   'stock:write',
@@ -88,6 +90,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'treasury:write',
     'reports:read',
     'reports:read_full',
+    'activity:read',
   ],
   SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read'],
   CASHIER: [
@@ -121,3 +124,79 @@ export function canSeeSensitivePricing(role: Role): boolean {
 export function canSeeClientCredit(role: Role): boolean {
   return hasCapability(role, 'client:view_credit');
 }
+
+// ──────────────── Accès par module (permissions par utilisateur) ────────────────
+
+/**
+ * Module fonctionnel auquel appartient chaque capacité. `ADMIN` = réglages
+ * réservés au propriétaire (non concernés par le gating modules).
+ */
+export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
+  'tenant:configure': 'ADMIN',
+  'users:manage': 'ADMIN',
+  'subscription:manage': 'ADMIN',
+  'activity:read': 'ADMIN',
+  'stock:read': 'STOCK',
+  'stock:write': 'STOCK',
+  'inventory:count': 'STOCK',
+  'inventory:validate': 'STOCK',
+  'sale:create': 'POS',
+  'sale:read': 'POS',
+  'sale:override_floor_price': 'POS',
+  'sale:cancel': 'POS',
+  'cash:collect': 'POS',
+  'cash:close': 'POS',
+  'client:read': 'CRM',
+  'client:write': 'CRM',
+  'client:view_credit': 'CRM',
+  'client:collect_payment': 'CRM',
+  'treasury:read': 'PAY',
+  'treasury:write': 'PAY',
+  'delivery:update': 'POS',
+  'reports:read': 'ANALYTICS',
+  'reports:read_full': 'ANALYTICS',
+};
+
+/** Modules visibles par défaut selon le rôle (avant overrides & plan). */
+export const ROLE_MODULES: Record<Role, readonly ModuleKey[]> = {
+  OWNER: [...MODULES],
+  MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS'],
+  SELLER: ['POS', 'STOCK'],
+  CASHIER: ['POS', 'CRM'],
+  DELIVERY: [],
+};
+
+/**
+ * Modules réellement accessibles à un utilisateur :
+ *   (overrides si personnalisé, sinon défaut du rôle) ∩ modules inclus dans le plan.
+ */
+export function effectiveModules(
+  role: Role,
+  plan: Plan,
+  customPermissions: boolean,
+  permissions: readonly string[],
+): ModuleKey[] {
+  const base = customPermissions
+    ? (permissions.filter((p) => (MODULES as readonly string[]).includes(p)) as ModuleKey[])
+    : ROLE_MODULES[role];
+  const planSet = new Set(PLAN_MODULES[plan]);
+  return base.filter((m) => planSet.has(m));
+}
+
+/**
+ * Capacités effectives = capacités du rôle filtrées aux modules accessibles.
+ * Les capacités `ADMIN` restent (réservées au rôle, jamais élargies).
+ */
+export function effectiveCapabilities(
+  role: Role,
+  plan: Plan,
+  customPermissions: boolean,
+  permissions: readonly string[],
+): Capability[] {
+  const mods = new Set<ModuleKey>(effectiveModules(role, plan, customPermissions, permissions));
+  return ROLE_CAPABILITIES[role].filter((cap) => {
+    const m = CAP_MODULE[cap];
+    return m === 'ADMIN' || mods.has(m);
+  });
+}
+

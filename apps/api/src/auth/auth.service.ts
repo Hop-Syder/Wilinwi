@@ -9,20 +9,39 @@
  */
 // ──────────────────────────────────
 
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { AuthContext, InviteUserInput, SignUpInput } from '@wilinwi/types';
+import bcrypt from 'bcryptjs';
+import { SignJWT } from 'jose';
+import type { AuthContext, InviteUserInput, PinLoginInput, SignUpInput } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
+import { ActivityService } from '../common/activity.service';
 import { SupabaseAdminService } from './supabase-admin.service';
+
+// Anti-bruteforce PIN (en mémoire) : 5 échecs → verrou 60 s par (tenant,user).
+const pinFails = new Map<string, { count: number; until: number }>();
+const MAX_PIN_FAILS = 5;
+const LOCK_MS = 60_000;
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly jwtSecret: Uint8Array;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseAdminService,
-  ) {}
+    private readonly config: ConfigService,
+    private readonly activity: ActivityService,
+  ) {
+    this.jwtSecret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
+  }
 
   /**
    * Inscription d'un propriétaire : crée le compte auth, la boutique (tenant)
@@ -100,11 +119,73 @@ export class AuthService {
     return { userId, temporaryPassword: tempPassword };
   }
 
-  /** Profil + contexte de l'utilisateur courant. */
+  /** Profil + contexte de l'utilisateur courant (sans le hash du PIN). */
   async me(ctx: AuthContext) {
     const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.user.findFirst({ where: { id: ctx.userId, tenantId: ctx.tenantId } }),
+      tx.user.findFirst({
+        where: { id: ctx.userId, tenantId: ctx.tenantId },
+        select: {
+          id: true,
+          nom: true,
+          email: true,
+          role: true,
+          poste: true,
+          actif: true,
+          customPermissions: true,
+          permissions: true,
+        },
+      }),
     );
     return { ...ctx, profile: user };
+  }
+
+  /**
+   * Login par PIN sur poste partagé. `ctx` = session tenant déjà valide sur
+   * l'appareil (preuve d'appartenance). Vérifie le PIN (hash) puis MINTE un JWT
+   * compatible (même secret HS256) pour l'utilisateur cible → bascule de profil.
+   */
+  async pinLogin(ctx: AuthContext, input: PinLoginInput) {
+    const key = `${ctx.tenantId}:${input.userId}`;
+    const lock = pinFails.get(key);
+    if (lock && lock.until > Date.now()) {
+      throw new UnauthorizedException('Trop de tentatives. Réessayez dans une minute.');
+    }
+
+    const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.user.findFirst({ where: { id: input.userId, tenantId: ctx.tenantId } }),
+    );
+    const ok = user && user.actif && user.pinCode && (await bcrypt.compare(input.pin, user.pinCode));
+    if (!user || !user.actif || !user.pinCode || !ok) {
+      const count = (lock?.count ?? 0) + 1;
+      pinFails.set(key, {
+        count,
+        until: count >= MAX_PIN_FAILS ? Date.now() + LOCK_MS : 0,
+      });
+      throw new UnauthorizedException('PIN invalide');
+    }
+    pinFails.delete(key);
+
+    const accessToken = await new SignJWT({
+      email: user.email,
+      app_metadata: { tenant_id: ctx.tenantId, role: user.role },
+    })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setSubject(user.id)
+      .setIssuedAt()
+      .setExpirationTime('12h')
+      .sign(this.jwtSecret);
+
+    await this.activity.log({
+      tenantId: ctx.tenantId,
+      userId: user.id,
+      action: 'PIN_LOGIN',
+      entity: 'user',
+      entityId: user.id,
+    });
+
+    return {
+      access_token: accessToken,
+      user: { id: user.id, nom: user.nom, role: user.role, poste: user.poste },
+    };
   }
 }

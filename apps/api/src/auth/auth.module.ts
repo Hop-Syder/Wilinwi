@@ -14,10 +14,11 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SupabaseAdminService } from './supabase-admin.service';
 import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 
 @Module({
   controllers: [AuthController, UsersController],
-  providers: [AuthService, SupabaseAdminService],
+  providers: [AuthService, SupabaseAdminService, UsersService],
   exports: [SupabaseAdminService],
 })
 export class AuthModule {}

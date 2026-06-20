@@ -12,9 +12,11 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   InviteUserSchema,
+  PinLoginSchema,
   SignUpSchema,
   type AuthContext,
   type InviteUserInput,
+  type PinLoginInput,
   type SignUpInput,
 } from '@wilinwi/types';
 import { CurrentUser, Public, RequireCapabilities } from '../common/decorators';
@@ -35,6 +37,18 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthContext) {
     return this.auth.me(user);
+  }
+
+  /**
+   * Login PIN sur poste partagé : nécessite une session tenant valide (l'appareil
+   * est déjà authentifié) ; renvoie un JWT pour l'utilisateur cible.
+   */
+  @Post('pin-login')
+  pinLogin(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(PinLoginSchema)) dto: PinLoginInput,
+  ) {
+    return this.auth.pinLogin(user, dto);
   }
 
   /** Invitation d'un membre (OWNER/MANAGER uniquement). */

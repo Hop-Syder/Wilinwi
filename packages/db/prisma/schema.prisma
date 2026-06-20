@@ -108,8 +108,29 @@ model Tenant {
   clientPayments  ClientPayment[]
   cashMovements   CashMovement[]
   cashCloses      CashClose[]
+  activityLogs    ActivityLog[]
 
   @@map("tenants")
+}
+
+// ─────────────────────── Journal d'activité — Audit (MVP2) ───────────────────────
+
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid // null = action système
+  action      String // ex: SALE_CREATE, SALE_CANCEL, USER_CREATE, PIN_LOGIN
+  entity      String? // ex: sale, product, user
+  entityId    String?  @map("entity_id")
+  metadata    Json?
+  ip          String?
+  deviceLabel String?  @map("device_label")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("activity_logs")
 }
 
 model User {
@@ -119,7 +140,13 @@ model User {
   email     String
   role      Role     @default(SELLER)
   actif     Boolean  @default(true)
+  poste     String? // intitulé de poste libre (ex: Caissier principal)
+  /// Hash du code PIN (bcrypt) pour le login sur poste partagé. Jamais en clair.
   pinCode   String?  @map("pin_code")
+  /// true → utilise `permissions` (overrides) ; false → modules par défaut du rôle.
+  customPermissions Boolean  @default(false) @map("custom_permissions")
+  /// Modules autorisés (clés ModuleKey) quand customPermissions = true.
+  permissions       String[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)

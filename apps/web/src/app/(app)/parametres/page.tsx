@@ -12,7 +12,8 @@
 // ──────────────────────────────────
 
 import { useEffect, useState } from 'react';
-import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight } from 'lucide-react';
 import { PLAN_MODULES, MODULES, type Plan } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
@@ -115,6 +116,30 @@ export default function ParametresPage() {
       <div>
         <h1 className="font-display text-2xl font-bold text-brand">Paramètres</h1>
         <p className="mt-1 text-sm text-slate-500">Gestion du compte et du plan d'abonnement.</p>
+      </div>
+
+      {/* Accès rapides administration */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link href="/parametres/utilisateurs" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
+          <span className="flex items-center gap-3">
+            <span className="rounded-xl bg-brand-50 p-2.5 text-brand"><Users2 className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-display font-semibold text-slate-800">Utilisateurs</span>
+              <span className="text-sm text-slate-500">Collaborateurs, rôles, permissions, PIN</span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </Link>
+        <Link href="/parametres/journal" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
+          <span className="flex items-center gap-3">
+            <span className="rounded-xl bg-gold-50 p-2.5 text-gold-700"><History className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-display font-semibold text-slate-800">Journal d'activité</span>
+              <span className="text-sm text-slate-500">Audit des actions de l'équipe</span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </Link>
       </div>
 
       {/* Infos boutique */}
