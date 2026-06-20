@@ -31,10 +31,9 @@ export class SalesService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Crée une vente. Trois cas :
-   *  - lignes ≥ plancher (ou vendeur autorisé) → vente finalisée (stock décrémenté, paiement).
-   *  - vendeur NON autorisé avec une ligne sous le plancher → vente `PENDING_APPROVAL`,
-   *    stock NON décrémenté tant qu'un gérant n'a pas validé (§5.5, anti-fraude bloquant).
+   * Crée une vente.
+   * Toute tentative de vente sous le prix plancher est IMMÉDIATEMENT REFUSÉE (BadRequestException).
+   * Les ventes valides sont finalisées directement (stock décrémenté, paiement enregistré).
    * Idempotent via clientGeneratedId pour la synchronisation hors-ligne.
    */
   async create(ctx: AuthContext, input: CreateSaleInput) {
@@ -120,9 +119,12 @@ export class SalesService {
       const intendedAcompte = this.validateAcompte(input, total);
       // Crédit client : vérifier le plafond avant de créer la vente.
       await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
-      const needsApproval = !canOverride && lines.some((l) => l.sousPlancher);
+      
+      // Le prix plancher est maintenant un blocage strict en amont (l.100).
+      // L'état PENDING_APPROVAL n'est plus utilisé de façon active.
+      const needsApproval = false;
 
-      // Création de la vente + lignes + dérogations éventuelles.
+      // Création de la vente + lignes
       const created = await tx.sale.create({
         data: {
           tenantId: ctx.tenantId,
@@ -164,8 +166,8 @@ export class SalesService {
         }
       }
 
-      // Vendeur autorisé ou aucune ligne sous le plancher → finaliser tout de suite.
-      // Sinon : on s'arrête en PENDING_APPROVAL (stock intact) jusqu'à validation gérant.
+      // La vente est toujours valide et au-dessus du plancher à ce stade,
+      // on la finalise immédiatement.
       if (!needsApproval) {
         await this.finalize(tx, ctx, created.id);
       }

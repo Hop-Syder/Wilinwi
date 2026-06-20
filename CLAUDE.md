@@ -39,8 +39,8 @@ packages/
   [toProductDto()](apps/api/src/stock/product.mapper.ts). Idem pour le dashboard
   (bénéfice/valeur d'achat masqués).
 - **Système à 4 prix** : `prixAchat ≤ prixPlancher ≤ prixCatalogue` (produit) +
-  `prixReel` (par ligne de vente). Vente sous le plancher → **preuve obligatoire +
-  validation gérant** (`PriceOverride`, voir [sales.service.ts](apps/api/src/pos/sales.service.ts)).
+  `prixReel` (par ligne de vente). Vente sous le plancher → **opération strictement refusée** 
+  par le backend et l'UI (anti-fraude absolu, l'état PENDING_APPROVAL n'est plus actif).
 - **Offline-first** : le POS enregistre en IndexedDB et synchronise via
   `POST /api/sync/sales` (idempotent par `clientGeneratedId`). Le serveur reste la
   source de vérité finale.

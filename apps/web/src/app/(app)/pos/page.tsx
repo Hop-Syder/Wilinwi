@@ -261,7 +261,7 @@ export default function PosPage() {
             {/* Filtres de catégories / favoris */}
             <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               <Button 
-                variant={activeTab === 'ALL' ? 'default' : 'outline'} 
+                variant={activeTab === 'ALL' ? 'primary' : 'outline'} 
                 size="sm" 
                 className="rounded-full shrink-0"
                 onClick={() => setActiveTab('ALL')}
@@ -269,7 +269,7 @@ export default function PosPage() {
                 Toutes les catégories
               </Button>
               <Button 
-                variant={activeTab === 'FAVORITES' ? 'default' : 'outline'} 
+                variant={activeTab === 'FAVORITES' ? 'primary' : 'outline'} 
                 size="sm" 
                 className="rounded-full shrink-0"
                 onClick={() => setActiveTab('FAVORITES')}
