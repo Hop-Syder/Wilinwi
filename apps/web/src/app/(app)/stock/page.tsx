@@ -133,7 +133,14 @@ export default function StockPage() {
             {filteredProducts.map((p) => (
               <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
                 <td className="px-4 py-3">
-                  <div className="font-medium text-slate-900">{p.nom}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-900">{p.nom}</span>
+                    {p.variants && p.variants.length > 0 && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {p.variants.length} var.
+                      </span>
+                    )}
+                  </div>
                   {p.sku && <div className="text-xs text-slate-400">{p.sku}</div>}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{p.categorie || '—'}</td>

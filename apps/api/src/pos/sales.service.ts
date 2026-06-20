@@ -87,12 +87,19 @@ export class SalesService {
       for (const item of input.items) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, tenantId: ctx.tenantId },
+          include: { variants: true },
         });
         if (!product) throw new NotFoundException(`Produit ${item.productId} introuvable`);
 
-        if (item.quantite > product.stock) {
+        const variant = item.variantId ? product.variants.find(v => v.id === item.variantId) : null;
+        if (item.variantId && !variant) {
+          throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);
+        }
+
+        const availableStock = variant ? variant.stock : product.stock;
+        if (item.quantite > availableStock) {
           throw new BadRequestException(
-            `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${product.stock}`
+            `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
           );
         }
 
@@ -242,6 +249,12 @@ export class SalesService {
         where: { id: item.productId },
         data: { stock: { decrement: item.quantite } },
       });
+      if (item.variantId) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { decrement: item.quantite } },
+        });
+      }
     }
 
     // Dérogations de cette vente → approuvées par le gérant courant.
@@ -380,6 +393,12 @@ export class SalesService {
             where: { id: item.productId },
             data: { stock: { increment: item.quantite } },
           });
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantite } },
+            });
+          }
         }
 
         // Reversal trésorerie : on ressort la part encaissée.
@@ -479,6 +498,12 @@ export class SalesService {
           where: { id: item.productId },
           data: { stock: { increment: ret.quantiteRetournee } },
         });
+        if (item.variantId) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: ret.quantiteRetournee } },
+          });
+        }
 
         refundAmount += item.prixReel * ret.quantiteRetournee;
       }

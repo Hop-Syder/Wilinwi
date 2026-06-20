@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Select } from '@wilinwi/ui';
 import type { ProductDto } from '@wilinwi/types';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
@@ -12,6 +12,7 @@ interface StockMovementModalProps {
 
 export function StockMovementModal({ product, onClose, onSuccess }: StockMovementModalProps) {
   const [type, setType] = useState<'IN' | 'OUT' | 'ADJUST'>('IN');
+  const [variantId, setVariantId] = useState<string>('');
   const [quantite, setQuantite] = useState('');
   const [motif, setMotif] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
     try {
       await apiPost('/api/stock/movements', {
         productId: product.id,
+        variantId: variantId || undefined,
         type,
         quantite: Number(quantite),
         motif,
@@ -65,6 +67,24 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
               </Button>
             </div>
           </div>
+
+          {product.variants && product.variants.length > 0 && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-600">Variante concernée</span>
+              <select
+                value={variantId}
+                onChange={(e) => setVariantId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">-- Sélectionnez une variante (Optionnel) --</option>
+                {product.variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {Object.entries(v.attributs).map(([k, val]) => `${k}: ${val}`).join(', ')} (Stock: {v.stock})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">
@@ -126,6 +146,18 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
     stock: product?.stock?.toString() || '',
     seuilAlerte: product?.seuilAlerte?.toString() || '5',
   });
+  const [variants, setVariants] = useState<Array<{ id?: string, key: string, val: string, sku: string, stock: string }>>(
+    (product?.variants || []).map(v => {
+      const entries = Object.entries(v.attributs);
+      return {
+        id: v.id,
+        key: entries[0]?.[0] || 'Taille',
+        val: entries[0]?.[1] || '',
+        sku: v.sku || '',
+        stock: v.stock.toString()
+      };
+    })
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -145,6 +177,12 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         prixCatalogue: Number(form.prixCatalogue),
         stock: isEditing ? undefined : Number(form.stock || 0),
         seuilAlerte: Number(form.seuilAlerte || 5),
+        variants: variants.map(v => ({
+          id: v.id,
+          attributs: { [v.key || 'Variante']: v.val },
+          sku: v.sku || undefined,
+          stock: isEditing && v.id ? v.stock : Number(v.stock || 0) // En création on envoie le nombre
+        }))
       };
 
       if (isEditing) {
@@ -213,6 +251,48 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
             <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
+
+          <div className="col-span-full my-2 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">Variantes (Tailles, Couleurs...)</h3>
+              <Button type="button" variant="outline" size="sm" onClick={() => setVariants([...variants, { key: 'Taille', val: '', sku: '', stock: '0' }])}>
+                <Plus className="h-4 w-4 mr-1" /> Ajouter variante
+              </Button>
+            </div>
+            
+            {variants.length > 0 && (
+              <div className="space-y-3">
+                {variants.map((v, idx) => (
+                  <div key={idx} className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-600">Attribut</span>
+                        <input type="text" value={v.key} onChange={(e) => { const n = [...variants]; n[idx].key = e.target.value; setVariants(n); }} placeholder="Taille" className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-600">Valeur</span>
+                        <input type="text" value={v.val} onChange={(e) => { const n = [...variants]; n[idx].val = e.target.value; setVariants(n); }} placeholder="XL" required className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-slate-600">SKU</span>
+                        <input type="text" value={v.sku} onChange={(e) => { const n = [...variants]; n[idx].sku = e.target.value; setVariants(n); }} placeholder="SKU-XL" className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                      </label>
+                      {!isEditing && (
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-slate-600">Stock init.</span>
+                          <input type="number" value={v.stock} onChange={(e) => { const n = [...variants]; n[idx].stock = e.target.value; setVariants(n); }} required className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                        </label>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 p-1 mt-5">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {variants.length === 0 && <p className="text-xs text-slate-500 italic">Aucune variante configurée pour ce produit.</p>}
+          </div>
 
           {error && <p className="col-span-full mt-2 text-sm text-red-600">{error}</p>}
           

@@ -28,6 +28,8 @@ import type { TourStep } from '@/components/tour-guide';
 
 interface CartLine {
   product: ProductDto;
+  variantId?: string;
+  variantLabel?: string;
   quantite: number;
   prixReel: number;
 }
@@ -51,6 +53,7 @@ export default function PosPage() {
   const [clientId, setClientId] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
+  const [variantSelectionProduct, setVariantSelectionProduct] = useState<ProductDto | null>(null);
   const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
 
   const tourSteps: TourStep[] = [
@@ -137,29 +140,38 @@ export default function PosPage() {
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
 
-  function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue) {
-    if (product.stock <= 0) {
+  function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
+    const stockToCheck = variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
+    if (stockToCheck <= 0) {
       setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
       return;
     }
     setCart((c) => {
-      const existing = c.find((l) => l.product.id === product.id);
+      const existing = c.find((l) => l.product.id === product.id && l.variantId === variantId);
       const newQuantite = existing ? existing.quantite + quantite : quantite;
-      if (newQuantite > product.stock) {
-        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}.` });
+      if (newQuantite > stockToCheck) {
+        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}.` });
         return c;
       }
       if (existing)
-        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: newQuantite, prixReel } : l));
-      return [...c, { product, quantite, prixReel }];
+        return c.map((l) => (l.product.id === product.id && l.variantId === variantId ? { ...l, quantite: newQuantite, prixReel } : l));
+      return [...c, { product, quantite, prixReel, variantId, variantLabel }];
     });
   }
 
-  function updateLine(id: string, patch: Partial<CartLine>) {
-    setCart((c) => c.map((l) => (l.product.id === id ? { ...l, ...patch } : l)));
+  function handleProductClick(product: ProductDto) {
+    if (product.variants && product.variants.length > 0) {
+      setVariantSelectionProduct(product);
+    } else {
+      addToCart(product);
+    }
   }
-  function removeLine(id: string) {
-    setCart((c) => c.filter((l) => l.product.id !== id));
+
+  function updateLine(productId: string, variantId: string | undefined, patch: Partial<CartLine>) {
+    setCart((c) => c.map((l) => (l.product.id === productId && l.variantId === variantId ? { ...l, ...patch } : l)));
+  }
+  function removeLine(productId: string, variantId: string | undefined) {
+    setCart((c) => c.filter((l) => !(l.product.id === productId && l.variantId === variantId)));
   }
 
   async function checkout() {
@@ -178,7 +190,7 @@ export default function PosPage() {
       return;
     }
 
-    const hasOutOfStock = cart.some((l) => l.quantite > l.product.stock);
+    const hasOutOfStock = cart.some((l) => l.quantite > (l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock));
     if (hasOutOfStock) {
       setMessage({ tone: 'err', text: 'Opération refusée : stock insuffisant pour un ou plusieurs produits.' });
       setBusy(false);
@@ -192,6 +204,7 @@ export default function PosPage() {
       clientId: clientId || undefined,
       items: cart.map((l) => ({
         productId: l.product.id,
+        variantId: l.variantId,
         quantite: l.quantite,
         prixReel: l.prixReel,
       })),
@@ -265,7 +278,8 @@ export default function PosPage() {
               useCases={[
                 { title: 'Faire une remise (Négociation)', description: 'Cliquez sur le prix réel d\'un produit dans le panier et modifiez-le. Le système vérifiera automatiquement que vous restez au-dessus du prix plancher.' },
                 { title: 'Vente à crédit ou acompte', description: 'Dans le panneau d\'encaissement, changez le mode de paiement sur Acompte/Crédit, sélectionnez un client enregistré, et indiquez le montant versé aujourd\'hui.' },
-                { title: 'Travailler sans connexion', description: 'Continuez d\'encaisser même sans internet. Les ventes sont sauvegardées localement et seront synchronisées automatiquement au retour de la connexion.' }
+                { title: 'Travailler sans connexion', description: 'Continuez d\'encaisser même sans internet. Les ventes sont sauvegardées localement et seront synchronisées automatiquement au retour de la connexion.' },
+                { title: 'Retour de marchandise', description: 'Ouvrez l\'historique des ventes, sélectionnez la vente concernée et indiquez la quantité retournée pour chaque produit. Le stock sera automatiquement réajusté.' }
               ]}
             />
             <Button variant="outline" size="sm" onClick={() => setIsLocked(true)}>
@@ -282,7 +296,7 @@ export default function PosPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && displayProducts.length > 0) {
-                addToCart(displayProducts[0]);
+                handleProductClick(displayProducts[0]);
                 setQuery('');
               }
             }}
@@ -323,9 +337,9 @@ export default function PosPage() {
               {displayProducts.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => addToCart(p)}
-                  disabled={p.stock <= 0}
-                  className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${p.stock <= 0 ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
+                  onClick={() => handleProductClick(p)}
+                  disabled={p.stock <= 0 && (!p.variants || p.variants.length === 0)}
+                  className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${p.stock <= 0 && (!p.variants || p.variants.length === 0) ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
                 >
                   <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
                   <div className="tabular mt-1 text-sm font-bold text-emerald-700">
@@ -354,10 +368,13 @@ export default function PosPage() {
         ) : (
           <ul className="mt-4 space-y-3">
             {cart.map((l) => (
-              <li key={l.product.id} className="rounded-lg bg-slate-50 p-3">
+              <li key={`${l.product.id}-${l.variantId || 'base'}`} className="rounded-lg bg-slate-50 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{l.product.nom}</span>
-                  <button onClick={() => removeLine(l.product.id)} aria-label="Retirer">
+                  <span className="text-sm font-medium">
+                    {l.product.nom}
+                    {l.variantLabel && <span className="ml-1 text-slate-500 font-normal">({l.variantLabel})</span>}
+                  </span>
+                  <button onClick={() => removeLine(l.product.id, l.variantId)} aria-label="Retirer">
                     <Trash2 className="h-4 w-4 text-slate-400 hover:text-red-500" />
                   </button>
                 </div>
@@ -365,11 +382,12 @@ export default function PosPage() {
                   <input
                     type="number"
                     min={1}
-                    max={l.product.stock}
+                    max={l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock}
                     value={l.quantite}
-                    onChange={(e) =>
-                      updateLine(l.product.id, { quantite: Math.max(1, Math.min(l.product.stock, Number(e.target.value))) })
-                    }
+                    onChange={(e) => {
+                      const maxStock = l.variantId ? l.product.variants?.find(v => v.id === l.variantId)?.stock || 0 : l.product.stock;
+                      updateLine(l.product.id, l.variantId, { quantite: Math.max(1, Math.min(maxStock, Number(e.target.value))) })
+                    }}
                     className="tabular w-16 rounded-md border border-slate-300 px-2 py-1 text-sm"
                   />
                   <span className="text-slate-400">×</span>
@@ -378,11 +396,11 @@ export default function PosPage() {
                       type="number"
                       min={l.product.prixPlancher ?? 0}
                       value={l.prixReel}
-                      onChange={(e) => updateLine(l.product.id, { prixReel: Number(e.target.value) })}
+                      onChange={(e) => updateLine(l.product.id, l.variantId, { prixReel: Number(e.target.value) })}
                       onBlur={(e) => {
                         const plancher = l.product.prixPlancher;
                         if (plancher !== undefined && Number(e.target.value) < plancher) {
-                          updateLine(l.product.id, { prixReel: plancher });
+                          updateLine(l.product.id, l.variantId, { prixReel: plancher });
                         }
                       }}
                       className={`tabular w-24 rounded-md border px-2 py-1 text-sm ${
@@ -487,6 +505,38 @@ export default function PosPage() {
       </Card>
 
       {/* ContextualHelp gère le composant TourGuide en interne */}
+      {/* Modale de sélection de variante */}
+      {variantSelectionProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Choisir une variante</h3>
+            <p className="mb-4 text-sm text-slate-600">{variantSelectionProduct.nom}</p>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+              {variantSelectionProduct.variants?.map(v => {
+                const label = Object.entries(v.attributs).map(([k, val]) => `${val}`).join(', ');
+                const isOos = v.stock <= 0;
+                return (
+                  <button 
+                    key={v.id} 
+                    disabled={isOos}
+                    onClick={() => {
+                      addToCart(variantSelectionProduct, 1, variantSelectionProduct.prixCatalogue, v.id, label);
+                      setVariantSelectionProduct(null);
+                    }}
+                    className={`w-full flex justify-between items-center p-3 rounded-lg border ${isOos ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:border-brand hover:bg-brand/5 transition-colors'} text-left`}
+                  >
+                    <span className="font-medium text-sm">{label}</span>
+                    <span className="text-xs text-slate-500">{v.stock} en stock</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" onClick={() => setVariantSelectionProduct(null)}>Annuler</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

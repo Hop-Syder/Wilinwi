@@ -27,11 +27,21 @@ export const ProductPricesSchema = z
   });
 
 export const ProductVariantInputSchema = z.object({
+  id: IdSchema.optional(),
   attributs: z.record(z.string(), z.string()), // ex: { taille: 'L', couleur: 'rouge' }
   stock: QuantitySchema.default(0),
   sku: z.string().min(1).optional(),
 });
 export type ProductVariantInput = z.infer<typeof ProductVariantInputSchema>;
+
+export const ProductVariantDtoSchema = z.object({
+  id: IdSchema,
+  productId: IdSchema,
+  attributs: z.record(z.string(), z.string()),
+  sku: z.string().nullable(),
+  stock: QuantitySchema,
+});
+export type ProductVariantDto = z.infer<typeof ProductVariantDtoSchema>;
 
 const CreateProductSchemaBase = z.object({
   nom: z.string().min(1),
@@ -90,6 +100,7 @@ export const ProductDtoSchema = z.object({
   prixCatalogue: MoneySchema,
   stock: QuantitySchema,
   seuilAlerte: QuantitySchema,
+  variants: z.array(ProductVariantDtoSchema).default([]),
   // Sensibles — présents seulement pour OWNER/MANAGER :
   prixAchat: MoneySchema.optional(),
   prixPlancher: MoneySchema.optional(),

@@ -28,6 +28,7 @@ export class StockService {
     const products = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
+        include: { variants: true },
         orderBy: { nom: 'asc' },
       }),
     );
@@ -64,17 +65,55 @@ export class StockService {
             })),
           },
         },
+        include: { variants: true }
       }),
     );
     return toProductDto(product, ctx.role);
   }
 
   async update(ctx: AuthContext, id: string, input: UpdateProductInput) {
-    // Les variantes se gèrent par des endpoints dédiés ; ici, champs scalaires.
-    const { variants: _variants, ...scalars } = input;
+    const { variants, ...scalars } = input;
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       await this.ensureProduct(tx, ctx.tenantId, id);
-      return tx.product.update({ where: { id }, data: scalars });
+
+      if (variants) {
+        const existingVariants = await tx.productVariant.findMany({ where: { productId: id } });
+        const incomingIds = variants.map(v => v.id).filter(Boolean);
+        const toDelete = existingVariants.filter(ev => !incomingIds.includes(ev.id)).map(ev => ev.id);
+
+        if (toDelete.length > 0) {
+          await tx.productVariant.deleteMany({ where: { id: { in: toDelete } } });
+        }
+
+        for (const v of variants) {
+          if (v.id) {
+            await tx.productVariant.update({
+              where: { id: v.id },
+              data: {
+                attributs: v.attributs,
+                sku: v.sku ?? null,
+                stock: v.stock,
+              }
+            });
+          } else {
+            await tx.productVariant.create({
+              data: {
+                tenantId: ctx.tenantId,
+                productId: id,
+                attributs: v.attributs,
+                sku: v.sku ?? null,
+                stock: v.stock,
+              }
+            });
+          }
+        }
+      }
+
+      return tx.product.update({ 
+        where: { id }, 
+        data: scalars,
+        include: { variants: true }
+      });
     });
     return toProductDto(product, ctx.role);
   }
@@ -88,8 +127,22 @@ export class StockService {
       const product = await this.ensureProduct(tx, ctx.tenantId, input.productId);
       const delta = this.signedDelta(input.type, input.quantite);
 
-      if (product.stock + delta < 0) {
-        throw new BadRequestException('Opération refusée : Le stock ne peut pas être négatif.');
+      let newParentStock = product.stock + delta;
+
+      if (input.variantId) {
+        const variant = product.variants.find(v => v.id === input.variantId);
+        if (!variant) throw new NotFoundException('Variante introuvable');
+        if (variant.stock + delta < 0) {
+          throw new BadRequestException('Opération refusée : Le stock de la variante ne peut pas être négatif.');
+        }
+        await tx.productVariant.update({
+          where: { id: input.variantId },
+          data: { stock: { increment: delta } },
+        });
+      } else {
+        if (newParentStock < 0) {
+          throw new BadRequestException('Opération refusée : Le stock global ne peut pas être négatif.');
+        }
       }
 
       const movement = await tx.stockMovement.create({
@@ -148,7 +201,10 @@ export class StockService {
   }
 
   private async ensureProduct(tx: TenantTx, tenantId: string, id: string) {
-    const product = await tx.product.findFirst({ where: { id, tenantId } });
+    const product = await tx.product.findFirst({ 
+      where: { id, tenantId },
+      include: { variants: true }
+    });
     if (!product) throw new NotFoundException('Produit introuvable');
     return product;
   }
