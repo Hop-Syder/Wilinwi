@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Frontend (Route: pos)
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, ShoppingCart, CloudOff } from 'lucide-react';
 import type { CreateSaleInput, PaymentMethod, ProductDto } from '@wilinwi/types';
@@ -25,8 +36,13 @@ export default function PosPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [payment, setPayment] = useState<PaymentMethod>('CASH');
   const [montantVerse, setMontantVerse] = useState('');
-  const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
+  const [clients, setClients] = useState<{ id: string; nom: string }[]>([]);
+  const [clientId, setClientId] = useState('');
+  const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
 
   // Catalogue : depuis l'API si en ligne, sinon depuis le cache offline.
   useEffect(() => {
@@ -39,6 +55,10 @@ export default function PosPage() {
         const cached = await syncEngine.cachedProducts();
         setProducts(cached);
       });
+    // Liste des clients (pour les ventes à crédit / acompte).
+    apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
+      .then(setClients)
+      .catch(() => setClients([]));
   }, []);
 
   const filtered = useMemo(
@@ -57,9 +77,7 @@ export default function PosPage() {
     setCart((c) => {
       const existing = c.find((l) => l.product.id === product.id);
       if (existing)
-        return c.map((l) =>
-          l.product.id === product.id ? { ...l, quantite: l.quantite + 1 } : l,
-        );
+        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: l.quantite + 1 } : l));
       return [...c, { product, quantite: 1, prixReel: product.prixCatalogue }];
     });
   }
@@ -80,6 +98,7 @@ export default function PosPage() {
       clientGeneratedId: crypto.randomUUID(),
       paymentMethod: payment,
       montantVerse: payment === 'INSTALLMENT' ? Number(montantVerse || 0) : undefined,
+      clientId: clientId || undefined,
       items: cart.map((l) => ({
         productId: l.product.id,
         quantite: l.quantite,
@@ -92,6 +111,7 @@ export default function PosPage() {
       const sale = await apiPost<{ status?: string }>('/api/pos/sales', payload);
       setCart([]);
       setMontantVerse('');
+      setClientId('');
       if (sale?.status === 'PENDING_APPROVAL') {
         setMessage({ tone: 'offline', text: '⏳ Vente en attente de validation gérant.' });
       } else {
@@ -119,6 +139,7 @@ export default function PosPage() {
         await refreshPending();
         setCart([]);
         setMontantVerse('');
+      setClientId('');
         setMessage({ tone: 'offline', text: 'Hors-ligne : vente enregistrée localement.' });
       }
     } finally {
@@ -224,6 +245,24 @@ export default function PosPage() {
             </select>
           </label>
 
+          {requiresClient && (
+            <label className="mt-3 block text-sm">
+              <span className="mb-1 block font-medium text-slate-600">Client (crédit/dette)</span>
+              <select
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+              >
+                <option value="">— Sans client nommé —</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nom}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {payment === 'INSTALLMENT' && (
             <label className="mt-3 block text-sm">
               <span className="mb-1 block font-medium text-slate-600">Acompte versé</span>
@@ -325,10 +364,20 @@ function ManagerApprovalPanel() {
             <div className="flex items-center justify-between">
               <span className="tabular font-semibold text-brand">{formatFCFA(s.total)}</span>
               <div className="flex gap-2">
-                <Button size="sm" variant="emerald" disabled={busyId === s.id} onClick={() => decide(s.id, true)}>
+                <Button
+                  size="sm"
+                  variant="emerald"
+                  disabled={busyId === s.id}
+                  onClick={() => decide(s.id, true)}
+                >
                   Approuver
                 </Button>
-                <Button size="sm" variant="danger" disabled={busyId === s.id} onClick={() => decide(s.id, false)}>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={busyId === s.id}
+                  onClick={() => decide(s.id, false)}
+                >
                   Rejeter
                 </Button>
               </div>
@@ -341,7 +390,9 @@ function ManagerApprovalPanel() {
                     {it.quantite} × {formatFCFA(it.prixReel)}
                   </span>
                   {it.priceOverride?.prixPlancher !== undefined && (
-                    <Badge tone="warning">plancher {formatFCFA(it.priceOverride.prixPlancher)}</Badge>
+                    <Badge tone="warning">
+                      plancher {formatFCFA(it.priceOverride.prixPlancher)}
+                    </Badge>
                   )}
                   {it.priceOverride?.motif && (
                     <span className="italic text-slate-400">« {it.priceOverride.motif} »</span>

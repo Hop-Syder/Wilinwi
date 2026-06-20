@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Mapper DTO/Entité pour product
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { canSeeSensitivePricing, type ProductDto, type Role } from '@wilinwi/types';
 import type { Product } from '@wilinwi/db';
 

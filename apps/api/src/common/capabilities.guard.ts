@@ -1,9 +1,15 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Utilitaire de sécurité/validation API : capabilities.guard.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { hasCapability, type AuthContext, type Capability } from '@wilinwi/types';
 import { CAPABILITIES_KEY } from './decorators';

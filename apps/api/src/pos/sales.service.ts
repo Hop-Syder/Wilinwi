@@ -9,14 +9,19 @@
  */
 // ──────────────────────────────────
 
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   hasCapability,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
 } from '@wilinwi/types';
-import type { TenantTx } from '@wilinwi/db';
+import { Prisma, type TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
 
@@ -32,6 +37,30 @@ export class SalesService {
    * Idempotent via clientGeneratedId pour la synchronisation hors-ligne.
    */
   async create(ctx: AuthContext, input: CreateSaleInput) {
+    try {
+      return await this.createInternal(ctx, input);
+    } catch (err) {
+      // Course de synchronisation offline : la même vente (clientGeneratedId) a été
+      // créée en parallèle → contrainte unique violée (P2002). On renvoie la vente
+      // existante (équivalent idempotent d'un INSERT … ON CONFLICT DO NOTHING).
+      if (
+        input.clientGeneratedId &&
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+          tx.sale.findFirst({
+            where: { tenantId: ctx.tenantId, clientGeneratedId: input.clientGeneratedId },
+            include: { items: { include: { priceOverride: true } }, installment: true },
+          }),
+        );
+        if (existing) return toSaleDto(existing, ctx.role);
+      }
+      throw err;
+    }
+  }
+
+  private async createInternal(ctx: AuthContext, input: CreateSaleInput) {
     const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       // Idempotence offline : si la vente existe déjà, on la renvoie.
       if (input.clientGeneratedId) {
@@ -83,6 +112,8 @@ export class SalesService {
 
       // Acompte : validé tôt (échoue vite) pour les deux flux.
       const intendedAcompte = this.validateAcompte(input, total);
+      // Crédit client : vérifier le plafond avant de créer la vente.
+      await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
       const needsApproval = !canOverride && lines.some((l) => l.sousPlancher);
 
       // Création de la vente + lignes + dérogations éventuelles.
@@ -220,7 +251,11 @@ export class SalesService {
     if (sale.paymentMethod === 'INSTALLMENT' || sale.paymentMethod === 'CREDIT') {
       await tx.saleInstallment.upsert({
         where: { saleId },
-        update: { montantVerse, soldeRestant: sale.total - montantVerse, status: this.installmentStatus(sale.total, montantVerse) },
+        update: {
+          montantVerse,
+          soldeRestant: sale.total - montantVerse,
+          status: this.installmentStatus(sale.total, montantVerse),
+        },
         create: {
           tenantId: ctx.tenantId,
           saleId,
@@ -232,6 +267,15 @@ export class SalesService {
       });
     }
 
+    // Crédit client : la part non réglée vient grossir la dette du client (§6.2).
+    const impaye = sale.total - montantVerse;
+    if (sale.clientId && impaye > 0) {
+      await tx.client.update({
+        where: { id: sale.clientId },
+        data: { soldeCredit: { increment: impaye } },
+      });
+    }
+
     await tx.sale.update({ where: { id: saleId }, data: { montantVerse, status } });
   }
 
@@ -240,9 +284,11 @@ export class SalesService {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const inst = await tx.saleInstallment.findFirst({
         where: { saleId, tenantId: ctx.tenantId },
+        include: { sale: { select: { clientId: true } } },
       });
       if (!inst) throw new NotFoundException('Aucun acompte pour cette vente');
-      const montantVerse = inst.montantVerse + montant;
+      const applique = Math.min(montant, inst.soldeRestant);
+      const montantVerse = inst.montantVerse + applique;
       const soldeRestant = Math.max(inst.montantTotal - montantVerse, 0);
       const status = this.installmentStatus(inst.montantTotal, montantVerse);
 
@@ -254,6 +300,13 @@ export class SalesService {
         where: { id: saleId },
         data: { montantVerse, ...(status === 'SETTLED' ? { status: 'COMPLETED' } : {}) },
       });
+      // Tient la dette client à jour si la vente est rattachée à un client.
+      if (inst.sale.clientId && applique > 0) {
+        await tx.client.update({
+          where: { id: inst.sale.clientId },
+          data: { soldeCredit: { decrement: applique } },
+        });
+      }
       return updated;
     });
   }
@@ -293,6 +346,36 @@ export class SalesService {
     return toSaleDtoList(sales, ctx.role);
   }
 
+  /**
+   * Refuse une vente à crédit qui ferait dépasser le plafond du client (§6.2).
+   * `plafondCredit = null` → illimité.
+   */
+  private async assertCreditWithinLimit(
+    tx: TenantTx,
+    ctx: AuthContext,
+    input: CreateSaleInput,
+    total: number,
+    intendedAcompte: number,
+  ): Promise<void> {
+    if (!input.clientId) return;
+    if (input.paymentMethod !== 'CREDIT' && input.paymentMethod !== 'INSTALLMENT') return;
+
+    const client = await tx.client.findFirst({
+      where: { id: input.clientId, tenantId: ctx.tenantId },
+    });
+    if (!client) throw new NotFoundException('Client introuvable');
+
+    const detteProjetee = input.paymentMethod === 'CREDIT' ? total : total - intendedAcompte;
+    if (
+      client.plafondCredit !== null &&
+      client.soldeCredit + detteProjetee > client.plafondCredit
+    ) {
+      throw new BadRequestException(
+        `Plafond de crédit dépassé : dette ${client.soldeCredit} + ${detteProjetee} > plafond ${client.plafondCredit}`,
+      );
+    }
+  }
+
   private validateAcompte(input: CreateSaleInput, total: number): number {
     if (input.paymentMethod !== 'INSTALLMENT') return 0;
     const verse = input.montantVerse ?? 0;
@@ -307,7 +390,10 @@ export class SalesService {
     intendedAcompte: number,
   ): { montantVerse: number; status: 'COMPLETED' | 'PENDING_PAYMENT' } {
     if (paymentMethod === 'INSTALLMENT') {
-      return { montantVerse: intendedAcompte, status: intendedAcompte >= total ? 'COMPLETED' : 'PENDING_PAYMENT' };
+      return {
+        montantVerse: intendedAcompte,
+        status: intendedAcompte >= total ? 'COMPLETED' : 'PENDING_PAYMENT',
+      };
     }
     if (paymentMethod === 'CREDIT') {
       return { montantVerse: 0, status: 'PENDING_PAYMENT' };

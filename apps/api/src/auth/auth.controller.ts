@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Contrôleur API pour auth
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   InviteUserSchema,

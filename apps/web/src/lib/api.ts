@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Composant Frontend Web : api.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { getSupabase } from './supabase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -15,10 +26,7 @@ export class ApiError extends Error {
 }
 
 /** Appel à l'API Wilinwi avec le JWT Supabase courant en Authorization. */
-export async function api<T = unknown>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const {
     data: { session },
   } = await getSupabase().auth.getSession();

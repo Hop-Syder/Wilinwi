@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Composant UI partagé (Design System) : stat-card.tsx
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import * as React from 'react';
 import { cn } from '../cn.js';
 

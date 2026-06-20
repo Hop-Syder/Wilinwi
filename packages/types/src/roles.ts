@@ -49,6 +49,11 @@ export const CAPABILITIES = [
   // Caisse
   'cash:collect',
   'cash:close',
+  // CRM — Clients & dettes (MVP2)
+  'client:read', // voir l'identité des clients (nom, téléphone)
+  'client:write', // créer/modifier les clients, définir le plafond
+  'client:view_credit', // voir solde de crédit & plafond (donnée sensible)
+  'client:collect_payment', // enregistrer un remboursement de dette
   // Livraisons (MVP2)
   'delivery:update',
   // Rapports
@@ -70,11 +75,22 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'sale:override_floor_price',
     'cash:collect',
     'cash:close',
+    'client:read',
+    'client:write',
+    'client:view_credit',
+    'client:collect_payment',
     'reports:read',
     'reports:read_full',
   ],
-  SELLER: ['stock:read', 'sale:create', 'sale:read'],
-  CASHIER: ['sale:read', 'cash:collect', 'cash:close'],
+  SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read'],
+  CASHIER: [
+    'sale:read',
+    'cash:collect',
+    'cash:close',
+    'client:read',
+    'client:view_credit',
+    'client:collect_payment',
+  ],
   DELIVERY: ['delivery:update'],
 };
 
@@ -89,4 +105,12 @@ export function hasCapability(role: Role, capability: Capability): boolean {
  */
 export function canSeeSensitivePricing(role: Role): boolean {
   return hasCapability(role, 'reports:read_full');
+}
+
+/**
+ * Sécurité au niveau champ (CRM) : le solde de crédit et le plafond d'un client
+ * ne sont retournés qu'aux rôles autorisés (cf. §9 — `plafond_credit`/`dette`).
+ */
+export function canSeeClientCredit(role: Role): boolean {
+  return hasCapability(role, 'client:view_credit');
 }

@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Frontend (Route: (app))
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import Link from 'next/link';
 import {
   Package,
@@ -25,13 +36,62 @@ interface ModuleDef {
 }
 
 const MODULES: ModuleDef[] = [
-  { key: 'POS', label: 'Caisse', desc: 'Vendre, encaisser, négocier', href: '/pos', icon: ShoppingCart, accent: 'bg-emerald-50 text-emerald-700' },
-  { key: 'STOCK', label: 'Stock', desc: 'Produits, prix, inventaire', href: '/stock', icon: Package, accent: 'bg-brand-50 text-brand' },
-  { key: 'ANALYTICS', label: 'Analytics', desc: 'Tableau de bord & rapports', href: '/dashboard', icon: BarChart3, accent: 'bg-gold-50 text-gold-700' },
-  { key: 'PAY', label: 'Pay', desc: 'Mobile Money, trésorerie', href: null, icon: CreditCard, accent: 'bg-slate-100 text-slate-500' },
-  { key: 'CRM', label: 'CRM', desc: 'Clients, crédits, fidélité', href: null, icon: Users, accent: 'bg-slate-100 text-slate-500' },
-  { key: 'MARKET', label: 'Market', desc: 'Catalogue WhatsApp', href: null, icon: Store, accent: 'bg-slate-100 text-slate-500' },
-  { key: 'AI', label: 'AI', desc: 'Assistant intelligent', href: null, icon: Sparkles, accent: 'bg-slate-100 text-slate-500' },
+  {
+    key: 'POS',
+    label: 'Caisse',
+    desc: 'Vendre, encaisser, négocier',
+    href: '/pos',
+    icon: ShoppingCart,
+    accent: 'bg-emerald-50 text-emerald-700',
+  },
+  {
+    key: 'STOCK',
+    label: 'Stock',
+    desc: 'Produits, prix, inventaire',
+    href: '/stock',
+    icon: Package,
+    accent: 'bg-brand-50 text-brand',
+  },
+  {
+    key: 'ANALYTICS',
+    label: 'Analytics',
+    desc: 'Tableau de bord & rapports',
+    href: '/dashboard',
+    icon: BarChart3,
+    accent: 'bg-gold-50 text-gold-700',
+  },
+  {
+    key: 'PAY',
+    label: 'Pay',
+    desc: 'Mobile Money, trésorerie',
+    href: null,
+    icon: CreditCard,
+    accent: 'bg-slate-100 text-slate-500',
+  },
+  {
+    key: 'CRM',
+    label: 'CRM',
+    desc: 'Clients, crédits, fidélité',
+    href: '/clients',
+    icon: Users,
+    accent: 'bg-slate-100 text-slate-500',
+  },
+  {
+    key: 'MARKET',
+    label: 'Market',
+    desc: 'Catalogue WhatsApp',
+    href: null,
+    icon: Store,
+    accent: 'bg-slate-100 text-slate-500',
+  },
+  {
+    key: 'AI',
+    label: 'AI',
+    desc: 'Assistant intelligent',
+    href: null,
+    icon: Sparkles,
+    accent: 'bg-slate-100 text-slate-500',
+  },
 ];
 
 function isIncluded(plan: Plan, key: ModuleKey) {

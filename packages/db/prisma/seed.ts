@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Modèle et gestionnaire de base de données : seed.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { prisma, withTenant } from '../src/index.js';
 
 // Identifiants fixes pour un seed idempotent (rejouable).
@@ -29,9 +40,30 @@ async function main() {
     });
 
     const produits = [
-      { nom: 'Pagne Wax 6 yards', sku: 'WAX-6Y', prixAchat: 8000, prixPlancher: 11000, prixCatalogue: 15000, stock: 24 },
-      { nom: 'Sac à main cuir', sku: 'SAC-CUIR', prixAchat: 12000, prixPlancher: 18000, prixCatalogue: 25000, stock: 8 },
-      { nom: 'Savon noir 250g', sku: 'SAV-250', prixAchat: 500, prixPlancher: 800, prixCatalogue: 1200, stock: 120 },
+      {
+        nom: 'Pagne Wax 6 yards',
+        sku: 'WAX-6Y',
+        prixAchat: 8000,
+        prixPlancher: 11000,
+        prixCatalogue: 15000,
+        stock: 24,
+      },
+      {
+        nom: 'Sac à main cuir',
+        sku: 'SAC-CUIR',
+        prixAchat: 12000,
+        prixPlancher: 18000,
+        prixCatalogue: 25000,
+        stock: 8,
+      },
+      {
+        nom: 'Savon noir 250g',
+        sku: 'SAV-250',
+        prixAchat: 500,
+        prixPlancher: 800,
+        prixCatalogue: 1200,
+        stock: 120,
+      },
     ];
 
     for (const p of produits) {

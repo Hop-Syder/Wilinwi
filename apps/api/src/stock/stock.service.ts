@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service métier pour stock
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AuthContext,

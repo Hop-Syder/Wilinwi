@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Modèle et gestionnaire de base de données : index.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { PrismaClient, Prisma } from '@prisma/client';
 
 export * from '@prisma/client';
@@ -30,10 +41,7 @@ export type TenantTx = Prisma.TransactionClient;
  * les données au tenant courant. C'est le point d'entrée standard de toute
  * opération applicative.
  */
-export function withTenant<T>(
-  tenantId: string,
-  fn: (tx: TenantTx) => Promise<T>,
-): Promise<T> {
+export function withTenant<T>(tenantId: string, fn: (tx: TenantTx) => Promise<T>): Promise<T> {
   return prisma.$transaction(
     async (tx) => {
       // set_config(..., true) = local à la transaction (réinitialisé au commit).

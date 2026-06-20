@@ -104,6 +104,8 @@ model Tenant {
   sales           Sale[]
   saleInstallments SaleInstallment[]
   priceOverrides  PriceOverride[]
+  clients         Client[]
+  clientPayments  ClientPayment[]
 
   @@map("tenants")
 }
@@ -244,6 +246,7 @@ model Sale {
 
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vendeur     User             @relation("VendeurVentes", fields: [vendeurId], references: [id])
+  client      Client?          @relation(fields: [clientId], references: [id])
   items       SaleItem[]
   installment SaleInstallment?
 
@@ -315,4 +318,47 @@ model PriceOverride {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("price_overrides")
+}
+
+// ─────────────────────── CRM — Clients & Dettes (MVP2) ───────────────────────
+
+model Client {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  nom           String
+  telephone     String?
+  /// Dette courante du client (sensible — masquée aux rôles non autorisés).
+  soldeCredit   Int      @default(0) @map("solde_credit")
+  /// Plafond de crédit autorisé. null = illimité (sensible).
+  plafondCredit Int?     @map("plafond_credit")
+  notes         String?
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sales    Sale[]
+  payments ClientPayment[]
+
+  @@index([tenantId])
+  @@map("clients")
+}
+
+model ClientPayment {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @map("tenant_id") @db.Uuid
+  clientId  String        @map("client_id") @db.Uuid
+  montant   Int
+  methode   PaymentMethod @default(CASH)
+  note      String?
+  saleId    String?       @map("sale_id") @db.Uuid // remboursement rattaché à une vente (optionnel)
+  createdBy String        @map("created_by") @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@map("client_payments")
 }

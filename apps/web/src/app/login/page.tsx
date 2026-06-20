@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Frontend (Route: login)
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';

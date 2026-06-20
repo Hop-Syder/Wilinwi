@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Définitions de types partagés : roles.test.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { describe, expect, it } from 'vitest';
 import { canSeeSensitivePricing, hasCapability, type Role } from './roles.js';
 import { planIncludesModule } from './common.js';
@@ -34,13 +45,13 @@ describe('capacités par rôle', () => {
 });
 
 describe('gating des modules par plan', () => {
-  it('le plan FREE n\'inclut ni CRM ni AI', () => {
+  it("le plan FREE n'inclut ni CRM ni AI", () => {
     expect(planIncludesModule('FREE', 'POS')).toBe(true);
     expect(planIncludesModule('FREE', 'CRM')).toBe(false);
     expect(planIncludesModule('FREE', 'AI')).toBe(false);
   });
 
-  it('seul le plan BUSINESS inclut l\'IA', () => {
+  it("seul le plan BUSINESS inclut l'IA", () => {
     expect(planIncludesModule('BUSINESS', 'AI')).toBe(true);
     expect(planIncludesModule('PRO', 'AI')).toBe(false);
   });

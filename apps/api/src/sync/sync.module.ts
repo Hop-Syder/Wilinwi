@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Module d'injection de dépendances NestJS pour sync
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Body, Controller, Module, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { CreateSaleSchema, type AuthContext } from '@wilinwi/types';

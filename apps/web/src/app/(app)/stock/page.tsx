@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Frontend (Route: stock)
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { useEffect, useState } from 'react';
 import { Plus, Package } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
@@ -137,11 +148,31 @@ function NewProductForm({ onCreated }: { onCreated: () => void }) {
   return (
     <Card className="mt-4">
       <form onSubmit={submit} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Input label="Nom" value={form.nom} onChange={set('nom')} className="col-span-2 sm:col-span-3" />
+        <Input
+          label="Nom"
+          value={form.nom}
+          onChange={set('nom')}
+          className="col-span-2 sm:col-span-3"
+        />
         <Input label="SKU (optionnel)" value={form.sku} onChange={set('sku')} />
-        <Input label="Prix d'achat" type="number" value={form.prixAchat} onChange={set('prixAchat')} />
-        <Input label="Prix plancher" type="number" value={form.prixPlancher} onChange={set('prixPlancher')} />
-        <Input label="Prix catalogue" type="number" value={form.prixCatalogue} onChange={set('prixCatalogue')} />
+        <Input
+          label="Prix d'achat"
+          type="number"
+          value={form.prixAchat}
+          onChange={set('prixAchat')}
+        />
+        <Input
+          label="Prix plancher"
+          type="number"
+          value={form.prixPlancher}
+          onChange={set('prixPlancher')}
+        />
+        <Input
+          label="Prix catalogue"
+          type="number"
+          value={form.prixCatalogue}
+          onChange={set('prixCatalogue')}
+        />
         <Input label="Stock initial" type="number" value={form.stock} onChange={set('stock')} />
         {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
         <div className="col-span-full">

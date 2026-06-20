@@ -1,9 +1,20 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Layout de l'application (Route: (app))
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutGrid, Package, ShoppingCart, BarChart3, LogOut } from 'lucide-react';
+import { LayoutGrid, Package, ShoppingCart, BarChart3, Users, LogOut } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
@@ -14,6 +25,7 @@ const NAV = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/stock', label: 'Stock', icon: Package },
   { href: '/pos', label: 'Caisse', icon: ShoppingCart },
+  { href: '/clients', label: 'Clients', icon: Users },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -28,7 +40,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-slate-400">Chargement…</div>
+      <div className="flex min-h-screen items-center justify-center text-slate-400">
+        Chargement…
+      </div>
     );
   }
 

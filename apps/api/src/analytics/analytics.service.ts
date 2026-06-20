@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service métier pour analytics
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Injectable } from '@nestjs/common';
 import { canSeeSensitivePricing, type AuthContext } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';

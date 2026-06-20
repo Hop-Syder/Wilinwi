@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Modèle et gestionnaire de base de données : verify-isolation.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { prisma, withTenant } from '../src/index.js';
 
 // Vérifie l'isolation multi-tenant : RLS au niveau base + filtres applicatifs.
@@ -15,7 +26,15 @@ async function main() {
     const exists = await tx.product.findFirst({ where: { tenantId: B, sku: 'B-ONLY' } });
     if (!exists) {
       await tx.product.create({
-        data: { tenantId: B, nom: 'Produit B', sku: 'B-ONLY', prixAchat: 1, prixPlancher: 2, prixCatalogue: 3, stock: 1 },
+        data: {
+          tenantId: B,
+          nom: 'Produit B',
+          sku: 'B-ONLY',
+          prixAchat: 1,
+          prixPlancher: 2,
+          prixCatalogue: 3,
+          stock: 1,
+        },
       });
     }
   });
@@ -34,7 +53,7 @@ async function main() {
   console.log(
     aRlsOnly === aScoped && aReadsBFilter === 0
       ? '✅ RLS ENFORCÉE au niveau base (le rôle respecte la RLS).'
-      : '⚠️ RLS contournée par le rôle de connexion — l\'isolation repose sur les filtres applicatifs (tenant_id explicite partout).',
+      : "⚠️ RLS contournée par le rôle de connexion — l'isolation repose sur les filtres applicatifs (tenant_id explicite partout).",
   );
 
   // Nettoyage du tenant de test.

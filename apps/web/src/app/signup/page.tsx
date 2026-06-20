@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Page Frontend (Route: signup)
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,7 +53,11 @@ export default function SignupPage() {
         <p className="mt-1 text-sm text-slate-500">Créez votre boutique en 30 secondes.</p>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <Field label="Nom de la boutique" value={form.nomBoutique} onChange={set('nomBoutique')} />
+          <Field
+            label="Nom de la boutique"
+            value={form.nomBoutique}
+            onChange={set('nomBoutique')}
+          />
           <Field label="Votre nom" value={form.nomComplet} onChange={set('nomComplet')} />
           <Field label="Email" type="email" value={form.email} onChange={set('email')} />
           <Field

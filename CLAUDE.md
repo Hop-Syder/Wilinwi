@@ -78,13 +78,13 @@ Vérifier l'isolation : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolat
 
 ## Commandes
 
-| Commande | Effet |
-|---|---|
-| `pnpm dev` | API + web en watch |
-| `pnpm build` | Build de tout le monorepo (Turbo) |
-| `pnpm typecheck` | Vérification de types |
-| `pnpm test` | Tests unitaires (Vitest) |
-| `pnpm --filter @wilinwi/db studio` | Prisma Studio |
+| Commande                           | Effet                             |
+| ---------------------------------- | --------------------------------- |
+| `pnpm dev`                         | API + web en watch                |
+| `pnpm build`                       | Build de tout le monorepo (Turbo) |
+| `pnpm typecheck`                   | Vérification de types             |
+| `pnpm test`                        | Tests unitaires (Vitest)          |
+| `pnpm --filter @wilinwi/db studio` | Prisma Studio                     |
 
 ## Conventions
 

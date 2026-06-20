@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Composant Frontend Web : auth-context.tsx
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Plan, Role } from '@wilinwi/types';
 import { getSupabase } from './supabase';

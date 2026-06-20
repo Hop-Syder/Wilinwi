@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Module d'injection de dépendances NestJS pour app
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Controller, Get, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env';
@@ -7,6 +18,7 @@ import { AuthModule } from './auth/auth.module';
 import { StockModule } from './stock/stock.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SalesModule } from './pos/sales.module';
+import { CrmModule } from './crm/crm.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SyncModule } from './sync/sync.module';
 
@@ -15,10 +27,10 @@ class HealthController {
   @Public()
   @Get()
   root() {
-    return { 
-      status: 'online', 
-      message: "🚀 L'API Wilinwi est connectée et fonctionne parfaitement !", 
-      timestamp: new Date().toISOString() 
+    return {
+      status: 'online',
+      message: "🚀 L'API Wilinwi est connectée et fonctionne parfaitement !",
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -37,6 +49,7 @@ class HealthController {
     StockModule,
     InventoryModule,
     SalesModule,
+    CrmModule,
     AnalyticsModule,
     SyncModule,
   ],

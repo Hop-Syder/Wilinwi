@@ -13,11 +13,11 @@
 
 # ◈ Wilinwi
 
-> **Le système d'exploitation du commerce africain.** — *Gérez. Vendez. Grandissez.*
+> **Le système d'exploitation du commerce africain.** — _Gérez. Vendez. Grandissez._
 
 SaaS multi-tenant de gestion de commerce pour l'Afrique de l'Ouest (POS, Stock, Pay, CRM, Market, Analytics, IA), pensé pour les réalités locales : Mobile Money, vente à crédit, négociation tracée, et **fonctionnement hors-ligne**.
 
-Ce dépôt contient les **fondations et le MVP1 « Le Socle »**. 
+Ce dépôt contient les **fondations et le MVP1 « Le Socle »**.
 Pour en savoir plus sur l'architecture complète, les conventions de code et les instructions de développement approfondies, veuillez consulter [CLAUDE.md](file:///home/hopsyder/Projet/Wilinwi/CLAUDE.md).
 
 ---
@@ -67,7 +67,7 @@ L'intégration continue est automatisée via le fichier `.github/workflows/ci.ym
    - **Typecheck** : Vérification statique des types.
    - **Test** : Exécution de la suite de tests unitaires via Vitest.
 
-*Note : Les variables d'environnement de connexion à Supabase utilisées par la CI sont des valeurs factices car le pipeline (`build`, `typecheck`, `test`) ne nécessite pas de connexion active à la base de données.*
+_Note : Les variables d'environnement de connexion à Supabase utilisées par la CI sont des valeurs factices car le pipeline (`build`, `typecheck`, `test`) ne nécessite pas de connexion active à la base de données._
 
 ---
 
@@ -80,6 +80,7 @@ Le projet utilise une architecture distribuée pour séparer la couche présenta
 Le Frontend Next.js est optimisé pour être hébergé sur **Vercel**, ce qui garantit des temps de réponse rapides grâce à l'Edge Network et une intégration CI/CD sans effort pour des applications Next.js.
 
 **Configuration Vercel :**
+
 - **Framework Preset** : Next.js
 - **Root Directory** : `apps/web`
 - **Build Command** : Turborepo gère automatiquement le build depuis la racine. Vercel lancera par défaut la commande adéquate (inférée automatiquement : `cd ../.. && pnpm turbo run build --filter=web`).
@@ -93,8 +94,9 @@ Le Frontend Next.js est optimisé pour être hébergé sur **Vercel**, ce qui ga
 L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement de production stable et auto-scalable, idéal pour les applications Node.js nécessitant un cycle de vie long et stable (APIs RESTful classiques, modules complexes, etc.).
 
 **Configuration Railway :**
+
 - Lier le dépôt GitHub au projet Railway.
-- **Root Directory** : Laisser **vide** (ou `/`, la racine du dépôt). *Ne pas mettre `apps/api` sinon Railway ne verra pas le monorepo pnpm.*
+- **Root Directory** : Laisser **vide** (ou `/`, la racine du dépôt). _Ne pas mettre `apps/api` sinon Railway ne verra pas le monorepo pnpm._
 - **Build Command** : `pnpm turbo run build --filter=api`
 - **Start Command** : `pnpm --filter api start:prod`
 - **Variables d'environnement requises** :

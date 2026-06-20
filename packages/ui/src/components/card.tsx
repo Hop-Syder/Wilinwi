@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Composant UI partagé (Design System) : card.tsx
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import * as React from 'react';
 import { cn } from '../cn.js';
 
@@ -12,9 +23,6 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3
-      className={cn('font-display text-lg font-semibold text-brand', className)}
-      {...props}
-    />
+    <h3 className={cn('font-display text-lg font-semibold text-brand', className)} {...props} />
   );
 }

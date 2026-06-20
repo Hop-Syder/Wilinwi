@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Utilitaire de sécurité/validation API : zod-validation.pipe.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { BadRequestException, type PipeTransform } from '@nestjs/common';
 import type { ZodSchema } from 'zod';
 

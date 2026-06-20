@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Gestionnaire de mode offline PWA : sync.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import type { CreateSaleInput } from '@wilinwi/types';
 import { getDB, type CachedProduct, type PendingSale } from './db.js';
 
@@ -48,7 +59,9 @@ export class SyncEngine {
     try {
       const res = (await this.post('/api/sync/sales', {
         sales: pending.map((s) => s.payload),
-      })) as { results: { clientGeneratedId?: string; ok: boolean; id?: string; error?: string }[] };
+      })) as {
+        results: { clientGeneratedId?: string; ok: boolean; id?: string; error?: string }[];
+      };
 
       for (const r of res.results) {
         const local = pending.find((s) => s.id === r.clientGeneratedId);

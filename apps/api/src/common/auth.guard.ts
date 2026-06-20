@@ -1,9 +1,15 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Utilitaire de sécurité/validation API : auth.guard.ts
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { jwtVerify } from 'jose';
@@ -25,9 +31,7 @@ export class AuthGuard implements CanActivate {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.secret = new TextEncoder().encode(
-      this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'),
-    );
+    this.secret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

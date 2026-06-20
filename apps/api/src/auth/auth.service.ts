@@ -1,9 +1,16 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service métier pour auth
+ * @created 2026-06-20
+ * @updated 2026-06-20
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { AuthContext, InviteUserInput, SignUpInput } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
 import { SupabaseAdminService } from './supabase-admin.service';
@@ -53,9 +60,14 @@ export class AuthService {
     return { userId, tenantId };
   }
 
-  /** Invitation d'un membre par un OWNER/MANAGER (capacité users:manage). */
+  /**
+   * Invitation d'un membre par un OWNER/MANAGER (capacité users:manage).
+   * Renvoie un mot de passe temporaire à transmettre au membre, qui pourra se
+   * connecter immédiatement (puis le changer). NB : un flux d'invitation par
+   * email/lien est l'évolution de production naturelle.
+   */
   async inviteUser(ctx: AuthContext, input: InviteUserInput) {
-    const tempPassword = randomUUID();
+    const tempPassword = `Wlw-${randomBytes(4).toString('hex')}`;
     const userId = await this.supabase.createUser(input.email, tempPassword);
 
     try {
@@ -85,7 +97,7 @@ export class AuthService {
       throw err;
     }
 
-    return { userId };
+    return { userId, temporaryPassword: tempPassword };
   }
 
   /** Profil + contexte de l'utilisateur courant. */
