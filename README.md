@@ -94,7 +94,7 @@ L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement 
 
 **Configuration Railway :**
 - Lier le dépôt GitHub au projet Railway.
-- **Root Directory** : Sélectionner `apps/api` (ou utiliser les Nixpacks natifs de Railway qui comprennent le fonctionnement des workspaces pnpm et de Turborepo).
+- **Root Directory** : Laisser **vide** (ou `/`, la racine du dépôt). *Ne pas mettre `apps/api` sinon Railway ne verra pas le monorepo pnpm.*
 - **Build Command** : `pnpm turbo run build --filter=api`
 - **Start Command** : `pnpm --filter api start:prod`
 - **Variables d'environnement requises** :

@@ -13,6 +13,16 @@ import { SyncModule } from './sync/sync.module';
 @Controller()
 class HealthController {
   @Public()
+  @Get()
+  root() {
+    return { 
+      status: 'online', 
+      message: '🚀 L\\'API Wilinwi est connectée et fonctionne parfaitement !', 
+      timestamp: new Date().toISOString() 
+    };
+  }
+
+  @Public()
   @Get('health')
   health() {
     return { status: 'ok', service: 'wilinwi-api', ts: new Date().toISOString() };

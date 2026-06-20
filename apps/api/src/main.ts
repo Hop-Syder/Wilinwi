@@ -8,9 +8,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   // La validation des entrées se fait par route via ZodValidationPipe (pas de class-validator).
 
-  const port = Number(process.env.API_PORT ?? 4000);
-  await app.listen(port);
-  Logger.log(`🚀 Wilinwi API démarrée sur http://localhost:${port}/api`, 'Bootstrap');
+  const port = Number(process.env.PORT || process.env.API_PORT || 4000);
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`🚀 Wilinwi API démarrée sur le port ${port}`, 'Bootstrap');
 }
 
 void bootstrap();
