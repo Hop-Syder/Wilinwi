@@ -98,3 +98,5 @@ packages/
 - Vérifier l'isolation RLS : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolation.ts` → doit afficher "✅ RLS ENFORCÉE".
 - **Hors périmètre MVP1** : Trésorerie, dettes avancées, fournisseurs, livraisons, Market WhatsApp, fidélité, abonnements FedaPay, notifications, multi-boutiques, app Flutter, IA.
 - Toujours utiliser `PrismaService.forTenant()` — ne jamais requêter en dehors de ce contexte.
+- **[AUDIT QA - 2026-06-19]** : L'architecture NestJS/Prisma implémentée par Claude est robuste et respecte les contraintes DEXTY. La fuite de marge a été colmatée via `sale.mapper.ts`. Le `PriceOverride` est bloquant (statut `PENDING_APPROVAL`).
+- **[DEXTY RULES]** : Les signatures Dexty sont désormais présentes sur les fichiers critiques (`prisma.service.ts`, `sale.mapper.ts`, `sales.service.ts`, `roles.ts`, `schema.prisma`).

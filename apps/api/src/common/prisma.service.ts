@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Service d'accès à la base de données encapsulant le client Prisma avec la logique RLS multi-tenant
+ * @created 2026-06-19
+ * @updated 2026-06-19
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { prisma, withTenant, type PrismaClient, type TenantTx } from '@wilinwi/db';
 

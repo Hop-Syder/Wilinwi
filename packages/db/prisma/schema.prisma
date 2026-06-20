@@ -1,3 +1,14 @@
+// /**
+//  * @author @hopsyder
+//  * @organization Nexus Partners
+//  * @description Schéma Prisma MVP1 "Le Socle" avec prise en charge Multi-tenant, RLS et architecture à 4 prix
+//  * @created 2026-06-19
+//  * @updated 2026-06-19
+//  * 🌐 ceo.nexuspartners.xyz
+//  * 📧 daoudaabassichristian@gmail.com
+//  */
+// // ──────────────────────────────────
+
 // Wilinwi — schéma de données MVP1 « Le Socle »
 // Monolithe modulaire, multi-tenant. Toutes les tables (sauf Tenant) portent
 // un tenantId et sont protégées par RLS (cf. prisma/migrations/.../rls.sql).

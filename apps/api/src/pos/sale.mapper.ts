@@ -1,3 +1,14 @@
+/**
+ * @author @hopsyder
+ * @organization Nexus Partners
+ * @description Mappers de ventes assurant l'application stricte de la sécurité au niveau des champs (RBAC) pour protéger la marge
+ * @created 2026-06-19
+ * @updated 2026-06-19
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
+ */
+// ──────────────────────────────────
+
 import { canSeeSensitivePricing, type Role } from '@wilinwi/types';
 
 type PriceOverrideLike = { prixPlancher?: number | null } & Record<string, unknown>;
