@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
 import {
   CreateSaleSchema,
@@ -39,8 +39,15 @@ export class SalesController {
 
   @RequireCapabilities('sale:read')
   @Get('sales')
-  list(@CurrentUser() user: AuthContext) {
-    return this.sales.list(user);
+  list(
+    @CurrentUser() user: AuthContext,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('status') status?: string,
+    @Query('clientId') clientId?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.sales.list(user, { from, to, status, clientId, q });
   }
 
   @RequireCapabilities('sale:read')

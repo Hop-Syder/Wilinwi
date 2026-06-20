@@ -11,8 +11,8 @@
  */
 // ──────────────────────────────────
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Badge, Card, CardHeader, CardTitle, CardContent } from '@wilinwi/ui';
 import { ArrowLeft, Search, CheckCircle2, RotateCcw, CreditCard, Banknote } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
@@ -35,8 +35,11 @@ interface SaleDto {
   paymentMethod: string;
 }
 
-export default function PosReturnsPage() {
+function ReturnsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlSaleId = searchParams.get('saleId');
+
   const [searchId, setSearchId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,8 +50,9 @@ export default function PosReturnsPage() {
   const [action, setAction] = useState<'REFUND_CASH' | 'CREATE_CREDIT'>('REFUND_CASH');
   const [success, setSuccess] = useState(false);
 
-  const handleSearch = async () => {
-    if (!searchId.trim()) return;
+  const handleSearch = async (targetId?: string) => {
+    const idToSearch = targetId || searchId;
+    if (!idToSearch.trim()) return;
     setLoading(true);
     setError('');
     setSale(null);
@@ -57,11 +61,11 @@ export default function PosReturnsPage() {
 
     try {
       // Recherche d'une seule vente via l'API
-      const found = await apiGet<SaleDto>(`/api/pos/sales/${searchId}`);
+      const found = await apiGet<SaleDto>(`/api/pos/sales/${idToSearch}`);
       
       if (!found) {
         setError("Vente introuvable avec cet ID");
-      } else if (found.status !== 'COMPLETED') {
+      } else if (found.status !== 'COMPLETED' && found.status !== 'PENDING_PAYMENT') {
         setError("Cette vente n'est pas finalisée ou est déjà annulée.");
       } else {
         setSale(found);
@@ -72,6 +76,13 @@ export default function PosReturnsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (urlSaleId) {
+      setSearchId(urlSaleId);
+      void handleSearch(urlSaleId);
+    }
+  }, [urlSaleId]);
 
   const handleReturnAmountChange = (itemId: string, val: number, maxAllowed: number) => {
     if (val < 0) val = 0;
@@ -147,7 +158,7 @@ export default function PosReturnsPage() {
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
                 </div>
-                <Button onClick={handleSearch} disabled={loading} className="w-32">
+                <Button onClick={() => handleSearch()} disabled={loading} className="w-32">
                   {loading ? 'Recherche...' : <><Search className="mr-2 h-4 w-4" /> Chercher</>}
                 </Button>
               </div>
@@ -289,5 +300,13 @@ export default function PosReturnsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PosReturnsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>}>
+      <ReturnsContent />
+    </Suspense>
   );
 }

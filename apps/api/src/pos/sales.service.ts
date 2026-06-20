@@ -545,13 +545,57 @@ export class SalesService {
     });
   }
 
-  async list(ctx: AuthContext) {
+  async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; q?: string }) {
+    const where: any = { tenantId: ctx.tenantId };
+    
+    if (filters) {
+      const { from, to, status, clientId, q } = filters;
+      
+      if (from || to) {
+        where.createdAt = {};
+        if (from) where.createdAt.gte = new Date(from);
+        if (to) {
+          const toDate = new Date(to);
+          if (to.length <= 10) {
+            toDate.setHours(23, 59, 59, 999);
+          }
+          where.createdAt.lte = toDate;
+        }
+      }
+      
+      if (status) {
+        where.status = status;
+      }
+      
+      if (clientId) {
+        where.clientId = clientId;
+      }
+      
+      if (q) {
+        where.OR = [
+          { client: { nom: { contains: q, mode: 'insensitive' } } },
+          { vendeur: { nom: { contains: q, mode: 'insensitive' } } },
+          { items: { some: { product: { nom: { contains: q, mode: 'insensitive' } } } } }
+        ];
+        
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
+        if (isUuid) {
+          where.OR.push({ id: q });
+        }
+      }
+    }
+
     const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({
-        where: { tenantId: ctx.tenantId },
+        where,
         orderBy: { createdAt: 'desc' },
         take: 100,
-        include: { items: { include: { priceOverride: true } }, installment: true },
+        include: { 
+          items: { include: { priceOverride: true, product: true } }, 
+          installment: true,
+          client: true,
+          vendeur: { select: { id: true, nom: true, email: true } }
+        },
       }),
     );
     return toSaleDtoList(sales, ctx.role);
