@@ -17,7 +17,7 @@ class HealthController {
   root() {
     return { 
       status: 'online', 
-      message: '🚀 L\\'API Wilinwi est connectée et fonctionne parfaitement !', 
+      message: "🚀 L'API Wilinwi est connectée et fonctionne parfaitement !", 
       timestamp: new Date().toISOString() 
     };
   }
