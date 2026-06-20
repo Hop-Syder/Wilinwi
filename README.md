@@ -82,7 +82,7 @@ Le Frontend Next.js est optimisé pour être hébergé sur **Vercel**, ce qui ga
 **Configuration Vercel :**
 - **Framework Preset** : Next.js
 - **Root Directory** : `apps/web`
-- **Build Command** : Turborepo gère automatiquement le build depuis la racine. Vous devez surcharger la commande par défaut dans les paramètres Vercel : `cd ../.. && pnpm turbo run build --filter=@wilinwi/web`
+- **Build Command** : Turborepo gère automatiquement le build depuis la racine. Vercel lancera par défaut la commande adéquate (inférée automatiquement : `cd ../.. && pnpm turbo run build --filter=web`).
 - **Variables d'environnement requises** :
   - `NEXT_PUBLIC_API_URL` (L'URL publique du backend hébergé sur Railway)
   - `NEXT_PUBLIC_SUPABASE_URL` (L'URL du projet Supabase)
@@ -95,8 +95,8 @@ L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement 
 **Configuration Railway :**
 - Lier le dépôt GitHub au projet Railway.
 - **Root Directory** : Sélectionner `apps/api` (ou utiliser les Nixpacks natifs de Railway qui comprennent le fonctionnement des workspaces pnpm et de Turborepo).
-- **Build Command** : `pnpm turbo run build --filter=@wilinwi/api`
-- **Start Command** : `pnpm --filter @wilinwi/api start:prod`
+- **Build Command** : `pnpm turbo run build --filter=api`
+- **Start Command** : `pnpm --filter api start:prod`
 - **Variables d'environnement requises** :
   - `DATABASE_URL` (URL de pooling session Supabase : port 5432, indispensable pour la bonne exécution des transactions Prisma `withTenant`)
   - `PORT` (Injecté automatiquement par Railway, NestJS doit écouter sur ce port dynamiquement)
