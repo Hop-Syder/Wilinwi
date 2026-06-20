@@ -22,8 +22,9 @@ import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
-import { RotateCcw, HelpCircle } from 'lucide-react';
-import { PosOnboarding, type TourStep } from '@/components/pos-onboarding';
+import { RotateCcw } from 'lucide-react';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface CartLine {
   product: ProductDto;
@@ -50,7 +51,6 @@ export default function PosPage() {
   const [clientId, setClientId] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
-  const [showTour, setShowTour] = useState(false);
   const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
 
   const tourSteps: TourStep[] = [
@@ -80,12 +80,7 @@ export default function PosPage() {
     }
   ];
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem('wilinwi_pos_tour_done')) {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => setShowTour(true), 500);
-    }
-  }, []);
+  // useEffect removed since ContextualHelp handles initial display
 
   // Catalogue : depuis l'API si en ligne, sinon depuis le cache offline.
   useEffect(() => {
@@ -264,10 +259,15 @@ export default function PosPage() {
             <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
               Historique
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowTour(true)}>
-              <HelpCircle className="mr-1 h-4 w-4" />
-              Aide
-            </Button>
+            <ContextualHelp 
+              storageKey="wilinwi_pos_tour_done"
+              tourSteps={tourSteps}
+              useCases={[
+                { title: 'Faire une remise (Négociation)', description: 'Cliquez sur le prix réel d\'un produit dans le panier et modifiez-le. Le système vérifiera automatiquement que vous restez au-dessus du prix plancher.' },
+                { title: 'Vente à crédit ou acompte', description: 'Dans le panneau d\'encaissement, changez le mode de paiement sur Acompte/Crédit, sélectionnez un client enregistré, et indiquez le montant versé aujourd\'hui.' },
+                { title: 'Travailler sans connexion', description: 'Continuez d\'encaisser même sans internet. Les ventes sont sauvegardées localement et seront synchronisées automatiquement au retour de la connexion.' }
+              ]}
+            />
             <Button variant="outline" size="sm" onClick={() => setIsLocked(true)}>
               <Lock className="mr-1 h-4 w-4" />
               Verrouiller
@@ -486,15 +486,7 @@ export default function PosPage() {
         </div>
       </Card>
 
-      {showTour && (
-        <PosOnboarding 
-          steps={tourSteps} 
-          onComplete={() => {
-            setShowTour(false);
-            localStorage.setItem('wilinwi_pos_tour_done', 'true');
-          }} 
-        />
-      )}
+      {/* ContextualHelp gère le composant TourGuide en interne */}
     </div>
   );
 }

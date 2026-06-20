@@ -12,12 +12,12 @@ export type TourStep = {
   position?: 'top' | 'bottom' | 'left' | 'right';
 };
 
-interface PosOnboardingProps {
+interface TourGuideProps {
   steps: TourStep[];
   onComplete: () => void;
 }
 
-export function PosOnboarding({ steps, onComplete }: PosOnboardingProps) {
+export function TourGuide({ steps, onComplete }: TourGuideProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 

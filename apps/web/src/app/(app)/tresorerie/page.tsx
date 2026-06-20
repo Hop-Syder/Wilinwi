@@ -17,6 +17,8 @@ import {
 } from '@wilinwi/types';
 import { Button, Card, Badge, StatCard, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 type Balances = Record<CashAccount, number>;
 interface Movement {
@@ -42,6 +44,27 @@ export default function TresoreriePage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'expense' | 'close'>('expense');
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-treso-balances',
+      title: 'Soldes actuels',
+      content: 'Consultez la trésorerie disponible dans vos différents comptes (Caisse physique, Mobile Money, Banque).',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-treso-actions',
+      title: 'Opérations',
+      content: 'Enregistrez les sorties d\'argent (loyer, factures, salaires) et effectuez la clôture de caisse quotidienne.',
+      position: 'right',
+    },
+    {
+      targetId: 'tour-treso-history',
+      title: 'Historique',
+      content: 'Suivez la trace de toutes vos entrées et sorties (ventes, remboursements, dépenses) pour une comptabilité sans faille.',
+      position: 'left',
+    }
+  ];
+
   async function load() {
     try {
       const [b, m] = await Promise.all([
@@ -62,10 +85,22 @@ export default function TresoreriePage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-brand">Trésorerie</h1>
-      <p className="mt-1 text-sm text-slate-500">Soldes, dépenses et clôture de caisse.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-brand">Trésorerie</h1>
+          <p className="mt-1 text-sm text-slate-500">Soldes, dépenses et clôture de caisse.</p>
+        </div>
+        <ContextualHelp 
+          storageKey="wilinwi_treso_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Enregistrer une dépense courante', description: 'Cliquez sur l\'onglet "Dépense", choisissez le compte à débiter (ex: Caisse), la catégorie (ex: Électricité) et le montant.' },
+            { title: 'Clôturer la caisse (Fin de journée)', description: 'Sélectionnez "Clôture caisse", comptez l\'argent physique dans votre tiroir et entrez le montant. Le système identifiera les écarts éventuels.' }
+          ]}
+        />
+      </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3" id="tour-treso-balances">
         {CASH_ACCOUNTS.map((acc) => {
           const Icon = ACCOUNT_ICON[acc];
           return (
@@ -81,7 +116,7 @@ export default function TresoreriePage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">
-        <div>
+        <div id="tour-treso-actions">
           <div className="mb-3 flex gap-2">
             <TabBtn active={tab === 'expense'} onClick={() => setTab('expense')}>
               Dépense
@@ -97,7 +132,7 @@ export default function TresoreriePage() {
           )}
         </div>
 
-        <Card className="overflow-x-auto p-0">
+        <Card className="overflow-x-auto p-0" id="tour-treso-history">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-left text-slate-500">
               <tr>

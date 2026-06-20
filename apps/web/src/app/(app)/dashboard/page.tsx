@@ -12,7 +12,9 @@
 // ──────────────────────────────────
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Package, Wallet, AlertTriangle } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle } from 'lucide-react';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 import { StatCard, Card, CardTitle, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet, ApiError } from '@/lib/api';
 
@@ -30,23 +32,59 @@ interface Dashboard {
 
 export default function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-dashboard-stats',
+      title: 'Performance du jour',
+      content: 'Analysez rapidement le chiffre d\'affaires, le nombre de ventes et votre marge générée sur la journée.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-dashboard-charts',
+      title: 'Tendances & Top produits',
+      content: 'Visualisez l\'évolution des ventes sur la semaine et identifiez vos meilleures ventes pour anticiper vos réassorts.',
+      position: 'top',
+    }
+  ];
 
   useEffect(() => {
     apiGet<Dashboard>('/api/analytics/dashboard')
-      .then(setData)
-      .catch((e: ApiError) => setError(e.message));
+      .then((res) => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch((e: ApiError) => {
+        setError(e.message);
+        setLoading(false);
+      });
   }, []);
 
   if (error) return <ErrorState message={error} />;
-  if (!data) return <p className="text-slate-400">Chargement du tableau de bord…</p>;
+  if (loading || !data) return <p className="text-slate-400">Chargement du tableau de bord…</p>;
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-brand">Tableau de bord</h1>
-      <p className="mt-1 text-sm text-slate-500">L'état de santé de votre boutique aujourd'hui.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-brand">Tableau de bord</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Aperçu de l'activité du <strong className="font-medium">{new Date().toLocaleDateString()}</strong>.
+          </p>
+        </div>
+        <ContextualHelp 
+          storageKey="wilinwi_dashboard_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Suivre la marge bénéficiaire', description: 'Le chiffre d\'affaires vous indique ce qui est entré en caisse, mais la "Marge générée" vous montre votre bénéfice réel.' },
+            { title: 'Optimiser le réassort', description: 'Le panneau "Top Produits" vous montre quels articles se vendent le mieux, ce qui vous aide à savoir quoi racheter en priorité.' }
+          ]}
+        />
+      </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" id="tour-dashboard-stats">
         <StatCard
           label="Ventes du jour"
           value={formatFCFA(data.ventesDuJour)}
@@ -59,7 +97,7 @@ export default function DashboardPage() {
             label="Bénéfice du jour"
             value={formatFCFA(data.beneficeDuJour)}
             hint="Marge réelle"
-            icon={<Wallet className="h-5 w-5" />}
+            icon={<DollarSign className="h-5 w-5" />}
             accent="brand"
           />
         )}
@@ -81,7 +119,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2" id="tour-dashboard-charts">
         <Card>
           <CardTitle>
             <span className="inline-flex items-center gap-2">

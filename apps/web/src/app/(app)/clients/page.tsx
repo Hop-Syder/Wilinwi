@@ -12,6 +12,8 @@ import { canSeeClientCredit, type ClientDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface ClientDetail {
   client: ClientDto;
@@ -27,6 +29,21 @@ export default function ClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-clients-new',
+      title: 'Gérer vos clients',
+      content: 'Créez une fiche client avec ses coordonnées et définissez un plafond de crédit si nécessaire.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-clients-list',
+      title: 'Liste et suivi des dettes',
+      content: 'Retrouvez tous vos clients ici. Cliquez sur une fiche pour voir le détail des ventes à crédit et enregistrer un remboursement.',
+      position: 'bottom',
+    }
+  ];
 
   async function load() {
     try {
@@ -46,11 +63,21 @@ export default function ClientsPage() {
           <h1 className="font-display text-2xl font-bold text-brand">Clients</h1>
           <p className="mt-1 text-sm text-slate-500">Fiches clients, crédits et remboursements.</p>
         </div>
-        {canWrite && (
-          <Button onClick={() => setShowForm((v) => !v)}>
-            <Plus className="h-4 w-4" /> Nouveau client
-          </Button>
-        )}
+        <div className="flex items-center gap-2" id="tour-clients-new">
+          <ContextualHelp 
+            storageKey="wilinwi_clients_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Vente à crédit', description: 'Le crédit s\'enregistre automatiquement lors d\'une vente en Caisse avec le mode "Acompte/Crédit".' },
+              { title: 'Remboursement de dette', description: 'Cliquez sur la fiche d\'un client, puis saisissez le montant remboursé pour mettre à jour son solde.' }
+            ]}
+          />
+          {canWrite && (
+            <Button onClick={() => setShowForm((v) => !v)}>
+              <Plus className="h-4 w-4" /> Nouveau client
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -64,7 +91,7 @@ export default function ClientsPage() {
         />
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" id="tour-clients-list">
         {clients.map((c) => (
           <button
             key={c.id}
