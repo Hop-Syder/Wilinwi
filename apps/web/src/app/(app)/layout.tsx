@@ -14,7 +14,16 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutGrid, Package, ShoppingCart, BarChart3, Users, Wallet, LogOut } from 'lucide-react';
+import {
+  LayoutGrid,
+  Package,
+  ShoppingCart,
+  Receipt,
+  BarChart3,
+  Users,
+  Wallet,
+  LogOut,
+} from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
@@ -25,6 +34,7 @@ const NAV = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/stock', label: 'Stock', icon: Package },
   { href: '/pos', label: 'Caisse', icon: ShoppingCart },
+  { href: '/ventes', label: 'Ventes', icon: Receipt },
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/tresorerie', label: 'Trésorerie', icon: Wallet },
 ];
