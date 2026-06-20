@@ -11,15 +11,18 @@
  */
 // ──────────────────────────────────
 
-import { useEffect, useMemo, useState } from 'react';
-import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle, Lock, Star, Command } from 'lucide-react';
 import type { CreateSaleInput, PaymentMethod, ProductDto } from '@wilinwi/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+import Link from 'next/link';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
+import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
+import { RotateCcw } from 'lucide-react';
 
 interface CartLine {
   product: ProductDto;
@@ -33,8 +36,9 @@ export default function PosPage() {
   const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [query, setQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [productToAdd, setProductToAdd] = useState<ProductDto | null>(null);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'FAVORITES'>('ALL');
   const [payment, setPayment] = useState<PaymentMethod>('CASH');
   const [montantVerse, setMontantVerse] = useState('');
   const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
@@ -43,6 +47,8 @@ export default function PosPage() {
   const [busy, setBusy] = useState(false);
   const [clients, setClients] = useState<{ id: string; nom: string }[]>([]);
   const [clientId, setClientId] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
   const requiresClient = payment === 'CREDIT' || payment === 'INSTALLMENT';
 
   // Catalogue : depuis l'API si en ligne, sinon depuis le cache offline.
@@ -60,28 +66,62 @@ export default function PosPage() {
     apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
       .then(setClients)
       .catch(() => setClients([]));
+      
+    // Liste des utilisateurs pour le Mode Kiosque
+    apiGet<PinUser[]>('/api/users')
+      .then(setPinUsers)
+      .catch(() => {
+        // Fallback temporaire MVP
+        setPinUsers([
+          { id: '1', nom: 'Alice', role: 'CASHIER' },
+          { id: '2', nom: 'Bob (Gérant)', role: 'MANAGER' }
+        ]);
+      });
   }, []);
 
-  const filtered = useMemo(
-    () =>
-      products.filter(
-        (p) =>
-          p.nom.toLowerCase().includes(query.toLowerCase()) ||
-          (p.sku ?? '').toLowerCase().includes(query.toLowerCase()),
-      ),
-    [products, query],
-  );
+  // Raccourci clavier Cmd+K pour le champ de recherche
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const displayProducts = useMemo(() => {
+    let list = products;
+    if (activeTab === 'FAVORITES') {
+      // Simulation des favoris (ex: les 6 premiers produits)
+      list = products.slice(0, 6);
+    }
+    return list.filter(
+      (p) =>
+        p.nom.toLowerCase().includes(query.toLowerCase()) ||
+        (p.sku ?? '').toLowerCase().includes(query.toLowerCase()),
+    );
+  }, [products, query, activeTab]);
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
 
   function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue) {
+    if (product.stock <= 0) {
+      setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
+      return;
+    }
     setCart((c) => {
       const existing = c.find((l) => l.product.id === product.id);
+      const newQuantite = existing ? existing.quantite + quantite : quantite;
+      if (newQuantite > product.stock) {
+        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}.` });
+        return c;
+      }
       if (existing)
-        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: l.quantite + quantite, prixReel } : l));
+        return c.map((l) => (l.product.id === product.id ? { ...l, quantite: newQuantite, prixReel } : l));
       return [...c, { product, quantite, prixReel }];
     });
-    setProductToAdd(null);
   }
 
   function updateLine(id: string, patch: Partial<CartLine>) {
@@ -103,6 +143,13 @@ export default function PosPage() {
     );
     if (hasUnderFloor) {
       setMessage({ tone: 'err', text: 'Opération refusée : un produit est en dessous de son prix plancher fixe.' });
+      setBusy(false);
+      return;
+    }
+
+    const hasOutOfStock = cart.some((l) => l.quantite > l.product.stock);
+    if (hasOutOfStock) {
+      setMessage({ tone: 'err', text: 'Opération refusée : stock insuffisant pour un ou plusieurs produits.' });
       setBusy(false);
       return;
     }
@@ -144,6 +191,21 @@ export default function PosPage() {
 
   const [showHistory, setShowHistory] = useState(false);
 
+  if (isLocked) {
+    return (
+      <PinSwitchModal 
+        users={pinUsers}
+        onUnlock={(userId, pin) => {
+          // Dans une vraie app, on appelle une API pour vérifier le PIN
+          // Si succès : apiPost('/api/auth/switch', { userId, pin })
+          // Puis on met à jour le contexte Auth (useAuth)
+          setIsLocked(false);
+        }}
+        onCancel={() => setIsLocked(false)}
+      />
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       {isManager && (
@@ -156,73 +218,90 @@ export default function PosPage() {
       <div>
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
-          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
-            Historique du jour
-          </Button>
+          <div className="flex gap-2">
+            <Link href="/pos/returns">
+              <Button variant="outline" size="sm">
+                <RotateCcw className="mr-1 h-4 w-4" />
+                Retours
+              </Button>
+            </Link>
+            <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
+              Historique
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setIsLocked(true)}>
+              <Lock className="mr-1 h-4 w-4" />
+              Verrouiller
+            </Button>
+          </div>
         </div>
         <div className="relative mt-4">
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher un produit…"
-            className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && displayProducts.length > 0) {
+                addToCart(displayProducts[0]);
+                setQuery('');
+              }
+            }}
+            placeholder="Rechercher un produit..."
+            className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-12 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
           />
+          <div className="absolute right-3 top-2.5 flex items-center gap-1 text-xs text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+            <Command className="h-3 w-3" /> K
+          </div>
         </div>
 
         {showHistory ? (
           <TodaySalesPanel onClose={() => setShowHistory(false)} />
         ) : (
+          <>
+            {/* Filtres de catégories / favoris */}
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Button 
+                variant={activeTab === 'ALL' ? 'default' : 'outline'} 
+                size="sm" 
+                className="rounded-full shrink-0"
+                onClick={() => setActiveTab('ALL')}
+              >
+                Toutes les catégories
+              </Button>
+              <Button 
+                variant={activeTab === 'FAVORITES' ? 'default' : 'outline'} 
+                size="sm" 
+                className="rounded-full shrink-0"
+                onClick={() => setActiveTab('FAVORITES')}
+              >
+                <Star className={`mr-1.5 h-3.5 w-3.5 ${activeTab === 'FAVORITES' ? 'fill-white' : 'fill-amber-400 text-amber-400'}`} />
+                Favoris / Top Ventes
+              </Button>
+            </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {filtered.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setProductToAdd(p)}
-              className="rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md"
-            >
-              <div className="font-medium text-slate-900">{p.nom}</div>
-              <div className="tabular mt-1 text-sm text-emerald-700">
-                {formatFCFA(p.prixCatalogue)}
-              </div>
-              <Badge tone={p.stock <= 5 ? 'danger' : 'neutral'} className="mt-2">
-                {p.stock} en stock
-              </Badge>
-            </button>
-          ))}
-        </div>
+            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {displayProducts.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => addToCart(p)}
+                  disabled={p.stock <= 0}
+                  className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${p.stock <= 0 ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
+                >
+                  <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
+                  <div className="tabular mt-1 text-sm font-bold text-emerald-700">
+                    {formatFCFA(p.prixCatalogue)}
+                  </div>
+                  <Badge tone={p.stock <= 0 ? 'danger' : p.stock <= 5 ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
+                    {p.stock === 0 ? 'Rupture' : `${p.stock} en stock`}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Modal d'ajout au panier */}
-      {productToAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setProductToAdd(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-xl font-bold text-slate-900">{productToAdd.nom}</h3>
-            
-            <div className="mt-4 rounded-xl bg-slate-50 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-600">Prix catalogue</span>
-                <span className="tabular text-lg font-bold text-emerald-600">{formatFCFA(productToAdd.prixCatalogue)}</span>
-              </div>
-              
-              {productToAdd.prixPlancher !== undefined && (
-                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                  <span className="flex items-center gap-1 text-sm font-medium text-amber-600">
-                    <AlertTriangle className="h-4 w-4" /> Prix plancher
-                  </span>
-                  <span className="tabular text-lg font-bold text-amber-600">{formatFCFA(productToAdd.prixPlancher)}</span>
-                </div>
-              )}
-            </div>
 
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setProductToAdd(null)}>Annuler</Button>
-              <Button className="flex-1" onClick={() => addToCart(productToAdd)}>Ajouter</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Panier */}
       <Card className="h-fit lg:sticky lg:top-20">
@@ -246,9 +325,10 @@ export default function PosPage() {
                   <input
                     type="number"
                     min={1}
+                    max={l.product.stock}
                     value={l.quantite}
                     onChange={(e) =>
-                      updateLine(l.product.id, { quantite: Math.max(1, Number(e.target.value)) })
+                      updateLine(l.product.id, { quantite: Math.max(1, Math.min(l.product.stock, Number(e.target.value))) })
                     }
                     className="tabular w-16 rounded-md border border-slate-300 px-2 py-1 text-sm"
                   />

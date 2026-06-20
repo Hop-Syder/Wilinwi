@@ -91,6 +91,12 @@ export class SalesService {
         });
         if (!product) throw new NotFoundException(`Produit ${item.productId} introuvable`);
 
+        if (item.quantite > product.stock) {
+          throw new BadRequestException(
+            `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${product.stock}`
+          );
+        }
+
         const sousPlancher = item.prixReel < product.prixPlancher;
         if (sousPlancher) {
           throw new BadRequestException(
@@ -414,6 +420,102 @@ export class SalesService {
       });
     });
     return sale ? toSaleDto(sale, ctx.role) : sale;
+  }
+
+  /**
+   * Retour partiel (ou total) d'articles d'une vente.
+   * Recrédite le stock, et génère un avoir (solde client) ou un décaissement (remboursement).
+   */
+  async returnPartial(
+    ctx: AuthContext,
+    saleId: string,
+    returns: { saleItemId: string; quantiteRetournee: number }[],
+    action: 'REFUND_CASH' | 'CREATE_CREDIT'
+  ) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const sale = await tx.sale.findFirst({
+        where: { id: saleId, tenantId: ctx.tenantId },
+        include: { items: true },
+      });
+      if (!sale) throw new NotFoundException('Vente introuvable');
+      if (sale.status !== 'COMPLETED') throw new BadRequestException('Seules les ventes finalisées peuvent faire l\'objet d\'un retour partiel');
+
+      let refundAmount = 0;
+
+      for (const ret of returns) {
+        if (ret.quantiteRetournee <= 0) continue;
+        const item = sale.items.find(i => i.id === ret.saleItemId);
+        if (!item) throw new BadRequestException(`Ligne ${ret.saleItemId} introuvable`);
+        
+        // Vérifier que la quantité retournée (historique + demandée) ne dépasse pas la quantité vendue
+        // On force le cast 'any' si prisma client n'est pas encore généré pour quantiteRetournee
+        const itemAny = item as any;
+        const prevReturned = itemAny.quantiteRetournee || 0;
+        if (prevReturned + ret.quantiteRetournee > item.quantite) {
+          throw new BadRequestException(`Impossible de retourner ${ret.quantiteRetournee} article(s) pour la ligne ${item.id} (déjà retourné: ${prevReturned}/${item.quantite})`);
+        }
+
+        // MAJ de la ligne
+        await tx.saleItem.update({
+          where: { id: item.id },
+          data: { quantiteRetournee: { increment: ret.quantiteRetournee } } as any,
+        });
+
+        // Remettre en stock
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            productId: item.productId,
+            variantId: item.variantId,
+            type: 'IN',
+            quantite: ret.quantiteRetournee,
+            motif: `Retour client (Vente ${sale.id.slice(0, 8)})`,
+            saleId: sale.id,
+          },
+        });
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: ret.quantiteRetournee } },
+        });
+
+        refundAmount += item.prixReel * ret.quantiteRetournee;
+      }
+
+      if (refundAmount > 0) {
+        if (action === 'CREATE_CREDIT') {
+          if (!sale.clientId) throw new BadRequestException("Impossible de créer un avoir sans client rattaché à la vente");
+          await tx.client.update({
+            where: { id: sale.clientId },
+            data: { soldeCredit: { decrement: refundAmount } }, // Décrémenter la dette = Créer un avoir
+          });
+        } else if (action === 'REFUND_CASH') {
+          const compte = accountForPayment(sale.paymentMethod) || 'CAISSE';
+          await tx.cashMovement.create({
+            data: {
+              tenantId: ctx.tenantId,
+              type: 'OUT',
+              compte,
+              montant: refundAmount,
+              source: 'ADJUSTMENT',
+              note: `Remboursement suite retour (Vente ${sale.id.slice(0, 8)})`,
+              saleId: sale.id,
+              createdBy: ctx.userId,
+            },
+          });
+          // Ajuster le montant versé de la vente pour la comptabilité
+          await tx.sale.update({
+            where: { id: sale.id },
+            data: { montantVerse: { decrement: refundAmount } },
+          });
+        }
+      }
+
+      const updatedSale = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { items: { include: { priceOverride: true } }, installment: true },
+      });
+      return toSaleDto(updatedSale as any, ctx.role);
+    });
   }
 
   async list(ctx: AuthContext) {

@@ -23,15 +23,22 @@ const badgeVariants = cva(
         success: 'bg-emerald-50 text-emerald-700',
         warning: 'bg-gold-50 text-gold-700',
         danger: 'bg-red-50 text-red-600',
+        outline: 'border border-slate-300 bg-transparent text-slate-600',
       },
     },
     defaultVariants: { tone: 'neutral' },
   },
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
+type Tone = NonNullable<VariantProps<typeof badgeVariants>['tone']>;
 
-export function Badge({ className, tone, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {
+  /** Alias de `tone` (compatibilité ergonomique). */
+  variant?: Tone;
+}
+
+export function Badge({ className, tone, variant, ...props }: BadgeProps) {
+  return <span className={cn(badgeVariants({ tone: tone ?? variant }), className)} {...props} />;
 }

@@ -26,3 +26,11 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
     <h3 className={cn('font-display text-lg font-semibold text-brand', className)} {...props} />
   );
 }
+
+export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('mb-3', className)} {...props} />;
+}
+
+export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn(className)} {...props} />;
+}

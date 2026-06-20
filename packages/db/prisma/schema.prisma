@@ -119,6 +119,7 @@ model User {
   email     String
   role      Role     @default(SELLER)
   actif     Boolean  @default(true)
+  pinCode   String?  @map("pin_code")
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -265,6 +266,7 @@ model SaleItem {
   productId String  @map("product_id") @db.Uuid
   variantId String? @map("variant_id") @db.Uuid
   quantite  Int
+  quantiteRetournee Int @default(0) @map("quantite_retournee")
   prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié
   /// Coût figé au moment de la vente (prix d'achat), pour le calcul de marge.
   coutUnitaire Int  @map("cout_unitaire")

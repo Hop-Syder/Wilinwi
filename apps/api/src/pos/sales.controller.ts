@@ -89,4 +89,14 @@ export class SalesController {
   cancel(@CurrentUser() user: AuthContext, @Param('id') id: string) {
     return this.sales.cancelSale(user, id);
   }
+
+  @RequireCapabilities('sale:cancel')
+  @Post('sales/:id/return')
+  returnPartial(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() body: { returns: { saleItemId: string; quantiteRetournee: number }[]; action: 'REFUND_CASH' | 'CREATE_CREDIT' }
+  ) {
+    return this.sales.returnPartial(user, id, body.returns, body.action);
+  }
 }
