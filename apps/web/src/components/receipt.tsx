@@ -17,8 +17,17 @@ export interface ReceiptSale {
   montantVerse: number;
   paymentMethod: PaymentMethod;
   createdAt: string;
+  /** Code du reçu public → QR vers la page Wilinwi /r/<code>. */
+  receiptCode?: string | null;
   items: { id: string; quantite: number; prixReel: number; product?: { nom: string } | null }[];
   client?: { nom: string; telephone?: string | null } | null;
+}
+
+/** Base de l'URL publique du reçu (domaine court configurable, sinon origine courante). */
+function receiptBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_RECEIPT_BASE_URL) return process.env.NEXT_PUBLIC_RECEIPT_BASE_URL;
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'https://wilinwi.com';
 }
 
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */
@@ -42,6 +51,8 @@ function receiptText(sale: ReceiptSale): string {
 export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: () => void }) {
   const phone = (sale.client?.telephone ?? '').replace(/[^0-9]/g, '');
   const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(receiptText(sale))}`;
+  // QR → page Wilinwi (choix du canal : PDF/WhatsApp/SMS/Email). Repli wa.me si pas de code.
+  const qrValue = sale.receiptCode ? `${receiptBaseUrl()}/r/${sale.receiptCode}` : waUrl;
   const reste = sale.total - sale.montantVerse;
 
   return (
@@ -107,9 +118,9 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
           {sale.client && <div className="mt-1 text-[11px]">Client : {sale.client.nom}</div>}
 
           <div className="mt-3 flex flex-col items-center">
-            <QRCodeSVG value={waUrl} size={96} />
+            <QRCodeSVG value={qrValue} size={104} level="M" />
             <div className="mt-1 text-center text-[10px] text-slate-500">
-              Scannez pour recevoir le reçu sur WhatsApp
+              Scannez pour votre reçu (WhatsApp · SMS · PDF)
             </div>
           </div>
 

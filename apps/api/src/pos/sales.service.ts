@@ -22,6 +22,7 @@ import {
   type CreateSaleInput,
   type InstallmentStatus,
 } from '@wilinwi/types';
+import { randomBytes } from 'node:crypto';
 import { Prisma, type TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
@@ -230,7 +231,7 @@ export class SalesService {
   private async finalize(tx: TenantTx, ctx: AuthContext, saleId: string) {
     const sale = await tx.sale.findUniqueOrThrow({
       where: { id: saleId },
-      include: { items: true },
+      include: { items: { include: { product: true } } },
     });
 
     for (const item of sale.items) {
@@ -313,7 +314,29 @@ export class SalesService {
       });
     }
 
-    await tx.sale.update({ where: { id: saleId }, data: { montantVerse, status } });
+    // Reçu public : QR → page Wilinwi /r/<code>. Données dénormalisées non sensibles.
+    const receiptCode = randomBytes(5).toString('hex').toUpperCase(); // 10 caractères
+    await tx.sale.update({ where: { id: saleId }, data: { montantVerse, status, receiptCode } });
+
+    const tenant = await tx.tenant.findUnique({
+      where: { id: ctx.tenantId },
+      select: { nom: true },
+    });
+    await tx.publicReceipt.create({
+      data: {
+        code: receiptCode,
+        tenantId: ctx.tenantId,
+        boutiqueNom: tenant?.nom ?? 'Wilinwi',
+        total: sale.total,
+        montantVerse,
+        items: sale.items.map((it) => ({
+          nom: it.product?.nom ?? 'Article',
+          quantite: it.quantite,
+          prixReel: it.prixReel,
+        })),
+        saleDate: sale.createdAt,
+      },
+    });
   }
 
   /** Versement supplémentaire sur un acompte. */

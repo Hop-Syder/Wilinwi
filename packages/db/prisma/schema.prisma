@@ -133,6 +133,23 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+// ─────────────────────── Reçu public (QR → page Wilinwi) ───────────────────────
+// Données DÉNORMALISÉES & non sensibles, lisibles publiquement par code opaque.
+// PAS de RLS (lecture publique volontaire) ; ne contient jamais coût/marge/client.
+
+model PublicReceipt {
+  code         String   @id // code court opaque (= Sale.receiptCode)
+  tenantId     String   @map("tenant_id") @db.Uuid
+  boutiqueNom  String   @map("boutique_nom")
+  total        Int
+  montantVerse Int      @map("montant_verse")
+  items        Json // [{ nom, quantite, prixReel }]
+  saleDate     DateTime @map("sale_date")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("public_receipts")
+}
+
 model User {
   id        String   @id @db.Uuid // = id Supabase Auth (auth.users)
   tenantId  String   @map("tenant_id") @db.Uuid
@@ -273,6 +290,8 @@ model Sale {
   montantVerse     Int           @default(0) @map("montant_verse")
   /// Identifiant généré côté client pour l'idempotence de la sync offline.
   clientGeneratedId String?      @map("client_generated_id")
+  /// Code court opaque du reçu public (QR → page wilinwi.com/r/<code>).
+  receiptCode      String?       @unique @map("receipt_code")
   createdAt        DateTime      @default(now()) @map("created_at")
 
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
