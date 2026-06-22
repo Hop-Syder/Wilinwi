@@ -19,7 +19,7 @@ import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import Link from 'next/link';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
-import type { PendingSale } from '@wilinwi/offline';
+import type { PendingSale as PendingSyncSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
@@ -60,7 +60,7 @@ export default function PosPage() {
     status: 'pending',
   });
   // Ventes refusées par le serveur (échec permanent) en attente d'une décision.
-  const [rejected, setRejected] = useState<PendingSale[]>([]);
+  const [rejected, setRejected] = useState<PendingSyncSale[]>([]);
 
   async function refreshRejected() {
     setRejected(await syncEngine.rejectedSales());
@@ -125,7 +125,7 @@ export default function PosPage() {
   }
 
   /** Recharge une vente refusée dans le panier puis la retire de la file. */
-  async function fixFromSale(s: PendingSale) {
+  async function fixFromSale(s: PendingSyncSale) {
     rebuildCart(s.payload);
     await discardById(s.id);
   }
@@ -190,6 +190,14 @@ export default function PosPage() {
       .catch(() => setClients([]));
     // Ventes refusées en attente d'une décision (ex. refusées en arrière-plan).
     void refreshRejected();
+  }, []);
+
+  // Rafraîchit la liste des refus pour capter ceux produits par l'auto-retry de fond.
+  useEffect(() => {
+    const id = setInterval(() => {
+      void syncEngine.rejectedSales().then(setRejected);
+    }, 20_000);
+    return () => clearInterval(id);
   }, []);
 
   // Raccourci clavier Cmd+K pour le champ de recherche
