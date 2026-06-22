@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Package, Search, Filter, AlertTriangle, ArrowRightLeft, Edit, Clock } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA, formatQty, Input } from '@wilinwi/ui';
-import { apiGet, ApiError } from '@/lib/api';
+import { apiGet } from '@/lib/api';
+import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
 import { StockMovementModal, ProductFormModal } from '@/components/stock-modals';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -15,8 +16,14 @@ export default function StockPage() {
   const { user } = useAuth();
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER';
   const canSeeCost = canWrite;
-  const [products, setProducts] = useState<ProductDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data,
+    error,
+    refetch,
+  } = useCachedQuery<ProductDto[]>('stock/products', () =>
+    apiGet<ProductDto[]>('/api/stock/products'),
+  );
+  const products = data ?? [];
   
   // UI State
   const [showProductModal, setShowProductModal] = useState(false);
@@ -48,16 +55,6 @@ export default function StockPage() {
     }
   ];
 
-  async function load() {
-    try {
-      setProducts(await apiGet<ProductDto[]>('/api/stock/products'));
-    } catch (e) {
-      setError((e as ApiError).message);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
 
   const filteredProducts = products.filter(p => {
     if (filterLowStock && p.stock > (p.seuilAlerte ?? 5)) return false;
@@ -93,7 +90,9 @@ export default function StockPage() {
         </div>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && products.length === 0 && (
+        <p className="mt-4 text-sm text-red-600">{error.message}</p>
+      )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-md" id="tour-stock-search">
@@ -190,7 +189,7 @@ export default function StockPage() {
         <ProductFormModal 
           product={editingProduct} 
           onClose={() => setShowProductModal(false)} 
-          onSuccess={() => { setShowProductModal(false); void load(); }} 
+          onSuccess={() => { setShowProductModal(false); void refetch(); }} 
         />
       )}
 
@@ -198,7 +197,7 @@ export default function StockPage() {
         <StockMovementModal 
           product={movementProduct} 
           onClose={() => setMovementProduct(undefined)} 
-          onSuccess={() => { setMovementProduct(undefined); void load(); }} 
+          onSuccess={() => { setMovementProduct(undefined); void refetch(); }} 
         />
       )}
     </div>

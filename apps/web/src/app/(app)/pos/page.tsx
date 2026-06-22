@@ -246,9 +246,9 @@ export default function PosPage() {
 
       {/* Catalogue */}
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link href="/pos/returns">
               <Button variant="outline" size="sm">
                 <RotateCcw className="mr-1 h-4 w-4" />

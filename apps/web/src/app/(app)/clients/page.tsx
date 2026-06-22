@@ -36,6 +36,7 @@ import { canSeeClientCredit, type ClientDto, PAYMENT_METHOD_LABELS, type Payment
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { readCache, writeCache } from '@wilinwi/offline';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import Link from 'next/link';
@@ -130,12 +131,32 @@ export default function ClientsPage() {
     }
   ];
 
-  // Fetch clients & KPIs
+  // Clé de cache local namespacée par tenant + utilisateur (isolation multi-tenant).
+  const cacheKey = (k: string) => (user ? `${user.tenantId}:${user.userId}:${k}` : null);
+
+  // Fetch clients & KPIs — affichage instantané depuis le cache local (stale-while-revalidate),
+  // puis rafraîchissement réseau en arrière-plan.
   const loadData = async () => {
+    const ckClients = cacheKey('crm/clients');
+    const ckKpis = cacheKey('crm/kpis');
     try {
-      setClients(await apiGet<ClientDto[]>('/api/crm/clients'));
+      if (ckClients) {
+        const cached = await readCache<ClientDto[]>(ckClients);
+        if (cached) setClients(cached);
+      }
+      if (seeCredit && ckKpis) {
+        const cachedKpis = await readCache<CrmKpis>(ckKpis);
+        if (cachedKpis) setKpis(cachedKpis);
+      }
+
+      const freshClients = await apiGet<ClientDto[]>('/api/crm/clients');
+      setClients(freshClients);
+      if (ckClients) void writeCache(ckClients, freshClients);
+
       if (seeCredit) {
-        setKpis(await apiGet<CrmKpis>('/api/crm/clients/kpis'));
+        const freshKpis = await apiGet<CrmKpis>('/api/crm/clients/kpis');
+        setKpis(freshKpis);
+        if (ckKpis) void writeCache(ckKpis, freshKpis);
       }
     } catch (e: any) {
       setError(e.message || "Erreur lors du chargement");

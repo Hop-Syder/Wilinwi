@@ -39,6 +39,8 @@ import {
 } from '@wilinwi/types';
 import { Button, Card, Badge, StatCard, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { readCache, writeCache } from '@wilinwi/offline';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 
@@ -121,6 +123,7 @@ function getDateRange(period: string): { from?: string; to?: string } {
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export default function TresoreriePage() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<TreasuryStats | null>(null);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [closes, setCloses] = useState<CashClose[]>([]);
@@ -170,21 +173,39 @@ export default function TresoreriePage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const query = buildMovementQuery();
+    // Cache local (stale-while-revalidate) clé par filtres → affichage instantané.
+    const ck = user ? `${user.tenantId}:${user.userId}:treasury${query}` : null;
     try {
+      if (ck) {
+        const cached = await readCache<{
+          stats: TreasuryStats;
+          movements: Movement[];
+          closes: CashClose[];
+        }>(ck);
+        if (cached) {
+          setStats(cached.stats);
+          setMovements(cached.movements);
+          setCloses(cached.closes);
+          setLoading(false);
+        }
+      }
+
       const [s, m, c] = await Promise.all([
         apiGet<TreasuryStats>('/api/treasury/stats'),
-        apiGet<Movement[]>(`/api/treasury/movements${buildMovementQuery()}`),
+        apiGet<Movement[]>(`/api/treasury/movements${query}`),
         apiGet<CashClose[]>('/api/treasury/closes'),
       ]);
       setStats(s);
       setMovements(m);
       setCloses(c);
+      if (ck) void writeCache(ck, { stats: s, movements: m, closes: c });
     } catch (e) {
       setError((e as ApiError).message);
     } finally {
       setLoading(false);
     }
-  }, [buildMovementQuery]);
+  }, [buildMovementQuery, user]);
 
   useEffect(() => {
     void load();
@@ -285,7 +306,7 @@ export default function TresoreriePage() {
           })}
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="col-span-1 rounded-xl border border-slate-200 bg-white px-4 py-3">
             <p className="text-xs text-slate-500">Total consolidé</p>
             <p className="font-display text-xl font-bold text-slate-800">

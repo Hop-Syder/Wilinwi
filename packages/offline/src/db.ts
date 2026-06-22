@@ -29,18 +29,36 @@ export interface CachedProduct extends ProductDto {
 }
 
 /**
+ * Entrée du cache générique « stale-while-revalidate » : on conserve la dernière
+ * réponse connue d'un endpoint pour l'afficher instantanément au chargement suivant,
+ * pendant qu'une requête réseau la rafraîchit en arrière-plan.
+ */
+export interface CacheEntry {
+  key: string;
+  value: unknown;
+  cachedAt: number;
+}
+
+/**
  * Base locale IndexedDB (§5.4). L'appareil sait toujours travailler seul ;
  * le serveur reste la source de vérité finale.
  */
 export class WilinwiOfflineDB extends Dexie {
   pendingSales!: Table<PendingSale, string>;
   products!: Table<CachedProduct, string>;
+  cache!: Table<CacheEntry, string>;
 
   constructor() {
     super('wilinwi-offline');
     this.version(1).stores({
       pendingSales: 'id, status, createdAt',
       products: 'id, nom',
+    });
+    // v2 : ajout du cache générique des réponses d'API (Dexie migre automatiquement).
+    this.version(2).stores({
+      pendingSales: 'id, status, createdAt',
+      products: 'id, nom',
+      cache: 'key, cachedAt',
     });
   }
 }
@@ -51,4 +69,37 @@ let _db: WilinwiOfflineDB | null = null;
 export function getDB(): WilinwiOfflineDB {
   if (!_db) _db = new WilinwiOfflineDB();
   return _db;
+}
+
+/** Lit une valeur du cache générique. `undefined` si absente ou IndexedDB indisponible. */
+export async function readCache<T>(key: string): Promise<T | undefined> {
+  try {
+    const entry = await getDB().cache.get(key);
+    return entry ? (entry.value as T) : undefined;
+  } catch {
+    return undefined; // SSR / navigation privée / quota : on ignore silencieusement.
+  }
+}
+
+/** Écrit (ou remplace) une valeur dans le cache générique. */
+export async function writeCache<T>(key: string, value: T): Promise<void> {
+  try {
+    await getDB().cache.put({ key, value, cachedAt: Date.now() });
+  } catch {
+    /* IndexedDB indisponible / quota dépassé : sans gravité, le réseau reste la source. */
+  }
+}
+
+/** Purge des entrées du cache (toutes, ou par préfixe — ex. au changement de tenant). */
+export async function clearCache(prefix?: string): Promise<void> {
+  try {
+    if (!prefix) {
+      await getDB().cache.clear();
+      return;
+    }
+    const keys = await getDB().cache.where('key').startsWith(prefix).primaryKeys();
+    await getDB().cache.bulkDelete(keys);
+  } catch {
+    /* sans gravité */
+  }
 }

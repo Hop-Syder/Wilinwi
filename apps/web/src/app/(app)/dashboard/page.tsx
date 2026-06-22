@@ -11,12 +11,12 @@
  */
 // ──────────────────────────────────
 
-import { useEffect, useState } from 'react';
 import { Activity, TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import { StatCard, Card, CardTitle, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
-import { apiGet, ApiError } from '@/lib/api';
+import { apiGet } from '@/lib/api';
+import { useCachedQuery } from '@/lib/use-cached-query';
 
 interface Dashboard {
   ventesDuJour: number;
@@ -31,9 +31,10 @@ interface Dashboard {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<Dashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useCachedQuery<Dashboard>(
+    'dashboard',
+    () => apiGet<Dashboard>('/api/analytics/dashboard'),
+  );
 
   const tourSteps: TourStep[] = [
     {
@@ -50,19 +51,9 @@ export default function DashboardPage() {
     }
   ];
 
-  useEffect(() => {
-    apiGet<Dashboard>('/api/analytics/dashboard')
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch((e: ApiError) => {
-        setError(e.message);
-        setLoading(false);
-      });
-  }, []);
-
-  if (error) return <ErrorState message={error} />;
+  // Affiche les erreurs seulement si aucune donnée (cache) n'est disponible :
+  // un échec de rafraîchissement en arrière-plan ne doit pas masquer la vue en cache.
+  if (error && !data) return <ErrorState message={error.message} />;
   if (loading || !data) return <p className="text-slate-400">Chargement du tableau de bord…</p>;
 
   return (

@@ -34,6 +34,7 @@ import { PAYMENT_METHOD_LABELS, type PaymentMethod, type ClientDto } from '@wili
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { readCache, writeCache } from '@wilinwi/offline';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import Link from 'next/link';
 
@@ -117,9 +118,19 @@ export default function VentesPage() {
       if (filterStatus !== 'ALL') params.append('status', filterStatus);
       if (filterClientId) params.append('clientId', filterClientId);
       if (searchQuery) params.append('q', searchQuery);
-      
-      const data = await apiGet<Sale[]>(`/api/pos/sales?${params.toString()}`);
+
+      // Cache local (stale-while-revalidate) : on affiche la dernière liste connue
+      // pour ces filtres, puis on rafraîchit depuis le réseau.
+      const qs = params.toString();
+      const ck = user ? `${user.tenantId}:${user.userId}:pos/sales?${qs}` : null;
+      if (ck) {
+        const cached = await readCache<Sale[]>(ck);
+        if (cached) setSales(cached);
+      }
+
+      const data = await apiGet<Sale[]>(`/api/pos/sales?${qs}`);
       setSales(data);
+      if (ck) void writeCache(ck, data);
     } catch (e: any) {
       setError(e.message || "Erreur lors du chargement des ventes");
     } finally {
