@@ -133,6 +133,11 @@ export class AuthService {
           actif: true,
           customPermissions: true,
           permissions: true,
+          tenant: {
+            select: {
+              nom: true,
+            },
+          },
         },
       }),
     );

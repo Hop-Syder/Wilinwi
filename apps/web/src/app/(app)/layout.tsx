@@ -108,7 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Header / Navbar */}
       <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Hamburger menu button for mobile */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -118,9 +118,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-1.5">
+            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-1.5 shrink-0">
               <span className="text-gold">◈</span> Wilinwi
             </Link>
+
+            {user.boutiqueNom && (
+              <span className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 text-xs font-bold text-brand truncate max-w-[140px] min-[400px]:flex sm:max-w-[200px] md:max-w-xs">
+                🏢 {user.boutiqueNom}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -176,12 +182,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <div>
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-1.5">
-              <span className="text-gold">◈</span> Wilinwi
-            </Link>
+            <div className="flex flex-col min-w-0">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-1.5">
+                <span className="text-gold">◈</span> Wilinwi
+              </Link>
+              {user.boutiqueNom && (
+                <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">
+                  🏢 {user.boutiqueNom}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors shrink-0"
             >
               <X className="h-5 w-5" />
             </button>

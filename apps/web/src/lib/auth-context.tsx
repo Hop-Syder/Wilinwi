@@ -19,6 +19,7 @@ export interface SessionUser {
   plan: Plan;
   /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
   modules: ModuleKey[];
+  boutiqueNom?: string;
 }
 
 interface MeResponse {
@@ -28,6 +29,12 @@ interface MeResponse {
   role: Role;
   plan: Plan;
   modules: ModuleKey[];
+  profile?: {
+    nom: string;
+    tenant?: {
+      nom: string;
+    };
+  };
 }
 
 interface AuthState {
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: me.role,
         plan: me.plan,
         modules: me.modules ?? [],
+        boutiqueNom: me.profile?.tenant?.nom,
       });
     } catch {
       clearPinToken();
