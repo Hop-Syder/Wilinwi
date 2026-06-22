@@ -22,6 +22,7 @@ import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult } from '@/components/pos-checkout';
+import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { RotateCcw } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -52,6 +53,8 @@ export default function PosPage() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
+  const [lastSale, setLastSale] = useState<ReceiptSale | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const tourSteps: TourStep[] = [
     {
@@ -193,6 +196,31 @@ export default function PosPage() {
 
     try {
       await syncEngine.enqueueSale(payload);
+
+      // Capture l'instantané de la vente pour le ticket (fonctionne hors-ligne).
+      const montantVerse =
+        result.paymentMethod === 'CREDIT'
+          ? 0
+          : result.paymentMethod === 'INSTALLMENT'
+            ? result.montantVerse ?? 0
+            : total;
+      const client = result.clientId ? clients.find((c) => c.id === result.clientId) : null;
+      setLastSale({
+        id: payload.clientGeneratedId!,
+        total,
+        montantVerse,
+        paymentMethod: result.paymentMethod,
+        createdAt: new Date().toISOString(),
+        receiptCode: null,
+        items: cart.map((l) => ({
+          id: `${l.product.id}-${l.variantId ?? 'base'}`,
+          quantite: l.quantite,
+          prixReel: l.prixReel,
+          product: { nom: l.product.nom },
+        })),
+        client: client ? { nom: client.nom, telephone: client.telephone } : null,
+      });
+
       setLastSaleTotal(total);
       setCart([]);
       setShowSuccessModal(true);
@@ -445,7 +473,20 @@ export default function PosPage() {
         isOpen={showSuccessModal}
         total={lastSaleTotal}
         onNewSale={() => setShowSuccessModal(false)}
+        onShowReceipt={
+          lastSale
+            ? () => {
+                setShowSuccessModal(false);
+                setShowReceipt(true);
+              }
+            : undefined
+        }
       />
+
+      {/* Ticket de caisse : affichage + impression + QR (réutilise ReceiptModal) */}
+      {showReceipt && lastSale && (
+        <ReceiptModal sale={lastSale} onClose={() => setShowReceipt(false)} />
+      )}
     </div>
   );
 }

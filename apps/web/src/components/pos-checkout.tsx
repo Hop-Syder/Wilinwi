@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto } from '@wilinwi/types';
-import { CheckCircle2, Printer, Share2, X, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Receipt, Share2, X, RotateCcw } from 'lucide-react';
 
 export interface CheckoutResult {
   paymentMethod: PaymentMethod;
@@ -182,9 +182,11 @@ interface SaleSuccessModalProps {
   total: number;
   onNewSale: () => void;
   onCancelSale?: () => void;
+  /** Ouvre le ticket de caisse (affichage + impression + QR). */
+  onShowReceipt?: () => void;
 }
 
-export function SaleSuccessModal({ isOpen, total, onNewSale, onCancelSale }: SaleSuccessModalProps) {
+export function SaleSuccessModal({ isOpen, total, onNewSale, onCancelSale, onShowReceipt }: SaleSuccessModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -201,15 +203,15 @@ export function SaleSuccessModal({ isOpen, total, onNewSale, onCancelSale }: Sal
         </p>
 
         <div className="space-y-3">
-          <Button 
-            className="w-full justify-center gap-2" 
-            onClick={() => {
-              alert("Impression du ticket en cours...");
-            }}
-          >
-            <Printer className="h-4 w-4" />
-            Imprimer le ticket
-          </Button>
+          {onShowReceipt && (
+            <Button
+              className="w-full justify-center gap-2"
+              onClick={onShowReceipt}
+            >
+              <Receipt className="h-4 w-4" />
+              Afficher le ticket
+            </Button>
+          )}
           <Button 
             variant="outline" 
             className="w-full justify-center gap-2"
