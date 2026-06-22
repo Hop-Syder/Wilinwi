@@ -46,6 +46,41 @@ export class SyncEngine {
     return getDB().pendingSales.where('status').anyOf('pending', 'error').count();
   }
 
+  /** Nombre de ventes en échec transitoire (re-tentées automatiquement). */
+  async failedCount(): Promise<number> {
+    return getDB().pendingSales.where('status').equals('error').count();
+  }
+
+  /** Nombre de ventes refusées par le serveur (action utilisateur requise). */
+  async rejectedCount(): Promise<number> {
+    return getDB().pendingSales.where('status').equals('rejected').count();
+  }
+
+  /** Statut courant d'une vente locale (retour visuel par vente). */
+  async getSale(id: string): Promise<PendingSale | undefined> {
+    return getDB().pendingSales.get(id);
+  }
+
+  /** Ventes en échec transitoire (file d'erreurs consultable). */
+  async failedSales(): Promise<PendingSale[]> {
+    return getDB().pendingSales.where('status').equals('error').toArray();
+  }
+
+  /** Ventes refusées (permanentes) — à écarter ou corriger par l'utilisateur. */
+  async rejectedSales(): Promise<PendingSale[]> {
+    return getDB().pendingSales.where('status').equals('rejected').toArray();
+  }
+
+  /** Écarte définitivement une vente locale (supprime de la file). */
+  async discard(id: string): Promise<void> {
+    await getDB().pendingSales.delete(id);
+  }
+
+  /** Ventes déjà synchronisées : purge possible pour ne pas faire grossir IndexedDB. */
+  async clearSynced(): Promise<void> {
+    await getDB().pendingSales.where('status').equals('synced').delete();
+  }
+
   /** Vide la file vers le serveur. À appeler au retour du réseau. */
   async flush(): Promise<SyncResult> {
     const db = getDB();
@@ -60,7 +95,13 @@ export class SyncEngine {
       const res = (await this.post('/api/sync/sales', {
         sales: pending.map((s) => s.payload),
       })) as {
-        results: { clientGeneratedId?: string; ok: boolean; id?: string; error?: string }[];
+        results: {
+          clientGeneratedId?: string;
+          ok: boolean;
+          id?: string;
+          error?: string;
+          permanent?: boolean;
+        }[];
       };
 
       for (const r of res.results) {
@@ -70,7 +111,12 @@ export class SyncEngine {
           await db.pendingSales.update(local.id, { status: 'synced', serverId: r.id });
           synced++;
         } else {
-          await db.pendingSales.update(local.id, { status: 'error', error: r.error });
+          // Échec permanent (validation serveur) → 'rejected' : exclu de l'auto-retry,
+          // demande une action de l'utilisateur (écarter / corriger).
+          await db.pendingSales.update(local.id, {
+            status: r.permanent ? 'rejected' : 'error',
+            error: r.error,
+          });
           failed++;
         }
       }

@@ -39,6 +39,8 @@ export function useSync() {
   useEffect(() => {
     setOnline(navigator.onLine);
     void refreshPending();
+    // Purge des ventes déjà synchronisées (le serveur fait foi) → IndexedDB borné.
+    void syncEngine.clearSynced();
 
     const onOnline = () => {
       setOnline(true);
@@ -47,9 +49,20 @@ export function useSync() {
     const onOffline = () => setOnline(false);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
+
+    // Re-tentative périodique : vide la file en arrière-plan tant qu'il reste des
+    // ventes non synchronisées (sans flicker quand il n'y a rien à envoyer).
+    const interval = setInterval(() => {
+      if (!navigator.onLine) return;
+      void syncEngine.pendingCount().then((n) => {
+        if (n > 0) void flush();
+      });
+    }, 30_000);
+
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
+      clearInterval(interval);
     };
   }, [flush, refreshPending]);
 

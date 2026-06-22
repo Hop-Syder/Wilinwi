@@ -18,7 +18,11 @@ export interface PendingSale {
   id: string;
   payload: CreateSaleInput;
   createdAt: number;
-  status: 'pending' | 'syncing' | 'synced' | 'error';
+  /**
+   * pending/error = à (re)synchroniser ; syncing = en cours ; synced = confirmée ;
+   * rejected = refusée par le serveur (erreur métier permanente) → PAS d'auto-retry.
+   */
+  status: 'pending' | 'syncing' | 'synced' | 'error' | 'rejected';
   error?: string;
   serverId?: string;
 }

@@ -19,9 +19,10 @@ import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import Link from 'next/link';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
+import type { PendingSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
-import { CheckoutModal, SaleSuccessModal, type CheckoutResult } from '@/components/pos-checkout';
+import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { RotateCcw } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -55,6 +56,93 @@ export default function PosPage() {
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
   const [lastSale, setLastSale] = useState<ReceiptSale | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [saleSync, setSaleSync] = useState<{ status: SaleSyncStatus; error?: string }>({
+    status: 'pending',
+  });
+  // Ventes refusées par le serveur (échec permanent) en attente d'une décision.
+  const [rejected, setRejected] = useState<PendingSale[]>([]);
+
+  async function refreshRejected() {
+    setRejected(await syncEngine.rejectedSales());
+  }
+
+  /**
+   * Synchronise une vente déjà enregistrée localement et reflète le statut RÉEL
+   * (jamais de faux succès) : hors-ligne → en attente ; en ligne → on vide la file
+   * puis on relit le statut serveur de cette vente précise.
+   */
+  async function syncSale(saleId: string) {
+    if (!navigator.onLine) {
+      setSaleSync({ status: 'pending' });
+      return;
+    }
+    setSaleSync({ status: 'syncing' });
+    try {
+      await syncEngine.flush();
+    } catch {
+      /* flush gère ses erreurs réseau en interne (remet en attente) */
+    }
+    const s = await syncEngine.getSale(saleId);
+    await refreshPending();
+    await refreshRejected();
+    if (s?.status === 'synced') setSaleSync({ status: 'synced' });
+    else if (s?.status === 'rejected') setSaleSync({ status: 'rejected', error: s.error });
+    else if (s?.status === 'error') setSaleSync({ status: 'error', error: s.error });
+    else setSaleSync({ status: 'pending' });
+  }
+
+  /** Rejoue la synchronisation de la dernière vente (bouton « Réessayer »). */
+  async function retrySale() {
+    if (lastSale) await syncSale(lastSale.id);
+  }
+
+  /** Recharge les lignes d'une vente refusée dans le panier (pour la corriger). */
+  function rebuildCart(payload: CreateSaleInput) {
+    const lines: CartLine[] = [];
+    for (const it of payload.items) {
+      const product = products.find((p) => p.id === it.productId);
+      if (!product) continue; // produit introuvable (peut-être supprimé) → ignoré
+      const variant = it.variantId ? product.variants?.find((v) => v.id === it.variantId) : undefined;
+      const variantLabel = variant
+        ? Object.values(variant.attributs).map(String).join(', ')
+        : undefined;
+      lines.push({
+        product,
+        variantId: it.variantId,
+        variantLabel,
+        quantite: it.quantite,
+        prixReel: it.prixReel,
+      });
+    }
+    setCart(lines);
+  }
+
+  /** Écarte définitivement une vente locale refusée. */
+  async function discardById(id: string) {
+    await syncEngine.discard(id);
+    await refreshPending();
+    await refreshRejected();
+  }
+
+  /** Recharge une vente refusée dans le panier puis la retire de la file. */
+  async function fixFromSale(s: PendingSale) {
+    rebuildCart(s.payload);
+    await discardById(s.id);
+  }
+
+  /** Écarter / Corriger depuis la modale de la dernière vente. */
+  async function discardSale() {
+    if (lastSale) await discardById(lastSale.id);
+    setShowSuccessModal(false);
+  }
+  async function fixSale() {
+    if (lastSale) {
+      const s = await syncEngine.getSale(lastSale.id);
+      if (s) await fixFromSale(s);
+      else await discardById(lastSale.id);
+    }
+    setShowSuccessModal(false);
+  }
 
   const tourSteps: TourStep[] = [
     {
@@ -100,6 +188,8 @@ export default function PosPage() {
     apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
       .then(setClients)
       .catch(() => setClients([]));
+    // Ventes refusées en attente d'une décision (ex. refusées en arrière-plan).
+    void refreshRejected();
   }, []);
 
   // Raccourci clavier Cmd+K pour le champ de recherche
@@ -223,12 +313,11 @@ export default function PosPage() {
 
       setLastSaleTotal(total);
       setCart([]);
+      setSaleSync({ status: 'pending' });
       setShowSuccessModal(true);
-      
+
       await refreshPending();
-      if (navigator.onLine) {
-        syncEngine.flush().then(() => refreshPending()).catch(() => {});
-      }
+      await syncSale(payload.clientGeneratedId!);
     } catch (e) {
       setMessage({ tone: 'err', text: "Erreur lors de l'enregistrement local." });
     } finally {
@@ -242,7 +331,46 @@ export default function PosPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-      
+      {/* Ventes refusées par le serveur (échec permanent) — action requise */}
+      {rejected.length > 0 && (
+        <div className="lg:col-span-2 rounded-xl border border-red-200 bg-red-50 p-3">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+            {rejected.length} vente(s) refusée(s) — à corriger ou écarter
+          </p>
+          <ul className="mt-2 space-y-2">
+            {rejected.map((s) => {
+              const t = s.payload.items.reduce((sum, i) => sum + i.prixReel * i.quantite, 0);
+              return (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="tabular text-sm font-semibold text-slate-800">
+                      {formatFCFA(t)}
+                    </span>
+                    <span className="block truncate text-xs text-red-600">{s.error}</span>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => void fixFromSale(s)}>
+                      Corriger
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-slate-400 hover:text-red-600"
+                      onClick={() => void discardById(s.id)}
+                    >
+                      Écarter
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Catalogue */}
       <div>
@@ -472,6 +600,11 @@ export default function PosPage() {
       <SaleSuccessModal
         isOpen={showSuccessModal}
         total={lastSaleTotal}
+        syncStatus={saleSync.status}
+        syncError={saleSync.error}
+        onRetry={retrySale}
+        onDiscard={discardSale}
+        onFix={fixSale}
         onNewSale={() => setShowSuccessModal(false)}
         onShowReceipt={
           lastSale

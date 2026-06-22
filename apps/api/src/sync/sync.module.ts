@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Module, Post } from '@nestjs/common';
+import { Body, Controller, HttpException, Module, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { CreateSaleSchema, type AuthContext } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from '../common/decorators';
@@ -43,9 +43,14 @@ class SyncController {
         const created = await this.sales.create(user, sale);
         results.push({ clientGeneratedId: sale.clientGeneratedId, ok: true, id: created?.id });
       } catch (err) {
+        // Échec permanent (validation métier 4xx : stock insuffisant, produit
+        // introuvable, plancher…) → inutile de re-tenter. Échec transitoire
+        // (5xx / réseau) → l'auto-retry finira par passer.
+        const permanent = err instanceof HttpException && err.getStatus() < 500;
         results.push({
           clientGeneratedId: sale.clientGeneratedId,
           ok: false,
+          permanent,
           error: err instanceof Error ? err.message : 'Erreur inconnue',
         });
       }
