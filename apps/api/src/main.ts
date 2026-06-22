@@ -12,16 +12,37 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Derrière le proxy Railway : faire confiance au 1er hop pour que `req.ip` reflète
+  // l'IP réelle du client (X-Forwarded-For) → rate-limiting correct par IP.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  // En-têtes de sécurité HTTP (XSS, sniffing, clickjacking…). API JSON → CSP inutile.
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+
+  // CORS restreint : allowlist via CORS_ORIGINS (séparés par des virgules).
+  // À défaut on reste permissif (origin: true) pour ne pas casser un déploiement
+  // non configuré — mais on alerte en production.
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hasAllowlist = !!corsOrigins && corsOrigins.length > 0;
   app.enableCors({
-    origin: true,
+    origin: hasAllowlist ? corsOrigins : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
+  if (!hasAllowlist && process.env.NODE_ENV === 'production') {
+    Logger.warn(
+      'CORS ouvert à toutes les origines. Définissez CORS_ORIGINS en production.',
+      'Bootstrap',
+    );
+  }
 
   app.setGlobalPrefix('api');
   // La validation des entrées se fait par route via ZodValidationPipe (pas de class-validator).

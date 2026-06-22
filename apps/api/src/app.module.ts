@@ -11,6 +11,8 @@
 
 import { Controller, Get, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { validateEnv } from './config/env';
 import { CommonModule } from './common/common.module';
 import { Public } from './common/decorators';
@@ -47,6 +49,8 @@ class HealthController {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    // Rate-limiting global (anti-abus / DoS) : 300 requêtes / minute / IP.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     CommonModule,
     AuthModule,
     StockModule,
@@ -60,5 +64,6 @@ class HealthController {
     AdminModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
