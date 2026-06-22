@@ -143,7 +143,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+            <div className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 sm:flex">
               <button
                 onClick={() => void lock()}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
@@ -266,7 +266,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6">
         {/* Floating Sidebar (Desktop) */}
         <nav className="hidden w-52 shrink-0 sm:block">
-          <div className="sticky top-22 flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="sticky top-20 flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <ul className="space-y-1">
               {NAV.filter((item) => canSee(item.module)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

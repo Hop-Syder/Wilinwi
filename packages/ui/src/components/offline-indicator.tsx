@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Composant UI partagé (Design System) : offline-indicator.tsx
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-06-22
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -24,6 +24,8 @@ export interface OfflineIndicatorProps {
 
 /** Indicateur visuel clair de l'état hors-ligne / synchronisation (§11.1). */
 export function OfflineIndicator({ state, pending = 0, className }: OfflineIndicatorProps) {
+  if (state === 'online') return null;
+
   const config = {
     online: { icon: Cloud, label: 'En ligne', tone: 'bg-emerald-50 text-emerald-700' },
     offline: { icon: CloudOff, label: 'Hors-ligne', tone: 'bg-gold-50 text-gold-700' },
@@ -44,7 +46,7 @@ export function OfflineIndicator({ state, pending = 0, className }: OfflineIndic
     >
       <Icon className={cn('h-3.5 w-3.5', state === 'syncing' && 'animate-spin')} aria-hidden />
       {config.label}
-      {pending > 0 && state !== 'online' && (
+      {pending > 0 && (
         <span className="tabular ml-0.5 rounded-full bg-white/70 px-1.5">{pending}</span>
       )}
     </span>
