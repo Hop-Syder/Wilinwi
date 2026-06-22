@@ -119,11 +119,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-1.5 shrink-0">
-              <span className="text-gold">◈</span> Wilinwi
+              <span className="text-gold">◈</span>
+              {user.boutiqueNom ? (
+                <>
+                  <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
+                  <span className="hidden sm:inline">Wilinwi</span>
+                </>
+              ) : (
+                <span>Wilinwi</span>
+              )}
             </Link>
 
             {user.boutiqueNom && (
-              <span className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 text-xs font-bold text-brand truncate max-w-[140px] min-[400px]:flex sm:max-w-[200px] md:max-w-xs">
+              <span className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 text-xs font-bold text-brand truncate max-w-[200px] md:max-w-xs sm:flex">
                 🏢 {user.boutiqueNom}
               </span>
             )}
