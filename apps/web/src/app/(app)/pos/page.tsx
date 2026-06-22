@@ -430,6 +430,22 @@ export default function PosPage() {
           </div>
         </div>
       )}
+
+      {/* Modale d'encaissement (ouverte par le bouton « Encaisser ») */}
+      <CheckoutModal
+        isOpen={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        cartTotal={total}
+        clients={clients}
+        onConfirm={handleConfirmCheckout}
+      />
+
+      {/* Modale de succès affichée après l'enregistrement de la vente */}
+      <SaleSuccessModal
+        isOpen={showSuccessModal}
+        total={lastSaleTotal}
+        onNewSale={() => setShowSuccessModal(false)}
+      />
     </div>
   );
 }
