@@ -83,11 +83,12 @@ export class UsersService {
       );
     }
 
-    // Email → compte Supabase ; sinon utilisateur PIN-only (id applicatif).
+    // Email → invitation Supabase (le collaborateur définit son mot de passe via le
+    // lien reçu) ; sinon utilisateur PIN-only (id applicatif, login sur poste partagé).
     let userId: string;
     let email: string;
     if (input.email) {
-      userId = await this.supabase.createUser(input.email, `Wlw-${randomUUID().slice(0, 8)}`);
+      userId = await this.supabase.inviteByEmail(input.email);
       email = input.email;
     } else {
       userId = randomUUID();

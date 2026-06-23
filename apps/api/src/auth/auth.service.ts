@@ -17,7 +17,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import type { AuthContext, InviteUserInput, PinLoginInput, SignUpInput } from '@wilinwi/types';
@@ -91,8 +91,8 @@ export class AuthService {
     if (input.role === 'OWNER' && ctx.role !== 'OWNER') {
       throw new ForbiddenException('Seul le propriétaire peut inviter un autre propriétaire.');
     }
-    const tempPassword = `Wlw-${randomBytes(4).toString('hex')}`;
-    const userId = await this.supabase.createUser(input.email, tempPassword);
+    // Invitation par email : le collaborateur définit son mot de passe via le lien reçu.
+    const userId = await this.supabase.inviteByEmail(input.email);
 
     try {
       await this.prisma.forTenant(ctx.tenantId, async (tx) => {
@@ -121,7 +121,7 @@ export class AuthService {
       throw err;
     }
 
-    return { userId, temporaryPassword: tempPassword };
+    return { userId, invited: true };
   }
 
   /** Profil + contexte de l'utilisateur courant (sans le hash du PIN). */

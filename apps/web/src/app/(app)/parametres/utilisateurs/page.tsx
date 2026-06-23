@@ -55,6 +55,7 @@ const emptyDraft: Draft = {
 export default function UtilisateursPage() {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -91,6 +92,7 @@ export default function UtilisateursPage() {
     if (!draft) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       if (draft.id) {
         await apiPatch(`/api/users/${draft.id}`, {
@@ -111,6 +113,9 @@ export default function UtilisateursPage() {
           customPermissions: draft.customPermissions,
           permissions: draft.permissions,
         });
+        if (draft.email) {
+          setNotice(`Invitation envoyée par email à ${draft.email}. Le lien permet de définir le mot de passe.`);
+        }
       }
       setDraft(null);
       await load();
@@ -169,6 +174,11 @@ export default function UtilisateursPage() {
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {notice && (
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {notice}
+        </div>
+      )}
 
       <Card className="mt-6 overflow-x-auto p-0">
         <table className="w-full text-sm">

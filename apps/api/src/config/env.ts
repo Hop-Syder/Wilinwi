@@ -22,6 +22,8 @@ export const EnvSchema = z.object({
   SUPABASE_JWT_SECRET: z.string().min(1),
   /** Origines autorisées par CORS (séparées par des virgules). Vide = permissif. */
   CORS_ORIGINS: z.string().optional(),
+  /** URL de base du frontend (lien d'invitation → /set-password). Déf. localhost:3000. */
+  WEB_BASE_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

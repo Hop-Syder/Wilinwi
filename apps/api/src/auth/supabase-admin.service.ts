@@ -20,7 +20,7 @@ import type { Plan, Role } from '@wilinwi/types';
 export class SupabaseAdminService {
   private readonly client: SupabaseClient;
 
-  constructor(config: ConfigService) {
+  constructor(private readonly config: ConfigService) {
     this.client = createClient(
       config.getOrThrow<string>('SUPABASE_URL'),
       config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
@@ -42,6 +42,25 @@ export class SupabaseAdminService {
     });
     if (error || !data.user) {
       throw new Error(`Création du compte échouée: ${error?.message ?? 'inconnue'}`);
+    }
+    return data.user.id;
+  }
+
+  /**
+   * Invite un collaborateur par email : Supabase crée le compte (sans mot de passe)
+   * et envoie un email d'invitation pointant vers la page `/set-password` où le
+   * collaborateur définit son mot de passe à la 1ʳᵉ connexion. Renvoie son id.
+   */
+  async inviteByEmail(email: string): Promise<string> {
+    const base = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(
+      /\/$/,
+      '',
+    );
+    const { data, error } = await this.client.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${base}/set-password`,
+    });
+    if (error || !data.user) {
+      throw new Error(`Invitation par email échouée: ${error?.message ?? 'inconnue'}`);
     }
     return data.user.id;
   }
