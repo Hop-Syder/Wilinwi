@@ -18,6 +18,11 @@ export interface CheckoutResult {
   paymentMethod: PaymentMethod;
   clientId?: string;
   montantVerse?: number;
+  clientNom?: string;
+  clientTelephone?: string;
+  aLivrer?: boolean;
+  livreurId?: string;
+  adresseLivraison?: string;
 }
 
 interface CheckoutModalProps {
@@ -25,14 +30,26 @@ interface CheckoutModalProps {
   onClose: () => void;
   cartTotal: number;
   clients: ClientDto[];
+  livreurs: { id: string; nom: string }[];
   onConfirm: (result: CheckoutResult) => void;
 }
 
-export function CheckoutModal({ isOpen, onClose, cartTotal, clients, onConfirm }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, onConfirm }: CheckoutModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [clientId, setClientId] = useState<string>('');
   const [montantVerse, setMontantVerse] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
+
+  // État Client
+  const [associateClient, setAssociateClient] = useState(false);
+  const [clientType, setClientType] = useState<'existing' | 'new'>('existing');
+  const [clientNom, setClientNom] = useState('');
+  const [clientTelephone, setClientTelephone] = useState('');
+
+  // État Livraison
+  const [aLivrer, setALivrer] = useState(false);
+  const [livreurId, setLivreurId] = useState('');
+  const [adresseLivraison, setAdresseLivraison] = useState('');
 
   // Reset form when opened
   useEffect(() => {
@@ -41,18 +58,41 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, onConfirm }
       setClientId('');
       setMontantVerse('');
       setCashReceived('');
+      setAssociateClient(false);
+      setClientType('existing');
+      setClientNom('');
+      setClientTelephone('');
+      setALivrer(false);
+      setLivreurId('');
+      setAdresseLivraison('');
     }
   }, [isOpen]);
 
   const changeToReturn = Number(cashReceived) - cartTotal;
   
   const isCreditOrInstallment = paymentMethod === 'CREDIT' || paymentMethod === 'INSTALLMENT';
+
+  useEffect(() => {
+    if (isCreditOrInstallment) {
+      setAssociateClient(true);
+    }
+  }, [paymentMethod, isCreditOrInstallment]);
+  
   const isValid = () => {
-    if (isCreditOrInstallment && !clientId) return false;
+    if (isCreditOrInstallment && !associateClient) return false;
+    
+    if (associateClient) {
+      if (clientType === 'existing' && !clientId) return false;
+      if (clientType === 'new' && (!clientNom.trim() || !clientTelephone.trim())) return false;
+    }
+
     if (paymentMethod === 'INSTALLMENT') {
       const vers = Number(montantVerse);
       if (vers <= 0 || vers >= cartTotal) return false;
     }
+
+    if (aLivrer && !livreurId) return false;
+
     return true;
   };
 
@@ -60,8 +100,13 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, onConfirm }
     if (!isValid()) return;
     onConfirm({
       paymentMethod,
-      clientId: clientId || undefined,
+      clientId: (associateClient && clientType === 'existing') ? (clientId || undefined) : undefined,
       montantVerse: paymentMethod === 'INSTALLMENT' ? Number(montantVerse) : undefined,
+      clientNom: (associateClient && clientType === 'new') ? clientNom : undefined,
+      clientTelephone: (associateClient && clientType === 'new') ? clientTelephone : undefined,
+      aLivrer,
+      livreurId: (aLivrer && livreurId) ? livreurId : undefined,
+      adresseLivraison: (aLivrer && adresseLivraison) ? adresseLivraison : undefined,
     });
   };
 
@@ -131,35 +176,138 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, onConfirm }
             </div>
           )}
 
-          {isCreditOrInstallment && (
-            <div className="pt-2 space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-red-600">Client obligatoire *</label>
-                <Select value={clientId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setClientId(e.target.value)}>
-                  <option value="">-- Sélectionner un client --</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.nom} {c.telephone ? `(${c.telephone})` : ''}</option>
-                  ))}
-                </Select>
-                {!clientId && <p className="text-xs text-red-500 mt-1">Vous devez lier cette dette à un client.</p>}
-              </div>
+          {/* Section Client */}
+          <div className="border-t border-slate-100 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={associateClient}
+                  disabled={isCreditOrInstallment}
+                  onChange={(e) => setAssociateClient(e.target.checked)}
+                  className="rounded border-slate-300 text-brand focus:ring-brand"
+                />
+                <span>Associer un client {isCreditOrInstallment && <span className="text-red-500 font-bold">*</span>}</span>
+              </label>
+            </div>
 
-              {paymentMethod === 'INSTALLMENT' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Montant versé aujourd'hui</label>
-                  <Input
-                    type="number"
-                    placeholder="Ex: 5000"
-                    value={montantVerse}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMontantVerse(e.target.value)}
-                  />
-                  {montantVerse && (Number(montantVerse) <= 0 || Number(montantVerse) >= cartTotal) && (
-                    <p className="text-xs text-red-500 mt-1">L'acompte doit être supérieur à 0 et inférieur au total.</p>
-                  )}
+            {associateClient && (
+              <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setClientType('existing')}
+                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${
+                      clientType === 'existing'
+                        ? 'bg-white border-slate-300 text-brand shadow-sm font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Existant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientType('new')}
+                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${
+                      clientType === 'new'
+                        ? 'bg-white border-slate-300 text-brand shadow-sm font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Nouveau
+                  </button>
                 </div>
+
+                {clientType === 'existing' ? (
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 text-slate-600">Sélectionner le client</label>
+                    <Select value={clientId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setClientId(e.target.value)}>
+                      <option value="">-- Sélectionner un client --</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.nom} {c.telephone ? `(${c.telephone})` : ''}</option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-100">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-slate-600">Nom & Prénom *</label>
+                      <Input
+                        type="text"
+                        placeholder="Ex: Jean Koffi"
+                        value={clientNom}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClientNom(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-slate-600">Téléphone WhatsApp *</label>
+                      <Input
+                        type="text"
+                        placeholder="Ex: +225 07070707"
+                        value={clientTelephone}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClientTelephone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Section Acompte */}
+          {paymentMethod === 'INSTALLMENT' && (
+            <div className="pt-2">
+              <label className="block text-sm font-medium mb-1">Montant versé aujourd'hui</label>
+              <Input
+                type="number"
+                placeholder="Ex: 5000"
+                value={montantVerse}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMontantVerse(e.target.value)}
+              />
+              {montantVerse && (Number(montantVerse) <= 0 || Number(montantVerse) >= cartTotal) && (
+                <p className="text-xs text-red-500 mt-1">L'acompte doit être supérieur à 0 et inférieur au total.</p>
               )}
             </div>
           )}
+
+          {/* Section Livraison */}
+          <div className="border-t border-slate-100 pt-3">
+            <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aLivrer}
+                onChange={(e) => setALivrer(e.target.checked)}
+                className="rounded border-slate-300 text-brand focus:ring-brand"
+              />
+              <span>Demander une livraison</span>
+            </label>
+
+            {aLivrer && (
+              <div className="mt-2 space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-100 animate-in fade-in slide-in-from-top-1 duration-100">
+                <div>
+                  <label className="block text-xs font-semibold mb-1 text-slate-600">Livreur *</label>
+                  <Select value={livreurId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setLivreurId(e.target.value)}>
+                    <option value="">-- Sélectionner un livreur --</option>
+                    {livreurs.map(l => (
+                      <option key={l.id} value={l.id}>{l.nom}</option>
+                    ))}
+                  </Select>
+                  {livreurs.length === 0 && (
+                    <p className="text-[10px] text-slate-500 mt-1">Aucun livreur disponible. Créez-en un dans les Paramètres.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1 text-slate-600">Adresse & Ville (facultatif)</label>
+                  <Input
+                    type="text"
+                    placeholder="Ex: Cocody, Rue des Jardins"
+                    value={adresseLivraison}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdresseLivraison(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-8 flex gap-3">

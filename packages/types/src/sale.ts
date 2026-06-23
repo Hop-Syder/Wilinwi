@@ -60,6 +60,11 @@ export const CreateSaleSchema = z
     clientId: IdSchema.optional(),
     /** Identifiant local pour l'idempotence de la synchronisation offline. */
     clientGeneratedId: z.string().min(1).optional(),
+    clientNom: z.string().min(1).optional(),
+    clientTelephone: z.string().min(1).optional(),
+    aLivrer: z.boolean().optional(),
+    livreurId: IdSchema.nullable().optional(),
+    adresseLivraison: z.string().max(500).nullable().optional(),
   })
   .refine((s) => s.paymentMethod !== 'INSTALLMENT' || s.montantVerse !== undefined, {
     message: 'montantVerse est requis pour un paiement par acompte',

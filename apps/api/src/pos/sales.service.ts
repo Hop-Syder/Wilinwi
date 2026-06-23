@@ -123,6 +123,38 @@ export class SalesService {
         });
       }
 
+      // Résolution / création automatique du client si nécessaire
+      let finalClientId = input.clientId ?? null;
+      if (!finalClientId && input.clientNom && input.clientTelephone) {
+        const existingClient = await tx.client.findFirst({
+          where: {
+            tenantId: ctx.tenantId,
+            telephone: input.clientTelephone,
+          },
+        });
+        if (existingClient) {
+          finalClientId = existingClient.id;
+        } else {
+          const newClient = await tx.client.create({
+            data: {
+              tenantId: ctx.tenantId,
+              nom: input.clientNom,
+              telephone: input.clientTelephone,
+              soldeCredit: 0,
+            },
+          });
+          finalClientId = newClient.id;
+        }
+        input.clientId = finalClientId;
+      }
+
+      if (input.livreurId) {
+        const livreur = await tx.user.findFirst({
+          where: { id: input.livreurId, tenantId: ctx.tenantId },
+        });
+        if (!livreur) throw new NotFoundException('Livreur introuvable');
+      }
+
       // Acompte : validé tôt (échoue vite) pour les deux flux.
       const intendedAcompte = this.validateAcompte(input, total);
       // Crédit client : vérifier le plafond avant de créer la vente.
@@ -144,6 +176,9 @@ export class SalesService {
           // Acompte voulu mémorisé (appliqué à la finalisation).
           montantVerse: input.paymentMethod === 'INSTALLMENT' ? intendedAcompte : 0,
           clientGeneratedId: input.clientGeneratedId ?? null,
+          aLivrer: input.aLivrer ?? false,
+          livreurId: input.livreurId ?? null,
+          adresseLivraison: input.adresseLivraison ?? null,
         },
       });
 

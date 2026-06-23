@@ -49,6 +49,7 @@ export default function PosPage() {
   );
   const [busy, setBusy] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
+  const [livreurs, setLivreurs] = useState<{ id: string; nom: string }[]>([]);
   const [variantSelectionProduct, setVariantSelectionProduct] = useState<ProductDto | null>(null);
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -188,6 +189,12 @@ export default function PosPage() {
     apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
       .then(setClients)
       .catch(() => setClients([]));
+    // Liste des livreurs (pour la livraison).
+    apiGet<{ id: string; nom: string; role: string }[]>('/api/users/pos')
+      .then((users) => {
+        setLivreurs(users.filter((u) => u.role === 'DELIVERY'));
+      })
+      .catch(() => setLivreurs([]));
     // Ventes refusées en attente d'une décision (ex. refusées en arrière-plan).
     void refreshRejected();
   }, []);
@@ -289,6 +296,11 @@ export default function PosPage() {
       paymentMethod: result.paymentMethod,
       montantVerse: result.montantVerse,
       clientId: result.clientId,
+      clientNom: result.clientNom,
+      clientTelephone: result.clientTelephone,
+      aLivrer: result.aLivrer,
+      livreurId: result.livreurId,
+      adresseLivraison: result.adresseLivraison,
       items: cart.map((l) => ({
         productId: l.product.id,
         variantId: l.variantId,
@@ -307,7 +319,17 @@ export default function PosPage() {
           : result.paymentMethod === 'INSTALLMENT'
             ? result.montantVerse ?? 0
             : total;
-      const client = result.clientId ? clients.find((c) => c.id === result.clientId) : null;
+
+      let clientInfo = null;
+      if (result.clientId) {
+        const client = clients.find((c) => c.id === result.clientId);
+        if (client) {
+          clientInfo = { nom: client.nom, telephone: client.telephone };
+        }
+      } else if (result.clientNom) {
+        clientInfo = { nom: result.clientNom, telephone: result.clientTelephone || null };
+      }
+
       setLastSale({
         id: payload.clientGeneratedId!,
         total,
@@ -321,7 +343,7 @@ export default function PosPage() {
           prixReel: l.prixReel,
           product: { nom: l.product.nom },
         })),
-        client: client ? { nom: client.nom, telephone: client.telephone } : null,
+        client: clientInfo,
       });
 
       setLastSaleTotal(total);
@@ -643,6 +665,7 @@ export default function PosPage() {
         onClose={() => setShowCheckoutModal(false)}
         cartTotal={total}
         clients={clients}
+        livreurs={livreurs}
         onConfirm={handleConfirmCheckout}
       />
 
