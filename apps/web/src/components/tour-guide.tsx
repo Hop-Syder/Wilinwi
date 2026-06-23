@@ -124,17 +124,20 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
         onClick={onComplete}
       />
 
-      {/* Bulle : feuille en bas sur mobile, ancrée près de la cible sur desktop */}
+      {/* Bulle : feuille en bas sur mobile, ancrée près de la cible sur desktop.
+          Structure flex-column : en-tête + contenu DÉFILABLE + pied FIXE
+          → les boutons Précédent/Suivant restent toujours visibles (fix Android).
+          Hauteur en dvh (viewport dynamique) + marge safe-area (barre de gestes). */}
       <div
         ref={popoverRef}
         className={
           isMobile
-            ? 'fixed inset-x-3 bottom-3 max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-5 shadow-2xl'
-            : 'absolute w-80 max-w-[calc(100vw-1.5rem)] max-h-[80vh] overflow-y-auto rounded-xl border border-slate-100 bg-white p-5 shadow-2xl transition-all duration-200'
+            ? 'fixed inset-x-3 flex max-h-[85dvh] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl'
+            : 'absolute flex max-h-[80vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-slate-100 bg-white shadow-2xl transition-all duration-200'
         }
         style={
           isMobile
-            ? undefined
+            ? { bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }
             : {
                 top: coords?.top ?? 0,
                 left: coords?.left ?? 0,
@@ -142,7 +145,8 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
               }
         }
       >
-        <div className="mb-2 flex items-start justify-between gap-3">
+        {/* En-tête (fixe) */}
+        <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
           <h3 className="font-display text-lg font-bold text-brand">{step.title}</h3>
           <button
             onClick={onComplete}
@@ -152,9 +156,14 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mb-5 text-sm leading-relaxed text-slate-600">{step.content}</p>
 
-        <div className="flex items-center justify-between gap-2">
+        {/* Contenu (seule zone qui défile) */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          <p className="text-sm leading-relaxed text-slate-600">{step.content}</p>
+        </div>
+
+        {/* Pied FIXE : progression + navigation — toujours accessible */}
+        <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-3">
           <div className="text-xs font-medium text-slate-400">
             {currentStep + 1} / {steps.length}
           </div>

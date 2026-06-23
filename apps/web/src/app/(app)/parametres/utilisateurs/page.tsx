@@ -28,6 +28,7 @@ const MODULE_LABELS: Record<ModuleKey, string> = {
   MARKET: 'Market',
   ANALYTICS: 'Analytics',
   AI: 'IA',
+  DELIVERY: 'Livraisons',
 };
 
 type Draft = {

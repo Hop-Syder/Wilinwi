@@ -98,12 +98,13 @@ export const ProductDtoSchema = z.object({
   categorie: z.string().nullable(),
   photos: z.array(z.string()),
   prixCatalogue: MoneySchema,
+  // Plancher : toujours présent (visible par tous, sert à négocier).
+  prixPlancher: MoneySchema,
   stock: QuantitySchema,
   seuilAlerte: QuantitySchema,
   variants: z.array(ProductVariantDtoSchema).default([]),
-  // Sensibles — présents seulement pour OWNER/MANAGER :
+  // Coût d'achat : sensible — présent uniquement pour OWNER/MANAGER.
   prixAchat: MoneySchema.optional(),
-  prixPlancher: MoneySchema.optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 

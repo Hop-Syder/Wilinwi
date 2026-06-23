@@ -38,9 +38,19 @@ describe('capacités par rôle', () => {
     expect(hasCapability('SELLER', 'users:manage')).toBe(false);
   });
 
-  it('seul OWNER gère abonnement et configuration', () => {
-    expect(hasCapability('OWNER', 'subscription:manage')).toBe(true);
+  it('le MANAGER a les droits du propriétaire SAUF l\'abonnement (D2)', () => {
+    expect(hasCapability('MANAGER', 'users:manage')).toBe(true);
+    expect(hasCapability('MANAGER', 'tenant:configure')).toBe(true);
+    // L'abonnement reste réservé au propriétaire.
     expect(hasCapability('MANAGER', 'subscription:manage')).toBe(false);
+    expect(hasCapability('OWNER', 'subscription:manage')).toBe(true);
+  });
+
+  it('le caissier peut faire des retours mais pas d\'annulation totale (D3)', () => {
+    expect(hasCapability('CASHIER', 'sale:return')).toBe(true);
+    expect(hasCapability('MANAGER', 'sale:return')).toBe(true);
+    expect(hasCapability('CASHIER', 'sale:cancel')).toBe(false);
+    expect(hasCapability('SELLER', 'sale:return')).toBe(false);
   });
 });
 

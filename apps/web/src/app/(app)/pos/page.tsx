@@ -221,6 +221,11 @@ export default function PosPage() {
   }, [products, query]);
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
+  // Le plancher est désormais visible : on bloque l'encaissement si une ligne
+  // est négociée sous son prix plancher (cohérent avec le refus serveur).
+  const hasBelowFloor = cart.some(
+    (l) => l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher,
+  );
 
   function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
     const stockToCheck = variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
@@ -460,6 +465,37 @@ export default function PosPage() {
                 </button>
               ))}
             </div>
+
+            {displayProducts.length === 0 && (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                <ShoppingCart className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                {products.length === 0 ? (
+                  <>
+                    <p className="font-medium text-slate-700">Aucun produit dans le catalogue</p>
+                    {user?.modules.includes('STOCK') ? (
+                      <>
+                        <p className="mt-1 text-sm text-slate-400">
+                          Ajoutez des produits dans le Stock pour commencer à vendre.
+                        </p>
+                        <Link href="/stock">
+                          <Button variant="outline" className="mt-4">
+                            Aller au Stock
+                          </Button>
+                        </Link>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-400">
+                        Demandez à un responsable d&apos;ajouter des produits.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Aucun produit ne correspond à « {query} ».
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -550,9 +586,15 @@ export default function PosPage() {
               </div>
             )}
 
+            {hasBelowFloor && (
+              <div className="mb-4 text-xs font-medium text-red-600 bg-red-50 p-2 rounded border border-red-200 flex justify-center text-center">
+                Un prix est sous le prix plancher autorisé. Ajustez-le pour encaisser.
+              </div>
+            )}
+
             <Button
               className="w-full h-12 text-lg"
-              disabled={cart.length === 0 || busy}
+              disabled={cart.length === 0 || busy || hasBelowFloor}
               onClick={openCheckout}
             >
               Encaisser

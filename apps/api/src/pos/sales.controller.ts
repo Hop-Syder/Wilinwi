@@ -23,6 +23,11 @@ import { SalesService } from './sales.service';
 
 const AddPaymentSchema = z.object({ montant: MoneySchema });
 const ApproveSaleSchema = z.object({ approuve: z.boolean() });
+const AssignDeliverySchema = z.object({
+  livreurId: z.string().uuid().nullable().optional(),
+  adresseLivraison: z.string().max(500).nullable().optional(),
+});
+type AssignDeliveryInput = z.infer<typeof AssignDeliverySchema>;
 
 @Controller('pos')
 export class SalesController {
@@ -97,7 +102,7 @@ export class SalesController {
     return this.sales.cancelSale(user, id);
   }
 
-  @RequireCapabilities('sale:cancel')
+  @RequireCapabilities('sale:return')
   @Post('sales/:id/return')
   returnPartial(
     @CurrentUser() user: AuthContext,
@@ -105,5 +110,31 @@ export class SalesController {
     @Body() body: { returns: { saleItemId: string; quantiteRetournee: number }[]; action: 'REFUND_CASH' | 'CREATE_CREDIT' }
   ) {
     return this.sales.returnPartial(user, id, body.returns, body.action);
+  }
+
+  // ─── Livraisons ───────────────────────────────────────────────────────────
+  // Marque une vente « à livrer » + assigne un livreur (vendeur/gérant/propriétaire).
+  @RequireCapabilities('sale:create')
+  @Post('sales/:id/delivery')
+  assignDelivery(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(AssignDeliverySchema)) dto: AssignDeliveryInput,
+  ) {
+    return this.sales.assignDelivery(user, id, dto);
+  }
+
+  // Liste des livraisons (le livreur ne voit que les siennes).
+  @RequireCapabilities('delivery:update')
+  @Get('deliveries')
+  deliveries(@CurrentUser() user: AuthContext) {
+    return this.sales.listDeliveries(user);
+  }
+
+  // Marque une livraison comme effectuée.
+  @RequireCapabilities('delivery:update')
+  @Post('sales/:id/delivered')
+  markDelivered(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.sales.markDelivered(user, id);
   }
 }

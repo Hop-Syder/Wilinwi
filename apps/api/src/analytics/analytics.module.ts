@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Controller, Get, Module } from '@nestjs/common';
+import { Controller, Get, Module, Query } from '@nestjs/common';
 import type { AuthContext } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from '../common/decorators';
 import { AnalyticsService } from './analytics.service';
@@ -22,6 +22,13 @@ class AnalyticsController {
   @Get('dashboard')
   dashboard(@CurrentUser() user: AuthContext) {
     return this.analytics.dashboard(user);
+  }
+
+  /** Rapport historique sur une période (KPIs, tendance, top produits, paiements). */
+  @RequireCapabilities('reports:read')
+  @Get('report')
+  report(@CurrentUser() user: AuthContext, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.analytics.report(user, from, to);
   }
 }
 

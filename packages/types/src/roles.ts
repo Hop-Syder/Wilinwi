@@ -48,7 +48,8 @@ export const CAPABILITIES = [
   'sale:create',
   'sale:read',
   'sale:override_floor_price', // valider une vente sous le prix plancher
-  'sale:cancel', // annuler une vente (ré-entrée stock + reversal)
+  'sale:cancel', // annuler une vente entière (ré-entrée stock + reversal) — responsable
+  'sale:return', // retour partiel d'articles (avoir / remboursement) — caissier autorisé
   // Caisse
   'cash:collect',
   'cash:close',
@@ -71,7 +72,13 @@ export type Capability = (typeof CAPABILITIES)[number];
 /** Matrice rôle → capacités. Source de vérité de l'autorisation. */
 export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   OWNER: [...CAPABILITIES],
+  // MANAGER = mêmes droits que l'OWNER SAUF la gestion de l'abonnement
+  // (`subscription:manage`). L'anti-escalade (ne pas toucher aux OWNER) est
+  // appliquée côté service, pas par la matrice de capacités.
   MANAGER: [
+    'tenant:configure',
+    'users:manage',
+    'activity:read',
     'stock:read',
     'stock:write',
     'inventory:count',
@@ -80,6 +87,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'sale:read',
     'sale:override_floor_price',
     'sale:cancel',
+    'sale:return',
     'cash:collect',
     'cash:close',
     'client:read',
@@ -88,13 +96,14 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'client:collect_payment',
     'treasury:read',
     'treasury:write',
+    'delivery:update',
     'reports:read',
     'reports:read_full',
-    'activity:read',
   ],
   SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read'],
   CASHIER: [
     'sale:read',
+    'sale:return',
     'cash:collect',
     'cash:close',
     'client:read',
@@ -109,9 +118,10 @@ export function hasCapability(role: Role, capability: Capability): boolean {
 }
 
 /**
- * Sécurité au niveau champ : le prix d'achat, le prix plancher et la marge
- * ne sont JAMAIS visibles par un vendeur, un caissier ou un livreur.
- * (cf. §3 et §9 du plan de projet)
+ * Sécurité au niveau champ : le prix d'ACHAT (coût) et la marge ne sont JAMAIS
+ * visibles par un vendeur, un caissier ou un livreur. Le prix PLANCHER, lui, est
+ * visible par tous (donnée de négociation) — la vente sous le plancher restant
+ * refusée par le backend. (cf. §3 et §9 du plan de projet)
  */
 export function canSeeSensitivePricing(role: Role): boolean {
   return hasCapability(role, 'reports:read_full');
@@ -144,6 +154,7 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'sale:read': 'POS',
   'sale:override_floor_price': 'POS',
   'sale:cancel': 'POS',
+  'sale:return': 'POS',
   'cash:collect': 'POS',
   'cash:close': 'POS',
   'client:read': 'CRM',
@@ -152,7 +163,7 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'client:collect_payment': 'CRM',
   'treasury:read': 'PAY',
   'treasury:write': 'PAY',
-  'delivery:update': 'POS',
+  'delivery:update': 'DELIVERY',
   'reports:read': 'ANALYTICS',
   'reports:read_full': 'ANALYTICS',
 };
@@ -160,10 +171,10 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
 /** Modules visibles par défaut selon le rôle (avant overrides & plan). */
 export const ROLE_MODULES: Record<Role, readonly ModuleKey[]> = {
   OWNER: [...MODULES],
-  MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS'],
+  MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY'],
   SELLER: ['POS', 'STOCK'],
   CASHIER: ['POS', 'CRM'],
-  DELIVERY: [],
+  DELIVERY: ['DELIVERY'],
 };
 
 /**

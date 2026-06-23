@@ -34,10 +34,11 @@ packages:
 - **5 rôles** (`OWNER/MANAGER/SELLER/CASHIER/DELIVERY`) → matrice de capacités dans
   [packages/types/src/roles.ts](packages/types/src/roles.ts). Les routes sont gardées
   par `@RequireCapabilities(...)` + `CapabilitiesGuard`.
-- **Sécurité au niveau champ** : `prix_achat` et `prix_plancher` ne sont JAMAIS
-  renvoyés à SELLER/CASHIER/DELIVERY. Unique point de sortie des produits :
-  [toProductDto()](apps/api/src/stock/product.mapper.ts). Idem pour le dashboard
-  (bénéfice/valeur d'achat masqués).
+- **Sécurité au niveau champ** : `prix_achat` (coût → marge) n'est JAMAIS renvoyé à
+  SELLER/CASHIER/DELIVERY. En revanche `prix_plancher` EST visible par tous (donnée
+  de négociation) — la vente sous le plancher reste refusée par le backend. Unique
+  point de sortie des produits : [toProductDto()](apps/api/src/stock/product.mapper.ts).
+  Idem pour le dashboard (bénéfice/valeur d'achat masqués).
 - **Système à 4 prix** : `prixAchat ≤ prixPlancher ≤ prixCatalogue` (produit) +
   `prixReel` (par ligne de vente). Vente sous le plancher → **opération strictement refusée** 
   par le backend et l'UI (anti-fraude absolu, l'état PENDING_APPROVAL n'est plus actif).

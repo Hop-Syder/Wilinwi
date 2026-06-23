@@ -27,6 +27,7 @@ import {
   Lock,
   Menu,
   X,
+  Truck,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
@@ -43,6 +44,7 @@ const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: Modu
   { href: '/ventes', label: 'Ventes', icon: Receipt, module: 'POS' },
   { href: '/clients', label: 'Clients', icon: Users, module: 'CRM' },
   { href: '/tresorerie', label: 'Trésorerie', icon: Wallet, module: 'PAY' },
+  { href: '/livraisons', label: 'Livraisons', icon: Truck, module: 'DELIVERY' },
   { href: '/parametres', label: 'Paramètres', icon: Settings, module: 'ADMIN' },
 ];
 

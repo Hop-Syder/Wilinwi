@@ -568,6 +568,93 @@ export class SalesService {
     });
   }
 
+  // ─────────────────────────── Livraisons (MVP minimal) ───────────────────────────
+
+  /** DTO léger d'une livraison (statut dérivé de `livreLe`). */
+  private toDeliveryDto(s: any) {
+    return {
+      id: s.id,
+      total: s.total,
+      adresseLivraison: s.adresseLivraison ?? null,
+      livreLe: s.livreLe ?? null,
+      livreurId: s.livreurId ?? null,
+      livreurNom: s.livreur?.nom ?? null,
+      clientNom: s.client?.nom ?? null,
+      clientTel: s.client?.telephone ?? null,
+      createdAt: s.createdAt,
+      statut: s.livreLe ? 'LIVRE' : 'A_LIVRER',
+    };
+  }
+
+  /** Marque une vente « à livrer » + assigne un livreur et une adresse. */
+  async assignDelivery(
+    ctx: AuthContext,
+    saleId: string,
+    input: { livreurId?: string | null; adresseLivraison?: string | null },
+  ) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const sale = await tx.sale.findFirst({ where: { id: saleId, tenantId: ctx.tenantId } });
+      if (!sale) throw new NotFoundException('Vente introuvable');
+      if (sale.status === 'CANCELLED') throw new BadRequestException('Vente annulée');
+      if (input.livreurId) {
+        const livreur = await tx.user.findFirst({
+          where: { id: input.livreurId, tenantId: ctx.tenantId },
+        });
+        if (!livreur) throw new NotFoundException('Livreur introuvable');
+      }
+      await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          aLivrer: true,
+          livreurId: input.livreurId ?? null,
+          adresseLivraison: input.adresseLivraison ?? null,
+          livreLe: null,
+        },
+      });
+      const updated = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { livreur: { select: { nom: true } }, client: { select: { nom: true, telephone: true } } },
+      });
+      return this.toDeliveryDto(updated);
+    });
+  }
+
+  /** Liste des livraisons : un livreur ne voit que les siennes (non livrées). */
+  async listDeliveries(ctx: AuthContext) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const where: any = { tenantId: ctx.tenantId, aLivrer: true };
+      if (ctx.role === 'DELIVERY') {
+        where.livreurId = ctx.userId;
+        where.livreLe = null;
+      }
+      const sales = await tx.sale.findMany({
+        where,
+        orderBy: [{ livreLe: 'asc' }, { createdAt: 'desc' }],
+        take: 200,
+        include: { livreur: { select: { nom: true } }, client: { select: { nom: true, telephone: true } } },
+      });
+      return sales.map((s) => this.toDeliveryDto(s));
+    });
+  }
+
+  /** Marque une livraison comme effectuée. Un livreur ne peut livrer que ses assignations. */
+  async markDelivered(ctx: AuthContext, saleId: string) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const sale = await tx.sale.findFirst({ where: { id: saleId, tenantId: ctx.tenantId } });
+      if (!sale) throw new NotFoundException('Vente introuvable');
+      if (!sale.aLivrer) throw new BadRequestException("Cette vente n'est pas une livraison");
+      if (ctx.role === 'DELIVERY' && sale.livreurId !== ctx.userId) {
+        throw new ForbiddenException('Cette livraison ne vous est pas assignée');
+      }
+      await tx.sale.update({ where: { id: saleId }, data: { livreLe: new Date() } });
+      const updated = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { livreur: { select: { nom: true } }, client: { select: { nom: true, telephone: true } } },
+      });
+      return this.toDeliveryDto(updated);
+    });
+  }
+
   async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; q?: string }) {
     const where: any = { tenantId: ctx.tenantId };
     

@@ -21,10 +21,12 @@ import {
   BarChart3,
   Sparkles,
   Lock,
+  Truck,
 } from 'lucide-react';
 import { PLAN_MODULES, type ModuleKey, type Plan } from '@wilinwi/types';
 import { Badge, cn } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
+import { ActivationChecklist } from '@/components/activation-checklist';
 
 interface ModuleDef {
   key: ModuleKey;
@@ -102,8 +104,28 @@ export default function HubPage() {
   const { user } = useAuth();
   if (!user) return null;
 
+  // Le livreur n'a qu'un seul module : on l'envoie directement vers ses livraisons.
+  if (user.role === 'DELIVERY') {
+    return (
+      <div className="mx-auto max-w-md py-12 text-center">
+        <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          <Truck className="h-8 w-8" />
+        </span>
+        <h1 className="font-display text-2xl font-bold text-brand">Bonjour 👋</h1>
+        <p className="mt-1 text-sm text-slate-500">Consultez les livraisons qui vous sont assignées.</p>
+        <Link
+          href="/livraisons"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+        >
+          <Truck className="h-5 w-5" /> Mes livraisons
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div>
+      <ActivationChecklist />
       <h1 className="font-display text-2xl font-bold text-brand">Vos modules Wilinwi</h1>
       <p className="mt-1 text-sm text-slate-500">
         Plan <span className="font-semibold uppercase">{user.plan}</span> · un seul compte pour tout

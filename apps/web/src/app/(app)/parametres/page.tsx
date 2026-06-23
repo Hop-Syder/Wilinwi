@@ -59,6 +59,7 @@ const MODULE_LABELS: Record<string, string> = {
   CRM: 'CRM Clients',
   MARKET: 'Market (WhatsApp)',
   AI: 'Assistant IA',
+  DELIVERY: 'Livraisons',
 };
 
 export default function ParametresPage() {

@@ -11,6 +11,7 @@
  */
 // ──────────────────────────────────
 
+import Link from 'next/link';
 import { Activity, TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -65,14 +66,22 @@ export default function DashboardPage() {
             Aperçu de l'activité du <strong className="font-medium">{new Date().toLocaleDateString()}</strong>.
           </p>
         </div>
-        <ContextualHelp 
-          storageKey="wilinwi_dashboard_tour_done"
-          tourSteps={tourSteps}
-          useCases={[
-            { title: 'Suivre la marge bénéficiaire', description: 'Le chiffre d\'affaires vous indique ce qui est entré en caisse, mais la "Marge générée" vous montre votre bénéfice réel.' },
-            { title: 'Optimiser le réassort', description: 'Le panneau "Top Produits" vous montre quels articles se vendent le mieux, ce qui vous aide à savoir quoi racheter en priorité.' }
-          ]}
-        />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/rapports"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <TrendingUp className="h-4 w-4" /> Rapports
+          </Link>
+          <ContextualHelp
+            storageKey="wilinwi_dashboard_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Suivre la marge bénéficiaire', description: 'Le chiffre d\'affaires vous indique ce qui est entré en caisse, mais la "Marge générée" vous montre votre bénéfice réel.' },
+              { title: 'Optimiser le réassort', description: 'Le panneau "Top Produits" vous montre quels articles se vendent le mieux, ce qui vous aide à savoir quoi racheter en priorité.' }
+            ]}
+          />
+        </div>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" id="tour-dashboard-stats">

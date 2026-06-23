@@ -1,8 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import type { ActivityLog } from '@wilinwi/db';
 import type { AuthContext } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from './decorators';
-import { ActivityService } from './activity.service';
+import { ActivityService, type ActivityLogRow } from './activity.service';
 
 @Controller('activity')
 export class ActivityController {
@@ -11,7 +10,7 @@ export class ActivityController {
   /** Journal d'activité du tenant (propriétaire / gérant). */
   @RequireCapabilities('activity:read')
   @Get()
-  list(@CurrentUser() user: AuthContext, @Query('limit') limit?: string): Promise<ActivityLog[]> {
+  list(@CurrentUser() user: AuthContext, @Query('limit') limit?: string): Promise<ActivityLogRow[]> {
     return this.activity.list(user.tenantId, limit ? Number(limit) : 100);
   }
 }

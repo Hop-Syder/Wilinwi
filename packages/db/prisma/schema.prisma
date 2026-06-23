@@ -168,6 +168,7 @@ model User {
 
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ventesEffectuees  Sale[]          @relation("VendeurVentes")
+  livraisons        Sale[]          @relation("LivreurLivraisons")
   inventoriesValid  Inventory[]     @relation("InventoryValidator")
   overridesDemandes PriceOverride[] @relation("OverrideRequester")
   overridesValides  PriceOverride[] @relation("OverrideApprover")
@@ -294,8 +295,16 @@ model Sale {
   receiptCode      String?       @unique @map("receipt_code")
   createdAt        DateTime      @default(now()) @map("created_at")
 
+  // ── Livraison (MVP minimal) : une vente peut être marquée « à livrer », assignée
+  //    à un livreur, puis marquée livrée. Statut dérivé : aLivrer && !livreLe = à livrer.
+  aLivrer          Boolean       @default(false) @map("a_livrer")
+  livreurId        String?       @map("livreur_id") @db.Uuid
+  adresseLivraison String?       @map("adresse_livraison")
+  livreLe          DateTime?     @map("livre_le")
+
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vendeur     User             @relation("VendeurVentes", fields: [vendeurId], references: [id])
+  livreur     User?            @relation("LivreurLivraisons", fields: [livreurId], references: [id])
   client      Client?          @relation(fields: [clientId], references: [id])
   items       SaleItem[]
   installment SaleInstallment?
@@ -303,6 +312,7 @@ model Sale {
   @@unique([tenantId, clientGeneratedId])
   @@index([tenantId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, livreurId])
   @@map("sales")
 }
 

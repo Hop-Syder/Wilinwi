@@ -26,14 +26,14 @@ export type Plan = (typeof PLANS)[number];
 export const PlanSchema = z.enum(PLANS);
 
 /** Modules de l'écosystème (gating du Hub). */
-export const MODULES = ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'] as const;
+export const MODULES = ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'] as const;
 export type ModuleKey = (typeof MODULES)[number];
 
 /** Modules inclus par plan — pilote le gating premium du Hub (§4.2). */
 export const PLAN_MODULES: Record<Plan, readonly ModuleKey[]> = {
-  FREE: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
-  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
-  BUSINESS: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI'],
+  FREE: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
+  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
+  BUSINESS: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
 };
 
 export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {

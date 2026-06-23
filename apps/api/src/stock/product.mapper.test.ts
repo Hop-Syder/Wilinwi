@@ -40,11 +40,13 @@ describe('toProductDto — sécurité au niveau champ', () => {
     }
   });
 
-  it('masque prix_achat et prix_plancher pour SELLER/CASHIER/DELIVERY', () => {
+  it('masque le coût d\'achat mais EXPOSE le plancher pour SELLER/CASHIER/DELIVERY', () => {
     for (const role of ['SELLER', 'CASHIER', 'DELIVERY'] as const) {
       const dto = toProductDto(product, role);
+      // Le coût d'achat (marge) reste secret.
       expect(dto.prixAchat).toBeUndefined();
-      expect(dto.prixPlancher).toBeUndefined();
+      // Le plancher est visible pour permettre la négociation.
+      expect(dto.prixPlancher).toBe(11000);
       // Le prix catalogue reste visible pour vendre.
       expect(dto.prixCatalogue).toBe(15000);
     }

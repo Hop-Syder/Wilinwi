@@ -35,7 +35,7 @@ export function ContextualHelp({ storageKey, tourSteps, useCases }: ContextualHe
 
       {showMenu && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setShowMenu(false)}>
-          <Card className="w-full max-w-lg p-6 relative max-h-[85vh] overflow-x-hidden overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <Card className="w-full max-w-lg p-6 relative max-h-[85dvh] overflow-x-hidden overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* Décoration background */}
             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-brand/5 blur-3xl" />
             

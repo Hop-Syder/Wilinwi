@@ -175,9 +175,31 @@ export default function StockPage() {
             ))}
             {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-10 text-center text-slate-400">
-                  <Package className="mx-auto mb-2 h-8 w-8" />
-                  Aucun produit trouvé.
+                <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-12 text-center">
+                  <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                  {products.length === 0 ? (
+                    <>
+                      <p className="font-medium text-slate-700">Votre catalogue est vide</p>
+                      <p className="mt-1 text-sm text-slate-400">
+                        Ajoutez votre premier produit pour commencer à vendre.
+                      </p>
+                      {canWrite && (
+                        <Button
+                          className="mt-4"
+                          onClick={() => {
+                            setEditingProduct(undefined);
+                            setShowProductModal(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" /> Ajouter un produit
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-400">
+                      Aucun produit ne correspond à votre recherche.
+                    </p>
+                  )}
                 </td>
               </tr>
             )}

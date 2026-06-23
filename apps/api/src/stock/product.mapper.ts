@@ -25,6 +25,10 @@ export function toProductDto(product: Product & { variants?: ProductVariant[] },
     categorie: product.categorie,
     photos: product.photos,
     prixCatalogue: product.prixCatalogue,
+    // Le prix plancher (minimum de vente) est visible par TOUS les rôles : le
+    // vendeur/caissier en a besoin pour négocier. (La vente sous le plancher
+    // reste refusée par le backend — l'anti-fraude est conservé.)
+    prixPlancher: product.prixPlancher,
     stock: product.stock,
     seuilAlerte: product.seuilAlerte,
     variants: (product.variants || []).map(v => ({
@@ -36,9 +40,9 @@ export function toProductDto(product: Product & { variants?: ProductVariant[] },
     })),
   };
 
+  // Le prix d'ACHAT (coût → marge) reste réservé aux OWNER/MANAGER.
   if (canSeeSensitivePricing(role)) {
     base.prixAchat = product.prixAchat;
-    base.prixPlancher = product.prixPlancher;
   }
   return base;
 }

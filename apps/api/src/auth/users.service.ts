@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -67,6 +68,10 @@ export class UsersService {
   }
 
   async create(ctx: AuthContext, input: CreateUserInput): Promise<UserDto> {
+    // Anti-escalade : seul un OWNER peut créer un autre OWNER.
+    if (input.role === 'OWNER' && ctx.role !== 'OWNER') {
+      throw new ForbiddenException('Seul le propriétaire peut créer un autre propriétaire.');
+    }
     // Limite d'utilisateurs selon l'abonnement (§8).
     const max = PLAN_LIMITS[ctx.plan].maxUsers;
     const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
@@ -133,6 +138,13 @@ export class UsersService {
     const user = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await tx.user.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (!existing) throw new NotFoundException('Utilisateur introuvable');
+      // Anti-escalade : un non-OWNER (gérant) ne peut ni modifier un OWNER,
+      // ni promouvoir quiconque au rôle OWNER.
+      if (ctx.role !== 'OWNER' && (existing.role === 'OWNER' || input.role === 'OWNER')) {
+        throw new ForbiddenException(
+          "Un gérant ne peut pas modifier un propriétaire ni attribuer le rôle propriétaire.",
+        );
+      }
       if (existing.role === 'OWNER' && (input.role || input.actif === false)) {
         throw new BadRequestException('Le propriétaire ne peut pas être rétrogradé ou désactivé');
       }
@@ -163,6 +175,10 @@ export class UsersService {
     await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await tx.user.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (!existing) throw new NotFoundException('Utilisateur introuvable');
+      // Anti-escalade : un gérant ne peut pas réinitialiser le PIN du propriétaire.
+      if (ctx.role !== 'OWNER' && existing.role === 'OWNER') {
+        throw new ForbiddenException("Un gérant ne peut pas modifier le code PIN du propriétaire.");
+      }
       await tx.user.update({ where: { id }, data: { pinCode: hash } });
     });
     await this.activity.log({

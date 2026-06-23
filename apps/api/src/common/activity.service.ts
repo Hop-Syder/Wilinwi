@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { ActivityLog } from '@wilinwi/db';
 import { PrismaService } from './prisma.service';
 
+/** Ligne de journal enrichie du nom de l'auteur (pour l'écran d'audit). */
+export type ActivityLogRow = ActivityLog & { userName: string | null };
+
 export interface ActivityInput {
   tenantId: string;
   userId?: string | null;
@@ -41,13 +44,23 @@ export class ActivityService {
     }
   }
 
-  async list(tenantId: string, limit = 100): Promise<ActivityLog[]> {
-    return this.prisma.forTenant(tenantId, (tx) =>
-      tx.activityLog.findMany({
+  /** Journal enrichi du nom de l'auteur (l'ActivityLog ne stocke que l'userId). */
+  async list(tenantId: string, limit = 100): Promise<ActivityLogRow[]> {
+    return this.prisma.forTenant(tenantId, async (tx) => {
+      const logs = await tx.activityLog.findMany({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
         take: Math.min(limit, 500),
-      }),
-    );
+      });
+      const users = await tx.user.findMany({
+        where: { tenantId },
+        select: { id: true, nom: true },
+      });
+      const nameById = new Map(users.map((u) => [u.id, u.nom]));
+      return logs.map((l) => ({
+        ...l,
+        userName: l.userId ? (nameById.get(l.userId) ?? null) : null,
+      }));
+    });
   }
 }

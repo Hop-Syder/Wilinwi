@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# dexty.config.yaml — règle l'exigence de Dexty Architect pour CE projet
+# ───────────────────────────────────────────────────────────────────────────
+# Lu automatiquement par l'agent au démarrage (avant la Phase 4 / Auto-Réflexion).
+# S'il est absent, l'agent applique les défauts intégrés (= profil "standard").
+# Place ce fichier à la racine du projet (ou dans .dexty/config.yaml).
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Preset tout-en-un. Choisit d'un coup les seuils d'auto-réflexion.
+#   prototype → cible 70 · Δ 8 · 2 cycles   (POC/jetable — vélocité avant tout)
+#   standard  → cible 85 · Δ 5 · 4 cycles   (SaaS / web app classique — DÉFAUT)
+#   critique  → cible 92 · Δ 3 · 6 cycles   (finance, santé, paiement, sécurité forte)
+profile: standard
+
+# Surcharges fines (optionnelles). Écrasent les valeurs du profil ci-dessus.
+# Laisse en commentaire pour suivre le profil ; décommente pour ajuster.
+self_reflexion:
+  confidence_target: 85    # score (0–100) à atteindre pour stopper la boucle
+  delta_min: 5             # gain marginal en dessous duquel on considère stabilisé
+  max_cycles: 4            # plafond de cycles d'auto-réflexion par livrable
+
+# Profondeur par défaut des 9 phases :  complete | allegee
+depth: complete
+
+# Langue des livrables (l'agent répond de toute façon dans la langue de la demande).
+language: fr
+
+# (Optionnel) Contexte projet rappelé à l'agent à chaque session.
+# Aide le calibrage d'objectif "raisonnable" (sur/sous-ingénierie).
+context:
+  team_size: 2             # nombre de développeurs
+  deadline: ""             # ex. "2026-09-30"
+  budget: ""               # ex. "serré" | "confortable"
+  stack: []                # ex. ["Next.js", "PostgreSQL", "Stripe"]

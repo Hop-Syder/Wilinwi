@@ -11,6 +11,7 @@
 
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -86,6 +87,10 @@ export class AuthService {
    * email/lien est l'évolution de production naturelle.
    */
   async inviteUser(ctx: AuthContext, input: InviteUserInput) {
+    // Anti-escalade : seul un OWNER peut inviter un autre OWNER.
+    if (input.role === 'OWNER' && ctx.role !== 'OWNER') {
+      throw new ForbiddenException('Seul le propriétaire peut inviter un autre propriétaire.');
+    }
     const tempPassword = `Wlw-${randomBytes(4).toString('hex')}`;
     const userId = await this.supabase.createUser(input.email, tempPassword);
 

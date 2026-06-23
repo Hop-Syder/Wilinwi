@@ -71,7 +71,21 @@ ALTER TABLE "sale_items" ADD COLUMN IF NOT EXISTS "quantite_retournee" INTEGER N
 -- Note: PostgreSQL nécessite d'ajouter les valeurs d'énumération en dehors de transactions
 ALTER TYPE "CashAccount" ADD VALUE IF NOT EXISTS 'MTN_MOMO';
 ALTER TYPE "CashAccount" ADD VALUE IF NOT EXISTS 'MOOV_MONEY';
+
+-- 4. Livraisons (OT-8) : champs de livraison sur la table sales (déjà sous RLS).
+ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "a_livrer" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "livreur_id" UUID;
+ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "adresse_livraison" TEXT;
+ALTER TABLE "sales" ADD COLUMN IF NOT EXISTS "livre_le" TIMESTAMP(3);
+CREATE INDEX IF NOT EXISTS "sales_tenant_id_livreur_id_idx" ON "sales" ("tenant_id", "livreur_id");
+DO $$ BEGIN
+  ALTER TABLE "sales" ADD CONSTRAINT "sales_livreur_id_fkey"
+    FOREIGN KEY ("livreur_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ```
+
+> En local, `prisma migrate dev` génère cette migration automatiquement depuis le schéma.
+> En production (sandbox sans accès DB), exécuter la section 4 ci-dessus dans le SQL Editor Supabase.
 
 ---
 
