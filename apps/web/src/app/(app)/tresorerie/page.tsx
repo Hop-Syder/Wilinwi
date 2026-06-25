@@ -480,7 +480,7 @@ export default function TresoreriePage() {
                         key={m.id}
                         className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50"
                       >
-                        <td className="px-4 py-2.5 text-slate-400 tabular-nums">
+                        <td className="px-4 py-2.5 text-slate-400 tabular">
                           <div>{new Date(m.createdAt).toLocaleDateString('fr-FR')}</div>
                           <div className="text-xs">
                             {new Date(m.createdAt).toLocaleTimeString('fr-FR', {
@@ -503,7 +503,7 @@ export default function TresoreriePage() {
                           )}
                         </td>
                         <td
-                          className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
+                          className={`px-4 py-2.5 text-right font-semibold tabular ${
                             m.type === 'IN' ? 'text-emerald-700' : 'text-red-600'
                           }`}
                         >
@@ -517,7 +517,7 @@ export default function TresoreriePage() {
                             {formatFCFA(m.montant)}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-right text-slate-500 tabular-nums">
+                        <td className="px-4 py-2.5 text-right text-slate-500 tabular">
                           {formatFCFA(m.soldeApres)}
                         </td>
                       </tr>
@@ -573,16 +573,16 @@ export default function TresoreriePage() {
                     )}
                     {closes.map((c) => (
                       <tr key={c.id} className="border-t border-slate-100">
-                        <td className="px-4 py-2 text-slate-500 tabular-nums">
+                        <td className="px-4 py-2 text-slate-500 tabular">
                           {new Date(c.createdAt).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="px-4 py-2">
                           <Badge tone="neutral">{CASH_ACCOUNT_LABELS[c.compte]}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-right tabular-nums">{formatFCFA(c.soldeTheorique)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{formatFCFA(c.soldeReel)}</td>
+                        <td className="px-4 py-2 text-right tabular">{formatFCFA(c.soldeTheorique)}</td>
+                        <td className="px-4 py-2 text-right tabular">{formatFCFA(c.soldeReel)}</td>
                         <td
-                          className={`px-4 py-2 text-right font-semibold tabular-nums ${
+                          className={`px-4 py-2 text-right font-semibold tabular ${
                             c.ecart === 0
                               ? 'text-emerald-700'
                               : c.ecart > 0
@@ -891,7 +891,7 @@ function CashCloseForm({
 
         <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
           <span className="text-slate-500">Solde théorique : </span>
-          <span className="font-semibold tabular-nums">{formatFCFA(theorique)}</span>
+          <span className="font-semibold tabular">{formatFCFA(theorique)}</span>
         </div>
 
         <InputField

@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@wilinwi/ui';
 import { getSupabase } from '@/lib/supabase';
 
@@ -59,8 +60,11 @@ export default function SetPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-brand px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
-        <h1 className="font-display text-2xl font-bold text-brand">◈ Wilinwi</h1>
-        <p className="mt-1 text-sm text-slate-500">Bienvenue ! Définissez votre mot de passe.</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Image src="/logo-wilinwi.png" alt="Wilinwi Logo" width={36} height={36} className="object-contain" />
+          <h1 className="font-display text-2xl font-black text-brand">Wilinwi</h1>
+        </div>
+        <p className="text-sm text-slate-500">Bienvenue ! Définissez votre mot de passe.</p>
 
         {!ready && <p className="mt-6 text-sm text-slate-400">Vérification du lien…</p>}
 

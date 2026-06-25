@@ -72,7 +72,7 @@ export default function PublicReceiptPage() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm" id="recu">
         <div className="text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-          <h1 className="mt-2 text-lg font-bold text-slate-900">Merci pour votre achat</h1>
+          <h1 className="mt-2 font-display text-lg font-bold text-slate-900">Merci pour votre achat</h1>
           <p className="text-sm text-slate-500">{receipt.boutique}</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: '#12355B' }}>
             {fcfa(receipt.total)}

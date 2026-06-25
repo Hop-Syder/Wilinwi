@@ -28,9 +28,8 @@ export function ContextualHelp({ storageKey, tourSteps, useCases }: ContextualHe
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setShowMenu(true)}>
-        <HelpCircle className="mr-1 h-4 w-4" />
-        Aide
+      <Button variant="outline" size="sm" className="w-9 !px-0 flex items-center justify-center rounded-xl" onClick={() => setShowMenu(true)} title="Aide">
+        <HelpCircle className="h-4.5 w-4.5" />
       </Button>
 
       {showMenu && createPortal(

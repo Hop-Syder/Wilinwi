@@ -1,203 +1,100 @@
-# Design System Master File
+# Design System — Wilinwi Master File
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
-
----
-
-**Project:** Wilinwi
-**Generated:** 2026-06-22 02:15:33
-**Category:** Micro SaaS
+> **LOGIQUE :** Lors de la construction d'une page spécifique, vérifiez d'abord `design-system/pages/[page-name].md`.
+> Si ce fichier existe, ses règles **remplacent** ce fichier Master.
+> Sinon, suivez strictement les règles ci-dessous.
 
 ---
 
-## Global Rules
-
-### Color Palette
-
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#12355B` | `--color-primary` |
-| Secondary | `#F59E0B` | `--color-secondary` |
-| CTA/Accent | `#00A86B` | `--color-cta` |
-| Background | `#F8FAFC` | `--color-background` |
-| Text | `#0F172A` | `--color-text` |
-
-**Color Notes:** Wilinwi official brand colors: Navy Blue primary, Jade Green CTA, Amber Orange accent.
-
-### Typography
-
-- **Heading Font:** Poppins
-- **Body Font:** Inter
-- **Mood:** modern, professional, clean, corporate, friendly, approachable
-- **Google Fonts:** [Poppins + Inter](https://fonts.google.com/share?selection.family=Inter:wght@300;400;500;600;700|Poppins:wght@400;500;600;700)
-
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
-```
-
-### Spacing Variables
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
-
-### Shadow Depths
-
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
+**Projet :** Wilinwi
+**Mise à jour :** 2026-06-25
+**Auteur :** @hopsyder | Nexus Partners
 
 ---
 
-## Component Specs
+## 🎨 Palette de Couleurs
 
-### Buttons
+### 🔵 Palette Principale
 
-```css
-/* Primary Button */
-.btn-primary {
-  background: #00A86B;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+| Rôle | Hex | CSS Variable | Utilisation |
+|------|-----|--------------|-------------|
+| **Bleu Wilinwi** | `#12355B` | `--color-primary` | Logo principal, Menus, Boutons principaux, Dashboard |
+| **Vert Croissance** | `#00A86B` | `--color-emerald` | Validation, Gains, Bénéfices, KPI positifs |
+| **Orange Commerce** | `#F59E0B` | `--color-gold` | CTA, Promotions, Notifications importantes |
+| **Blanc** | `#FFFFFF` | `--color-white` | Texte principal, Fond clair, Contraste |
 
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+### 🟢 Palette Secondaire
 
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #12355B;
-  border: 2px solid #12355B;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
-
-### Cards
-
-```css
-.card {
-  background: #FFFFFF;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-  border: 1px solid #E2E8F0;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #12355B;
-  outline: none;
-  box-shadow: 0 0 0 3px #12355B20;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
+| Rôle | Hex | CSS Variable | Utilisation |
+|------|-----|--------------|-------------|
+| **Bleu Clair** | `#3B82F6` | `--color-info` | Information, badges d'état |
+| **Vert Clair** | `#22C55E` | `--color-success-light` | États intermédiaires positifs |
+| **Gris Clair** | `#F5F7FA` | `--color-bg-light` | Fond de page secondaire |
+| **Gris Texte** | `#64748B` | `--color-text-muted` | Textes secondaires, légendes |
+| **Noir Profond** | `#0F172A` | `--color-text` | Texte principal, fond sombre |
 
 ---
 
-## Style Guidelines
+## 📱 Thèmes & Modes
 
-**Style:** Flat Design
+### ☀️ Mode Clair
 
-**Keywords:** 2D, minimalist, bold colors, no shadows, clean lines, simple shapes, typography-focused, modern, icon-heavy
+| Élément | Couleur |
+|---------|---------|
+| **Fond principal** | `#FFFFFF` |
+| **Fond secondaire** | `#F5F7FA` |
+| **Texte principal** | `#0F172A` |
+| **Texte secondaire** | `#64748B` |
+| **Bouton principal** | `#12355B` |
+| **Bouton succès** | `#00A86B` |
+| **Bouton alerte** | `#F59E0B` |
 
-**Best For:** Web apps, mobile apps, cross-platform, startup MVPs, user-friendly, SaaS, dashboards, corporate
+### 🌙 Mode Sombre
 
-**Key Effects:** No gradients/shadows, simple hover (color/opacity shift), fast loading, clean transitions (150-200ms ease), minimal icons
-
-### Page Pattern
-
-**Pattern Name:** Minimal & Direct + Demo
-
-- **CTA Placement:** Above fold
-- **Section Order:** Hero > Features > CTA
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Complex onboarding flow
-- ❌ Cluttered layout
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
+| Élément | Couleur |
+|---------|---------|
+| **Fond principal** | `#0F172A` |
+| **Carte / Card** | `#1E293B` |
+| **Texte principal** | `#FFFFFF` |
+| **Texte secondaire** | `#CBD5E1` |
+| **Bouton principal** | `#12355B` |
+| **Succès** | `#00A86B` |
+| **Alerte** | `#F59E0B` |
 
 ---
 
-## Pre-Delivery Checklist
+## ✍️ Typographie
 
-Before delivering any UI code, verify:
+- **Titres (Headings) :** `Poppins` (Poids : `700`, `600`)
+- **Interface (UI) :** `Inter` (Poids : `400`, `500`, `600`)
+- **Données (Data) :** `DM Mono` (Utilisé pour : *Prix*, *Stocks*, *Quantités*, *Références*. Exemple : `25 000 FCFA`, `SKU-002541`)
 
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+---
+
+## 🖼️ Style Visuel
+
+### 🔍 Icônes
+- **Style :** Outline moderne, épaisseur uniforme, coins légèrement arrondis.
+- **Bibliothèque :** Lucide Icons, Heroicons.
+- ❌ **Interdiction :** Utiliser des emojis comme icônes d'interface.
+
+### 🎨 Illustrations
+- **Style :** Flat Design, moderne, professionnel, inspiré du commerce africain.
+- ❌ **À éviter :** Cartoon, effets de relief ou d'ombres excessifs, personnages trop enfantins.
+
+### 📊 Couleurs KPI
+- **Succès (Success) :** `#00A86B`
+- **Information (Info) :** `#3B82F6`
+- **Attention (Warning) :** `#F59E0B`
+- **Erreur (Error) :** `#EF4444`
+
+### 💎 Gradient Officiel
+- **Pour landing page & marketing :** `linear-gradient(135deg, #12355B 0%, #00A86B 50%, #F59E0B 100%)` (🔵 → 🟢 → 🟠)
+
+---
+
+## 🏷️ Logo
+
+- **Version Principale (Fond clair) :** Logo couleur + Texte bleu `#12355B`
+- **Version Sombre (Fond sombre) :** Logo couleur + Texte blanc `#FFFFFF`
+- **Version Monochrome (Noir / Blanc) :** Pour impression (ex: reçu thermique).

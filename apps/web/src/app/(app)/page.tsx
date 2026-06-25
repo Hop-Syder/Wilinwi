@@ -68,7 +68,7 @@ const MODULES: ModuleDef[] = [
     desc: 'Mobile Money, trésorerie',
     href: '/tresorerie',
     icon: CreditCard,
-    accent: 'bg-slate-100 text-slate-500',
+    accent: 'bg-blue-50 text-blue-600',
   },
   {
     key: 'CRM',
@@ -76,7 +76,7 @@ const MODULES: ModuleDef[] = [
     desc: 'Clients, crédits, fidélité',
     href: '/clients',
     icon: Users,
-    accent: 'bg-slate-100 text-slate-500',
+    accent: 'bg-emerald-50 text-emerald-700',
   },
   {
     key: 'MARKET',
@@ -84,7 +84,7 @@ const MODULES: ModuleDef[] = [
     desc: 'Catalogue WhatsApp',
     href: null,
     icon: Store,
-    accent: 'bg-slate-100 text-slate-500',
+    accent: 'bg-green-50 text-green-600',
   },
   {
     key: 'AI',
@@ -92,7 +92,7 @@ const MODULES: ModuleDef[] = [
     desc: 'Assistant intelligent',
     href: null,
     icon: Sparkles,
-    accent: 'bg-slate-100 text-slate-500',
+    accent: 'bg-purple-50 text-purple-700',
   },
 ];
 
@@ -160,7 +160,7 @@ export default function HubPage() {
                   <Badge tone="success">Actif</Badge>
                 )}
               </div>
-              <h2 className="mt-4 font-display text-lg font-semibold text-slate-900">
+              <h2 className="mt-4 font-display text-lg font-semibold text-slate-900 transition-colors duration-200 group-hover:text-brand">
                 Wilinwi {m.label}
               </h2>
               <p className="text-sm text-slate-500">{m.desc}</p>
