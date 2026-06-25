@@ -275,8 +275,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Main Layout Container */}
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6">
+      {/* Main Layout Container — padding bas sur mobile pour la barre d'onglets */}
+      <div className="mx-auto flex max-w-6xl gap-6 px-4 pt-6 pb-24 sm:pb-6">
         {/* Floating Sidebar (Desktop) */}
         <nav className="hidden w-52 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
@@ -307,6 +307,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Content main */}
         <main className="min-w-0 flex-1">{children}</main>
       </div>
+
+      {/* Barre d'onglets mobile (style « Wave ») — masquée sur desktop */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-md sm:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="mx-auto flex max-w-md items-stretch justify-around">
+          {NAV.filter((item) => canSee(item.module))
+            .slice(0, 4)
+            .map(({ href, label, icon: Icon }) => {
+              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
+                    active ? 'text-brand' : 'text-slate-400 hover:text-slate-600',
+                  )}
+                >
+                  <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
+                  <span className="max-w-[64px] truncate">{label}</span>
+                </Link>
+              );
+            })}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-slate-400 transition-colors hover:text-slate-600"
+          >
+            <Menu className="h-5 w-5" />
+            <span>Plus</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
