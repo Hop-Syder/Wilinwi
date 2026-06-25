@@ -19,7 +19,26 @@ const preset: Omit<Config, 'content'> = {
   theme: {
     extend: {
       colors: {
-        // Bleu profond — confiance, technologie, stabilité
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+        },
+        secondary: 'var(--color-secondary)',
+        success: 'var(--color-success)',
+        warning: 'var(--color-warning)',
+        danger: 'var(--color-danger)',
+        info: 'var(--color-info)',
+        background: 'var(--background)',
+        surface: {
+          DEFAULT: 'var(--surface)',
+          hover: 'var(--surface-hover)',
+        },
+        border: 'var(--border)',
+        text: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+        },
+        // Bleu profond — confiance, technologie, stabilité (Legacy compatibility)
         brand: {
           DEFAULT: '#12355B',
           50: '#eaf0f7',
@@ -33,7 +52,7 @@ const preset: Omit<Config, 'content'> = {
           800: '#0b2139',
           900: '#071626',
         },
-        // Vert émeraude — croissance, argent, réussite
+        // Vert émeraude — croissance, argent, réussite (Legacy compatibility)
         emerald: {
           DEFAULT: '#00A86B',
           50: '#e6f7f0',
@@ -42,7 +61,7 @@ const preset: Omit<Config, 'content'> = {
           600: '#008a58',
           700: '#006b45',
         },
-        // Orange doré — commerce, énergie, Afrique
+        // Orange doré — commerce, énergie, Afrique (Legacy compatibility)
         gold: {
           DEFAULT: '#F59E0B',
           50: '#fef6e7',
@@ -59,8 +78,14 @@ const preset: Omit<Config, 'content'> = {
         mono: ['var(--font-mono, "DM Mono")', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
+        DEFAULT: 'var(--radius)',
         xl: '0.875rem',
         '2xl': '1.25rem',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
     },
   },

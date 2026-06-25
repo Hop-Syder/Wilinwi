@@ -21,26 +21,26 @@ export interface StatCardProps {
 }
 
 const accentBg: Record<NonNullable<StatCardProps['accent']>, string> = {
-  brand: 'bg-brand-50 text-brand',
-  emerald: 'bg-emerald-50 text-emerald-700',
-  gold: 'bg-gold-50 text-gold-700',
-  red: 'bg-red-50 text-red-600',
+  brand: 'bg-primary/5 text-primary border border-primary/10',
+  emerald: 'bg-success/5 text-success border border-success/10',
+  gold: 'bg-warning/5 text-warning border border-warning/10',
+  red: 'bg-danger/5 text-danger border border-danger/10',
 };
 
 /** Indicateur de tableau de bord — chiffre lisible en moins de 30 s (§11.1). */
 export function StatCard({ label, value, hint, icon, accent = 'brand' }: StatCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="text-sm font-medium text-text-secondary">{label}</p>
         {icon && (
-          <span className={cn('rounded-lg p-2', accentBg[accent])} aria-hidden>
+          <span className={cn('rounded p-1.5', accentBg[accent])} aria-hidden>
             {icon}
           </span>
         )}
       </div>
-      <p className="tabular mt-2 text-2xl font-semibold text-slate-900">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      <p className="tabular mt-2 text-2xl font-bold tracking-tight text-text-primary">{value}</p>
+      {hint && <p className="mt-1 text-xs text-text-secondary/70">{hint}</p>}
     </div>
   );
 }
