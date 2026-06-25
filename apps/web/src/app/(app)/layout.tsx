@@ -119,7 +119,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0">
-              <Image src="/logo-wilinwi.png" alt="Wilinwi" width={28} height={28} className="object-contain" />
+              <Image src="/logo.png" alt="Wilinwi" width={28} height={28} className="object-contain" />
               {user.boutiqueNom ? (
                 <>
                   <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
@@ -192,7 +192,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div className="flex flex-col min-w-0">
               <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2">
-                <Image src="/logo-wilinwi.png" alt="Wilinwi" width={28} height={28} className="object-contain" /> Wilinwi
+                <Image src="/logo.png" alt="Wilinwi" width={28} height={28} className="object-contain" /> Wilinwi
               </Link>
               {user.boutiqueNom && (
                 <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">
