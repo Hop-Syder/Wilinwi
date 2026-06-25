@@ -541,7 +541,12 @@ export function SaleSuccessModal({
           <Button 
             variant="outline" 
             className="w-full justify-center gap-2"
-            onClick={() => setShowQrModal(true)}
+            onClick={() => {
+              setShowQrModal(true);
+              if (receiptCode) {
+                window.open(`/r/${receiptCode}?download=true`, '_blank');
+              }
+            }}
           >
             <QrCode className="h-4 w-4 text-primary" />
             Télécharger le reçu (QR)

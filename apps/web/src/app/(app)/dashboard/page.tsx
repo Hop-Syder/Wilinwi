@@ -25,6 +25,7 @@ interface Dashboard {
   valeurStockCatalogue: number;
   beneficeDuJour?: number;
   valeurStockAchat?: number;
+  ventesDerniers7Jours?: { jour: string; total: number }[];
   alertes: {
     ruptures: { id: string; nom: string; stock: number }[];
     dormants: { id: string; nom: string; stock: number }[];
@@ -52,10 +53,26 @@ export default function DashboardPage() {
     }
   ];
 
-  // Affiche les erreurs seulement si aucune donnée (cache) n'est disponible :
-  // un échec de rafraîchissement en arrière-plan ne doit pas masquer la vue en cache.
+  // Affiche les erreurs seulement si aucune donnée (cache) n'est disponible
   if (error && !data) return <ErrorState message={error.message} />;
   if (loading || !data) return <p className="text-slate-400">Chargement du tableau de bord…</p>;
+
+  // Calcul dynamique des coordonnées pour le graphique en aires
+  const chartData = data.ventesDerniers7Jours || [];
+  const maxVal = Math.max(...chartData.map((d) => d.total), 10000);
+  const coords = chartData.map((d, i) => {
+    const x = 50 + i * 100;
+    const y = 200 - (d.total / maxVal) * 150; // 150px de hauteur max pour la courbe
+    return { x, y, jour: d.jour, total: d.total };
+  });
+
+  const pathD = coords.length > 0 
+    ? `M ${coords.map((c) => `${c.x} ${c.y}`).join(' L ')}` 
+    : '';
+
+  const areaD = coords.length > 0
+    ? `M 50 200 L ${coords.map((c) => `${c.x} ${c.y}`).join(' L ')} L ${coords[coords.length - 1].x} 200 Z`
+    : '';
 
   return (
     <div>
@@ -69,7 +86,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/rapports"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
           >
             <TrendingUp className="h-4 w-4" /> Rapports
           </Link>
@@ -119,7 +136,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Graphique d'activité hebdomadaire Fintech */}
+      {/* Graphique d'activité hebdomadaire Fintech Connecté à la BDD */}
       <div className="mt-8" id="tour-dashboard-charts">
         <Card className="p-6">
           <div className="flex flex-col gap-1">
@@ -141,38 +158,40 @@ export default function DashboardPage() {
               <line x1="0" y1="120" x2="700" y2="120" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" />
               <line x1="0" y1="180" x2="700" y2="180" stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" />
 
-              {/* Remplissage sous la courbe */}
-              <path
-                d="M 50 180 Q 150 110 250 150 T 450 70 T 650 40 L 650 200 L 50 200 Z"
-                fill="url(#chart-gradient)"
-              />
+              {/* Remplissage sous la courbe dynamique */}
+              {areaD && (
+                <path
+                  d={areaD}
+                  fill="url(#chart-gradient)"
+                />
+              )}
 
-              {/* Ligne principale de la courbe */}
-              <path
-                d="M 50 180 Q 150 110 250 150 T 450 70 T 650 40"
-                fill="none"
-                stroke="var(--color-primary)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              {/* Ligne principale de la courbe dynamique */}
+              {pathD && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke="var(--color-primary)"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-              {/* Points de données et effets lumineux */}
-              <circle cx="50" cy="180" r="4.5" fill="var(--surface)" stroke="var(--color-primary)" strokeWidth="3" />
-              <circle cx="250" cy="150" r="4.5" fill="var(--surface)" stroke="var(--color-primary)" strokeWidth="3" />
-              <circle cx="450" cy="70" r="4.5" fill="var(--surface)" stroke="var(--color-primary)" strokeWidth="3" />
-              <circle cx="650" cy="40" r="4.5" fill="var(--surface)" stroke="var(--color-primary)" strokeWidth="3" />
+              {/* Points de données et effets lumineux interactifs */}
+              {coords.map((c, idx) => (
+                <g key={idx}>
+                  <title>{`${c.jour}: ${formatFCFA(c.total)}`}</title>
+                  <circle cx={c.x} cy={c.y} r="4.5" fill="var(--surface)" stroke="var(--color-primary)" strokeWidth="3" className="cursor-pointer transition-transform hover:scale-125" />
+                </g>
+              ))}
             </svg>
           </div>
 
           <div className="flex justify-between px-2 text-xs font-semibold text-text-secondary/70 mt-4 border-t border-border pt-4">
-            <span>Lun</span>
-            <span>Mar</span>
-            <span>Mer</span>
-            <span>Jeu</span>
-            <span>Ven</span>
-            <span>Sam</span>
-            <span>Dim</span>
+            {chartData.map((d, idx) => (
+              <span key={idx}>{d.jour}</span>
+            ))}
           </div>
         </Card>
       </div>

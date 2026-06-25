@@ -76,10 +76,54 @@ export class AnalyticsService {
         .filter((p) => p.stock > 0 && !soldIds.has(p.id))
         .map((p) => ({ id: p.id, nom: p.nom, stock: p.stock }));
 
+      // Ventes des 7 derniers jours (pour le graphique hebdomadaire)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+
+      const salesLast7Days = await tx.sale.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          createdAt: { gte: sevenDaysAgo },
+          status: { not: 'CANCELLED' },
+        },
+        select: {
+          total: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      // Grouper par jour de la semaine
+      const daysOfWeek = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+      const salesByDayMap = new Map<string, number>();
+      
+      // Initialiser les 7 derniers jours à 0
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayName = daysOfWeek[d.getDay()];
+        salesByDayMap.set(dayName, 0);
+      }
+
+      // Remplir avec les données de la base de données
+      salesLast7Days.forEach((sale) => {
+        const dayName = daysOfWeek[new Date(sale.createdAt).getDay()];
+        if (salesByDayMap.has(dayName)) {
+          salesByDayMap.set(dayName, (salesByDayMap.get(dayName) || 0) + sale.total);
+        }
+      });
+
+      const ventesDerniers7Jours = Array.from(salesByDayMap.entries()).map(([jour, total]) => ({
+        jour,
+        total,
+      }));
+
       return {
         ventesDuJour,
         articlesVendus,
         valeurStockCatalogue,
+        ventesDerniers7Jours,
         // Champs sensibles uniquement pour OWNER/MANAGER (§9)
         ...(seeSensitive ? { beneficeDuJour, valeurStockAchat } : {}),
         alertes: { ruptures, dormants },
