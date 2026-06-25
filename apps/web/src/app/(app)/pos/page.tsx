@@ -680,6 +680,7 @@ export default function PosPage() {
         onDiscard={discardSale}
         onFix={fixSale}
         onNewSale={() => setShowSuccessModal(false)}
+        receiptCode={lastSale?.receiptCode}
         onShowReceipt={
           lastSale
             ? () => {

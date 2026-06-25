@@ -12,7 +12,8 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
-import { CheckCircle2, Receipt, Share2, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Receipt, Share2, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export interface CheckoutResult {
   paymentMethod: PaymentMethod;
@@ -395,6 +396,8 @@ interface SaleSuccessModalProps {
   onDiscard?: () => void;
   /** Recharge la vente refusée dans le panier pour la corriger. */
   onFix?: () => void;
+  /** Code du reçu public pour le téléchargement. */
+  receiptCode?: string | null;
 }
 
 export function SaleSuccessModal({
@@ -408,77 +411,80 @@ export function SaleSuccessModal({
   onRetry,
   onDiscard,
   onFix,
+  receiptCode,
 }: SaleSuccessModalProps) {
+  const [showQrModal, setShowQrModal] = useState(false);
+
   if (!isOpen) return null;
 
   // En-tête + bandeau selon le statut RÉEL : on n'annonce « synchronisée »
   // que lorsque le serveur a confirmé. La vente est toujours enregistrée localement.
   const head = {
     synced: {
-      ring: 'bg-emerald-100',
-      icon: <CheckCircle2 className="h-10 w-10 text-emerald-600" />,
+      ring: 'bg-emerald-100 dark:bg-emerald-950/30',
+      icon: <CheckCircle2 className="h-10 w-10 text-success" />,
       title: 'Vente synchronisée',
     },
     syncing: {
-      ring: 'bg-brand-50',
-      icon: <RefreshCw className="h-10 w-10 text-brand animate-spin" />,
+      ring: 'bg-primary/10',
+      icon: <RefreshCw className="h-10 w-10 text-primary animate-spin" />,
       title: 'Vente enregistrée',
     },
     pending: {
-      ring: 'bg-gold-50',
-      icon: <CloudOff className="h-10 w-10 text-gold-700" />,
+      ring: 'bg-warning/10',
+      icon: <CloudOff className="h-10 w-10 text-warning" />,
       title: 'Vente enregistrée',
     },
     error: {
-      ring: 'bg-red-100',
-      icon: <AlertTriangle className="h-10 w-10 text-red-600" />,
+      ring: 'bg-red-100 dark:bg-red-950/30',
+      icon: <AlertTriangle className="h-10 w-10 text-red-650" />,
       title: 'Vente enregistrée localement',
     },
     rejected: {
-      ring: 'bg-red-100',
-      icon: <AlertTriangle className="h-10 w-10 text-red-600" />,
+      ring: 'bg-red-100 dark:bg-red-950/30',
+      icon: <AlertTriangle className="h-10 w-10 text-red-650" />,
       title: 'Vente refusée',
     },
   }[syncStatus];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-xl bg-surface p-6 shadow-2xl text-center border border-border animate-in fade-in zoom-in-95 duration-150 text-text-primary">
         <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full mb-4 ${head.ring}`}>
           {head.icon}
         </div>
-        <h3 className="text-2xl font-black text-slate-800 mb-1">{head.title}</h3>
-        <p className="text-slate-500 mb-4">
-          Montant total : <span className="font-bold text-slate-800">{total.toLocaleString()} F</span>
+        <h3 className="text-2xl font-bold mb-1">{head.title}</h3>
+        <p className="text-text-secondary mb-4">
+          Montant total : <span className="font-bold text-text-primary">{total.toLocaleString()} F</span>
         </p>
 
-        {/* Bandeau d'état de synchronisation — honnête, jamais de faux succès */}
+        {/* Bandeau d'état de synchronisation */}
         {syncStatus === 'syncing' && (
-          <div className="mb-5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm font-medium text-brand">
+          <div className="mb-5 rounded border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary">
             Synchronisation en cours…
           </div>
         )}
         {syncStatus === 'pending' && (
-          <div className="mb-5 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-sm font-medium text-gold-700">
+          <div className="mb-5 rounded border border-warning/20 bg-warning/5 px-3 py-2 text-sm font-semibold text-warning">
             ⏳ En attente de connexion — sera synchronisée automatiquement.
           </div>
         )}
         {syncStatus === 'synced' && (
-          <div className="mb-5 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+          <div className="mb-5 rounded border border-success/20 bg-success/5 px-3 py-2 text-sm font-semibold text-success">
             ✓ Enregistrée sur le serveur.
           </div>
         )}
         {syncStatus === 'error' && (
-          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-sm text-red-700">
+          <div className="mb-5 rounded border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-955/10 px-3 py-2 text-left text-sm text-red-700 dark:text-red-400">
             <p className="font-semibold">⚠️ Échec de la synchronisation</p>
-            <p className="mt-0.5 text-xs leading-relaxed">
+            <p className="mt-0.5 text-xs leading-relaxed opacity-80">
               {syncError || "La vente n'a pas pu être enregistrée sur le serveur."}
             </p>
             {onRetry && (
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-2 w-full justify-center gap-2 border-red-200 text-red-700 hover:bg-red-100"
+                className="mt-2 w-full justify-center gap-2 border-red-200 text-red-700 dark:text-red-400"
                 onClick={onRetry}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -488,9 +494,9 @@ export function SaleSuccessModal({
           </div>
         )}
         {syncStatus === 'rejected' && (
-          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-sm text-red-700">
+          <div className="mb-5 rounded border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-955/10 px-3 py-2 text-left text-sm text-red-700 dark:text-red-400">
             <p className="font-semibold">⚠️ Vente refusée par le serveur</p>
-            <p className="mt-0.5 text-xs leading-relaxed">
+            <p className="mt-0.5 text-xs leading-relaxed opacity-80">
               {syncError || 'Cette vente ne peut pas être enregistrée (ex. stock insuffisant).'}
             </p>
             <div className="mt-2 flex gap-2">
@@ -509,7 +515,7 @@ export function SaleSuccessModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 justify-center gap-1.5 border-red-200 text-red-700 hover:bg-red-100"
+                  className="flex-1 justify-center gap-1.5 border-red-200 text-red-700 dark:text-red-400"
                   onClick={onDiscard}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -535,12 +541,10 @@ export function SaleSuccessModal({
           <Button 
             variant="outline" 
             className="w-full justify-center gap-2"
-            onClick={() => {
-              window.open(`https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`, '_blank');
-            }}
+            onClick={() => setShowQrModal(true)}
           >
-            <Share2 className="h-4 w-4 text-green-600" />
-            Partager WhatsApp
+            <QrCode className="h-4 w-4 text-primary" />
+            Télécharger le reçu (QR)
           </Button>
           <Button 
             variant="outline" 
@@ -552,13 +556,44 @@ export function SaleSuccessModal({
           {onCancelSale && (
             <button
               onClick={onCancelSale}
-              className="w-full text-center text-sm text-slate-400 hover:text-red-500 pt-2 transition-colors flex items-center justify-center gap-1"
+              className="w-full text-center text-sm text-text-secondary/70 hover:text-danger pt-2 transition-colors flex items-center justify-center gap-1"
             >
               <RotateCcw className="h-3 w-3" />
               Annuler cette vente (Erreur)
             </button>
           )}
         </div>
+        )}
+
+        {/* Modal QR Code de téléchargement de la facture PDF */}
+        {showQrModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-100" onClick={() => setShowQrModal(false)}>
+            <div className="w-[320px] rounded-xl bg-surface border border-border p-6 shadow-xl text-center animate-in zoom-in-95 duration-150 text-text-primary" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm font-semibold text-text-secondary">Télécharger la facture</span>
+                <button onClick={() => setShowQrModal(false)} className="text-text-secondary hover:text-text-primary transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="bg-white p-4 rounded-lg inline-block border border-border shadow-inner mb-4">
+                <QRCodeSVG value={receiptCode ? `${window.location.origin}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`} size={180} />
+              </div>
+              <p className="text-xs text-text-secondary leading-relaxed">
+                Scannez ce QR Code avec un smartphone pour télécharger le reçu directement en format PDF.
+              </p>
+              {receiptCode && (
+                <Button
+                  className="w-full mt-4 justify-center gap-2"
+                  onClick={() => {
+                    window.open(`/r/${receiptCode}?download=true`, '_blank');
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Télécharger en direct
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

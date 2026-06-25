@@ -41,6 +41,12 @@ export default function PublicReceiptPage() {
       .then((d: PublicReceipt) => {
         setReceipt(d);
         setStatus('ok');
+        // Si le paramètre download=true est présent, déclencher l'impression automatique
+        if (typeof window !== 'undefined' && window.location.search.includes('download=true')) {
+          setTimeout(() => {
+            window.print();
+          }, 800);
+        }
       })
       .catch(() => setStatus('notfound'));
   }, [code]);
@@ -66,50 +72,50 @@ export default function PublicReceiptPage() {
   const mailUrl = `mailto:?subject=${encodeURIComponent('Votre reçu ' + receipt.boutique)}&body=${encodeURIComponent(text)}`;
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-slate-50 px-4 py-8">
-      <style>{`@media print { .no-print { display:none !important; } body { background:#fff; } }`}</style>
+    <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8 text-text-primary">
+      <style>{`@media print { .no-print { display:none !important; } body { background:#fff; color:#000; } }`}</style>
 
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm" id="recu">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-md" id="recu">
         <div className="text-center">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-          <h1 className="mt-2 font-display text-lg font-bold text-slate-900">Merci pour votre achat</h1>
-          <p className="text-sm text-slate-500">{receipt.boutique}</p>
-          <p className="mt-3 text-3xl font-bold" style={{ color: '#12355B' }}>
+          <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+          <h1 className="mt-2 font-display text-lg font-bold text-text-primary">Merci pour votre achat</h1>
+          <p className="text-sm text-text-secondary">{receipt.boutique}</p>
+          <p className="mt-3 text-3xl font-extrabold text-primary">
             {fcfa(receipt.total)}
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-secondary/70">
             {new Date(receipt.date).toLocaleString('fr-FR')} · N° {receipt.code}
           </p>
         </div>
 
-        <div className="my-4 border-t border-dashed border-slate-300" />
-        <ul className="space-y-1 text-sm">
+        <div className="my-4 border-t border-dashed border-border" />
+        <ul className="space-y-1.5 text-sm">
           {receipt.items.map((it, i) => (
-            <li key={i} className="flex justify-between text-slate-700">
+            <li key={i} className="flex justify-between text-text-primary">
               <span>
                 {it.quantite}× {it.nom}
               </span>
-              <span>{fcfa(it.prixReel * it.quantite)}</span>
+              <span className="font-semibold">{fcfa(it.prixReel * it.quantite)}</span>
             </li>
           ))}
         </ul>
       </div>
 
       <div className="no-print mt-6 w-full max-w-sm space-y-2">
-        <p className="text-center text-sm font-medium text-slate-500">Recevoir mon reçu</p>
-        <a href={waUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 font-medium text-white">
+        <p className="text-center text-sm font-semibold text-text-secondary">Recevoir mon reçu</p>
+        <a href={waUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-[#00C853] py-3 font-semibold text-white transition-opacity hover:opacity-90">
           <MessageCircle className="h-5 w-5" /> WhatsApp
         </a>
-        <a href={smsUrl} className="flex items-center justify-center gap-2 rounded-xl bg-white py-3 font-medium text-slate-700 ring-1 ring-slate-200">
+        <a href={smsUrl} className="flex items-center justify-center gap-2 rounded-xl bg-surface py-3 font-semibold text-text-primary border border-border transition-colors hover:bg-surface-hover">
           <Smartphone className="h-5 w-5" /> SMS
         </a>
-        <a href={mailUrl} className="flex items-center justify-center gap-2 rounded-xl bg-white py-3 font-medium text-slate-700 ring-1 ring-slate-200">
+        <a href={mailUrl} className="flex items-center justify-center gap-2 rounded-xl bg-surface py-3 font-semibold text-text-primary border border-border transition-colors hover:bg-surface-hover">
           <Mail className="h-5 w-5" /> Email
         </a>
-        <button onClick={() => window.print()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 font-medium text-slate-700 ring-1 ring-slate-200">
+        <button onClick={() => window.print()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-white transition-opacity hover:opacity-90">
           <Printer className="h-5 w-5" /> Télécharger PDF / Imprimer
         </button>
-        <p className="pt-3 text-center text-xs text-slate-400">Propulsé par ◈ Wilinwi</p>
+        <p className="pt-3 text-center text-xs text-text-secondary/50">Propulsé par ◈ Wilinwi</p>
       </div>
     </main>
   );
