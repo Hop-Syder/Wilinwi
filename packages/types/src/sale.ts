@@ -15,8 +15,7 @@ import { IdSchema, MoneySchema } from './common.js';
 /** Modes de paiement (§5.3). */
 export const PAYMENT_METHODS = [
   'CASH', // Espèces
-  'MTN_MOMO', // MTN MoMo
-  'MOOV_MONEY', // Moov Money
+  'MOBILE_MONEY', // Mobile Money générique (MoMo, Moov, Celtiis, Orange…)
   'BANK_TRANSFER', // Virement
   'CREDIT', // Crédit (dette client)
   'INSTALLMENT', // Acompte (versement partiel)
@@ -26,8 +25,7 @@ export const PaymentMethodSchema = z.enum(PAYMENT_METHODS);
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   CASH: 'Espèces',
-  MTN_MOMO: 'MTN MoMo',
-  MOOV_MONEY: 'Moov Money',
+  MOBILE_MONEY: 'Mobile Money',
   BANK_TRANSFER: 'Virement',
   CREDIT: 'Crédit',
   INSTALLMENT: 'Acompte',
@@ -57,6 +55,8 @@ export const CreateSaleSchema = z
     paymentMethod: PaymentMethodSchema,
     /** Montant versé immédiatement (acompte). Requis si paymentMethod = INSTALLMENT. */
     montantVerse: MoneySchema.optional(),
+    /** Paiement mixte : part payée en ESPÈCES (le reste via paymentMethod). */
+    montantEspeces: MoneySchema.optional(),
     clientId: IdSchema.optional(),
     /** Identifiant local pour l'idempotence de la synchronisation offline. */
     clientGeneratedId: z.string().min(1).optional(),

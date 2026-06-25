@@ -14,14 +14,12 @@ import { MoneySchema } from './common.js';
 import type { PaymentMethod } from './sale.js';
 
 /** Comptes de trésorerie (soldes séparés, §6.1). */
-export const CASH_ACCOUNTS = ['CAISSE', 'MOBILE_MONEY', 'MTN_MOMO', 'MOOV_MONEY', 'BANQUE'] as const;
+export const CASH_ACCOUNTS = ['CAISSE', 'MOBILE_MONEY', 'BANQUE'] as const;
 export type CashAccount = (typeof CASH_ACCOUNTS)[number];
 export const CashAccountSchema = z.enum(CASH_ACCOUNTS);
 export const CASH_ACCOUNT_LABELS: Record<CashAccount, string> = {
   CAISSE: 'Caisse (espèces)',
-  MOBILE_MONEY: 'Mobile Money (Global)',
-  MTN_MOMO: 'MTN MoMo',
-  MOOV_MONEY: 'Moov Money',
+  MOBILE_MONEY: 'Mobile Money',
   BANQUE: 'Banque',
 };
 
@@ -95,10 +93,8 @@ export function accountForPayment(method: PaymentMethod): CashAccount | null {
     case 'CASH':
     case 'INSTALLMENT':
       return 'CAISSE';
-    case 'MTN_MOMO':
-      return 'MTN_MOMO';
-    case 'MOOV_MONEY':
-      return 'MOOV_MONEY';
+    case 'MOBILE_MONEY':
+      return 'MOBILE_MONEY';
     case 'BANK_TRANSFER':
       return 'BANQUE';
     case 'CREDIT':

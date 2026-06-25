@@ -295,6 +295,7 @@ export default function PosPage() {
       clientGeneratedId: crypto.randomUUID(),
       paymentMethod: result.paymentMethod,
       montantVerse: result.montantVerse,
+      montantEspeces: result.montantEspeces,
       clientId: result.clientId,
       clientNom: result.clientNom,
       clientTelephone: result.clientTelephone,

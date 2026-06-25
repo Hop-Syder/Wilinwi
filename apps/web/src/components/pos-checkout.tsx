@@ -11,13 +11,15 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '@wilinwi/ui';
-import { PaymentMethod, ClientDto } from '@wilinwi/types';
+import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
 import { CheckCircle2, Receipt, Share2, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export interface CheckoutResult {
   paymentMethod: PaymentMethod;
   clientId?: string;
   montantVerse?: number;
+  /** Paiement mixte : part payée en espèces (le reste via paymentMethod). */
+  montantEspeces?: number;
   clientNom?: string;
   clientTelephone?: string;
   aLivrer?: boolean;
@@ -39,6 +41,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
   const [clientId, setClientId] = useState<string>('');
   const [montantVerse, setMontantVerse] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
+  // Paiement mixte : part en espèces (le reste via le mode sélectionné).
+  const [montantEspeces, setMontantEspeces] = useState<string>('');
 
   // État Client
   const [associateClient, setAssociateClient] = useState(false);
@@ -58,6 +62,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       setClientId('');
       setMontantVerse('');
       setCashReceived('');
+      setMontantEspeces('');
       setAssociateClient(false);
       setClientType('existing');
       setClientNom('');
@@ -71,12 +76,19 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
   const changeToReturn = Number(cashReceived) - cartTotal;
   
   const isCreditOrInstallment = paymentMethod === 'CREDIT' || paymentMethod === 'INSTALLMENT';
+  // Modes éligibles au paiement mixte (une part en espèces) : Mobile Money / Banque.
+  const isMixteEligible = paymentMethod === 'MOBILE_MONEY' || paymentMethod === 'BANK_TRANSFER';
 
   useEffect(() => {
     if (isCreditOrInstallment) {
       setAssociateClient(true);
     }
   }, [paymentMethod, isCreditOrInstallment]);
+
+  // Une livraison a besoin d'un destinataire (nom + WhatsApp) : on force l'association.
+  useEffect(() => {
+    if (aLivrer) setAssociateClient(true);
+  }, [aLivrer]);
   
   const isValid = () => {
     if (isCreditOrInstallment && !associateClient) return false;
@@ -91,6 +103,11 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       if (vers <= 0 || vers >= cartTotal) return false;
     }
 
+    if (isMixteEligible) {
+      const esp = Number(montantEspeces) || 0;
+      if (esp < 0 || esp > cartTotal) return false;
+    }
+
     if (aLivrer && !livreurId) return false;
 
     return true;
@@ -102,6 +119,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       paymentMethod,
       clientId: (associateClient && clientType === 'existing') ? (clientId || undefined) : undefined,
       montantVerse: paymentMethod === 'INSTALLMENT' ? Number(montantVerse) : undefined,
+      montantEspeces: isMixteEligible && Number(montantEspeces) > 0 ? Number(montantEspeces) : undefined,
       clientNom: (associateClient && clientType === 'new') ? clientNom : undefined,
       clientTelephone: (associateClient && clientType === 'new') ? clientTelephone : undefined,
       aLivrer,
@@ -112,8 +130,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
 
   const paymentOptions: { label: string, value: PaymentMethod }[] = [
     { label: 'Espèces', value: 'CASH' },
-    { label: 'MoMo', value: 'MTN_MOMO' },
-    { label: 'Moov', value: 'MOOV_MONEY' },
+    { label: 'Mobile Money', value: 'MOBILE_MONEY' },
     { label: 'Banque', value: 'BANK_TRANSFER' },
     { label: 'Crédit', value: 'CREDIT' },
     { label: 'Acompte', value: 'INSTALLMENT' },
@@ -176,6 +193,36 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
             </div>
           )}
 
+          {/* Paiement mixte : une partie en espèces, le reste via le mode choisi */}
+          {isMixteEligible && (
+            <div className="pt-2">
+              <label className="block text-sm font-medium mb-1">Dont payé en espèces (optionnel)</label>
+              <Input
+                type="number"
+                placeholder="Ex: 5000"
+                value={montantEspeces}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMontantEspeces(e.target.value)}
+              />
+              {Number(montantEspeces) > 0 && (
+                <div className="mt-2 flex justify-between text-sm">
+                  <span className="text-slate-500">
+                    Reste via {PAYMENT_METHOD_LABELS[paymentMethod]} :
+                  </span>
+                  <span
+                    className={`font-bold ${
+                      Number(montantEspeces) > cartTotal ? 'text-red-500' : 'text-emerald-600'
+                    }`}
+                  >
+                    {Math.max(cartTotal - Number(montantEspeces), 0).toLocaleString()} F
+                  </span>
+                </div>
+              )}
+              {Number(montantEspeces) > cartTotal && (
+                <p className="text-xs text-red-500 mt-1">Le montant en espèces dépasse le total.</p>
+              )}
+            </div>
+          )}
+
           {/* Section Client */}
           <div className="border-t border-slate-100 pt-3">
             <div className="flex items-center justify-between mb-2">
@@ -183,11 +230,14 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
                 <input
                   type="checkbox"
                   checked={associateClient}
-                  disabled={isCreditOrInstallment}
+                  disabled={isCreditOrInstallment || aLivrer}
                   onChange={(e) => setAssociateClient(e.target.checked)}
                   className="rounded border-slate-300 text-brand focus:ring-brand"
                 />
-                <span>Associer un client {isCreditOrInstallment && <span className="text-red-500 font-bold">*</span>}</span>
+                <span>
+                  {aLivrer ? 'Destinataire (nom + WhatsApp)' : 'Associer un client'}{' '}
+                  {(isCreditOrInstallment || aLivrer) && <span className="text-red-500 font-bold">*</span>}
+                </span>
               </label>
             </div>
 

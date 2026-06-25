@@ -100,8 +100,6 @@ const PERIOD_OPTIONS = [
 const ACCOUNT_ICON: Partial<Record<CashAccount, React.ElementType>> = {
   CAISSE: Wallet,
   MOBILE_MONEY: Smartphone,
-  MTN_MOMO: Smartphone,
-  MOOV_MONEY: Smartphone,
   BANQUE: Landmark,
 };
 
@@ -285,13 +283,12 @@ export default function TresoreriePage() {
       {/* KPIs soldes + résultat journalier */}
       <div id="tour-treso-kpis" className="space-y-3">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((acc) => {
+          {CASH_ACCOUNTS.map((acc) => {
             const Icon = (ACCOUNT_ICON[acc] ?? Wallet) as React.ElementType;
             const bal = stats?.balances[acc] ?? 0;
             const accents: Record<string, 'emerald' | 'gold' | 'brand' | 'red'> = {
               CAISSE: 'emerald',
-              MTN_MOMO: 'gold',
-              MOOV_MONEY: 'brand',
+              MOBILE_MONEY: 'gold',
               BANQUE: 'red',
             };
             return (
@@ -659,7 +656,7 @@ function ExpenseForm({
       </h2>
       <form onSubmit={submit} className="mt-3 space-y-3">
         <SelectField label="Compte" value={form.compte} onChange={set('compte')}>
-          {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((a) => (
+          {CASH_ACCOUNTS.map((a) => (
             <option key={a} value={a}>
               {CASH_ACCOUNT_LABELS[a]} {balances ? `(${formatFCFA(balances[a])})` : ''}
             </option>
@@ -736,14 +733,14 @@ function TransferForm({
       </h2>
       <form onSubmit={submit} className="mt-3 space-y-3">
         <SelectField label="Depuis" value={form.from} onChange={set('from')}>
-          {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((a) => (
+          {CASH_ACCOUNTS.map((a) => (
             <option key={a} value={a}>
               {CASH_ACCOUNT_LABELS[a]} {balances ? `(${formatFCFA(balances[a])})` : ''}
             </option>
           ))}
         </SelectField>
         <SelectField label="Vers" value={form.to} onChange={set('to')}>
-          {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((a) => (
+          {CASH_ACCOUNTS.map((a) => (
             <option key={a} value={a} disabled={a === form.from}>
               {CASH_ACCOUNT_LABELS[a]}
             </option>
@@ -818,7 +815,7 @@ function AdjustmentForm({ onDone }: { onDone: () => void }) {
             <option value="OUT">Sortie (−)</option>
           </SelectField>
           <SelectField label="Compte" value={form.compte} onChange={set('compte')}>
-            {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((a) => (
+            {CASH_ACCOUNTS.map((a) => (
               <option key={a} value={a}>
                 {CASH_ACCOUNT_LABELS[a]}
               </option>
@@ -882,7 +879,7 @@ function CashCloseForm({
       </h2>
       <form onSubmit={submit} className="mt-3 space-y-3">
         <SelectField label="Compte à clôturer" value={compte} onChange={(v) => setCompte(v as CashAccount)}>
-          {CASH_ACCOUNTS.filter((a) => a !== 'MOBILE_MONEY').map((a) => (
+          {CASH_ACCOUNTS.map((a) => (
             <option key={a} value={a}>
               {CASH_ACCOUNT_LABELS[a]}
             </option>

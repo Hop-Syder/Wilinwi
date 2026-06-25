@@ -918,8 +918,7 @@ export default function ClientsPage() {
                     className="w-full px-3 py-2 border rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand/20"
                   >
                     <option value="CASH">Espèces</option>
-                    <option value="MTN_MOMO">MTN MoMo</option>
-                    <option value="MOOV_MONEY">Moov Money</option>
+                    <option value="MOBILE_MONEY">Mobile Money</option>
                     <option value="BANK_TRANSFER">Virement bancaire</option>
                   </select>
                 </label>

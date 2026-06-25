@@ -60,8 +60,7 @@ enum InventoryStatus {
 
 enum PaymentMethod {
   CASH
-  MTN_MOMO
-  MOOV_MONEY
+  MOBILE_MONEY // générique : MoMo, Moov, Celtiis, Orange… (regroupés)
   BANK_TRANSFER
   CREDIT
   INSTALLMENT
@@ -289,6 +288,8 @@ model Sale {
   paymentMethod    PaymentMethod @map("payment_method")
   total            Int // somme des lignes (prix réel)
   montantVerse     Int           @default(0) @map("montant_verse")
+  /// Part payée en ESPÈCES dans un paiement mixte (le reste via paymentMethod).
+  montantEspeces   Int           @default(0) @map("montant_especes")
   /// Identifiant généré côté client pour l'idempotence de la sync offline.
   clientGeneratedId String?      @map("client_generated_id")
   /// Code court opaque du reçu public (QR → page wilinwi.com/r/<code>).
@@ -297,6 +298,7 @@ model Sale {
 
   // ── Livraison (MVP minimal) : une vente peut être marquée « à livrer », assignée
   //    à un livreur, puis marquée livrée. Statut dérivé : aLivrer && !livreLe = à livrer.
+  //    Le destinataire (nom + téléphone) est porté par le Client lié (clientId).
   aLivrer          Boolean       @default(false) @map("a_livrer")
   livreurId        String?       @map("livreur_id") @db.Uuid
   adresseLivraison String?       @map("adresse_livraison")
@@ -428,9 +430,7 @@ model ClientPayment {
 
 enum CashAccount {
   CAISSE // espèces
-  MOBILE_MONEY // MTN MoMo / Moov Money (gardé pour compatibilité)
-  MTN_MOMO // MTN MoMo
-  MOOV_MONEY // Moov Money
+  MOBILE_MONEY // Mobile Money (MoMo, Moov, Celtiis, Orange… regroupés)
   BANQUE // virement / banque
 }
 

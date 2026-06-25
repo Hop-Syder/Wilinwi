@@ -175,6 +175,8 @@ export class SalesService {
           total,
           // Acompte voulu mémorisé (appliqué à la finalisation).
           montantVerse: input.paymentMethod === 'INSTALLMENT' ? intendedAcompte : 0,
+          // Part espèces d'un paiement mixte (ventilée en trésorerie à la finalisation).
+          montantEspeces: input.montantEspeces ?? 0,
           clientGeneratedId: input.clientGeneratedId ?? null,
           aLivrer: input.aLivrer ?? false,
           livreurId: input.livreurId ?? null,
@@ -333,20 +335,39 @@ export class SalesService {
       });
     }
 
-    // Trésorerie : la part encaissée entre dans le compte correspondant (§6.1).
+    // Trésorerie : la part encaissée entre dans le(s) compte(s) correspondant(s) (§6.1).
+    // Paiement mixte : `montantEspeces` va en CAISSE, le reste sur le compte du mode.
     const compte = accountForPayment(sale.paymentMethod);
-    if (compte && montantVerse > 0) {
-      await tx.cashMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          type: 'IN',
-          compte,
-          montant: montantVerse,
-          source: 'SALE',
-          saleId,
-          createdBy: ctx.userId,
-        },
-      });
+    if (montantVerse > 0) {
+      const espece =
+        compte === 'CAISSE' ? 0 : Math.min(Math.max(sale.montantEspeces ?? 0, 0), montantVerse);
+      if (espece > 0) {
+        await tx.cashMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: 'IN',
+            compte: 'CAISSE',
+            montant: espece,
+            source: 'SALE',
+            saleId,
+            createdBy: ctx.userId,
+          },
+        });
+      }
+      const reste = montantVerse - espece;
+      if (compte && reste > 0) {
+        await tx.cashMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: 'IN',
+            compte,
+            montant: reste,
+            source: 'SALE',
+            saleId,
+            createdBy: ctx.userId,
+          },
+        });
+      }
     }
 
     // Reçu public : QR → page Wilinwi /r/<code>. Données dénormalisées non sensibles.
@@ -459,21 +480,42 @@ export class SalesService {
           }
         }
 
-        // Reversal trésorerie : on ressort la part encaissée.
+        // Reversal trésorerie : on ressort la part encaissée (en ventilant le mixte).
         const compte = accountForPayment(target.paymentMethod);
-        if (compte && target.montantVerse > 0) {
-          await tx.cashMovement.create({
-            data: {
-              tenantId: ctx.tenantId,
-              type: 'OUT',
-              compte,
-              montant: target.montantVerse,
-              source: 'ADJUSTMENT',
-              note: `Annulation vente ${saleId}`,
-              saleId,
-              createdBy: ctx.userId,
-            },
-          });
+        if (target.montantVerse > 0) {
+          const espece =
+            compte === 'CAISSE'
+              ? 0
+              : Math.min(Math.max(target.montantEspeces ?? 0, 0), target.montantVerse);
+          if (espece > 0) {
+            await tx.cashMovement.create({
+              data: {
+                tenantId: ctx.tenantId,
+                type: 'OUT',
+                compte: 'CAISSE',
+                montant: espece,
+                source: 'ADJUSTMENT',
+                note: `Annulation vente ${saleId}`,
+                saleId,
+                createdBy: ctx.userId,
+              },
+            });
+          }
+          const reste = target.montantVerse - espece;
+          if (compte && reste > 0) {
+            await tx.cashMovement.create({
+              data: {
+                tenantId: ctx.tenantId,
+                type: 'OUT',
+                compte,
+                montant: reste,
+                source: 'ADJUSTMENT',
+                note: `Annulation vente ${saleId}`,
+                saleId,
+                createdBy: ctx.userId,
+              },
+            });
+          }
         }
 
         // Reversal dette client : on retire la part impayée (bornée au solde courant).
