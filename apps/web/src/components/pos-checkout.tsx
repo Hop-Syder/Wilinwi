@@ -123,7 +123,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
         <div className="text-xl font-bold mb-4 flex justify-between items-center">
           <span>Encaissement</span>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -393,7 +393,7 @@ export function SaleSuccessModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
         <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full mb-4 ${head.ring}`}>
           {head.icon}
         </div>

@@ -237,7 +237,7 @@ export default function UtilisateursPage() {
 
       {draft && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4" onClick={() => setDraft(null)}>
-          <Card className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <Card className="w-full max-w-lg max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-semibold text-brand">
               {draft.id ? 'Modifier le collaborateur' : 'Nouveau collaborateur'}
             </h2>

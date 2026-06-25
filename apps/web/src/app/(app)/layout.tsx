@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   LayoutGrid,
   Package,
@@ -35,6 +36,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useSync } from '@/lib/use-sync';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
+import { Preloader } from '@/components/preloader';
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
   { href: '/', label: 'Hub', icon: LayoutGrid },
@@ -88,11 +90,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [loading, user, router]);
 
   if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-400">
-        Chargement…
-      </div>
-    );
+    return <Preloader />;
   }
 
   if (locked) {
@@ -120,8 +118,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-1.5 shrink-0">
-              <span className="text-gold">◈</span>
+            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0">
+              <Image src="/logo-wilinwi.png" alt="Wilinwi" width={28} height={28} className="object-contain" />
               {user.boutiqueNom ? (
                 <>
                   <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
@@ -193,8 +191,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div>
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div className="flex flex-col min-w-0">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-1.5">
-                <span className="text-gold">◈</span> Wilinwi
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2">
+                <Image src="/logo-wilinwi.png" alt="Wilinwi" width={28} height={28} className="object-contain" /> Wilinwi
               </Link>
               {user.boutiqueNom && (
                 <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">

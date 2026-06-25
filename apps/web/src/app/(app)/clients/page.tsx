@@ -860,7 +860,7 @@ export default function ClientsPage() {
       {/* MODALE D'ENCAISSEMENT DES REMBOURSEMENTS */}
       {showRepayModal && clientDetail && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">Enregistrer un remboursement</h3>
               <button onClick={() => setShowRepayModal(false)} className="text-slate-400 hover:text-slate-600">

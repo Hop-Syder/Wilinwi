@@ -40,7 +40,7 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">Mouvement de stock</h2>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
@@ -199,8 +199,8 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-4 sm:my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-900">{isEditing ? 'Modifier le produit' : 'Nouveau produit'}</h2>
           <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
@@ -208,16 +208,16 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
           </button>
         </div>
 
-        <form onSubmit={submit} className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <label className="col-span-2 block sm:col-span-3">
+        <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <label className="col-span-full">
             <span className="mb-1 block text-xs font-medium text-slate-600">Nom du produit</span>
             <input type="text" value={form.nom} onChange={(e) => set('nom')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
-          <label className="block">
+          <label className="col-span-full sm:col-span-1">
             <span className="mb-1 block text-xs font-medium text-slate-600">SKU (optionnel)</span>
             <input type="text" value={form.sku} onChange={(e) => set('sku')(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
-          <label className="block sm:col-span-2">
+          <label className="col-span-full sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-slate-600">Catégorie</span>
             <input type="text" value={form.categorie} onChange={(e) => set('categorie')(e.target.value)} placeholder="Ex: Vêtements, Électronique" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
@@ -225,15 +225,15 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Prix & Marges</h3>
           </div>
-          <label className="block">
+          <label className="col-span-full sm:col-span-1">
             <span className="mb-1 block text-xs font-medium text-slate-600">Prix d'achat</span>
             <input type="number" value={form.prixAchat} onChange={(e) => set('prixAchat')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
-          <label className="block">
+          <label className="col-span-full sm:col-span-1">
             <span className="mb-1 block text-xs font-medium text-slate-600">Prix plancher</span>
             <input type="number" value={form.prixPlancher} onChange={(e) => set('prixPlancher')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
-          <label className="block">
+          <label className="col-span-full sm:col-span-1">
             <span className="mb-1 block text-xs font-medium text-slate-600">Prix catalogue</span>
             <input type="number" value={form.prixCatalogue} onChange={(e) => set('prixCatalogue')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
@@ -242,12 +242,12 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Stock</h3>
           </div>
           {!isEditing && (
-            <label className="block">
+            <label className="col-span-full sm:col-span-1">
               <span className="mb-1 block text-xs font-medium text-slate-600">Stock initial</span>
               <input type="number" value={form.stock} onChange={(e) => set('stock')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
             </label>
           )}
-          <label className="block">
+          <label className="col-span-full sm:col-span-1">
             <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
             <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>

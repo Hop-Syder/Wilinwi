@@ -500,7 +500,7 @@ export default function VentesPage() {
       {/* MODALE ENCAISSER RESTE DÛ */}
       {paymentSale && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">Règlement de crédit</h3>
               <button onClick={() => setPaymentSale(null)} className="text-slate-400 hover:text-slate-600">
@@ -551,7 +551,7 @@ export default function VentesPage() {
       {/* MODALE D'ANNULATION DE VENTE AVEC MOTIF OBLIGATOIRE */}
       {cancelSale && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl border border-rose-100 animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-2.5 mb-2 text-rose-700">
               <ShieldAlert className="h-6 w-6 shrink-0" />
               <h3 className="text-lg font-bold">Annuler la transaction</h3>

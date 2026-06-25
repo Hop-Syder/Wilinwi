@@ -60,16 +60,16 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl">
         
         {/* ÉTAPE 1 : CHOIX DE L'UTILISATEUR */}
         {!selectedUser ? (
           <div className="flex flex-col">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="font-display text-2xl font-bold text-slate-900">Qui êtes-vous ?</h2>
-                <p className="mt-1 text-sm text-slate-500">Sélectionnez votre profil pour accéder au module.</p>
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900">Qui êtes-vous ?</h2>
+                <p className="mt-1 text-xs sm:text-sm text-slate-500">Sélectionnez votre profil pour accéder au module.</p>
               </div>
               {onCancel && (
                 <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -78,7 +78,7 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {users.map(u => (
                 <button
                   key={u.id}
