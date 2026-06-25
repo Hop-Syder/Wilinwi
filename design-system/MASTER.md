@@ -1,7 +1,7 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Charte graphique et spécifications UI/UX Master (Vibrant Modern Palette)
+ * @description Charte graphique et spécifications UI/UX Master (Concept 5 — Fintech Next)
  * @created 2026-06-25
  * @updated 2026-06-26
  * 🌐 ceo.nexuspartners.xyz
@@ -9,9 +9,9 @@
  */
 ──────────────────────────────────
 
-# Wilinwi — Master Design System (Spécifications Actuelles)
+# Wilinwi — Master Design System (Concept 5 — Fintech Next)
 
-Ce document définit les standards visuels, comportementaux et techniques pour l'interface de **Wilinwi**, intégrant notre charte de couleurs moderne, vibrante et hautement accessible.
+Ce document définit les standards visuels, comportementaux et techniques pour l'interface de **Wilinwi**, intégrant notre charte de couleurs inspirée de Stripe, Linear et Flutterwave pour un rendu fintech moderne et ultra-professionnel.
 
 ---
 
@@ -20,37 +20,35 @@ Ce document définit les standards visuels, comportementaux et techniques pour l
 Le design system utilise des variables sémantiques dynamiques pour garantir une cohérence visuelle parfaite entre les modes clair et sombre.
 
 ### ☀️ Mode Clair (Défaut)
-* **Arrière-plan principal** : `#F5F8FC` (`--background`) — Un gris-bleu très doux, frais et moderne.
+* **Arrière-plan principal** : `#F4F7FC` (`--background`) — Un gris-bleu très doux, frais et moderne.
 * **Surface des cartes/contenants** : `#FFFFFF` (`--surface`) — Blanc pur.
-* **Survol des surfaces** : `#eef2f8` (`--surface-hover`)
-* **Bordures** : `#e2e8f0` (`--border`) — Lignes fines et épurées.
+* **Survol des surfaces** : `#edf1f9` (`--surface-hover`)
+* **Bordures** : `#DDE6F3` (`--border`) — Lignes de bordure fines bleutées.
 * **Couleurs thématiques** :
-  - **Primary (Bleu Royal)** : `#006DFF` (`--color-primary`) / Hover : `#0056c7` (`--color-primary-hover`)
-  - **Secondary (Vert Vibrant)** : `#00C389` (`--color-secondary`)
-  - **Success (Vert)** : `#00C389` (`--color-success`)
-  - **Warning (Orange Accent)** : `#FF8A00` (`--color-warning`)
-  - **Danger** : `#ef4444` (`--color-danger`)
-  - **Info** : `#006DFF` (`--color-info`)
-  - **Purple AI** : `#7C3AED` (`--color-ai`) — Violet exclusif aux fonctionnalités IA.
+  - **Primary (Fintech Blue)** : `#2962FF` (`--color-primary`) / Hover : `#1545d8` (`--color-primary-hover`)
+  - **Success (Green)** : `#00C853` (`--color-success`)
+  - **Warning (Yellow)** : `#FFB300` (`--color-warning`)
+  - **Danger** : `#E53935` (`--color-danger`)
+  - **Info** : `#2962FF` (`--color-info`)
+  - **Purple AI** : `#6200EA` (`--color-ai`) — Violet exclusif aux fonctionnalités IA.
 * **Textes** :
-  - **Principal** : `#0B132B` (`--text-primary`) — Bleu nuit ultra-sombre pour un contraste parfait.
-  - **Secondaire** : `#475569` (`--text-secondary`)
+  - **Principal** : `#111827` (`--text-primary`) — Slate-900 pour un contraste optimal.
+  - **Secondaire** : `#4b5563` (`--text-secondary`)
 
 ### 🌙 Mode Sombre (Classe `.dark`)
-* **Arrière-plan principal** : `#0B132B` (`--background`) — Bleu nuit profond et prestigieux.
-* **Surface** : `rgba(22, 29, 49, 0.7)` (`--surface`) — Verre fumé avec flou d'arrière-plan.
-* **Survol** : `rgba(34, 45, 75, 0.8)` (`--surface-hover`)
+* **Arrière-plan principal** : `#0f172a` (`--background`) — Bleu nuit profond.
+* **Surface** : `rgba(30, 41, 59, 0.7)` (`--surface`) — Verre fumé avec flou d'arrière-plan.
+* **Survol** : `rgba(51, 65, 85, 0.8)` (`--surface-hover`)
 * **Bordures** : `rgba(255, 255, 255, 0.08)` (`--border`)
 * **Couleurs thématiques** :
-  - **Primary (Bleu Royal)** : `#006DFF` (`--color-primary`)
-  - **Secondary (Vert Vibrant)** : `#00C389` (`--color-secondary`)
-  - **Success** : `#00C389` (`--color-success`)
-  - **Warning** : `#FF8A00` (`--color-warning`)
-  - **Danger** : `#f87171` (`--color-danger`)
+  - **Primary (Fintech Blue)** : `#2962FF` (`--color-primary`)
+  - **Success** : `#00C853` (`--color-success`)
+  - **Warning** : `#FFB300` (`--color-warning`)
+  - **Danger** : `#ef5350` (`--color-danger`)
   - **Info** : `#60a5fa` (`--color-info`)
-  - **Purple AI** : `#9061f9` (`--color-ai`)
+  - **Purple AI** : `#7c4dff` (`--color-ai`)
 * **Textes** :
-  - **Principal** : `#F5F8FC` (`--text-primary`)
+  - **Principal** : `#f8fafc` (`--text-primary`)
   - **Secondaire** : `#94a3b8` (`--text-secondary`)
 
 ---
@@ -68,7 +66,7 @@ Le design system utilise des variables sémantiques dynamiques pour garantir une
 ### 1. Boutons (`Button`)
 * **Radius** : `rounded-xl` (12px).
 * **Variantes** :
-  - `primary` : Fond Bleu Royal (`bg-primary`), texte blanc, hover bleu foncé, ombre de focus bleue.
+  - `primary` : Fond Fintech Blue (`bg-primary`), texte blanc, hover bleu foncé, ombre de focus bleue.
   - `outline` : Bordure `--border`, fond `--surface`, texte `--text-primary`, hover `--surface-hover`.
   - `ghost` : Hover transparent léger.
   - `danger` / `emerald` / `gold` : Fonds thématiques correspondants à la palette sémantique.
