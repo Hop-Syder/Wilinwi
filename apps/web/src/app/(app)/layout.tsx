@@ -104,7 +104,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900">
+    <div className="min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 relative overflow-hidden">
+      {/* Ligne de dégradé de marque en haut */}
+      <div className="h-1 w-full bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B]" />
+
+      {/* Halos lumineux en arrière-plan */}
+      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#12355B]/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#00A86B]/5 blur-[150px] pointer-events-none" />
+
       {/* Header / Navbar */}
       <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">

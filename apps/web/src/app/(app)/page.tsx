@@ -140,12 +140,17 @@ export default function HubPage() {
           const content = (
             <div
               className={cn(
-                'group relative h-full rounded-2xl border bg-white p-5 shadow-sm transition-all',
+                'group relative h-full rounded-2xl border bg-white p-5 shadow-sm transition-all duration-300 overflow-hidden',
                 available
-                  ? 'cursor-pointer border-slate-200 hover:-translate-y-0.5 hover:shadow-md'
+                  ? 'cursor-pointer border-slate-200/80 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand/5 hover:border-brand/20'
                   : 'border-dashed border-slate-200 opacity-70',
               )}
             >
+              {/* Ligne de dégradé au sommet au survol */}
+              {available && (
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              )}
+
               <div className="flex items-start justify-between">
                 <span className={cn('rounded-xl p-3', m.accent)}>
                   <Icon className="h-6 w-6" />
