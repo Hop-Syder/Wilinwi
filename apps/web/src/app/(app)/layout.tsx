@@ -5,7 +5,7 @@
  * @organization Nexus Partners
  * @description Layout de l'application (Route: (app))
  * @created 2026-06-20
- * @updated 2026-06-22
+ * @updated 2026-06-25
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -125,15 +125,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0">
-              <Image src="/logo.png" alt="Wilinwi" width={28} height={28} className="object-contain" />
-              {user.boutiqueNom ? (
-                <>
-                  <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
-                  <span className="hidden sm:inline">Wilinwi</span>
-                </>
-              ) : (
-                <span>Wilinwi</span>
+            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0" title="Wilinwi">
+              <Image src="/logo.png" alt="Wilinwi" width={32} height={32} className="object-contain" />
+              {user.boutiqueNom && (
+                <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
               )}
             </Link>
 
@@ -198,8 +193,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div>
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div className="flex flex-col min-w-0">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2">
-                <Image src="/logo.png" alt="Wilinwi" width={28} height={28} className="object-contain" /> Wilinwi
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2" title="Wilinwi">
+                <Image src="/logo.png" alt="Wilinwi" width={32} height={32} className="object-contain" />
               </Link>
               {user.boutiqueNom && (
                 <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">
