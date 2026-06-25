@@ -105,15 +105,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 relative overflow-hidden">
-      {/* Ligne de dégradé de marque en haut */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B]" />
+      {/* Conteneur de navigation fixe (Sticky) */}
+      <div className="sticky top-0 z-30 w-full">
+        {/* Ligne de dégradé de marque en haut */}
+        <div className="h-1 w-full bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B]" />
 
-      {/* Halos lumineux en arrière-plan */}
-      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#12355B]/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#00A86B]/5 blur-[150px] pointer-events-none" />
-
-      {/* Header / Navbar */}
-      <header className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
+        {/* Header / Navbar */}
+        <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             {/* Hamburger menu button for mobile */}
@@ -126,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0" title="Wilinwi">
-              <Image src="/logo.png" alt="Wilinwi" width={32} height={32} className="object-contain" />
+              <Image src="/logo.png" alt="Wilinwi" width={40} height={40} className="object-contain" />
               {user.boutiqueNom && (
                 <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
               )}
@@ -174,6 +172,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      </div>
+
+      {/* Halos lumineux en arrière-plan replacés en dehors du flux sticky */}
+      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#12355B]/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#00A86B]/5 blur-[150px] pointer-events-none" />
 
       {/* Overlay pour le menu mobile */}
       {isMobileMenuOpen && (
@@ -194,7 +197,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div className="flex flex-col min-w-0">
               <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2" title="Wilinwi">
-                <Image src="/logo.png" alt="Wilinwi" width={32} height={32} className="object-contain" />
+                <Image src="/logo.png" alt="Wilinwi" width={40} height={40} className="object-contain" />
               </Link>
               {user.boutiqueNom && (
                 <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">
