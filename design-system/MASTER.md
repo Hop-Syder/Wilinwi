@@ -1,85 +1,84 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Charte graphique et spécifications UI/UX Master (Concept 3 — Black Luxury)
+ * @description Charte graphique et spécifications UI/UX Master (Vibrant Modern Palette)
  * @created 2026-06-25
- * @updated 2026-06-25
+ * @updated 2026-06-26
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 ──────────────────────────────────
 
-# Wilinwi — Master Design System (Concept 3 — Black Luxury)
+# Wilinwi — Master Design System (Spécifications Actuelles)
 
-Ce document définit les standards visuels, comportementaux et techniques pour l'interface de **Wilinwi Enterprise** selon le concept **Black Luxury**. Un design d'excellence, très haut de gamme, mariant la modernité des SaaS occidentaux aux racines et symboles africains.
+Ce document définit les standards visuels, comportementaux et techniques pour l'interface de **Wilinwi**, intégrant notre charte de couleurs moderne, vibrante et hautement accessible.
 
 ---
 
 ## 🎨 Palette de Couleurs & Variables CSS
 
-Le design system repose sur des variables sémantiques adaptatives pour le mode clair et le mode sombre, avec une prédominance ultra-premium du mode sombre.
+Le design system utilise des variables sémantiques dynamiques pour garantir une cohérence visuelle parfaite entre les modes clair et sombre.
 
 ### ☀️ Mode Clair (Défaut)
-* **Arrière-plan principal** : `#f8fafc` (`--background`) — Un gris-bleu très doux et aéré.
-* **Surface des cartes/contenants** : `#ffffff` (`--surface`) — Blanc pur.
-* **Survol des surfaces** : `#f1f5f9` (`--surface-hover`)
-* **Bordures** : `#e5e7eb` (`--border`) — Lignes grises fines et discrètes.
+* **Arrière-plan principal** : `#F5F8FC` (`--background`) — Un gris-bleu très doux, frais et moderne.
+* **Surface des cartes/contenants** : `#FFFFFF` (`--surface`) — Blanc pur.
+* **Survol des surfaces** : `#eef2f8` (`--surface-hover`)
+* **Bordures** : `#e2e8f0` (`--border`) — Lignes fines et épurées.
 * **Couleurs thématiques** :
-  - **Primaire (Or Commerce)** : `#C79A2B` (`--color-primary`) / Hover : `#b58921` (`--color-primary-hover`)
-  - **Secondaire (Bleu Profond)** : `#2563EB` (`--color-secondary`)
-  - **Success (Vert Prospérité)** : `#00a86b` (`--color-success`)
-  - **Warning (Orange Gold)** : `#f59e0b` (`--color-warning`)
+  - **Primary (Bleu Royal)** : `#006DFF` (`--color-primary`) / Hover : `#0056c7` (`--color-primary-hover`)
+  - **Secondary (Vert Vibrant)** : `#00C389` (`--color-secondary`)
+  - **Success (Vert)** : `#00C389` (`--color-success`)
+  - **Warning (Orange Accent)** : `#FF8A00` (`--color-warning`)
   - **Danger** : `#ef4444` (`--color-danger`)
-  - **Info** : `#3b82f6` (`--color-info`)
+  - **Info** : `#006DFF` (`--color-info`)
+  - **Purple AI** : `#7C3AED` (`--color-ai`) — Violet exclusif aux fonctionnalités IA.
 * **Textes** :
-  - **Principal** : `#0b0b0c` (`--text-primary`) — Noir mat.
-  - **Secondaire** : `#4b5563` (`--text-secondary`) — Gris foncé texturé.
+  - **Principal** : `#0B132B` (`--text-primary`) — Bleu nuit ultra-sombre pour un contraste parfait.
+  - **Secondaire** : `#475569` (`--text-secondary`)
 
-### 🌙 Mode Sombre Enterprise (Black Luxury — Recommandé)
-* **Arrière-plan principal** : `#0B0B0C` (`--background`) — Noir pur et absolu de luxe.
-* **Surface** : `rgba(22, 22, 24, 0.7)` (`--surface`) — Effet de verre dépoli avec un léger flou de fond (`backdrop-blur`).
-* **Survol** : `rgba(34, 34, 37, 0.8)` (`--surface-hover`)
-* **Bordures** : `rgba(255, 255, 255, 0.08)` (`--border`) — Bordures translucides ultra-fines.
+### 🌙 Mode Sombre (Classe `.dark`)
+* **Arrière-plan principal** : `#0B132B` (`--background`) — Bleu nuit profond et prestigieux.
+* **Surface** : `rgba(22, 29, 49, 0.7)` (`--surface`) — Verre fumé avec flou d'arrière-plan.
+* **Survol** : `rgba(34, 45, 75, 0.8)` (`--surface-hover`)
+* **Bordures** : `rgba(255, 255, 255, 0.08)` (`--border`)
 * **Couleurs thématiques** :
-  - **Primaire (Or Commerce)** : `#C79A2B` (`--color-primary`) / Hover : `#b58921` (`--color-primary-hover`)
-  - **Secondaire (Bleu Profond)** : `#2563EB` (`--color-secondary`)
-  - **Success (Vert Prospérité)** : `#10b981` (`--color-success`)
-  - **Warning (Orange Gold)** : `#fbbf24` (`--color-warning`)
+  - **Primary (Bleu Royal)** : `#006DFF` (`--color-primary`)
+  - **Secondary (Vert Vibrant)** : `#00C389` (`--color-secondary`)
+  - **Success** : `#00C389` (`--color-success`)
+  - **Warning** : `#FF8A00` (`--color-warning`)
   - **Danger** : `#f87171` (`--color-danger`)
-  - **Info (Bleu Accent)** : `#60a5fa` (`--color-info`)
-  - **Wilinwi AI** : `#8B5CF6` (Violet réservé aux fonctionnalités d'IA)
+  - **Info** : `#60a5fa` (`--color-info`)
+  - **Purple AI** : `#9061f9` (`--color-ai`)
 * **Textes** :
-  - **Principal** : `#FFFFFF` (`--text-primary`) — Blanc pur contrasté.
-  - **Secondaire** : `#9CA3AF` (`--text-secondary`) — Gris moyen.
+  - **Principal** : `#F5F8FC` (`--text-primary`)
+  - **Secondaire** : `#94a3b8` (`--text-secondary`)
 
 ---
 
-## 🧬 ADN Visuel (Black Luxury)
+## 🧬 ADN Visuel
 
-* **Coins arrondis** : Tous les composants utilisent un rayon de **12px** (`--radius: 0.75rem`), apportant douceur et modernité haut de gamme.
-* **Ombres** : Micro-ombres ultra-douces et diffuses, réduisant la fatigue visuelle et ajoutant de la profondeur.
-* **Effet de Verre (Glassmorphism)** : Les conteneurs du dashboard sombre possèdent un effet de flou d'arrière-plan (`backdrop-blur-md bg-surface/70`) évoquant des plaques de verre fumé de luxe.
-* **Motifs culturels** : Motifs africains géométriques et symboles Adinkra subtilement intégrés en filigrane à **2% d'opacité** sur les pages d'accueil et les espaces vides.
-* **Animations** : Transitions et micro-interactions ultra-fluides cadencées entre **150ms et 200ms**.
+* **Coins arrondis** : Coins à **12px** (`--radius: 0.75rem`) sur tous les composants pour un rendu premium et consistant.
+* **Ombres** : Micro-ombres douces inspirées de Stripe (`shadow-sm` / `shadow-md`).
+* **Animations** : Interactions réactives et fluides cadencées de **150ms à 200ms**.
 
 ---
 
 ## 📦 Spécifications des Composants Core
 
 ### 1. Boutons (`Button`)
-* **Radius** : `rounded-xl` (12px) pour correspondre au concept.
+* **Radius** : `rounded-xl` (12px).
 * **Variantes** :
-  - `primary` : Fond Or (`bg-primary`), texte blanc ou noir mat, hover doré plus sombre, ombre de focus dorée.
+  - `primary` : Fond Bleu Royal (`bg-primary`), texte blanc, hover bleu foncé, ombre de focus bleue.
   - `outline` : Bordure `--border`, fond `--surface`, texte `--text-primary`, hover `--surface-hover`.
-  - `ghost` : Hover transparent à 10%.
+  - `ghost` : Hover transparent léger.
   - `danger` / `emerald` / `gold` : Fonds thématiques correspondants à la palette sémantique.
 
 ### 2. Cartes (`Card`)
-* **Structure** : `rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:shadow-md backdrop-blur-md`.
+* **Structure** : `rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:shadow-md`.
 
 ### 3. Badges (`Badge`)
-* **Style** : Coins `rounded-xl` (12px), fond coloré ultra-léger (5% d'opacité) et bordure assortie à 10% d'opacité (ex: `bg-success/5 text-success border-success/10`).
+* **Style** : Coins `rounded-xl` (12px), fond coloré à 5% d'opacité et bordure à 10% d'opacité.
 
 ### 4. Saisie (`Input` & `Select`)
 * **Dimensions** : Hauteur calée sur `h-10` avec des coins `rounded-xl` (12px).
-* **Interactions** : Bordure par défaut `--border`, focus ring dorée subtile (`focus:ring-2 focus:ring-primary/20`) lors du focus.
+* **Interactions** : Bordure par défaut `--border`, focus ring bleu subtil (`focus:ring-2 focus:ring-primary/20`) lors du focus.
