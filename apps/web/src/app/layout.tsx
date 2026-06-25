@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${inter.variable} ${poppins.variable} ${dmMono.variable}`}>
+    <html lang="fr" className={`dark ${inter.variable} ${poppins.variable} ${dmMono.variable}`}>
       <body>
         <ServiceWorkerRegister />
         <AuthProvider>{children}</AuthProvider>

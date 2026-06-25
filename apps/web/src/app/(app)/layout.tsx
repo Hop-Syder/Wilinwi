@@ -104,18 +104,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 font-sans antialiased text-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-background font-sans antialiased text-text-primary relative overflow-hidden">
       {/* Conteneur de navigation fixe (Sticky) */}
       <div className="sticky top-0 z-30 w-full">
-        {/* Ligne de dégradé de marque en haut */}
-        <div className="h-1 w-full bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B]" />
+        {/* Ligne de dégradé de marque en haut (Black Luxury: Gold, Blue, Green) */}
+        <div className="h-1 w-full bg-gradient-to-r from-[#C79A2B] via-[#2563EB] to-[#10B981]" />
 
         {/* Header / Navbar */}
-        <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
+        <header className="w-full border-b border-border bg-surface/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            {/* Navigation mobile : barre d'onglets en bas (plus de hamburger ici). */}
-            <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0" title="Wilinwi">
+            {/* Navigation mobile */}
+            <Link href="/" className="font-display text-xl font-black tracking-tight text-primary flex items-center gap-2 shrink-0" title="Wilinwi">
               <Image src="/logo.png" alt="Wilinwi" width={150} height={150} className="object-contain" />
               {user.boutiqueNom && (
                 <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
@@ -123,7 +123,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
 
             {user.boutiqueNom && (
-              <span className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 text-xs font-bold text-brand truncate max-w-[200px] md:max-w-xs sm:flex">
+              <span className="hidden items-center gap-1.5 border-l border-border pl-3 text-xs font-bold text-primary truncate max-w-[200px] md:max-w-xs sm:flex">
                 🏢 {user.boutiqueNom}
               </span>
             )}
@@ -133,20 +133,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <OfflineIndicator state={state} pending={pending} />
             
             {/* Badge Utilisateur (Desktop) */}
-            <div className="hidden items-center gap-3 rounded-xl border border-slate-100 bg-white p-1.5 pr-3 shadow-sm sm:flex">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-xs font-semibold text-brand">
+            <div className="hidden items-center gap-3 rounded border border-border bg-surface p-1.5 pr-3 shadow-sm sm:flex">
+              <div className="flex h-7 w-7 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
                 {user.email.substring(0, 2).toUpperCase()}
               </div>
               <div className="flex flex-col text-left leading-none">
-                <span className="text-xs font-semibold text-slate-750 max-w-[120px] truncate">{user.email}</span>
-                <span className="text-[10px] text-slate-400 font-medium mt-0.5">{ROLE_LABELS[user.role] ?? user.role}</span>
+                <span className="text-xs font-semibold text-text-primary max-w-[120px] truncate">{user.email}</span>
+                <span className="text-[10px] text-text-secondary font-medium mt-0.5">{ROLE_LABELS[user.role] ?? user.role}</span>
               </div>
             </div>
 
-            <div className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 sm:flex">
+            <div className="hidden items-center gap-1.5 border-l border-border pl-3 sm:flex">
               <button
                 onClick={() => void lock()}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                className="flex h-9 w-9 items-center justify-center rounded text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                 aria-label="Verrouiller"
                 title="Verrouiller (poste partagé)"
               >
@@ -154,7 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
               <button
                 onClick={() => signOut()}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                className="flex h-9 w-9 items-center justify-center rounded text-text-secondary transition-colors hover:bg-danger/10 hover:text-danger"
                 aria-label="Se déconnecter"
                 title="Se déconnecter"
               >
@@ -166,14 +166,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
       </div>
 
-      {/* Halos lumineux en arrière-plan replacés en dehors du flux sticky */}
-      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#12355B]/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#00A86B]/5 blur-[150px] pointer-events-none" />
+      {/* Halos lumineux en arrière-plan (Or et Bleu) */}
+      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#C79A2B]/3 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#2563EB]/3 blur-[150px] pointer-events-none" />
 
       {/* Overlay pour le menu mobile */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-sm transition-opacity sm:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity sm:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -181,25 +181,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Menu mobile (Drawer) */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between bg-white px-5 py-6 shadow-2xl transition-transform duration-300 ease-in-out sm:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col justify-between bg-surface border-r border-border px-5 py-6 shadow-2xl transition-transform duration-300 ease-in-out sm:hidden",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div>
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
             <div className="flex flex-col min-w-0">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-brand flex items-center gap-2" title="Wilinwi">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="font-display text-xl font-black text-primary flex items-center gap-2" title="Wilinwi">
                 <Image src="/logo.png" alt="Wilinwi" width={150} height={150} className="object-contain" />
               </Link>
               {user.boutiqueNom && (
-                <span className="text-xs font-bold text-slate-500 mt-1 pl-5 truncate max-w-[180px]">
+                <span className="text-xs font-bold text-text-secondary mt-1 pl-5 truncate max-w-[180px]">
                   🏢 {user.boutiqueNom}
                 </span>
               )}
             </div>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors shrink-0"
+              className="flex h-9 w-9 items-center justify-center rounded text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors shrink-0"
             >
               <X className="h-5 w-5" />
             </button>
@@ -215,13 +215,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       href={href}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
-                        'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer',
+                        'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer',
                         active
-                          ? 'bg-brand text-white shadow-lg shadow-brand/15'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-brand',
+                          ? 'bg-primary text-slate-900 shadow-md shadow-primary/10'
+                          : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
                       )}
                     >
-                      <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-brand')} />
+                      <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-slate-900' : 'text-text-secondary/60 group-hover:text-text-primary')} />
                       {label}
                     </Link>
                   </li>
@@ -232,14 +232,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Infos utilisateur en bas du menu mobile */}
-        <div className="border-t border-slate-100 pt-4 mt-auto">
+        <div className="border-t border-border pt-4 mt-auto">
           <div className="flex items-center gap-3 mb-4 px-1">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand font-bold text-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded bg-primary/10 text-primary font-bold text-sm">
               {user.email.substring(0, 2).toUpperCase()}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-slate-800 truncate">{user.email}</span>
-              <span className="text-xs text-slate-500 font-medium">{ROLE_LABELS[user.role] ?? user.role}</span>
+              <span className="text-sm font-bold text-text-primary truncate">{user.email}</span>
+              <span className="text-xs text-text-secondary font-medium">{ROLE_LABELS[user.role] ?? user.role}</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -248,7 +248,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setIsMobileMenuOpen(false);
                 void lock();
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 rounded border border-border bg-surface py-2 text-xs font-semibold text-text-secondary hover:bg-surface-hover transition-colors"
             >
               <Lock className="h-3.5 w-3.5" />
               Verrouiller
@@ -258,7 +258,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setIsMobileMenuOpen(false);
                 signOut();
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2 text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-100 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 rounded border border-border bg-surface py-2 text-xs font-semibold text-danger hover:bg-danger/10 transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
               Quitter
@@ -267,11 +267,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Main Layout Container — padding bas sur mobile pour la barre d'onglets */}
+      {/* Main Layout Container */}
       <div className="mx-auto flex max-w-6xl gap-6 px-4 pt-6 pb-24 sm:pb-6">
         {/* Floating Sidebar (Desktop) */}
         <nav className="hidden w-52 shrink-0 sm:block">
-          <div className="sticky top-20 flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
             <ul className="space-y-1">
               {NAV.filter((item) => canSee(item.module)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -280,13 +280,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link
                       href={href}
                       className={cn(
-                        'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer',
+                        'group flex items-center gap-3 rounded px-3 py-2 text-sm font-semibold transition-all duration-250 cursor-pointer',
                         active
-                          ? 'bg-brand text-white shadow-lg shadow-brand/15'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-brand',
+                          ? 'bg-primary text-slate-900 shadow-md shadow-primary/10'
+                          : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
                       )}
                     >
-                      <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-white' : 'text-slate-400 group-hover:text-brand')} />
+                      <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-slate-900' : 'text-text-secondary/60 group-hover:text-text-primary')} />
                       {label}
                     </Link>
                   </li>
@@ -300,9 +300,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="min-w-0 flex-1">{children}</main>
       </div>
 
-      {/* Barre d'onglets mobile (style « Wave ») — masquée sur desktop */}
+      {/* Barre d'onglets mobile */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-md sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur-md sm:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-md items-stretch justify-around">
@@ -316,7 +316,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   href={href}
                   className={cn(
                     'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
-                    active ? 'text-brand' : 'text-slate-400 hover:text-slate-600',
+                    active ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
                   )}
                 >
                   <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
@@ -326,7 +326,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-slate-400 transition-colors hover:text-slate-600"
+            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
           >
             <Menu className="h-5 w-5" />
             <span>Plus</span>
