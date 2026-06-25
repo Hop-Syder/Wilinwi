@@ -114,15 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            {/* Hamburger menu button for mobile */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-950 active:scale-95 sm:hidden"
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
+            {/* Navigation mobile : barre d'onglets en bas (plus de hamburger ici). */}
             <Link href="/" className="font-display text-xl font-black tracking-tight text-brand flex items-center gap-2 shrink-0" title="Wilinwi">
               <Image src="/logo.png" alt="Wilinwi" width={150} height={150} className="object-contain" />
               {user.boutiqueNom && (
