@@ -60,7 +60,7 @@ export default function SignupPage() {
         {/* Header Branding */}
         <div className="flex items-center gap-3 relative z-10">
           <div className="p-2 bg-primary/10 rounded-xl border border-primary/20 backdrop-blur-md">
-            <Image src="/logo-wilinwi.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain filter brightness-0 invert" />
+            <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain filter brightness-0 invert" />
           </div>
           <span className="font-display text-2xl font-black tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Wilinwi</span>
         </div>
@@ -134,7 +134,7 @@ export default function SignupPage() {
       {/* Colonne d'inscription droite */}
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-8 sm:p-16 min-h-screen bg-slate-50/50 overflow-y-auto">
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <Image src="/logo-wilinwi.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain" />
+          <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain" />
           <span className="font-display text-xl font-black text-primary">Wilinwi</span>
         </div>
 
