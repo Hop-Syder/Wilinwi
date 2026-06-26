@@ -65,6 +65,7 @@ export class AuthService {
             nom: input.nomComplet,
             email: input.email,
             role: 'OWNER',
+            pinCode: await bcrypt.hash('0000', 10),
           },
         });
       });
