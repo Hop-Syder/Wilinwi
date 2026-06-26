@@ -47,7 +47,7 @@ export default function LoginPage() {
 
         {/* Header Branding */}
         <div className="flex items-center justify-center relative z-10 w-full">
-          <Image src="/logo.png" alt="Wilinwi Logo" width={180} height={60} className="object-contain" style={{ height: 'auto', maxHeight: '55px' }} />
+          <Image src="/logo.png" alt="Wilinwi Logo" width={220} height={70} className="object-contain brightness-0 invert" style={{ height: 'auto', maxHeight: '65px' }} />
         </div>
 
         {/* Centre - Mockup Graphique & Transactions CSS Premium */}
