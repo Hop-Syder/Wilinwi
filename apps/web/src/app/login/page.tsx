@@ -113,67 +113,70 @@ export default function LoginPage() {
           <Image src="/logo.png" alt="Wilinwi Logo" width={90} height={30} className="object-contain" style={{ height: 'auto', maxHeight: '30px' }} />
         </div>
 
-        <div className="w-full max-w-sm mx-auto my-auto space-y-5">
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900">Ravi de vous revoir</h1>
-            <p className="text-xs text-slate-500">Connectez-vous pour ouvrir votre espace de caisse Wilinwi.</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.01)] space-y-4">
-            <form onSubmit={onSubmit} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-slate-400" /> Adresse email
-                </label>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="nom@entreprise.com" 
-                  required 
-                  className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-400" /> Mot de passe
-                </label>
-                <Input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="••••••••" 
-                  required 
-                  className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-
-              {error && (
-                <div className="p-2 bg-danger/5 border border-danger/20 rounded-xl">
-                  <p className="text-[11px] font-semibold text-danger">{error}</p>
-                </div>
-              )}
-
-              <Button type="submit" className="w-full justify-center h-10 text-sm font-semibold group rounded-xl shadow-md shadow-primary/5 hover:shadow-primary/10 transition-all" disabled={loading}>
-                {loading ? 'Connexion en cours…' : (
-                  <span className="flex items-center gap-1.5">
-                    Ouvrir la caisse <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                )}
-              </Button>
-            </form>
-
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-100"></div>
-              <span className="flex-shrink mx-3 text-[10px] text-slate-400 font-medium">Nouveau sur Wilinwi ?</span>
-              <div className="flex-grow border-t border-slate-100"></div>
+        <div className="w-full max-w-sm mx-auto my-auto">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col">
+            {/* Header de la carte fixe */}
+            <div className="p-6 pb-2 border-b border-slate-100">
+              <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900">Ravi de vous revoir</h1>
             </div>
 
-            <div className="text-center">
-              <Link href="/signup" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark transition-colors">
-                Créer une boutique gratuitement <ArrowRight className="w-3 h-3" />
-              </Link>
+            {/* Corps de la carte (Sans scroll car seulement 2 champs) */}
+            <div className="p-6 pt-4 space-y-5 select-none">
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" /> Adresse email
+                  </label>
+                  <Input 
+                    type="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    placeholder="nom@entreprise.com" 
+                    required 
+                    className="w-full h-10 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" /> Mot de passe
+                  </label>
+                  <Input 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    placeholder="••••••••" 
+                    required 
+                    className="w-full h-10 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-2.5 bg-danger/5 border border-danger/20 rounded-xl">
+                    <p className="text-xs font-semibold text-danger">{error}</p>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full justify-center h-10.5 text-sm font-semibold group rounded-xl shadow-md shadow-primary/5 hover:shadow-primary/10 transition-all mt-4" disabled={loading}>
+                  {loading ? 'Connexion en cours…' : (
+                    <span className="flex items-center gap-1.5">
+                      Ouvrir la caisse <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  )}
+                </Button>
+              </form>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-100"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-slate-400 font-medium">Nouveau sur Wilinwi ?</span>
+                <div className="flex-grow border-t border-slate-100"></div>
+              </div>
+
+              <div className="text-center">
+                <Link href="/signup" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark transition-colors pb-2">
+                  Créer une boutique gratuitement <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
