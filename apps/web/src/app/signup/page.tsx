@@ -11,7 +11,7 @@
  */
 // ──────────────────────────────────
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,6 +25,26 @@ export default function SignupPage() {
   const [form, setForm] = useState({ nomBoutique: '', nomComplet: '', email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Simulation dynamique
+  const [stockCount, setStockCount] = useState(412);
+  const [riceStock, setRiceStock] = useState(84);
+  const [oilStock, setOilStock] = useState(12);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRiceStock((r) => {
+        const diff = Math.random() > 0.55 ? -1 : 1;
+        return Math.max(70, Math.min(100, r + diff));
+      });
+      setOilStock((o) => {
+        const diff = Math.random() > 0.65 ? -1 : 1;
+        return Math.max(5, Math.min(25, o + diff));
+      });
+      setStockCount((s) => s + (Math.random() > 0.5 ? 1 : -1));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -81,7 +101,9 @@ export default function SignupPage() {
             <div className="space-y-0.5 mb-4">
               <p className="text-[10px] text-slate-400">Total Articles Renseignés</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold font-mono tracking-tight text-white">412 articles</span>
+                <span className="text-2xl font-bold font-mono tracking-tight text-white transition-all duration-300">
+                  {stockCount} articles
+                </span>
                 <span className="text-[10px] font-semibold text-[#00A86B] bg-[#00A86B]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <Box className="w-3 h-3" /> En sécurité
                 </span>
@@ -90,19 +112,19 @@ export default function SignupPage() {
 
             {/* Liste de stock simulée */}
             <div className="space-y-2 mb-3">
-              <div className="flex items-center justify-between text-[11px] p-2 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+              <div className="flex items-center justify-between text-[11px] p-2 bg-white/[0.02] border border-white/[0.05] rounded-xl transition-all duration-300">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#00A86B]" />
                   <span className="text-slate-300 font-medium">Sac de riz 50kg</span>
                 </div>
-                <span className="font-mono text-slate-400">84 en stock</span>
+                <span className="font-mono text-slate-400 transition-all duration-300">{riceStock} en stock</span>
               </div>
-              <div className="flex items-center justify-between text-[11px] p-2 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+              <div className="flex items-center justify-between text-[11px] p-2 bg-white/[0.02] border border-white/[0.05] rounded-xl transition-all duration-300">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFB300]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFB300] animate-pulse" />
                   <span className="text-slate-300 font-medium">Huile de Palme 1L</span>
                 </div>
-                <span className="font-mono text-slate-400">12 en stock</span>
+                <span className="font-mono text-slate-400 transition-all duration-300">{oilStock} en stock</span>
               </div>
             </div>
 

@@ -11,7 +11,7 @@
  */
 // ──────────────────────────────────
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,6 +25,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Simulation dynamique
+  const [sales, setSales] = useState(148500);
+  const [barHeights, setBarHeights] = useState([40, 60, 50, 75, 95]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSales((s) => s + Math.floor(Math.random() * 800) + 200);
+      setBarHeights((prev) =>
+        prev.map((h, i) => {
+          if (i === 4) return 95; // Le pic récent reste élevé
+          const diff = Math.floor(Math.random() * 15) - 7;
+          return Math.max(30, Math.min(90, h + diff));
+        })
+      );
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,7 +87,9 @@ export default function LoginPage() {
             <div className="space-y-0.5 mb-4">
               <p className="text-[10px] text-slate-400">Ventes du jour</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold font-mono tracking-tight text-white">148,500 FCFA</span>
+                <span className="text-2xl font-bold font-mono tracking-tight text-white transition-all duration-300">
+                  {sales.toLocaleString()} FCFA
+                </span>
                 <span className="text-[10px] font-semibold text-[#00C853] bg-[#00C853]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <TrendingUp className="w-2.5 h-2.5" /> +14.2%
                 </span>
@@ -78,11 +98,11 @@ export default function LoginPage() {
 
             {/* Mini Graphique en barres simulé */}
             <div className="flex items-end justify-between gap-1.5 h-16 mb-3 px-1">
-              <div className="w-full bg-slate-800/60 rounded-t h-[40%] group-hover:bg-primary/45 transition-all duration-500" />
-              <div className="w-full bg-slate-800/60 rounded-t h-[60%] group-hover:bg-primary/55 transition-all duration-500" />
-              <div className="w-full bg-slate-800/60 rounded-t h-[50%] group-hover:bg-primary/65 transition-all duration-500" />
-              <div className="w-full bg-slate-800/60 rounded-t h-[75%] group-hover:bg-primary/75 transition-all duration-500" />
-              <div className="w-full bg-[#2962FF] rounded-t h-[95%] shadow-[0_0_15px_rgba(41,98,255,0.5)] transition-all duration-500" />
+              <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/45" style={{ height: `${barHeights[0]}%` }} />
+              <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/55" style={{ height: `${barHeights[1]}%` }} />
+              <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/65" style={{ height: `${barHeights[2]}%` }} />
+              <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/75" style={{ height: `${barHeights[3]}%` }} />
+              <div className="w-full bg-[#2962FF] rounded-t transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(41,98,255,0.5)]" style={{ height: `${barHeights[4]}%` }} />
             </div>
 
             {/* Pied de la carte */}
