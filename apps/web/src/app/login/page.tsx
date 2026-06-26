@@ -46,8 +46,8 @@ export default function LoginPage() {
         <div className="absolute bottom-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-[#00C853]/10 blur-[100px] pointer-events-none" />
 
         {/* Header Branding */}
-        <div className="flex items-center relative z-10">
-          <Image src="/logo.png" alt="Wilinwi Logo" width={110} height={36} className="object-contain filter brightness-0 invert" style={{ height: 'auto', maxHeight: '36px' }} />
+        <div className="flex items-center justify-center relative z-10 w-full">
+          <Image src="/logo.png" alt="Wilinwi Logo" width={180} height={60} className="object-contain" style={{ height: 'auto', maxHeight: '55px' }} />
         </div>
 
         {/* Centre - Mockup Graphique & Transactions CSS Premium */}
