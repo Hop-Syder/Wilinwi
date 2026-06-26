@@ -58,11 +58,8 @@ export default function SignupPage() {
         <div className="absolute bottom-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-[#00A86B]/10 blur-[120px] pointer-events-none" />
 
         {/* Header Branding */}
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="p-2 bg-primary/10 rounded-xl border border-primary/20 backdrop-blur-md">
-            <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain filter brightness-0 invert" />
-          </div>
-          <span className="font-display text-2xl font-black tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Wilinwi</span>
+        <div className="flex items-center relative z-10">
+          <Image src="/logo.png" alt="Wilinwi Logo" width={120} height={40} className="object-contain filter brightness-0 invert" style={{ height: 'auto', maxHeight: '40px' }} />
         </div>
 
         {/* Centre - Mockup Stock CSS Premium */}
