@@ -34,7 +34,7 @@ import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
 import { useSync } from '@/lib/use-sync';
-import { apiGet, apiPost, ApiError } from '@/lib/api';
+import { apiGet, apiPost, ApiError, getPinToken } from '@/lib/api';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
 import { Preloader } from '@/components/preloader';
 
@@ -86,7 +86,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
+    if (!loading && !user) {
+      router.replace('/login');
+    } else if (!loading && user && !getPinToken()) {
+      // Force le lock PIN si aucune session PIN n'est active
+      void lock();
+    }
   }, [loading, user, router]);
 
   if (loading || !user) {
@@ -94,11 +99,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (locked) {
+    const hasPin = !!getPinToken();
     return (
       <PinSwitchModal
         users={pinUsers}
         onUnlock={(id, pin) => void unlock(id, pin)}
-        onCancel={() => setLocked(false)}
+        onCancel={hasPin ? () => setLocked(false) : undefined}
       />
     );
   }
