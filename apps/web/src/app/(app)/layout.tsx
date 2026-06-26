@@ -123,8 +123,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
 
             {user.boutiqueNom && (
-              <span className="hidden items-center gap-1.5 border-l border-border pl-3 text-xs font-bold text-primary truncate max-w-[200px] md:max-w-xs sm:flex">
-                🏢 {user.boutiqueNom}
+              <span className="hidden items-center gap-2 border-l border-border pl-4 text-base font-extrabold tracking-tight text-text-primary sm:flex">
+                <span className="text-primary text-lg">🏢</span> {user.boutiqueNom}
               </span>
             )}
           </div>

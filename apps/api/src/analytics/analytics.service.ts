@@ -102,13 +102,13 @@ export class AnalyticsService {
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dayName = daysOfWeek[d.getDay()];
+        const dayName = daysOfWeek[d.getDay()]!;
         salesByDayMap.set(dayName, 0);
       }
 
       // Remplir avec les données de la base de données
       salesLast7Days.forEach((sale) => {
-        const dayName = daysOfWeek[new Date(sale.createdAt).getDay()];
+        const dayName = daysOfWeek[new Date(sale.createdAt).getDay()]!;
         if (salesByDayMap.has(dayName)) {
           salesByDayMap.set(dayName, (salesByDayMap.get(dayName) || 0) + sale.total);
         }
@@ -175,7 +175,24 @@ export class AnalyticsService {
         0,
       );
 
-      // Série journalière (tendance) — clés date locale AAAA-MM-JJ.
+      // Dépenses de l'entreprise sur la période (sorties de trésorerie « EXPENSE »).
+      const expenses = await tx.cashMovement.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          type: 'OUT',
+          source: 'EXPENSE',
+          createdAt: { gte: from, lte: to },
+        },
+        select: { montant: true, createdAt: true },
+      });
+      const totalDepenses = expenses.reduce((s, e) => s + e.montant, 0);
+      const expByDay = new Map<string, number>();
+      for (const e of expenses) {
+        const day = e.createdAt.toISOString().slice(0, 10);
+        expByDay.set(day, (expByDay.get(day) ?? 0) + e.montant);
+      }
+
+      // Ventes agrégées par jour.
       const byDay = new Map<string, { ca: number; ventes: number }>();
       for (const s of sales) {
         const day = s.createdAt.toISOString().slice(0, 10);
@@ -184,7 +201,22 @@ export class AnalyticsService {
         cur.ventes += 1;
         byDay.set(day, cur);
       }
-      const serie = [...byDay.entries()].map(([date, v]) => ({ date, ca: v.ca, ventes: v.ventes }));
+
+      // Série journalière CONTINUE (CA + dépenses), un point par jour de la période.
+      const serie: { date: string; ca: number; ventes: number; depenses: number }[] = [];
+      const cursor = new Date(from);
+      cursor.setHours(0, 0, 0, 0);
+      for (let guard = 0; cursor <= to && guard < 370; guard++) {
+        const day = cursor.toISOString().slice(0, 10);
+        const v = byDay.get(day);
+        serie.push({
+          date: day,
+          ca: v?.ca ?? 0,
+          ventes: v?.ventes ?? 0,
+          depenses: expByDay.get(day) ?? 0,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
 
       // Top produits (par quantité vendue).
       const byProduct = new Map<string, { nom: string; quantite: number; ca: number }>();
@@ -225,6 +257,7 @@ export class AnalyticsService {
         nombreVentes,
         articlesVendus,
         panierMoyen,
+        totalDepenses,
         ...(seeSensitive ? { benefice } : {}),
         serie,
         topProduits,
