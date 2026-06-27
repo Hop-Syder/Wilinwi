@@ -35,14 +35,54 @@ export class StockService {
     // Rétrogradation Starter (impayé J+7) : catalogue bridé aux 50 articles les
     // plus anciens (les autres restent en base, simplement masqués).
     const downgraded = ctx.dunning.downgraded;
-    const products = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.product.findMany({
+    const products = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const prods = await tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
         include: { variants: true },
         orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
         ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
-      }),
-    );
+      });
+
+      // Si un établissement spécifique est sélectionné, on calcule le stock scopé
+      if (ctx.etablissementId) {
+        // Étape 1 : Récupérer tous les produits ayant au moins un mouvement dans le tenant
+        const allMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId },
+          select: { productId: true },
+        });
+        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
+
+        // Étape 2 : Récupérer les mouvements de stock de cet établissement
+        const activeMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
+          select: { productId: true, variantId: true, quantite: true },
+        });
+
+        const stockByProduct: Record<string, number> = {};
+        const stockByVariant: Record<string, number> = {};
+        for (const m of activeMovements) {
+          if (m.variantId) {
+            stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
+          } else {
+            stockByProduct[m.productId] = (stockByProduct[m.productId] ?? 0) + m.quantite;
+          }
+        }
+
+        // Étape 3 : Assigner le stock scopé ou le fallback global
+        for (const p of prods) {
+          if (productsWithAnyMovements.has(p.id)) {
+            p.stock = stockByProduct[p.id] ?? 0;
+            if (p.variants) {
+              for (const v of p.variants) {
+                v.stock = stockByVariant[v.id] ?? 0;
+              }
+            }
+          }
+        }
+      }
+      return prods;
+    });
+
     const sorted = downgraded
       ? [...products].sort((a, b) => a.nom.localeCompare(b.nom))
       : products;
@@ -51,7 +91,34 @@ export class StockService {
 
   async getProduct(ctx: AuthContext, id: string) {
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      return this.ensureProduct(tx, ctx.tenantId, id);
+      const p = await this.ensureProduct(tx, ctx.tenantId, id);
+      if (ctx.etablissementId) {
+        const hasAnyMovements = await tx.stockMovement.count({
+          where: { tenantId: ctx.tenantId, productId: p.id },
+        }) > 0;
+        if (hasAnyMovements) {
+          const movements = await tx.stockMovement.findMany({
+            where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId, productId: p.id },
+            select: { variantId: true, quantite: true },
+          });
+          let stockProduct = 0;
+          const stockByVariant: Record<string, number> = {};
+          for (const m of movements) {
+            if (m.variantId) {
+              stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
+            } else {
+              stockProduct += m.quantite;
+            }
+          }
+          p.stock = stockProduct;
+          if (p.variants) {
+            for (const v of p.variants) {
+              v.stock = stockByVariant[v.id] ?? 0;
+            }
+          }
+        }
+      }
+      return p;
     });
     return toProductDto(product, ctx.role);
   }
@@ -212,6 +279,30 @@ export class StockService {
       const products = await tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
       });
+
+      if (ctx.etablissementId) {
+        const allMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId },
+          select: { productId: true },
+        });
+        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
+
+        const activeMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
+          select: { productId: true, quantite: true },
+        });
+        const stockByProduct: Record<string, number> = {};
+        for (const m of activeMovements) {
+          stockByProduct[m.productId] = (stockByProduct[m.productId] ?? 0) + m.quantite;
+        }
+
+        for (const p of products) {
+          if (productsWithAnyMovements.has(p.id)) {
+            p.stock = stockByProduct[p.id] ?? 0;
+          }
+        }
+      }
+
       let valeurAchat = 0;
       let valeurCatalogue = 0;
       for (const p of products) {

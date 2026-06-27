@@ -78,7 +78,6 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   MANAGER: [
     'tenant:configure',
     'users:manage',
-    'activity:read',
     'stock:read',
     'stock:write',
     'inventory:count',

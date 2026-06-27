@@ -59,6 +59,30 @@ export class AnalyticsService {
       const products = await tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
       });
+
+      if (ctx.etablissementId) {
+        const allMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId },
+          select: { productId: true },
+        });
+        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
+
+        const activeMovements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
+          select: { productId: true, quantite: true },
+        });
+        const stockByProduct: Record<string, number> = {};
+        for (const m of activeMovements) {
+          stockByProduct[m.productId] = (stockByProduct[m.productId] ?? 0) + m.quantite;
+        }
+
+        for (const p of products) {
+          if (productsWithAnyMovements.has(p.id)) {
+            p.stock = stockByProduct[p.id] ?? 0;
+          }
+        }
+      }
+
       const valeurStockCatalogue = products.reduce((s, p) => s + p.prixCatalogue * p.stock, 0);
       const valeurStockAchat = products.reduce((s, p) => s + p.prixAchat * p.stock, 0);
 
@@ -67,11 +91,16 @@ export class AnalyticsService {
         .filter((p) => p.stock <= LOW_STOCK_THRESHOLD)
         .map((p) => ({ id: p.id, nom: p.nom, stock: p.stock }));
 
-      // Produits dormants : aucun mouvement OUT depuis DORMANT_DAYS jours
+      // Produits dormants : aucun mouvement OUT depuis DORMANT_DAYS jours dans cet établissement
       const dormantSince = new Date();
       dormantSince.setDate(dormantSince.getDate() - DORMANT_DAYS);
       const recentlySold = await tx.stockMovement.findMany({
-        where: { tenantId: ctx.tenantId, type: 'OUT', createdAt: { gte: dormantSince } },
+        where: {
+          tenantId: ctx.tenantId,
+          type: 'OUT',
+          createdAt: { gte: dormantSince },
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
         select: { productId: true },
         distinct: ['productId'],
       });

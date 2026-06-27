@@ -113,8 +113,13 @@ export class AuthGuard implements CanActivate {
     // Établissement courant : en-tête X-Etablissement-Id, borné à la liste autorisée.
     // Sinon → premier établissement accessible (switch sans reconnexion).
     const headerEtab = this.extractEtablissement(req.headers['x-etablissement-id']);
+    const isOwner = resolved.role === 'OWNER';
+    const canSeeAll = isOwner && resolved.etablissementIds.length >= 2;
+
     const etablissementId =
-      headerEtab && resolved.etablissementIds.includes(headerEtab)
+      headerEtab === 'ALL' && canSeeAll
+        ? null
+        : headerEtab && resolved.etablissementIds.includes(headerEtab)
         ? headerEtab
         : (resolved.etablissementIds[0] ?? null);
 

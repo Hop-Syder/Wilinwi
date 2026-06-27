@@ -110,8 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Synchronise le localStorage avec l'établissement résolu côté serveur
       // (1ʳᵉ visite, ou si l'établissement stocké n'est plus accessible).
       const etabs = me.etablissements ?? [];
+      const isOwner = me.role === 'OWNER';
+      const canSeeAll = isOwner && etabs.length >= 2;
       const stored = getEtablissementId();
-      const valid = stored && etabs.some((e) => e.id === stored);
+      const valid =
+        (stored && etabs.some((e) => e.id === stored)) ||
+        (stored === 'ALL' && canSeeAll);
+
       if (!valid) setEtablissementId(me.etablissementId);
       setUser({
         userId: me.userId,

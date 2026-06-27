@@ -9,8 +9,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, History, Search } from 'lucide-react';
 import Link from 'next/link';
-import { Card, Badge } from '@wilinwi/ui';
+import { Card, Badge, Button } from '@wilinwi/ui';
 import { apiGet, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 
 interface ActivityRow {
   id: string;
@@ -84,15 +85,40 @@ function resolveAction(action: string): { label: string; tone: Tone } {
 }
 
 export default function JournalPage() {
+  const { user } = useAuth();
+  const isOwner = user?.role === 'OWNER';
+
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
+    if (!isOwner) return;
     apiGet<ActivityRow[]>('/api/activity?limit=200')
       .then(setRows)
       .catch((e: ApiError) => setError(e.message));
-  }, []);
+  }, [isOwner]);
+
+  if (!isOwner) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12">
+        <Card className="max-w-md p-6 text-center border-red-200 bg-red-50/50">
+          <History className="mx-auto h-12 w-12 text-red-500" />
+          <h2 className="mt-4 font-display text-lg font-bold text-slate-900">Accès refusé</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Seul le propriétaire du compte est autorisé à consulter le journal d&apos;activité de l&apos;équipe.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link href="/parametres">
+              <Button className="inline-flex items-center gap-1 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">
+                <ArrowLeft className="h-4 w-4" /> Retour aux paramètres
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   // Pré-calcule le libellé pour filtrer/afficher.
   const enriched = useMemo(
