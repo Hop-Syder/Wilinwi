@@ -228,7 +228,7 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full justify-center h-10 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#2962FF] to-[#1546C2] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(41,98,255,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#3D72FF] hover:to-[#2257D9] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
+                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#2962FF] to-[#1546C2] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(41,98,255,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#3D72FF] hover:to-[#2257D9] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
                   {loading ? 'Création en cours…' : (
                     <span className="flex items-center gap-1.5">
                       Créer ma boutique <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
