@@ -152,8 +152,8 @@ export default function SignupPage() {
 
       {/* Colonne d'inscription droite */}
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 h-screen max-h-screen bg-slate-50/50 overflow-hidden">
-        <div className="lg:hidden flex items-center gap-2 mb-4">
-          <Image src="/logo.png" alt="Wilinwi Logo" width={90} height={30} className="object-contain" style={{ height: 'auto', maxHeight: '30px' }} />
+        <div className="lg:hidden flex items-center justify-center w-full mb-2">
+          <Image src="/logo.png" alt="Wilinwi Logo" width={150} height={50} className="object-contain" style={{ height: 'auto', maxHeight: '42px' }} />
         </div>
 
         <div className="w-full max-w-sm mx-auto my-auto">
@@ -177,6 +177,7 @@ export default function SignupPage() {
                     placeholder="ex. Épicerie du Centre" 
                     required 
                     className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                    autoComplete="organization"
                   />
                 </div>
 
@@ -191,6 +192,7 @@ export default function SignupPage() {
                     placeholder="ex. Jean Kouassi" 
                     required 
                     className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                    autoComplete="name"
                   />
                 </div>
 
@@ -205,6 +207,7 @@ export default function SignupPage() {
                     placeholder="nom@boutique.com" 
                     required 
                     className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                    autoComplete="email"
                   />
                 </div>
 
@@ -219,6 +222,7 @@ export default function SignupPage() {
                     placeholder="••••••••" 
                     required 
                     className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                    autoComplete="new-password"
                   />
                 </div>
 
