@@ -64,7 +64,7 @@ export function WaveHome() {
       {/* Hero — Ventes du jour */}
       <div className="relative overflow-hidden rounded-3xl bg-primary p-6 text-white shadow-lg shadow-primary/20">
         <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-[#C79A2B]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-gold/20 blur-3xl" />
         <div className="relative">
           <p className="text-sm font-medium text-white/80">Ventes du jour</p>
           <p className="tabular mt-1 text-4xl font-black tracking-tight">{formatFCFA(total)}</p>
@@ -79,7 +79,7 @@ export function WaveHome() {
       {hasPos && (
         <Link
           href="/pos"
-          className="flex items-center justify-center gap-2.5 rounded-2xl bg-[#10B981] py-4 text-lg font-bold text-white shadow-md shadow-emerald-500/25 transition-transform active:scale-[0.98]"
+          className="flex items-center justify-center gap-2.5 rounded-2xl bg-emerald py-4 text-lg font-bold text-white shadow-md shadow-emerald/25 transition-transform active:scale-[0.98]"
         >
           <ShoppingCart className="h-6 w-6" />
           Vendre

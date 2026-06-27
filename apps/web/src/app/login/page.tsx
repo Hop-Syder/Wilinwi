@@ -61,7 +61,7 @@ export default function LoginPage() {
         {/* Motifs géométriques sophistiqués en arrière-plan */}
         <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none" />
         <div className="absolute top-[-10%] right-[-10%] h-[400px] w-[400px] rounded-full bg-primary/15 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-[#00C853]/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] h-[400px] w-[400px] rounded-full bg-[#00A86B]/10 blur-[100px] pointer-events-none" />
 
         {/* Header Branding */}
         <div className="flex items-center justify-center relative z-10 w-full">
@@ -80,7 +80,7 @@ export default function LoginPage() {
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Terminal Actif</p>
                 <h4 className="text-xs font-semibold text-slate-200">Caisse Principale</h4>
               </div>
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00C853] animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#00A86B] animate-pulse" />
             </div>
 
             {/* Chiffre d'affaires simulé */}
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 <span className="text-2xl font-bold font-mono tracking-tight text-white transition-all duration-300">
                   {sales.toLocaleString()} FCFA
                 </span>
-                <span className="text-[10px] font-semibold text-[#00C853] bg-[#00C853]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <span className="text-[10px] font-semibold text-[#00A86B] bg-[#00A86B]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <TrendingUp className="w-2.5 h-2.5" /> +14.2%
                 </span>
               </div>
@@ -102,7 +102,7 @@ export default function LoginPage() {
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/55" style={{ height: `${barHeights[1]}%` }} />
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/65" style={{ height: `${barHeights[2]}%` }} />
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/75" style={{ height: `${barHeights[3]}%` }} />
-              <div className="w-full bg-[#2962FF] rounded-t transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(41,98,255,0.5)]" style={{ height: `${barHeights[4]}%` }} />
+              <div className="w-full bg-[#12355B] rounded-t transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(18,53,91,0.5)]" style={{ height: `${barHeights[4]}%` }} />
             </div>
 
             {/* Pied de la carte */}
@@ -123,7 +123,7 @@ export default function LoginPage() {
         {/* Footer Branding */}
         <div className="flex justify-between items-center text-[10px] text-slate-500 relative z-10 border-t border-white/[0.05] pt-4">
           <span>© {new Date().getFullYear()} Wilinwi by Nexus Partners.</span>
-          <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#FFB300]" /> MVP1</span>
+          <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#F59E0B]" /> MVP1</span>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#2962FF] to-[#1546C2] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(41,98,255,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#3D72FF] hover:to-[#2257D9] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
+                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#12355B] to-[#0f2c4c] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(18,53,91,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#1f4d80] hover:to-[#12355B] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
                   {loading ? 'Connexion en cours…' : (
                     <span className="flex items-center gap-1.5">
                       Ouvrir la caisse <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

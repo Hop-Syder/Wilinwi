@@ -45,8 +45,8 @@ interface Report {
   serie: { date: string; ca: number; ventes: number; depenses: number }[];
 }
 
-const CA_COLOR = '#10B981'; // vert — progression / chiffre d'affaires
-const DEP_COLOR = '#EF4444'; // rouge — dépenses
+const CA_COLOR = '#00A86B'; // vert émeraude (charte) — progression / chiffre d'affaires
+const DEP_COLOR = '#E53935'; // rouge danger (charte) — dépenses
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const fmtDay = (d: string) =>

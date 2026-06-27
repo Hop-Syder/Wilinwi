@@ -121,7 +121,7 @@ export default function SignupPage() {
               </div>
               <div className="flex items-center justify-between text-[11px] p-2 bg-white/[0.02] border border-white/[0.05] rounded-xl transition-all duration-300">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFB300] animate-pulse" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] animate-pulse" />
                   <span className="text-slate-300 font-medium">Huile de Palme 1L</span>
                 </div>
                 <span className="font-mono text-slate-400 transition-all duration-300">{oilStock} en stock</span>
@@ -146,7 +146,7 @@ export default function SignupPage() {
         {/* Footer Branding */}
         <div className="flex justify-between items-center text-[10px] text-slate-500 relative z-10 border-t border-white/[0.05] pt-4">
           <span>© {new Date().getFullYear()} Wilinwi by Nexus Partners.</span>
-          <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#FFB300]" /> MVP1</span>
+          <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#F59E0B]" /> MVP1</span>
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#2962FF] to-[#1546C2] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(41,98,255,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#3D72FF] hover:to-[#2257D9] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
+                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#12355B] to-[#0f2c4c] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(18,53,91,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#1f4d80] hover:to-[#12355B] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
                   {loading ? 'Création en cours…' : (
                     <span className="flex items-center gap-1.5">
                       Créer ma boutique <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

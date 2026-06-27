@@ -114,7 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Conteneur de navigation fixe (Sticky) */}
       <div className="sticky top-0 z-30 w-full">
         {/* Ligne de dégradé de marque en haut (Black Luxury: Gold, Blue, Green) */}
-        <div className="h-1 w-full bg-gradient-to-r from-[#C79A2B] via-[#2563EB] to-[#10B981]" />
+        <div className="h-1 w-full bg-gradient-to-r from-gold via-brand to-emerald" />
 
         {/* Header / Navbar */}
         <header className="w-full border-b border-border bg-surface/80 backdrop-blur-md">
@@ -173,8 +173,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Halos lumineux en arrière-plan (Or et Bleu) */}
-      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-[#C79A2B]/3 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-[#2563EB]/3 blur-[150px] pointer-events-none" />
+      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-gold/[0.03] blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-brand/[0.03] blur-[150px] pointer-events-none" />
 
       {/* Overlay pour le menu mobile */}
       {isMobileMenuOpen && (

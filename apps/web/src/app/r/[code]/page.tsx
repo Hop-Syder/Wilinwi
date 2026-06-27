@@ -103,7 +103,7 @@ export default function PublicReceiptPage() {
 
       <div className="no-print mt-6 w-full max-w-sm space-y-2">
         <p className="text-center text-sm font-semibold text-text-secondary">Recevoir mon reçu</p>
-        <a href={waUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-[#00C853] py-3 font-semibold text-white transition-opacity hover:opacity-90">
+        <a href={waUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-[#00A86B] py-3 font-semibold text-white transition-opacity hover:opacity-90">
           <MessageCircle className="h-5 w-5" /> WhatsApp
         </a>
         <a href={smsUrl} className="flex items-center justify-center gap-2 rounded-xl bg-surface py-3 font-semibold text-text-primary border border-border transition-colors hover:bg-surface-hover">
