@@ -65,7 +65,7 @@ export default function LoginPage() {
 
         {/* Header Branding */}
         <div className="flex items-center justify-center relative z-10 w-full">
-          <Image src="/logo.png" alt="Wilinwi Logo" width={220} height={70} className="object-contain brightness-0 invert" style={{ height: 'auto', maxHeight: '65px' }} />
+          <Image src="/logo.png" alt="Wilinwi Logo" width={220} height={70} className="object-contain brightness-0 invert" style={{ height: 'auto', maxHeight: '65px' }} priority />
         </div>
 
         {/* Centre - Mockup Graphique & Transactions CSS Premium */}
@@ -130,7 +130,7 @@ export default function LoginPage() {
       {/* Colonne de connexion droite */}
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 h-screen max-h-screen bg-slate-50/50 overflow-hidden">
         <div className="lg:hidden flex items-center justify-center w-full mb-2">
-          <Image src="/logo.png" alt="Wilinwi Logo" width={150} height={50} className="object-contain" style={{ height: 'auto', maxHeight: '42px' }} />
+          <Image src="/logo.png" alt="Wilinwi Logo" width={150} height={50} className="object-contain" style={{ height: 'auto', maxHeight: '42px' }} priority />
         </div>
 
         <div className="w-full max-w-sm mx-auto my-auto">
