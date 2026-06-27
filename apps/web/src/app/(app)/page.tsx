@@ -133,14 +133,6 @@ export default function HubPage() {
         <WaveHome />
       </div>
 
-      {/* 🖥️ Desktop : grille des modules */}
-      <div className="hidden sm:block">
-      <h1 className="font-display text-2xl font-bold text-brand">Vos modules Wilinwi</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Plan <span className="font-semibold uppercase">{user.plan}</span> · un seul compte pour tout
-        votre commerce.
-      </p>
-
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MODULES.map((m) => {
           const included = isIncluded(user.plan, m.key);
@@ -190,7 +182,7 @@ export default function HubPage() {
           );
         })}
       </div>
-      </div>
     </div>
+    </div >
   );
 }
