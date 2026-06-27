@@ -21,6 +21,7 @@ import {
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
+  type CreateStockTransferInput,
   type UpdateProductInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
@@ -268,6 +269,122 @@ export class StockService {
         take: 100,
       }),
     );
+  }
+
+  async transfer(ctx: AuthContext, input: CreateStockTransferInput) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const source = await tx.etablissement.findFirst({
+        where: { id: input.sourceEtablissementId, tenantId: ctx.tenantId },
+      });
+      if (!source) {
+        throw new NotFoundException("L'établissement source n'existe pas ou ne vous appartient pas.");
+      }
+
+      const destination = await tx.etablissement.findFirst({
+        where: { id: input.destinationEtablissementId, tenantId: ctx.tenantId },
+      });
+      if (!destination) {
+        throw new NotFoundException("L'établissement de destination n'existe pas ou ne vous appartient pas.");
+      }
+
+      if (source.id === destination.id) {
+        throw new BadRequestException("Les établissements source et de destination doivent être différents.");
+      }
+
+      // Vérifier le stock disponible dans la source
+      const movementsSource = await tx.stockMovement.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: source.id,
+          productId: input.productId,
+          variantId: input.variantId ?? null,
+        },
+        select: { quantite: true },
+      });
+
+      const currentSourceStock = movementsSource.reduce((acc, m) => acc + m.quantite, 0);
+
+      let finalSourceStock = currentSourceStock;
+      const allMovementsCount = await tx.stockMovement.count({
+        where: { tenantId: ctx.tenantId, productId: input.productId },
+      });
+
+      if (allMovementsCount === 0) {
+        const p = await tx.product.findFirst({
+          where: { id: input.productId, tenantId: ctx.tenantId },
+          include: { variants: true },
+        });
+        if (p) {
+          if (input.variantId) {
+            const v = p.variants.find((varItem) => varItem.id === input.variantId);
+            finalSourceStock = v ? v.stock : 0;
+          } else {
+            finalSourceStock = p.stock;
+          }
+        }
+      } else {
+        const p = await tx.product.findFirst({
+          where: { id: input.productId, tenantId: ctx.tenantId },
+          include: { variants: true },
+        });
+        const activeEtabs = await tx.etablissement.findMany({
+          where: { tenantId: ctx.tenantId },
+          orderBy: { createdAt: 'asc' },
+        });
+        const isPrimary = activeEtabs[0]?.id === source.id;
+
+        if (p && isPrimary) {
+          const allMovements = await tx.stockMovement.findMany({
+            where: { tenantId: ctx.tenantId, productId: input.productId, variantId: input.variantId ?? null },
+            select: { quantite: true },
+          });
+          const sumAll = allMovements.reduce((acc, m) => acc + m.quantite, 0);
+          
+          let globalDbStock = 0;
+          if (input.variantId) {
+            const v = p.variants.find((varItem) => varItem.id === input.variantId);
+            globalDbStock = v ? v.stock : 0;
+          } else {
+            globalDbStock = p.stock;
+          }
+
+          const untrackedInitialStock = Math.max(0, globalDbStock - sumAll);
+          finalSourceStock += untrackedInitialStock;
+        }
+      }
+
+      if (finalSourceStock < input.quantite) {
+        throw new BadRequestException(
+          `Stock insuffisant dans l'établissement source (${source.nom}). Disponible : ${finalSourceStock}, Demandé : ${input.quantite}`,
+        );
+      }
+
+      await tx.stockMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: source.id,
+          productId: input.productId,
+          variantId: input.variantId ?? null,
+          type: 'OUT',
+          quantite: -input.quantite,
+          motif: `Transfert vers ${destination.nom}`,
+        },
+      });
+
+      const destMovement = await tx.stockMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: destination.id,
+          productId: input.productId,
+          variantId: input.variantId ?? null,
+          type: 'IN',
+          quantite: input.quantite,
+          motif: `Transfert depuis ${source.nom}`,
+        },
+      });
+
+      return destMovement;
+    });
   }
 
   /**

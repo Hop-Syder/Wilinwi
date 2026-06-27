@@ -13,10 +13,12 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   CreateProductSchema,
   CreateStockMovementSchema,
+  CreateStockTransferSchema,
   UpdateProductSchema,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
+  type CreateStockTransferInput,
   type UpdateProductInput,
 } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from '../common/decorators';
@@ -78,5 +80,14 @@ export class StockController {
   @Get('valuation')
   valuation(@CurrentUser() user: AuthContext) {
     return this.stock.valuation(user);
+  }
+
+  @RequireCapabilities('stock:write')
+  @Post('transfers')
+  transfer(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(CreateStockTransferSchema)) dto: CreateStockTransferInput,
+  ) {
+    return this.stock.transfer(user, dto);
   }
 }

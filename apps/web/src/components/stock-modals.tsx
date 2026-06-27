@@ -342,3 +342,158 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
     </div>
   );
 }
+
+interface StockTransferModalProps {
+  products: ProductDto[];
+  onClose: () => void;
+  onSuccess: () => void;
+  initialProductId?: string;
+}
+
+export function StockTransferModal({ products, onClose, onSuccess, initialProductId }: StockTransferModalProps) {
+  const { user } = useAuth();
+  const etabs = user?.etablissements ?? [];
+
+  const [productId, setProductId] = useState(initialProductId || (products[0]?.id ?? ''));
+  const [variantId, setVariantId] = useState('');
+  const [sourceId, setSourceId] = useState('');
+  const [destinationId, setDestinationId] = useState('');
+  const [quantite, setQuantite] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const selectedProduct = products.find((p) => p.id === productId);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost('/api/stock/transfers', {
+        productId,
+        variantId: variantId || undefined,
+        sourceEtablissementId: sourceId,
+        destinationEtablissementId: destinationId,
+        quantite: Number(quantite),
+      });
+      onSuccess();
+    } catch (err) {
+      setError((err as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Transfert de stock</h2>
+          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Produit</label>
+            <select
+              value={productId}
+              onChange={(e) => {
+                setProductId(e.target.value);
+                setVariantId('');
+              }}
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm bg-white"
+            >
+              <option value="">-- Sélectionnez un produit --</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom} (Total: {p.stock})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedProduct && selectedProduct.variants && selectedProduct.variants.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Variante (Optionnel)</label>
+              <select
+                value={variantId}
+                onChange={(e) => setVariantId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm bg-white"
+              >
+                <option value="">-- Toutes les variantes / Produit parent --</option>
+                {selectedProduct.variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {Object.entries(v.attributs).map(([k, val]) => `${k}: ${val}`).join(', ')} (Total: {v.stock})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Établissement Source</label>
+              <select
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+                required
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm bg-white"
+              >
+                <option value="">-- Source --</option>
+                {etabs.map((e) => (
+                  <option key={e.id} value={e.id} disabled={e.id === destinationId}>
+                    {e.nom} ({e.type})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">Établissement Dest.</label>
+              <select
+                value={destinationId}
+                onChange={(e) => setDestinationId(e.target.value)}
+                required
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm bg-white"
+              >
+                <option value="">-- Destination --</option>
+                {etabs.map((e) => (
+                  <option key={e.id} value={e.id} disabled={e.id === sourceId}>
+                    {e.nom} ({e.type})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-600">Quantité à transférer</label>
+            <input
+              type="number"
+              value={quantite}
+              onChange={(e) => setQuantite(e.target.value)}
+              required
+              min="1"
+              placeholder="Quantité positive"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm"
+            />
+          </div>
+
+          {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" variant="primary" disabled={saving || !productId || !sourceId || !destinationId || !quantite}>
+              {saving ? 'Transfert en cours...' : 'Transférer'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

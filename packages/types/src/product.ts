@@ -121,3 +121,12 @@ export const CreateStockMovementSchema = z.object({
   motif: z.string().min(1),
 });
 export type CreateStockMovementInput = z.infer<typeof CreateStockMovementSchema>;
+
+export const CreateStockTransferSchema = z.object({
+  productId: IdSchema,
+  variantId: IdSchema.optional(),
+  sourceEtablissementId: IdSchema,
+  destinationEtablissementId: IdSchema,
+  quantite: QuantitySchema.refine((q) => q > 0, 'La quantité doit être strictement supérieure à 0'),
+});
+export type CreateStockTransferInput = z.infer<typeof CreateStockTransferSchema>;

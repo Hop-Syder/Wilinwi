@@ -9,7 +9,7 @@ import { Button, Card, Badge, formatFCFA, formatQty, Input } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
-import { StockMovementModal, ProductFormModal } from '@/components/stock-modals';
+import { StockMovementModal, ProductFormModal, StockTransferModal } from '@/components/stock-modals';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 
@@ -30,6 +30,7 @@ export default function StockPage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDto | undefined>();
   const [movementProduct, setMovementProduct] = useState<ProductDto | undefined>();
+  const [showTransferModal, setShowTransferModal] = useState(false);
   
   // Filters
   const [search, setSearch] = useState('');
@@ -83,6 +84,11 @@ export default function StockPage() {
               { title: 'Corriger un écart (Ajustement)', description: 'Lors d\'un inventaire, s\'il y a une différence, utilisez l\'Ajustement pour définir la quantité exacte qui est réellement en rayon.' }
             ]}
           />
+          {canWrite && user?.etablissements && user.etablissements.length >= 2 && (
+            <Button onClick={() => setShowTransferModal(true)} variant="outline">
+              <ArrowRightLeft className="h-4 w-4" /> Transférer du stock
+            </Button>
+          )}
           {canWrite && (
             <Button onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}>
               <Plus className="h-4 w-4" /> Nouveau produit
@@ -234,6 +240,14 @@ export default function StockPage() {
           product={movementProduct} 
           onClose={() => setMovementProduct(undefined)} 
           onSuccess={() => { setMovementProduct(undefined); void refetch(); }} 
+        />
+      )}
+
+      {showTransferModal && (
+        <StockTransferModal 
+          products={products}
+          onClose={() => setShowTransferModal(false)}
+          onSuccess={() => { setShowTransferModal(false); void refetch(); }}
         />
       )}
     </div>
