@@ -27,6 +27,7 @@ import { PLAN_MODULES, type ModuleKey, type Plan } from '@wilinwi/types';
 import { Badge, cn } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
 import { ActivationChecklist } from '@/components/activation-checklist';
+import { WaveHome } from '@/components/wave-home';
 
 interface ModuleDef {
   key: ModuleKey;
@@ -126,6 +127,14 @@ export default function HubPage() {
   return (
     <div>
       <ActivationChecklist />
+
+      {/* 📱 Mobile : accueil « Wave » (hero + Vendre + raccourcis) */}
+      <div className="sm:hidden">
+        <WaveHome />
+      </div>
+
+      {/* 🖥️ Desktop : grille des modules */}
+      <div className="hidden sm:block">
       <h1 className="font-display text-2xl font-bold text-brand">Vos modules Wilinwi</h1>
       <p className="mt-1 text-sm text-slate-500">
         Plan <span className="font-semibold uppercase">{user.plan}</span> · un seul compte pour tout
@@ -180,6 +189,7 @@ export default function HubPage() {
             <div key={m.key}>{content}</div>
           );
         })}
+      </div>
       </div>
     </div>
   );
