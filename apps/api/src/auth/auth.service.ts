@@ -56,7 +56,15 @@ export class AuthService {
     try {
       await this.prisma.forTenant(tenantId, async (tx) => {
         await tx.tenant.create({
-          data: { id: tenantId, nom: input.nomBoutique, plan: 'FREE' },
+          data: { id: tenantId, nom: input.nomBoutique, plan: 'STARTER' },
+        });
+        // Premier établissement de l'entreprise (= point de vente par défaut).
+        const etablissement = await tx.etablissement.create({
+          data: {
+            tenantId,
+            nom: input.nomEtablissement?.trim() || input.nomBoutique,
+            type: input.typeEtablissement ?? 'BOUTIQUE',
+          },
         });
         await tx.user.create({
           data: {
@@ -68,9 +76,13 @@ export class AuthService {
             pinCode: await bcrypt.hash('0000', 10),
           },
         });
+        // L'owner accède à son premier établissement.
+        await tx.userEtablissement.create({
+          data: { tenantId, userId, etablissementId: etablissement.id },
+        });
       });
 
-      await this.supabase.setClaims(userId, { tenantId, role: 'OWNER', plan: 'FREE' });
+      await this.supabase.setClaims(userId, { tenantId, role: 'OWNER', plan: 'STARTER' });
     } catch (err) {
       // Compensation : on supprime le compte auth si la transaction échoue.
       await this.supabase.deleteUser(userId).catch(() => undefined);
@@ -110,6 +122,22 @@ export class AuthService {
             role: input.role,
           },
         });
+        // Par défaut, le membre invité accède à tous les établissements actifs
+        // de l'entreprise (l'accès pourra être restreint dans les paramètres).
+        const etabs = await tx.etablissement.findMany({
+          where: { tenantId: ctx.tenantId, actif: true },
+          select: { id: true },
+        });
+        if (etabs.length > 0) {
+          await tx.userEtablissement.createMany({
+            data: etabs.map((e) => ({
+              tenantId: ctx.tenantId,
+              userId,
+              etablissementId: e.id,
+            })),
+            skipDuplicates: true,
+          });
+        }
       });
 
       await this.supabase.setClaims(userId, {
@@ -127,8 +155,8 @@ export class AuthService {
 
   /** Profil + contexte de l'utilisateur courant (sans le hash du PIN). */
   async me(ctx: AuthContext) {
-    const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.user.findFirst({
+    const { user, etablissements } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const user = await tx.user.findFirst({
         where: { id: ctx.userId, tenantId: ctx.tenantId },
         select: {
           id: true,
@@ -145,9 +173,17 @@ export class AuthService {
             },
           },
         },
-      }),
-    );
-    return { ...ctx, profile: user };
+      });
+      // Établissements accessibles (pour le sélecteur). On suit la liste effective
+      // de l'AuthContext (déjà bornée à l'accès utilisateur + clamp rétrogradation).
+      const etablissements = await tx.etablissement.findMany({
+        where: { id: { in: ctx.etablissementIds } },
+        select: { id: true, nom: true, type: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      return { user, etablissements };
+    });
+    return { ...ctx, profile: user, etablissements };
   }
 
   /**

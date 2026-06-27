@@ -14,14 +14,14 @@ import {
   type UpdateUserInput,
   type UserDto,
 } from '@wilinwi/types';
-import type { User } from '@wilinwi/db';
+import type { User, TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { ActivityService } from '../common/activity.service';
 import { SupabaseAdminService } from './supabase-admin.service';
 
 const PIN_PLACEHOLDER_DOMAIN = '@pin.local';
 
-function toUserDto(u: User): UserDto {
+function toUserDto(u: User, etablissementIds: string[] = []): UserDto {
   return {
     id: u.id,
     nom: u.nom,
@@ -32,6 +32,7 @@ function toUserDto(u: User): UserDto {
     customPermissions: u.customPermissions,
     permissions: u.permissions,
     hasPin: !!u.pinCode,
+    etablissementIds,
   };
 }
 
@@ -45,9 +46,13 @@ export class UsersService {
 
   async list(ctx: AuthContext): Promise<UserDto[]> {
     const users = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.user.findMany({ where: { tenantId: ctx.tenantId }, orderBy: { nom: 'asc' } }),
+      tx.user.findMany({
+        where: { tenantId: ctx.tenantId },
+        orderBy: { nom: 'asc' },
+        include: { etablissements: { select: { etablissementId: true } } },
+      }),
     );
-    return users.map(toUserDto);
+    return users.map((u) => toUserDto(u, u.etablissements.map((e) => e.etablissementId)));
   }
 
   /** Écran « Connexion utilisateur » (PIN) : profils actifs du tenant. */
@@ -98,8 +103,8 @@ export class UsersService {
     const pinHash = input.pin ? await bcrypt.hash(input.pin, 10) : null;
 
     try {
-      const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-        tx.user.create({
+      const { user, etablissementIds } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+        const user = await tx.user.create({
           data: {
             id: userId,
             tenantId: ctx.tenantId,
@@ -111,8 +116,25 @@ export class UsersService {
             customPermissions: input.customPermissions,
             permissions: input.permissions,
           },
-        }),
-      );
+        });
+        // Accès établissements : liste fournie (validée tenant), sinon tous les actifs.
+        const etablissementIds = await this.resolveEtablissementIds(
+          tx,
+          ctx.tenantId,
+          input.etablissementIds,
+        );
+        if (etablissementIds.length > 0) {
+          await tx.userEtablissement.createMany({
+            data: etablissementIds.map((etablissementId) => ({
+              tenantId: ctx.tenantId,
+              userId,
+              etablissementId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+        return { user, etablissementIds };
+      });
       if (input.email) {
         await this.supabase.setClaims(userId, {
           tenantId: ctx.tenantId,
@@ -128,7 +150,7 @@ export class UsersService {
         entityId: userId,
         metadata: { nom: input.nom, role: input.role },
       });
-      return toUserDto(user);
+      return toUserDto(user, etablissementIds);
     } catch (err) {
       if (input.email) await this.supabase.deleteUser(userId).catch(() => undefined);
       throw err;
@@ -136,7 +158,7 @@ export class UsersService {
   }
 
   async update(ctx: AuthContext, id: string, input: UpdateUserInput): Promise<UserDto> {
-    const user = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+    const { user, etablissementIds } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await tx.user.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (!existing) throw new NotFoundException('Utilisateur introuvable');
       // Anti-escalade : un non-OWNER (gérant) ne peut ni modifier un OWNER,
@@ -149,7 +171,7 @@ export class UsersService {
       if (existing.role === 'OWNER' && (input.role || input.actif === false)) {
         throw new BadRequestException('Le propriétaire ne peut pas être rétrogradé ou désactivé');
       }
-      return tx.user.update({
+      const user = await tx.user.update({
         where: { id },
         data: {
           nom: input.nom,
@@ -160,6 +182,28 @@ export class UsersService {
           permissions: input.permissions,
         },
       });
+      // Synchronisation des accès établissements (remplace la liste si fournie).
+      if (input.etablissementIds !== undefined) {
+        const wanted = await this.resolveEtablissementIds(tx, ctx.tenantId, input.etablissementIds);
+        await tx.userEtablissement.deleteMany({
+          where: { userId: id, etablissementId: { notIn: wanted.length ? wanted : ['__none__'] } },
+        });
+        if (wanted.length > 0) {
+          await tx.userEtablissement.createMany({
+            data: wanted.map((etablissementId) => ({
+              tenantId: ctx.tenantId,
+              userId: id,
+              etablissementId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+      const access = await tx.userEtablissement.findMany({
+        where: { userId: id },
+        select: { etablissementId: true },
+      });
+      return { user, etablissementIds: access.map((a) => a.etablissementId) };
     });
     await this.activity.log({
       tenantId: ctx.tenantId,
@@ -168,7 +212,26 @@ export class UsersService {
       entity: 'user',
       entityId: id,
     });
-    return toUserDto(user);
+    return toUserDto(user, etablissementIds);
+  }
+
+  /**
+   * Normalise une liste d'établissements demandée : ne conserve que ceux du
+   * tenant courant encore actifs. Liste vide/absente → tous les actifs (défaut).
+   */
+  private async resolveEtablissementIds(
+    tx: TenantTx,
+    tenantId: string,
+    requested: string[] | undefined,
+  ): Promise<string[]> {
+    const actifs = await tx.etablissement.findMany({
+      where: { tenantId, actif: true },
+      select: { id: true },
+    });
+    const actifIds = actifs.map((e) => e.id);
+    if (!requested || requested.length === 0) return actifIds;
+    const wanted = new Set(requested);
+    return actifIds.filter((id) => wanted.has(id));
   }
 
   async setPin(ctx: AuthContext, id: string, pin: string): Promise<{ ok: true }> {

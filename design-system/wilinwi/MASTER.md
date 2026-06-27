@@ -18,7 +18,7 @@
 
 | Rôle | Hex | CSS Variable | Utilisation |
 |------|-----|--------------|-------------|
-| **Bleu Wilinwi** | `#12355B` | `--color-primary` | Logo principal, Menus, Boutons principaux, Dashboard |
+| **Bleu Wilinwi** | `#0005ea` | `--color-primary` | Logo principal, Menus, Boutons principaux, Dashboard |
 | **Vert Croissance** | `#00A86B` | `--color-emerald` | Validation, Gains, Bénéfices, KPI positifs |
 | **Orange Commerce** | `#F59E0B` | `--color-gold` | CTA, Promotions, Notifications importantes |
 | **Blanc** | `#FFFFFF` | `--color-white` | Texte principal, Fond clair, Contraste |
@@ -45,7 +45,7 @@
 | **Fond secondaire** | `#F5F7FA` |
 | **Texte principal** | `#0F172A` |
 | **Texte secondaire** | `#64748B` |
-| **Bouton principal** | `#12355B` |
+| **Bouton principal** | `#0005ea` |
 | **Bouton succès** | `#00A86B` |
 | **Bouton alerte** | `#F59E0B` |
 
@@ -57,7 +57,7 @@
 | **Carte / Card** | `#1E293B` |
 | **Texte principal** | `#FFFFFF` |
 | **Texte secondaire** | `#CBD5E1` |
-| **Bouton principal** | `#12355B` |
+| **Bouton principal** | `#0005ea` |
 | **Succès** | `#00A86B` |
 | **Alerte** | `#F59E0B` |
 
@@ -89,12 +89,12 @@
 - **Erreur (Error) :** `#EF4444`
 
 ### 💎 Gradient Officiel
-- **Pour landing page & marketing :** `linear-gradient(135deg, #12355B 0%, #00A86B 50%, #F59E0B 100%)` (🔵 → 🟢 → 🟠)
+- **Pour landing page & marketing :** `linear-gradient(135deg, #0005ea 0%, #00A86B 50%, #F59E0B 100%)` (🔵 → 🟢 → 🟠)
 
 ---
 
 ## 🏷️ Logo
 
-- **Version Principale (Fond clair) :** Logo couleur + Texte bleu `#12355B`
+- **Version Principale (Fond clair) :** Logo couleur + Texte bleu `#0005ea`
 - **Version Sombre (Fond sombre) :** Logo couleur + Texte blanc `#FFFFFF`
 - **Version Monochrome (Noir / Blanc) :** Pour impression (ex: reçu thermique).

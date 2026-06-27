@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight } from 'lucide-react';
+import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight, Store } from 'lucide-react';
 import { PLAN_MODULES, MODULES, type Plan } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
@@ -28,26 +28,33 @@ interface TenantInfo {
 }
 
 const PLAN_INFO: Record<Plan, { label: string; color: string; icon: React.ElementType; desc: string; price: string }> = {
-  FREE: {
-    label: 'Gratuit',
+  STARTER: {
+    label: 'Starter',
     color: 'text-slate-600 bg-slate-100',
     icon: Package2,
-    desc: 'Caisse, Stock & Analytics. Idéal pour démarrer.',
-    price: '0 FCFA/mois',
+    desc: '1 établissement. Caisse, Stock & tableau de bord. Pour démarrer gratuitement.',
+    price: 'Gratuit',
   },
   PRO: {
     label: 'Pro',
     color: 'text-brand bg-brand/10',
     icon: Zap,
-    desc: 'Tout Free + Pay, CRM et Market. Pour les boutiques en croissance.',
-    price: '15 000 FCFA/mois',
+    desc: 'Jusqu\'à 2 établissements, utilisateurs illimités, trésorerie, ardoise client.',
+    price: '7 500 FCFA/mois',
   },
   BUSINESS: {
     label: 'Business',
     color: 'text-amber-700 bg-amber-50',
     icon: Crown,
-    desc: 'Tous les modules + IA. Pour les commerçants qui veulent tout.',
-    price: '35 000 FCFA/mois',
+    desc: 'Multi-établissements, CRM & marketing, images produits, API. Pour grandir.',
+    price: '20 000 FCFA/mois',
+  },
+  ENTERPRISE: {
+    label: 'Enterprise',
+    color: 'text-ai bg-ai/10',
+    icon: Crown,
+    desc: 'Établissements illimités, IA, site e-commerce, intégrations & SLA. Sur devis.',
+    price: 'Sur devis',
   },
 };
 
@@ -108,7 +115,24 @@ export default function ParametresPage() {
     }
   }
 
-  const currentPlan = tenant?.plan ?? user?.plan ?? 'FREE';
+  async function simulateSubscription(status: 'ACTIVE' | 'PAST_DUE', daysOverdue?: number) {
+    if (user?.role !== 'OWNER') return;
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await apiPatch<{ message: string; tenant: TenantInfo }>(
+        '/api/admin/tenant/subscription',
+        { status, daysOverdue },
+      );
+      setTenant(res.tenant);
+      setSuccess(res.message);
+      if (refreshUser) await refreshUser();
+    } catch (e) {
+      setError((e as ApiError).message);
+    }
+  }
+
+  const currentPlan = tenant?.plan ?? user?.plan ?? 'STARTER';
   const isOwner = user?.role === 'OWNER';
 
   return (
@@ -121,6 +145,16 @@ export default function ParametresPage() {
 
       {/* Accès rapides administration */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link href="/parametres/etablissements" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
+          <span className="flex items-center gap-3">
+            <span className="rounded-xl bg-emerald/10 p-2.5 text-emerald"><Store className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-display font-semibold text-slate-800">Établissements</span>
+              <span className="text-sm text-slate-500">Boutiques, points de vente, entrepôts…</span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </Link>
         <Link href="/parametres/utilisateurs" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
           <span className="flex items-center gap-3">
             <span className="rounded-xl bg-brand-50 p-2.5 text-brand"><Users2 className="h-5 w-5" /></span>
@@ -187,8 +221,8 @@ export default function ParametresPage() {
             Seul le propriétaire de la boutique peut changer le plan.
           </p>
         )}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {(['FREE', 'PRO', 'BUSINESS'] as Plan[]).map((plan) => {
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(['STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE'] as Plan[]).map((plan) => {
             const info = PLAN_INFO[plan];
             const Icon = info.icon;
             const isCurrent = currentPlan === plan;
@@ -242,13 +276,12 @@ export default function ParametresPage() {
                         <span className="flex items-center justify-center gap-2">
                           <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Mise à jour…
                         </span>
-                      ) : plan === 'FREE' ? (
-                        'Passer en Gratuit'
-                      ) : plan === 'PRO' ? (
-                        'Passer en Pro'
                       ) : (
                         <span className="flex items-center justify-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" /> Activer BUSINESS
+                          {(plan === 'BUSINESS' || plan === 'ENTERPRISE') && (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          Passer en {info.label}
                         </span>
                       )}
                     </Button>
@@ -280,6 +313,29 @@ export default function ParametresPage() {
           })}
         </div>
       </Card>
+
+      {/* Simulation impayé (test/backoffice — OWNER uniquement) */}
+      {isOwner && (
+        <Card className="border-dashed">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display font-semibold text-slate-800">Simulation impayé (test)</h2>
+            <Badge tone={user?.dunning.stage === 'ACTIVE' ? 'success' : 'danger'}>
+              {user?.dunning.stage ?? 'ACTIVE'}
+            </Badge>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            Déclenche les étapes de relance pour visualiser bannière, restrictions et blocage.
+            La caisse reste active jusqu'à J+30.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void simulateSubscription('ACTIVE')}>À jour</Button>
+            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 0)}>J+0 (avert.)</Button>
+            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 3)}>J+3 (restriction)</Button>
+            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 7)}>J+7 (Starter)</Button>
+            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 30)}>J+30 (blocage)</Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

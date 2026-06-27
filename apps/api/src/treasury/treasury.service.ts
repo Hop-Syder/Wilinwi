@@ -58,10 +58,14 @@ export class TreasuryService {
 
   // ─── Soldes ───────────────────────────────────────────────────────────────
 
-  private async computeBalances(tx: TenantTx, tenantId: string): Promise<Balances> {
+  private async computeBalances(
+    tx: TenantTx,
+    tenantId: string,
+    etablissementId?: string | null,
+  ): Promise<Balances> {
     const rows = await tx.cashMovement.groupBy({
       by: ['compte', 'type'],
-      where: { tenantId },
+      where: { tenantId, ...(etablissementId ? { etablissementId } : {}) },
       _sum: { montant: true },
     });
     const balances = Object.fromEntries(CASH_ACCOUNTS.map((c) => [c, 0])) as Balances;
@@ -72,9 +76,11 @@ export class TreasuryService {
     return balances;
   }
 
-  /** Soldes par compte = Σ(entrées) − Σ(sorties). */
+  /** Soldes par compte = Σ(entrées) − Σ(sorties) de l'établissement courant. */
   async balances(ctx: AuthContext): Promise<Balances> {
-    return this.prisma.forTenant(ctx.tenantId, (tx) => this.computeBalances(tx, ctx.tenantId));
+    return this.prisma.forTenant(ctx.tenantId, (tx) =>
+      this.computeBalances(tx, ctx.tenantId, ctx.etablissementId),
+    );
   }
 
   // ─── Stats journalières ───────────────────────────────────────────────────
@@ -82,7 +88,7 @@ export class TreasuryService {
   /** KPIs : soldes détaillés + résultat de la journée (entrées, sorties, net). */
   async stats(ctx: AuthContext): Promise<TreasuryStats> {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const balances = await this.computeBalances(tx, ctx.tenantId);
+      const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
       const totalBalance = Object.values(balances).reduce((s, v) => s + v, 0);
 
       const startOfDay = new Date();
@@ -90,7 +96,11 @@ export class TreasuryService {
 
       const todayRows = await tx.cashMovement.groupBy({
         by: ['type'],
-        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
+        where: {
+          tenantId: ctx.tenantId,
+          createdAt: { gte: startOfDay },
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
         _sum: { montant: true },
       });
 
@@ -113,6 +123,7 @@ export class TreasuryService {
       tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           type: 'OUT',
           compte: input.compte,
           montant: input.montant,
@@ -133,6 +144,7 @@ export class TreasuryService {
       tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           type: input.type,
           compte: input.compte,
           montant: input.montant,
@@ -152,8 +164,8 @@ export class TreasuryService {
    */
   async transfer(ctx: AuthContext, input: TransferInput) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      // Vérification du solde source
-      const balances = await this.computeBalances(tx, ctx.tenantId);
+      // Vérification du solde source (établissement courant)
+      const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
       if (balances[input.from] < input.montant) {
         const label = CASH_ACCOUNT_LABELS[input.from];
         throw new BadRequestException(
@@ -164,6 +176,7 @@ export class TreasuryService {
       await tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           type: 'OUT',
           compte: input.from,
           montant: input.montant,
@@ -175,6 +188,7 @@ export class TreasuryService {
       await tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           type: 'IN',
           compte: input.to,
           montant: input.montant,
@@ -183,7 +197,7 @@ export class TreasuryService {
           createdBy: ctx.userId,
         },
       });
-      return this.computeBalances(tx, ctx.tenantId);
+      return this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
     });
   }
 
@@ -196,6 +210,7 @@ export class TreasuryService {
   async listMovements(ctx: AuthContext, filters: MovementFilters = {}): Promise<MovementWithBalance[]> {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const where: Record<string, unknown> = { tenantId: ctx.tenantId };
+      if (ctx.etablissementId) where['etablissementId'] = ctx.etablissementId;
       if (filters.compte) where['compte'] = filters.compte;
       if (filters.source) where['source'] = filters.source;
       if (filters.from || filters.to) {
@@ -246,7 +261,7 @@ export class TreasuryService {
    */
   async close(ctx: AuthContext, input: CashCloseInput) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const balances = await this.computeBalances(tx, ctx.tenantId);
+      const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
       const soldeTheorique = balances[input.compte];
       const ecart = input.soldeReel - soldeTheorique;
 
@@ -260,6 +275,7 @@ export class TreasuryService {
       const cashClose = await tx.cashClose.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           compte: input.compte,
           soldeTheorique,
           soldeReel: input.soldeReel,
@@ -274,6 +290,7 @@ export class TreasuryService {
         await tx.cashMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId: ctx.etablissementId,
             type: ecart > 0 ? 'IN' : 'OUT',
             compte: input.compte,
             montant: Math.abs(ecart),
@@ -293,7 +310,11 @@ export class TreasuryService {
   async listCloses(ctx: AuthContext, compte?: CashAccount) {
     return this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.cashClose.findMany({
-        where: { tenantId: ctx.tenantId, ...(compte ? { compte } : {}) },
+        where: {
+          tenantId: ctx.tenantId,
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+          ...(compte ? { compte } : {}),
+        },
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),

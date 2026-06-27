@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Plus, Package, Search, Filter, AlertTriangle, ArrowRightLeft, Edit, Clock } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
@@ -132,15 +133,28 @@ export default function StockPage() {
             {filteredProducts.map((p) => (
               <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900">{p.nom}</span>
-                    {p.variants && p.variants.length > 0 && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                        {p.variants.length} var.
+                  <div className="flex items-center gap-3">
+                    {p.photos && p.photos.length > 0 ? (
+                      <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                        <Image src={p.photos[0]} alt={p.nom} fill sizes="36px" className="object-cover" unoptimized />
+                      </span>
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+                        <Package className="h-4 w-4" />
                       </span>
                     )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900">{p.nom}</span>
+                        {p.variants && p.variants.length > 0 && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {p.variants.length} var.
+                          </span>
+                        )}
+                      </div>
+                      {p.sku && <div className="text-xs text-slate-400">{p.sku}</div>}
+                    </div>
                   </div>
-                  {p.sku && <div className="text-xs text-slate-400">{p.sku}</div>}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{p.categorie || '—'}</td>
                 <td className="tabular px-4 py-3">{formatFCFA(p.prixCatalogue)}</td>

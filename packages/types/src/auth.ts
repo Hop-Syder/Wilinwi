@@ -12,13 +12,22 @@
 import { z } from 'zod';
 import { IdSchema, PlanSchema, MODULES } from './common.js';
 import { RoleSchema } from './roles.js';
+import { EtablissementTypeSchema } from './etablissement.js';
+import { SubscriptionStatusSchema, DunningStateSchema, ACTIVE_DUNNING } from './dunning.js';
 
-/** Inscription d'un nouveau propriétaire : crée le tenant + l'utilisateur OWNER. */
+/**
+ * Inscription d'un nouveau propriétaire : crée l'entreprise (tenant) +
+ * le premier établissement + l'utilisateur OWNER.
+ * `nomBoutique` = nom de l'entreprise. `nomEtablissement` (optionnel) =
+ * nom du premier établissement (défaut = nom de l'entreprise).
+ */
 export const SignUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   nomComplet: z.string().min(1),
   nomBoutique: z.string().min(1),
+  nomEtablissement: z.string().min(1).optional(),
+  typeEtablissement: EtablissementTypeSchema.default('BOUTIQUE'),
 });
 export type SignUpInput = z.infer<typeof SignUpSchema>;
 
@@ -45,5 +54,13 @@ export const AuthContextSchema = z.object({
   plan: PlanSchema,
   /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
   modules: z.array(z.enum(MODULES)).default([]),
+  /** Établissement courant (en-tête X-Etablissement-Id, borné à la liste autorisée). */
+  etablissementId: IdSchema.nullable().default(null),
+  /** Établissements auxquels l'utilisateur a accès. */
+  etablissementIds: z.array(IdSchema).default([]),
+  /** Statut d'abonnement de l'entreprise (facturation). */
+  subscriptionStatus: SubscriptionStatusSchema.default('ACTIVE'),
+  /** État de relance d'impayé (dérivé de pastDueSince) — pilote les restrictions. */
+  dunning: DunningStateSchema.default(ACTIVE_DUNNING),
 });
 export type AuthContext = z.infer<typeof AuthContextSchema>;

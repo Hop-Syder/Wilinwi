@@ -28,10 +28,14 @@ export class AnalyticsService {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
+      // Établissement courant (Phase 1 : KPIs de ventes scopés à l'établissement).
+      const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
+
       // Ventes du jour
       const salesToday = await tx.sale.findMany({
         where: {
           tenantId: ctx.tenantId,
+          ...etabFilter,
           createdAt: { gte: startOfDay },
           status: { not: 'CANCELLED' },
         },
@@ -84,6 +88,7 @@ export class AnalyticsService {
       const salesLast7Days = await tx.sale.findMany({
         where: {
           tenantId: ctx.tenantId,
+          ...etabFilter,
           createdAt: { gte: sevenDaysAgo },
           status: { not: 'CANCELLED' },
         },
@@ -152,10 +157,13 @@ export class AnalyticsService {
       from.setHours(0, 0, 0, 0);
     }
 
+    const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
+
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const sales = await tx.sale.findMany({
         where: {
           tenantId: ctx.tenantId,
+          ...etabFilter,
           createdAt: { gte: from, lte: to },
           status: { not: 'CANCELLED' },
         },
@@ -179,6 +187,7 @@ export class AnalyticsService {
       const expenses = await tx.cashMovement.findMany({
         where: {
           tenantId: ctx.tenantId,
+          ...etabFilter,
           type: 'OUT',
           source: 'EXPENSE',
           createdAt: { gte: from, lte: to },

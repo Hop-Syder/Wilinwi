@@ -9,11 +9,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Download, TrendingUp, Lock } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Card, StatCard, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
+import { useAuth } from '@/lib/auth-context';
 
 interface Report {
   from: string;
@@ -33,6 +34,7 @@ type Period = '7' | '30' | 'month' | 'custom';
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
 export default function RapportsPage() {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<Period>('30');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -94,6 +96,37 @@ export default function RapportsPage() {
     { key: 'month', label: 'Ce mois' },
     { key: 'custom', label: 'Personnalisé' },
   ];
+
+  // Relance d'impayé : à J+3+, les rapports avancés (et l'export) sont suspendus.
+  // Le tableau de bord de base reste accessible.
+  if (user?.dunning.suspendNonVital) {
+    return (
+      <div>
+        <Link
+          href="/dashboard"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand"
+        >
+          <ArrowLeft className="h-4 w-4" /> Tableau de bord
+        </Link>
+        <Card className="mt-4 flex flex-col items-center gap-3 py-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-warning/10 text-warning">
+            <Lock className="h-7 w-7" />
+          </span>
+          <h1 className="font-display text-xl font-bold text-text-primary">Rapports avancés suspendus</h1>
+          <p className="max-w-sm text-sm text-text-secondary">
+            Votre abonnement est impayé. Les rapports avancés et les exports sont temporairement
+            suspendus. Le tableau de bord reste accessible. Régularisez pour tout réactiver.
+          </p>
+          <Link
+            href="/parametres"
+            className="mt-1 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+          >
+            Régulariser l'abonnement
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>

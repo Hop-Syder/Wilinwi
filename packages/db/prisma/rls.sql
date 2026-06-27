@@ -58,6 +58,8 @@ SELECT app.enable_tenant_rls('public.client_payments');
 SELECT app.enable_tenant_rls('public.cash_movements');
 SELECT app.enable_tenant_rls('public.cash_closes');
 SELECT app.enable_tenant_rls('public.activity_logs');
+SELECT app.enable_tenant_rls('public.etablissements');
+SELECT app.enable_tenant_rls('public.user_etablissements');
 
 -- La table `tenants` n'a pas de tenant_id : on la restreint à la ligne courante.
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;

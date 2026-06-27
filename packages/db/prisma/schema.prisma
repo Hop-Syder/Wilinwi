@@ -34,9 +34,10 @@ enum Role {
 }
 
 enum Plan {
-  FREE
+  STARTER
   PRO
   BUSINESS
+  ENTERPRISE
 }
 
 enum SubscriptionStatus {
@@ -44,6 +45,18 @@ enum SubscriptionStatus {
   TRIALING
   PAST_DUE
   CANCELLED
+}
+
+// Type d'établissement (lieu physique d'exploitation d'une entreprise).
+enum EtablissementType {
+  BOUTIQUE
+  SUPERMARCHE
+  PHARMACIE
+  RESTAURANT
+  ENTREPOT
+  AGENCE
+  BUREAU
+  USINE
 }
 
 enum StockMovementType {
@@ -91,8 +104,10 @@ enum PriceOverrideStatus {
 model Tenant {
   id                 String             @id @default(uuid()) @db.Uuid
   nom                String
-  plan               Plan               @default(FREE)
+  plan               Plan               @default(STARTER)
   subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
+  /// Date de passage en impayé (PAST_DUE) → pilote la relance progressive (J+0/J+3/J+7/J+30).
+  pastDueSince       DateTime?          @map("past_due_since")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -108,8 +123,59 @@ model Tenant {
   cashMovements   CashMovement[]
   cashCloses      CashClose[]
   activityLogs    ActivityLog[]
+  etablissements      Etablissement[]
+  userEtablissements  UserEtablissement[]
 
   @@map("tenants")
+}
+
+// ─────────────────── Établissements (lieux physiques) ───────────────────
+// Une Entreprise (= Tenant) possède plusieurs établissements. Les données
+// transactionnelles (ventes, mouvements de stock, trésorerie, inventaires)
+// sont rattachées à un établissement. Le catalogue produits et les clients
+// restent au niveau Entreprise (Phase 1).
+
+model Etablissement {
+  id        String            @id @default(uuid()) @db.Uuid
+  tenantId  String            @map("tenant_id") @db.Uuid
+  nom       String
+  type      EtablissementType @default(BOUTIQUE)
+  ville     String?
+  adresse   String?
+  telephone String?
+  actif     Boolean           @default(true)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userAccess     UserEtablissement[]
+  sales          Sale[]
+  stockMovements StockMovement[]
+  cashMovements  CashMovement[]
+  cashCloses     CashClose[]
+  inventories    Inventory[]
+  activityLogs   ActivityLog[]
+
+  @@index([tenantId])
+  @@map("etablissements")
+}
+
+// Accès d'un employé à un établissement (un employé peut accéder à 0..N).
+model UserEtablissement {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  etablissementId String   @map("etablissement_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, etablissementId])
+  @@index([tenantId])
+  @@index([etablissementId])
+  @@map("user_etablissements")
 }
 
 // ─────────────────────── Journal d'activité — Audit (MVP2) ───────────────────────
@@ -117,6 +183,7 @@ model Tenant {
 model ActivityLog {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
+  etablissementId String? @map("etablissement_id") @db.Uuid
   userId      String?  @map("user_id") @db.Uuid // null = action système
   action      String // ex: SALE_CREATE, SALE_CANCEL, USER_CREATE, PIN_LOGIN
   entity      String? // ex: sale, product, user
@@ -127,6 +194,7 @@ model ActivityLog {
   createdAt   DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
 
   @@index([tenantId, createdAt])
   @@map("activity_logs")
@@ -171,6 +239,7 @@ model User {
   inventoriesValid  Inventory[]     @relation("InventoryValidator")
   overridesDemandes PriceOverride[] @relation("OverrideRequester")
   overridesValides  PriceOverride[] @relation("OverrideApprover")
+  etablissements    UserEtablissement[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -224,6 +293,7 @@ model ProductVariant {
 model StockMovement {
   id        String            @id @default(uuid()) @db.Uuid
   tenantId  String            @map("tenant_id") @db.Uuid
+  etablissementId String?     @map("etablissement_id") @db.Uuid
   productId String            @map("product_id") @db.Uuid
   variantId String?           @map("variant_id") @db.Uuid
   type      StockMovementType
@@ -233,6 +303,7 @@ model StockMovement {
   createdAt DateTime          @default(now()) @map("created_at")
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
@@ -245,6 +316,7 @@ model StockMovement {
 model Inventory {
   id          String          @id @default(uuid()) @db.Uuid
   tenantId    String          @map("tenant_id") @db.Uuid
+  etablissementId String?     @map("etablissement_id") @db.Uuid
   libelle     String?
   status      InventoryStatus @default(OPEN)
   motif       String?
@@ -253,6 +325,7 @@ model Inventory {
   createdAt   DateTime        @default(now()) @map("created_at")
 
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
   validator User?           @relation("InventoryValidator", fields: [validatedBy], references: [id])
   items     InventoryItem[]
 
@@ -282,6 +355,7 @@ model InventoryItem {
 model Sale {
   id               String        @id @default(uuid()) @db.Uuid
   tenantId         String        @map("tenant_id") @db.Uuid
+  etablissementId  String?       @map("etablissement_id") @db.Uuid
   vendeurId        String        @map("vendeur_id") @db.Uuid
   clientId         String?       @map("client_id") @db.Uuid // CRM en MVP2
   status           SaleStatus    @default(COMPLETED)
@@ -305,6 +379,7 @@ model Sale {
   livreLe          DateTime?     @map("livre_le")
 
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
   vendeur     User             @relation("VendeurVentes", fields: [vendeurId], references: [id])
   livreur     User?            @relation("LivreurLivraisons", fields: [livreurId], references: [id])
   client      Client?          @relation(fields: [clientId], references: [id])
@@ -315,6 +390,7 @@ model Sale {
   @@index([tenantId])
   @@index([tenantId, createdAt])
   @@index([tenantId, livreurId])
+  @@index([tenantId, etablissementId])
   @@map("sales")
 }
 
@@ -451,6 +527,7 @@ enum CashMovementSource {
 model CashMovement {
   id        String             @id @default(uuid()) @db.Uuid
   tenantId  String             @map("tenant_id") @db.Uuid
+  etablissementId String?      @map("etablissement_id") @db.Uuid
   type      CashFlowType
   compte    CashAccount
   montant   Int // toujours positif ; le sens est porté par `type`
@@ -462,16 +539,19 @@ model CashMovement {
   createdAt DateTime           @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
 
   @@index([tenantId])
   @@index([tenantId, compte])
   @@index([tenantId, createdAt])
+  @@index([tenantId, etablissementId])
   @@map("cash_movements")
 }
 
 model CashClose {
   id             String      @id @default(uuid()) @db.Uuid
   tenantId       String      @map("tenant_id") @db.Uuid
+  etablissementId String?    @map("etablissement_id") @db.Uuid
   compte         CashAccount @default(CAISSE)
   soldeTheorique Int         @map("solde_theorique")
   soldeReel      Int         @map("solde_reel")
@@ -481,6 +561,7 @@ model CashClose {
   createdAt      DateTime    @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
 
   @@index([tenantId])
   @@map("cash_closes")

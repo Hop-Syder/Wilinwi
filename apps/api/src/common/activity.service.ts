@@ -7,6 +7,7 @@ export type ActivityLogRow = ActivityLog & { userName: string | null };
 
 export interface ActivityInput {
   tenantId: string;
+  etablissementId?: string | null;
   userId?: string | null;
   action: string;
   entity?: string;
@@ -29,6 +30,7 @@ export class ActivityService {
         tx.activityLog.create({
           data: {
             tenantId: input.tenantId,
+            etablissementId: input.etablissementId ?? null,
             userId: input.userId ?? null,
             action: input.action,
             entity: input.entity ?? null,

@@ -14,6 +14,7 @@ import { prisma, withTenant } from '../src/index.js';
 // Identifiants fixes pour un seed idempotent (rejouable).
 const DEMO_TENANT_ID = '00000000-0000-0000-0000-0000000000a1';
 const DEMO_OWNER_ID = '00000000-0000-0000-0000-0000000000b1';
+const DEMO_ETAB_ID = '00000000-0000-0000-0000-0000000000c1';
 
 async function main() {
   console.log('🌱 Seed Wilinwi — boutique démo…');
@@ -36,6 +37,27 @@ async function main() {
         nom: 'Awa la Propriétaire',
         email: 'owner@demo.wilinwi.com',
         role: 'OWNER',
+      },
+    });
+
+    // Premier établissement de l'entreprise démo + accès du propriétaire.
+    await tx.etablissement.upsert({
+      where: { id: DEMO_ETAB_ID },
+      update: {},
+      create: {
+        id: DEMO_ETAB_ID,
+        tenantId: DEMO_TENANT_ID,
+        nom: 'Boutique Démo Wilinwi',
+        type: 'BOUTIQUE',
+      },
+    });
+    await tx.userEtablissement.upsert({
+      where: { userId_etablissementId: { userId: DEMO_OWNER_ID, etablissementId: DEMO_ETAB_ID } },
+      update: {},
+      create: {
+        tenantId: DEMO_TENANT_ID,
+        userId: DEMO_OWNER_ID,
+        etablissementId: DEMO_ETAB_ID,
       },
     });
 

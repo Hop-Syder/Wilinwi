@@ -168,6 +168,7 @@ export class SalesService {
       const created = await tx.sale.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           vendeurId: ctx.userId,
           clientId: input.clientId ?? null,
           status: needsApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
@@ -270,11 +271,14 @@ export class SalesService {
       where: { id: saleId },
       include: { items: { include: { product: true } } },
     });
+    // Mouvements rattachés à l'établissement de la vente.
+    const etablissementId = sale.etablissementId ?? ctx.etablissementId;
 
     for (const item of sale.items) {
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId,
           productId: item.productId,
           variantId: item.variantId,
           type: 'OUT',
@@ -345,6 +349,7 @@ export class SalesService {
         await tx.cashMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId,
             type: 'IN',
             compte: 'CAISSE',
             montant: espece,
@@ -359,6 +364,7 @@ export class SalesService {
         await tx.cashMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId,
             type: 'IN',
             compte,
             montant: reste,
@@ -400,7 +406,7 @@ export class SalesService {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const inst = await tx.saleInstallment.findFirst({
         where: { saleId, tenantId: ctx.tenantId },
-        include: { sale: { select: { clientId: true } } },
+        include: { sale: { select: { clientId: true, etablissementId: true } } },
       });
       if (!inst) throw new NotFoundException('Aucun acompte pour cette vente');
       const applique = Math.min(montant, inst.soldeRestant);
@@ -428,6 +434,7 @@ export class SalesService {
         await tx.cashMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId: inst.sale.etablissementId ?? ctx.etablissementId,
             type: 'IN',
             compte: 'CAISSE',
             montant: applique,
@@ -453,6 +460,7 @@ export class SalesService {
       });
       if (!target) throw new NotFoundException('Vente introuvable');
       if (target.status === 'CANCELLED') throw new BadRequestException('Vente déjà annulée');
+      const etablissementId = target.etablissementId ?? ctx.etablissementId;
 
       // Une vente non finalisée (PENDING_APPROVAL) n'a touché ni stock ni trésorerie.
       if (target.status !== 'PENDING_APPROVAL') {
@@ -460,6 +468,7 @@ export class SalesService {
           await tx.stockMovement.create({
             data: {
               tenantId: ctx.tenantId,
+              etablissementId,
               productId: item.productId,
               variantId: item.variantId,
               type: 'IN',
@@ -491,6 +500,7 @@ export class SalesService {
             await tx.cashMovement.create({
               data: {
                 tenantId: ctx.tenantId,
+                etablissementId,
                 type: 'OUT',
                 compte: 'CAISSE',
                 montant: espece,
@@ -506,6 +516,7 @@ export class SalesService {
             await tx.cashMovement.create({
               data: {
                 tenantId: ctx.tenantId,
+                etablissementId,
                 type: 'OUT',
                 compte,
                 montant: reste,
@@ -560,6 +571,7 @@ export class SalesService {
       });
       if (!sale) throw new NotFoundException('Vente introuvable');
       if (sale.status !== 'COMPLETED') throw new BadRequestException('Seules les ventes finalisées peuvent faire l\'objet d\'un retour partiel');
+      const etablissementId = sale.etablissementId ?? ctx.etablissementId;
 
       let refundAmount = 0;
 
@@ -586,6 +598,7 @@ export class SalesService {
         await tx.stockMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId,
             productId: item.productId,
             variantId: item.variantId,
             type: 'IN',
@@ -620,6 +633,7 @@ export class SalesService {
           await tx.cashMovement.create({
             data: {
               tenantId: ctx.tenantId,
+              etablissementId,
               type: 'OUT',
               compte,
               montant: refundAmount,
@@ -700,6 +714,7 @@ export class SalesService {
   async listDeliveries(ctx: AuthContext) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const where: any = { tenantId: ctx.tenantId, aLivrer: true };
+      if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
       if (ctx.role === 'DELIVERY') {
         where.livreurId = ctx.userId;
         where.livreLe = null;
@@ -734,7 +749,9 @@ export class SalesService {
 
   async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; q?: string }) {
     const where: any = { tenantId: ctx.tenantId };
-    
+    // Phase 1 : on ne montre que l'établissement courant.
+    if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
+
     if (filters) {
       const { from, to, status, clientId, q } = filters;
       
@@ -794,7 +811,11 @@ export class SalesService {
 
     const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({
-        where: { tenantId: ctx.tenantId, createdAt: { gte: startOfDay } },
+        where: {
+          tenantId: ctx.tenantId,
+          createdAt: { gte: startOfDay },
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
         orderBy: { createdAt: 'desc' },
         take: 200,
         include: { items: { include: { priceOverride: true, product: true } }, installment: true, client: true },
@@ -818,7 +839,11 @@ export class SalesService {
   async pendingSales(ctx: AuthContext) {
     const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({
-        where: { tenantId: ctx.tenantId, status: 'PENDING_APPROVAL' },
+        where: {
+          tenantId: ctx.tenantId,
+          status: 'PENDING_APPROVAL',
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
         orderBy: { createdAt: 'asc' },
         include: { items: { include: { priceOverride: true, product: true } } },
       }),

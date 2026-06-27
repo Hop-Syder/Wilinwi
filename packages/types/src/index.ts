@@ -11,6 +11,8 @@
 
 export * from './common.js';
 export * from './roles.js';
+export * from './etablissement.js';
+export * from './dunning.js';
 export * from './auth.js';
 export * from './product.js';
 export * from './inventory.js';

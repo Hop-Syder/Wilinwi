@@ -16,13 +16,20 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Input } from '@wilinwi/ui';
+import { ETABLISSEMENT_TYPES, ETABLISSEMENT_TYPE_LABELS, type EtablissementType } from '@wilinwi/types';
 import { apiPost } from '@/lib/api';
 import { getSupabase } from '@/lib/supabase';
-import { Mail, Lock, Store, User, ArrowRight, ShieldCheck, Box, Zap } from 'lucide-react';
+import { Mail, Lock, Store, User, ArrowRight, ShieldCheck, Box, Zap, Building2 } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ nomBoutique: '', nomComplet: '', email: '', password: '' });
+  const [form, setForm] = useState<{
+    nomBoutique: string;
+    nomComplet: string;
+    email: string;
+    password: string;
+    typeEtablissement: EtablissementType;
+  }>({ nomBoutique: '', nomComplet: '', email: '', password: '', typeEtablissement: 'BOUTIQUE' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -160,7 +167,7 @@ export default function SignupPage() {
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col">
             {/* Header de la carte fixe */}
             <div className="p-6 pb-2 border-b border-slate-100">
-              <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900">Créer une boutique</h1>
+              <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900">Créer votre entreprise</h1>
             </div>
 
             {/* Corps de la carte (Sans scroll) */}
@@ -168,17 +175,36 @@ export default function SignupPage() {
               <form onSubmit={onSubmit} className="space-y-3.5">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Store className="w-3.5 h-3.5 text-slate-400" /> Nom de la boutique
+                    <Store className="w-3.5 h-3.5 text-slate-400" /> Nom de l&apos;entreprise
                   </label>
-                  <Input 
-                    type="text" 
-                    value={form.nomBoutique} 
-                    onChange={(e) => set('nomBoutique')(e.target.value)} 
-                    placeholder="ex. Épicerie du Centre" 
-                    required 
+                  <Input
+                    type="text"
+                    value={form.nomBoutique}
+                    onChange={(e) => set('nomBoutique')(e.target.value)}
+                    placeholder="ex. Épicerie du Centre"
+                    required
                     className="w-full h-9 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
                     autoComplete="organization"
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400" /> Type de votre 1ᵉʳ établissement
+                  </label>
+                  <select
+                    value={form.typeEtablissement}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, typeEtablissement: e.target.value as EtablissementType }))
+                    }
+                    className="w-full h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {ETABLISSEMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {ETABLISSEMENT_TYPE_LABELS[t]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
@@ -232,10 +258,10 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#12355B] to-[#0f2c4c] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(18,53,91,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#1f4d80] hover:to-[#12355B] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
+                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#0005ea] to-[#0004c8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,5,234,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#2e31ff] hover:to-[#0005ea] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
                   {loading ? 'Création en cours…' : (
                     <span className="flex items-center gap-1.5">
-                      Créer ma boutique <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      Créer mon entreprise <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   )}
                 </Button>

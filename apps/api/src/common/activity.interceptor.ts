@@ -27,6 +27,7 @@ export class ActivityInterceptor implements NestInterceptor {
         if (!mutating || !user || SKIP.some((re) => re.test(url))) return;
         void this.activity.log({
           tenantId: user.tenantId,
+          etablissementId: user.etablissementId,
           userId: user.userId,
           action: `${method} ${url.split('?')[0]}`,
           ip: req.ip,

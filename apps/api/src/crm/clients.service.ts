@@ -201,6 +201,7 @@ export class ClientsService {
       await tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           type: 'IN',
           compte,
           montant: input.montant,

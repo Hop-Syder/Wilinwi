@@ -38,19 +38,19 @@ const preset: Omit<Config, 'content'> = {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
         },
-        // Bleu profond — confiance, technologie, stabilité (Legacy compatibility)
+        // Bleu vibrant — confiance, technologie, stabilité (Legacy compatibility)
         brand: {
-          DEFAULT: '#12355B',
-          50: '#eaf0f7',
-          100: '#cddcec',
-          200: '#9bb6d6',
-          300: '#688fbf',
-          400: '#3a6aa3',
-          500: '#1f4d80',
-          600: '#12355B',
-          700: '#0f2c4c',
-          800: '#0b2139',
-          900: '#071626',
+          DEFAULT: '#0005ea',
+          50: '#e6e6ff',
+          100: '#ccccff',
+          200: '#9999ff',
+          300: '#6666ff',
+          400: '#3333ff',
+          500: '#0000ff',
+          600: '#0005ea',
+          700: '#0004c8',
+          800: '#0003b0',
+          900: '#000290',
         },
         // Vert émeraude — croissance, argent, réussite (Legacy compatibility)
         emerald: {

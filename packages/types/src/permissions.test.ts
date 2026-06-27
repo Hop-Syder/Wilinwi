@@ -11,10 +11,10 @@ describe('effectiveModules', () => {
   });
 
   it('le plan plafonne les overrides (module hors plan ignoré)', () => {
-    // overrides demandent AI mais un plan sans AI ne l\'accorde pas
-    const mods = effectiveModules('OWNER', 'FREE', true, ['POS', 'AI']);
+    // Les overrides demandent AI, mais STARTER ne l'inclut pas → AI rejeté.
+    const mods = effectiveModules('OWNER', 'STARTER', true, ['POS', 'AI']);
     expect(mods).toContain('POS');
-    // dépend de PLAN_MODULES.FREE ; AI seulement si inclus
+    expect(mods).not.toContain('AI');
   });
 });
 

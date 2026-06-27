@@ -102,7 +102,7 @@ export default function LoginPage() {
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/55" style={{ height: `${barHeights[1]}%` }} />
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/65" style={{ height: `${barHeights[2]}%` }} />
               <div className="w-full bg-slate-800/60 rounded-t transition-all duration-700 ease-in-out group-hover:bg-primary/75" style={{ height: `${barHeights[3]}%` }} />
-              <div className="w-full bg-[#12355B] rounded-t transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(18,53,91,0.5)]" style={{ height: `${barHeights[4]}%` }} />
+              <div className="w-full bg-[#0005ea] rounded-t transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(0,5,234,0.5)]" style={{ height: `${barHeights[4]}%` }} />
             </div>
 
             {/* Pied de la carte */}
@@ -179,7 +179,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#12355B] to-[#0f2c4c] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(18,53,91,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#1f4d80] hover:to-[#12355B] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
+                <Button type="submit" className="w-full justify-center h-11 text-sm font-semibold group rounded-xl bg-gradient-to-b from-[#0005ea] to-[#0004c8] text-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(0,5,234,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-[#2e31ff] hover:to-[#0005ea] active:scale-[0.98] active:shadow-inner transition-all duration-200 mt-4 border-0" disabled={loading}>
                   {loading ? 'Connexion en cours…' : (
                     <span className="flex items-center gap-1.5">
                       Ouvrir la caisse <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

@@ -37,6 +37,7 @@ export class InventoryService {
       return tx.inventory.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           libelle: input.libelle ?? null,
           status: 'OPEN',
           items: {
@@ -98,6 +99,7 @@ export class InventoryService {
         await tx.stockMovement.create({
           data: {
             tenantId: ctx.tenantId,
+            etablissementId: inv.etablissementId ?? ctx.etablissementId,
             productId: item.productId,
             variantId: item.variantId,
             type: 'ADJUST',

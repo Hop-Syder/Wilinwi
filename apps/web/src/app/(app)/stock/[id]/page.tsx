@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRightLeft, Clock, Package } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
@@ -80,6 +81,16 @@ export default function ProductStockDetailsPage() {
           )}
         </div>
       </div>
+
+      {product.photos && product.photos.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {product.photos.map((url) => (
+            <div key={url} className="relative h-28 w-28 overflow-hidden rounded-xl border border-slate-200">
+              <Image src={url} alt={product.nom} fill sizes="112px" className="object-cover" unoptimized />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card className="p-4">

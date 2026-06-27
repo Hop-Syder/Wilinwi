@@ -20,6 +20,8 @@ export const CreateUserSchema = z
     pin: PinSchema.optional(),
     customPermissions: z.boolean().default(false),
     permissions: z.array(z.enum(MODULES)).default([]),
+    /** Établissements auxquels l'employé a accès. */
+    etablissementIds: z.array(IdSchema).default([]),
   })
   .refine((u) => u.email || u.pin, {
     message: 'Un email (mot de passe) ou un PIN est requis pour la connexion',
@@ -34,6 +36,8 @@ export const UpdateUserSchema = z.object({
   actif: z.boolean().optional(),
   customPermissions: z.boolean().optional(),
   permissions: z.array(z.enum(MODULES)).optional(),
+  /** Établissements auxquels l'employé a accès (remplace la liste existante). */
+  etablissementIds: z.array(IdSchema).optional(),
 });
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 
@@ -55,4 +59,6 @@ export interface UserDto {
   customPermissions: boolean;
   permissions: string[];
   hasPin: boolean;
+  /** Établissements auxquels l'employé a accès. */
+  etablissementIds: string[];
 }

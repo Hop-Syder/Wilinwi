@@ -17,6 +17,7 @@ import { validateEnv } from './config/env';
 import { CommonModule } from './common/common.module';
 import { Public } from './common/decorators';
 import { AuthModule } from './auth/auth.module';
+import { EtablissementModule } from './etablissement/etablissement.module';
 import { StockModule } from './stock/stock.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SalesModule } from './pos/sales.module';
@@ -53,6 +54,7 @@ class HealthController {
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     CommonModule,
     AuthModule,
+    EtablissementModule,
     StockModule,
     InventoryModule,
     SalesModule,

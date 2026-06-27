@@ -13,7 +13,14 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { jwtVerify } from 'jose';
-import { effectiveModules, RoleSchema, type AuthContext, type Plan } from '@wilinwi/types';
+import {
+  computeDunning,
+  effectiveModules,
+  RoleSchema,
+  type AuthContext,
+  type Plan,
+  type SubscriptionStatus,
+} from '@wilinwi/types';
 import { IS_PUBLIC_KEY } from './decorators';
 import { PrismaService } from './prisma.service';
 
@@ -72,17 +79,44 @@ export class AuthGuard implements CanActivate {
       if (!dbUser) throw new UnauthorizedException('Utilisateur introuvable');
       if (!dbUser.actif) throw new UnauthorizedException('Compte désactivé');
       const dbRole = RoleSchema.parse(dbUser.role);
+      // Relance d'impayé : à J+7+ on rétrograde l'accès au niveau Starter (non destructif).
+      const subscriptionStatus = tenant.subscriptionStatus as SubscriptionStatus;
+      const dunning = computeDunning(subscriptionStatus, tenant.pastDueSince);
+      const realPlan = tenant.plan as Plan;
+      const effectivePlan: Plan = dunning.downgraded ? 'STARTER' : realPlan;
+      // Établissements accessibles à l'utilisateur (uniquement ceux encore actifs).
+      const access = await tx.userEtablissement.findMany({
+        where: { userId, etablissement: { actif: true } },
+        select: { etablissementId: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      let etablissementIds = access.map((a) => a.etablissementId);
+      // Rétrogradation Starter = 1 seul établissement actif (les autres → préservés, masqués).
+      if (dunning.downgraded && etablissementIds.length > 1) {
+        etablissementIds = etablissementIds.slice(0, 1);
+      }
       return {
-        plan: tenant.plan as Plan,
+        plan: effectivePlan,
+        subscriptionStatus,
+        dunning,
         role: dbRole,
         modules: effectiveModules(
           dbRole,
-          tenant.plan as Plan,
+          effectivePlan,
           dbUser.customPermissions,
           dbUser.permissions,
         ),
+        etablissementIds,
       };
     });
+
+    // Établissement courant : en-tête X-Etablissement-Id, borné à la liste autorisée.
+    // Sinon → premier établissement accessible (switch sans reconnexion).
+    const headerEtab = this.extractEtablissement(req.headers['x-etablissement-id']);
+    const etablissementId =
+      headerEtab && resolved.etablissementIds.includes(headerEtab)
+        ? headerEtab
+        : (resolved.etablissementIds[0] ?? null);
 
     const ctx: AuthContext = {
       userId,
@@ -91,9 +125,19 @@ export class AuthGuard implements CanActivate {
       email: (payload.email as string) ?? '',
       plan: resolved.plan,
       modules: resolved.modules,
+      etablissementId,
+      etablissementIds: resolved.etablissementIds,
+      subscriptionStatus: resolved.subscriptionStatus,
+      dunning: resolved.dunning,
     };
     req.user = ctx;
     return true;
+  }
+
+  private extractEtablissement(header?: string | string[]): string | null {
+    if (!header) return null;
+    const value = Array.isArray(header) ? header[0] : header;
+    return value?.trim() || null;
   }
 
   private extractToken(header?: string): string | null {

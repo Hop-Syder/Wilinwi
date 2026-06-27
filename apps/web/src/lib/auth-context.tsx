@@ -7,9 +7,30 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { ModuleKey, Plan, Role } from '@wilinwi/types';
+import {
+  ACTIVE_DUNNING,
+  type DunningState,
+  type EtablissementType,
+  type ModuleKey,
+  type Plan,
+  type Role,
+  type SubscriptionStatus,
+} from '@wilinwi/types';
 import { getSupabase } from './supabase';
-import { apiGet, clearPinToken, getPinToken, setPinToken } from './api';
+import {
+  apiGet,
+  clearPinToken,
+  getEtablissementId,
+  getPinToken,
+  setEtablissementId,
+  setPinToken,
+} from './api';
+
+export interface SessionEtablissement {
+  id: string;
+  nom: string;
+  type: EtablissementType;
+}
 
 export interface SessionUser {
   userId: string;
@@ -20,6 +41,13 @@ export interface SessionUser {
   /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
   modules: ModuleKey[];
   boutiqueNom?: string;
+  /** Établissement courant (résolu par le backend, borné à la liste autorisée). */
+  etablissementId: string | null;
+  /** Établissements accessibles (sélecteur). */
+  etablissements: SessionEtablissement[];
+  /** Statut d'abonnement + état de relance d'impayé (facturation). */
+  subscriptionStatus: SubscriptionStatus;
+  dunning: DunningState;
 }
 
 interface MeResponse {
@@ -29,6 +57,10 @@ interface MeResponse {
   role: Role;
   plan: Plan;
   modules: ModuleKey[];
+  etablissementId: string | null;
+  etablissements?: SessionEtablissement[];
+  subscriptionStatus?: SubscriptionStatus;
+  dunning?: DunningState;
   profile?: {
     nom: string;
     tenant?: {
@@ -44,6 +76,8 @@ interface AuthState {
   refreshUser: () => Promise<void>;
   /** Bascule de profil par PIN : stocke le jeton minté puis recharge la session. */
   loginWithPin: (accessToken: string) => Promise<void>;
+  /** Change l'établissement courant (switch instantané, sans reconnexion). */
+  setEtablissement: (id: string) => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState>({
@@ -52,6 +86,7 @@ const AuthCtx = createContext<AuthState>({
   signOut: async () => {},
   refreshUser: async () => {},
   loginWithPin: async () => {},
+  setEtablissement: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -72,6 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const me = await apiGet<MeResponse>('/api/auth/me');
+      // Synchronise le localStorage avec l'établissement résolu côté serveur
+      // (1ʳᵉ visite, ou si l'établissement stocké n'est plus accessible).
+      const etabs = me.etablissements ?? [];
+      const stored = getEtablissementId();
+      const valid = stored && etabs.some((e) => e.id === stored);
+      if (!valid) setEtablissementId(me.etablissementId);
       setUser({
         userId: me.userId,
         email: me.email,
@@ -80,6 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         plan: me.plan,
         modules: me.modules ?? [],
         boutiqueNom: me.profile?.tenant?.nom,
+        etablissementId: valid ? stored : me.etablissementId,
+        etablissements: etabs,
+        subscriptionStatus: me.subscriptionStatus ?? 'ACTIVE',
+        dunning: me.dunning ?? ACTIVE_DUNNING,
       });
     } catch {
       clearPinToken();
@@ -112,8 +157,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await resolve();
   };
 
+  /** Bascule instantanée d'établissement : on pose l'en-tête puis on recharge. */
+  const setEtablissement = async (id: string) => {
+    setEtablissementId(id);
+    // Mise à jour optimiste pour un switch immédiat de l'UI.
+    setUser((u) => (u ? { ...u, etablissementId: id } : u));
+    await resolve();
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, loading, signOut, refreshUser, loginWithPin }}>
+    <AuthCtx.Provider
+      value={{ user, loading, signOut, refreshUser, loginWithPin, setEtablissement }}
+    >
       {children}
     </AuthCtx.Provider>
   );

@@ -21,7 +21,7 @@ async function main() {
     await tx.tenant.upsert({
       where: { id: B },
       update: {},
-      create: { id: B, nom: 'Boutique Test B', plan: 'FREE' },
+      create: { id: B, nom: 'Boutique Test B', plan: 'STARTER' },
     });
     const exists = await tx.product.findFirst({ where: { tenantId: B, sku: 'B-ONLY' } });
     if (!exists) {

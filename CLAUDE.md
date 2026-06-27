@@ -93,7 +93,7 @@ Vérifier l'isolation : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolat
 - Montants en **FCFA** = entiers (pas de centimes).
 - Les packages partagés `types`/`db` compilent en CommonJS (consommés par l'API
   Node) ; `ui`/`offline` sont transpilés par Next (`transpilePackages`).
-- Charte : `#12355B` (bleu), `#00A86B` (vert), `#F59E0B` (orange) ; Inter/Poppins +
+- Charte : `#0005ea` (bleu), `#00A86B` (vert), `#F59E0B` (orange) ; Inter/Poppins +
   DM Mono pour les chiffres (classe `.tabular`).
 
 ## Hors périmètre (MVP2/3)

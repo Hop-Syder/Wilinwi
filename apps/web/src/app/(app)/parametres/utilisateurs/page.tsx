@@ -7,15 +7,17 @@
  */
 
 import { useEffect, useState } from 'react';
-import { UserPlus, KeyRound, Power, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { UserPlus, KeyRound, Power, ShieldCheck, ArrowLeft, Store } from 'lucide-react';
 import Link from 'next/link';
 import {
   MODULES,
   ROLES,
   ROLE_LABELS,
+  ETABLISSEMENT_TYPE_LABELS,
   type ModuleKey,
   type Role,
   type UserDto,
+  type EtablissementDto,
 } from '@wilinwi/types';
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
@@ -40,6 +42,7 @@ type Draft = {
   pin: string;
   customPermissions: boolean;
   permissions: ModuleKey[];
+  etablissementIds: string[];
 };
 
 const emptyDraft: Draft = {
@@ -50,18 +53,27 @@ const emptyDraft: Draft = {
   pin: '',
   customPermissions: false,
   permissions: [],
+  etablissementIds: [],
 };
 
 export default function UtilisateursPage() {
   const [users, setUsers] = useState<UserDto[]>([]);
+  const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const etabNameById = (id: string) => etablissements.find((e) => e.id === id)?.nom ?? '—';
+
   async function load() {
     try {
-      setUsers(await apiGet<UserDto[]>('/api/users'));
+      const [u, etabs] = await Promise.all([
+        apiGet<UserDto[]>('/api/users'),
+        apiGet<EtablissementDto[]>('/api/etablissements/manage'),
+      ]);
+      setUsers(u);
+      setEtablissements(etabs);
     } catch (e) {
       setError((e as ApiError).message);
     }
@@ -72,7 +84,8 @@ export default function UtilisateursPage() {
 
   function openCreate() {
     setError(null);
-    setDraft({ ...emptyDraft });
+    // Nouveau collaborateur : accès à tous les établissements par défaut.
+    setDraft({ ...emptyDraft, etablissementIds: etablissements.map((e) => e.id) });
   }
   function openEdit(u: UserDto) {
     setError(null);
@@ -85,6 +98,7 @@ export default function UtilisateursPage() {
       pin: '',
       customPermissions: u.customPermissions,
       permissions: u.permissions as ModuleKey[],
+      etablissementIds: u.etablissementIds ?? [],
     });
   }
 
@@ -101,6 +115,7 @@ export default function UtilisateursPage() {
           role: draft.role,
           customPermissions: draft.customPermissions,
           permissions: draft.permissions,
+          etablissementIds: draft.etablissementIds,
         });
         if (draft.pin) await apiPost(`/api/users/${draft.id}/pin`, { pin: draft.pin });
       } else {
@@ -112,6 +127,7 @@ export default function UtilisateursPage() {
           pin: draft.pin || undefined,
           customPermissions: draft.customPermissions,
           permissions: draft.permissions,
+          etablissementIds: draft.etablissementIds,
         });
         if (draft.email) {
           setNotice(`Invitation envoyée par email à ${draft.email}. Le lien permet de définir le mot de passe.`);
@@ -155,6 +171,17 @@ export default function UtilisateursPage() {
     setDraft({
       ...draft,
       permissions: has ? draft.permissions.filter((x) => x !== m) : [...draft.permissions, m],
+    });
+  }
+
+  function toggleEtablissement(id: string) {
+    if (!draft) return;
+    const has = draft.etablissementIds.includes(id);
+    setDraft({
+      ...draft,
+      etablissementIds: has
+        ? draft.etablissementIds.filter((x) => x !== id)
+        : [...draft.etablissementIds, id],
     });
   }
 
@@ -204,7 +231,17 @@ export default function UtilisateursPage() {
                   <Badge tone="brand">{ROLE_LABELS[u.role]}</Badge>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
-                  {u.customPermissions ? (u.permissions.join(', ') || 'aucun') : 'Défaut du rôle'}
+                  <div>{u.customPermissions ? (u.permissions.join(', ') || 'aucun') : 'Défaut du rôle'}</div>
+                  <div className="mt-0.5 flex items-center gap-1 text-[11px] text-emerald">
+                    <Store className="h-3 w-3" />
+                    {u.role === 'OWNER'
+                      ? 'Tous les établissements'
+                      : (u.etablissementIds?.length ?? 0) === 0
+                        ? 'Tous les établissements'
+                        : (u.etablissementIds.length <= 2
+                            ? u.etablissementIds.map(etabNameById).join(', ')
+                            : `${u.etablissementIds.length} établissements`)}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <Badge tone={u.actif ? 'success' : 'danger'}>{u.actif ? 'Actif' : 'Inactif'}</Badge>
@@ -274,6 +311,38 @@ export default function UtilisateursPage() {
                 ))}
               </div>
             )}
+
+            {/* Établissements accessibles (le rôle définit les actions, l'établissement les données visibles). */}
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                <Store className="h-3.5 w-3.5 text-emerald" /> Établissements accessibles
+              </div>
+              {etablissements.length === 0 ? (
+                <p className="text-xs text-slate-400">Aucun établissement. Créez-en un d'abord.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {etablissements.map((e) => (
+                    <label key={e.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draft.etablissementIds.includes(e.id)}
+                        onChange={() => toggleEtablissement(e.id)}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-slate-800">{e.nom}</span>
+                        <span className="block truncate text-[11px] text-slate-400">
+                          {ETABLISSEMENT_TYPE_LABELS[e.type]}
+                          {!e.actif && ' · inactif'}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Aucune case cochée = accès à tous les établissements par défaut.
+              </p>
+            </div>
 
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">

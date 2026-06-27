@@ -6,13 +6,13 @@
   :root {
     /* Charte officielle Wilinwi — un seul bleu, une seule source de vérité :
        primary === brand (marine), accents = vert émeraude + or (Black Luxury). */
-    --color-primary: #12355B; /* Bleu marine (= brand) */
-    --color-primary-hover: #0f2c4c;
+    --color-primary: #0005ea; /* Bleu Wilinwi (= brand) */
+    --color-primary-hover: #0004c8;
     --color-secondary: #00A86B; /* Vert émeraude (= emerald) */
     --color-success: #00A86B;
     --color-warning: #F59E0B; /* Or (= gold) */
     --color-danger: #E53935;
-    --color-info: #12355B;
+    --color-info: #0005ea;
     --color-ai: #6200EA; /* Purple AI */
 
     --background: #F4F7FC;
@@ -28,7 +28,7 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 
-    --brand: #12355B;
+    --brand: #0005ea;
     --emerald: #00A86B;
     --gold: #F59E0B;
   }

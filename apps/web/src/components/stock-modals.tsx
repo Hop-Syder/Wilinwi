@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { X, Plus, Trash2, Sparkles } from 'lucide-react';
 import { Button, Input, Select } from '@wilinwi/ui';
-import type { ProductDto } from '@wilinwi/types';
+import { maxProductPhotos, planAllowsProductImages, type ProductDto } from '@wilinwi/types';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { ProductPhotos } from './product-photos';
 
 interface StockMovementModalProps {
   product: ProductDto;
@@ -136,6 +139,10 @@ interface ProductFormModalProps {
 
 export function ProductFormModal({ product, onClose, onSuccess }: ProductFormModalProps) {
   const isEditing = !!product;
+  const { user } = useAuth();
+  const imagesAllowed = user ? planAllowsProductImages(user.plan) : false;
+  const maxPhotos = user ? maxProductPhotos(user.plan) : 0;
+  const [photos, setPhotos] = useState<string[]>(product?.photos ?? []);
   const [form, setForm] = useState({
     nom: product?.nom || '',
     sku: product?.sku || '',
@@ -172,6 +179,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         nom: form.nom,
         sku: form.sku || undefined,
         categorie: form.categorie || undefined,
+        photos: imagesAllowed ? photos : undefined,
         prixAchat: Number(form.prixAchat),
         prixPlancher: Number(form.prixPlancher),
         prixCatalogue: Number(form.prixCatalogue),
@@ -251,6 +259,31 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
             <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
+
+          <div className="col-span-full my-2 border-t border-slate-100 pt-4">
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">Photos du produit</h3>
+            {imagesAllowed && user ? (
+              <ProductPhotos
+                tenantId={user.tenantId}
+                photos={photos}
+                onChange={setPhotos}
+                max={maxPhotos}
+              />
+            ) : (
+              <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm text-amber-800">
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <span>Les photos produits (galerie) sont incluses dès le plan <strong>Business</strong>.</span>
+                </div>
+                <Link
+                  href="/parametres"
+                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
+                >
+                  Passer à Business
+                </Link>
+              </div>
+            )}
+          </div>
 
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between mb-3">

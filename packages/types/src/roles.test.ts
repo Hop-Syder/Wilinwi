@@ -55,11 +55,25 @@ describe('capacités par rôle', () => {
 });
 
 describe('gating des modules par plan', () => {
-  it("tous les plans incluent tous les modules pour test", () => {
-    expect(planIncludesModule('FREE', 'POS')).toBe(true);
-    expect(planIncludesModule('FREE', 'CRM')).toBe(true);
-    expect(planIncludesModule('FREE', 'AI')).toBe(true);
-    expect(planIncludesModule('PRO', 'AI')).toBe(true);
-    expect(planIncludesModule('BUSINESS', 'AI')).toBe(true);
+  it('STARTER se limite aux essentiels (vente, stock, dashboard)', () => {
+    expect(planIncludesModule('STARTER', 'POS')).toBe(true);
+    expect(planIncludesModule('STARTER', 'STOCK')).toBe(true);
+    expect(planIncludesModule('STARTER', 'ANALYTICS')).toBe(true);
+    expect(planIncludesModule('STARTER', 'PAY')).toBe(false);
+    expect(planIncludesModule('STARTER', 'CRM')).toBe(false);
+    expect(planIncludesModule('STARTER', 'AI')).toBe(false);
+  });
+
+  it('PRO débloque trésorerie + CRM (ardoise), mais pas marketing ni IA', () => {
+    expect(planIncludesModule('PRO', 'PAY')).toBe(true);
+    expect(planIncludesModule('PRO', 'CRM')).toBe(true);
+    expect(planIncludesModule('PRO', 'MARKET')).toBe(false);
+    expect(planIncludesModule('PRO', 'AI')).toBe(false);
+  });
+
+  it('BUSINESS ajoute le marketing ; seul ENTERPRISE inclut l\'IA', () => {
+    expect(planIncludesModule('BUSINESS', 'MARKET')).toBe(true);
+    expect(planIncludesModule('BUSINESS', 'AI')).toBe(false);
+    expect(planIncludesModule('ENTERPRISE', 'AI')).toBe(true);
   });
 });

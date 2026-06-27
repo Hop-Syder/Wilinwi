@@ -20,29 +20,60 @@ export const MoneySchema = z.number().int().nonnegative();
 /** Quantité de stock — peut être négative en ajustement, entière. */
 export const QuantitySchema = z.number().int();
 
-/** Plans d'abonnement (cf. §8 du plan). */
-export const PLANS = ['FREE', 'PRO', 'BUSINESS'] as const;
+/** Plans d'abonnement (cf. buinessplan.md). */
+export const PLANS = ['STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE'] as const;
 export type Plan = (typeof PLANS)[number];
 export const PlanSchema = z.enum(PLANS);
+
+/** Valeur sentinelle « illimité » pour les quotas de plan. */
+export const UNLIMITED = Number.POSITIVE_INFINITY;
 
 /** Modules de l'écosystème (gating du Hub). */
 export const MODULES = ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'] as const;
 export type ModuleKey = (typeof MODULES)[number];
 
-/** Modules inclus par plan — pilote le gating premium du Hub (§4.2). */
+/**
+ * Modules inclus par plan — pilote le gating premium du Hub.
+ * Échelle de valeur (cf. buinessplan.md §3) :
+ *   STARTER  : vendre + stock + tableau de bord de base.
+ *   PRO      : + trésorerie (dépenses/créances), ardoise client (CRM), livraisons.
+ *   BUSINESS : + marketing (relances, fidélité).
+ *   ENTERPRISE : tout, IA comprise.
+ * (AI/MARKET sont aussi vendus en modules premium à l'unité — à câbler plus tard.)
+ */
 export const PLAN_MODULES: Record<Plan, readonly ModuleKey[]> = {
-  FREE: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
-  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
-  BUSINESS: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
+  STARTER: ['POS', 'STOCK', 'ANALYTICS'],
+  PRO: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY'],
+  BUSINESS: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY', 'MARKET'],
+  ENTERPRISE: ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'],
 };
 
 export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {
   return PLAN_MODULES[plan].includes(module);
 }
 
-/** Limites par plan (§8). `maxDevices` défini ; enforcement appareils ultérieur. */
-export const PLAN_LIMITS: Record<Plan, { maxUsers: number; maxDevices: number }> = {
-  FREE: { maxUsers: 1, maxDevices: 1 },
-  PRO: { maxUsers: 5, maxDevices: 3 },
-  BUSINESS: { maxUsers: 30, maxDevices: 15 },
+/**
+ * Limites par plan (cf. buinessplan.md §3). `UNLIMITED` = pas de plafond.
+ * `maxDevices` défini ; enforcement appareils ultérieur.
+ */
+export const PLAN_LIMITS: Record<
+  Plan,
+  { maxUsers: number; maxEtablissements: number; maxDevices: number; maxPhotos: number }
+> = {
+  // `maxPhotos` = nombre de photos par produit (galerie). 0 = images désactivées
+  // (réservées à Business+, cf. buinessplan.md §3).
+  STARTER: { maxUsers: 1, maxEtablissements: 1, maxDevices: 1, maxPhotos: 0 },
+  PRO: { maxUsers: UNLIMITED, maxEtablissements: 2, maxDevices: 5, maxPhotos: 0 },
+  BUSINESS: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: 30, maxPhotos: 6 },
+  ENTERPRISE: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: UNLIMITED, maxPhotos: 12 },
 };
+
+/** Nombre de photos par produit autorisé par le plan (0 = images désactivées). */
+export function maxProductPhotos(plan: Plan): number {
+  return PLAN_LIMITS[plan].maxPhotos;
+}
+
+/** Le plan autorise-t-il les images produits (galerie) ? (Business+) */
+export function planAllowsProductImages(plan: Plan): boolean {
+  return PLAN_LIMITS[plan].maxPhotos > 0;
+}

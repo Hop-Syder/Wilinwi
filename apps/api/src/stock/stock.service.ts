@@ -9,12 +9,19 @@
  */
 // ──────────────────────────────────
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  AuthContext,
-  CreateProductInput,
-  CreateStockMovementInput,
-  UpdateProductInput,
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  DOWNGRADE_MAX_PRODUCTS,
+  maxProductPhotos,
+  type AuthContext,
+  type CreateProductInput,
+  type CreateStockMovementInput,
+  type UpdateProductInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
@@ -25,14 +32,21 @@ export class StockService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(ctx: AuthContext) {
+    // Rétrogradation Starter (impayé J+7) : catalogue bridé aux 50 articles les
+    // plus anciens (les autres restent en base, simplement masqués).
+    const downgraded = ctx.dunning.downgraded;
     const products = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
         include: { variants: true },
-        orderBy: { nom: 'asc' },
+        orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
+        ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
       }),
     );
-    return products.map((p) => toProductDto(p, ctx.role));
+    const sorted = downgraded
+      ? [...products].sort((a, b) => a.nom.localeCompare(b.nom))
+      : products;
+    return sorted.map((p) => toProductDto(p, ctx.role));
   }
 
   async getProduct(ctx: AuthContext, id: string) {
@@ -43,6 +57,15 @@ export class StockService {
   }
 
   async create(ctx: AuthContext, input: CreateProductInput) {
+    // Rétrogradation Starter (impayé) : ajout de produits suspendu.
+    if (ctx.dunning.downgraded) {
+      throw new ConflictException(
+        'Abonnement impayé : ajout de produits suspendu (catalogue limité à 50 articles). Régularisez pour le réactiver.',
+      );
+    }
+    // Gating images : la galerie produit est réservée aux plans Business+ ;
+    // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
+    const photos = input.photos.slice(0, maxProductPhotos(ctx.plan));
     const product = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.product.create({
         data: {
@@ -50,7 +73,7 @@ export class StockService {
           nom: input.nom,
           sku: input.sku ?? null,
           categorie: input.categorie ?? null,
-          photos: input.photos,
+          photos,
           prixAchat: input.prixAchat,
           prixPlancher: input.prixPlancher,
           prixCatalogue: input.prixCatalogue,
@@ -73,6 +96,10 @@ export class StockService {
 
   async update(ctx: AuthContext, id: string, input: UpdateProductInput) {
     const { variants, ...scalars } = input;
+    // Gating images : on borne la galerie au nombre autorisé par le plan.
+    if (scalars.photos !== undefined) {
+      scalars.photos = scalars.photos.slice(0, maxProductPhotos(ctx.plan));
+    }
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       await this.ensureProduct(tx, ctx.tenantId, id);
 
@@ -148,6 +175,7 @@ export class StockService {
       const movement = await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
           productId: input.productId,
           variantId: input.variantId ?? null,
           type: input.type,

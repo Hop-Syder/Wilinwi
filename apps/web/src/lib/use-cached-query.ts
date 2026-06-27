@@ -35,9 +35,11 @@ export function useCachedQuery<T>(key: string | null, fetcher: () => Promise<T>)
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Clé namespacée par tenant + utilisateur → isolation multi-tenant et par rôle
-  // (un caissier et un propriétaire n'ont pas la même vue des données).
-  const scopedKey = key && user ? `${user.tenantId}:${user.userId}:${key}` : null;
+  // Clé namespacée par tenant + utilisateur + établissement → isolation multi-tenant,
+  // par rôle ET par établissement courant (le switch rafraîchit automatiquement
+  // les données, sans collision de cache entre établissements).
+  const scopedKey =
+    key && user ? `${user.tenantId}:${user.userId}:${user.etablissementId ?? 'none'}:${key}` : null;
 
   // On garde le dernier fetcher sans relancer l'effet à chaque rendu.
   const fetcherRef = useRef(fetcher);

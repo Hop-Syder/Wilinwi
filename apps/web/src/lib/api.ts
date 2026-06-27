@@ -18,6 +18,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 // ─── Jeton de session PIN (poste partagé) — prioritaire sur la session Supabase ───
 const PIN_TOKEN_KEY = 'wilinwi_pin_token';
 
+// ─── Établissement courant (envoyé à chaque requête → switch instantané) ───
+export const ETABLISSEMENT_KEY = 'wilinwi_etablissement';
+
+export function setEtablissementId(id: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (id) localStorage.setItem(ETABLISSEMENT_KEY, id);
+  else localStorage.removeItem(ETABLISSEMENT_KEY);
+}
+export function getEtablissementId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(ETABLISSEMENT_KEY);
+}
+
 function jwtExp(token: string): number {
   try {
     const p = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -66,6 +79,12 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   headers.set('Content-Type', 'application/json');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+  // Établissement courant : le backend borne la requête à cet établissement
+  // (validé contre la liste autorisée de l'utilisateur).
+  const etablissementId = getEtablissementId();
+  if (etablissementId) {
+    headers.set('X-Etablissement-Id', etablissementId);
   }
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });

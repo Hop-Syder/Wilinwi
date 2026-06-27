@@ -157,7 +157,7 @@ export default function HubPage() {
             >
               {/* Ligne de dégradé au sommet au survol */}
               {available && (
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#12355B] via-[#00A86B] to-[#F59E0B] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#0005ea] via-[#00A86B] to-[#F59E0B] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               )}
 
               <div className="flex items-start justify-between">

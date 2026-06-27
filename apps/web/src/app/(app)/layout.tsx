@@ -37,6 +37,8 @@ import { useSync } from '@/lib/use-sync';
 import { apiGet, apiPost, ApiError, getPinToken } from '@/lib/api';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
 import { Preloader } from '@/components/preloader';
+import { EtablissementSwitcher } from '@/components/etablissement-switcher';
+import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
   { href: '/', label: 'Hub', icon: LayoutGrid },
@@ -109,6 +111,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Impayé J+30 : écran bloquant — sauf l'OWNER sur les Paramètres (pour régulariser).
+  if (user.dunning.posBlocked && !(user.role === 'OWNER' && pathname.startsWith('/parametres'))) {
+    return <DunningBlock />;
+  }
+
   return (
     <div className="min-h-screen bg-background font-sans antialiased text-text-primary relative overflow-hidden">
       {/* Conteneur de navigation fixe (Sticky) */}
@@ -129,10 +136,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
 
             {user.boutiqueNom && (
-              <span className="hidden items-center gap-2 border-l border-border pl-4 text-base font-extrabold tracking-tight text-text-primary sm:flex">
+              <span className="hidden items-center gap-2 border-l border-border pl-4 text-base font-extrabold tracking-tight text-text-primary lg:flex">
                 <span className="text-primary text-lg">🏢</span> {user.boutiqueNom}
               </span>
             )}
+
+            {/* Sélecteur d'établissement courant (switch instantané). */}
+            <div className="hidden border-l border-border pl-3 sm:block">
+              <EtablissementSwitcher />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -209,6 +221,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <X className="h-5 w-5" />
             </button>
+          </div>
+
+          {/* Sélecteur d'établissement (mobile) */}
+          <div className="mb-4" onClick={() => setIsMobileMenuOpen(false)}>
+            <EtablissementSwitcher className="w-full" />
           </div>
 
           <nav className="mt-2">
@@ -303,7 +320,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Content main */}
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          <DunningBanner />
+          {children}
+        </main>
       </div>
 
       {/* Barre d'onglets mobile */}
