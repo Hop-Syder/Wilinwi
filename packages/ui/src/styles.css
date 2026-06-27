@@ -4,13 +4,15 @@
 
 @layer base {
   :root {
-    --color-primary: #2962FF; /* Fintech Blue */
-    --color-primary-hover: #1545d8;
-    --color-secondary: #00C853; /* Success Green */
-    --color-success: #00C853;
-    --color-warning: #FFB300; /* Warning Yellow */
+    /* Charte officielle Wilinwi — un seul bleu, une seule source de vérité :
+       primary === brand (marine), accents = vert émeraude + or (Black Luxury). */
+    --color-primary: #12355B; /* Bleu marine (= brand) */
+    --color-primary-hover: #0f2c4c;
+    --color-secondary: #00A86B; /* Vert émeraude (= emerald) */
+    --color-success: #00A86B;
+    --color-warning: #F59E0B; /* Or (= gold) */
     --color-danger: #E53935;
-    --color-info: #2962FF;
+    --color-info: #12355B;
     --color-ai: #6200EA; /* Purple AI */
 
     --background: #F4F7FC;
@@ -26,19 +28,20 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 
-    --brand: #2962FF;
-    --emerald: #00C853;
-    --gold: #FFB300;
+    --brand: #12355B;
+    --emerald: #00A86B;
+    --gold: #F59E0B;
   }
 
   .dark {
-    --color-primary: #2962FF;
-    --color-primary-hover: #5382ff;
-    --color-secondary: #00C853;
-    --color-success: #00C853;
-    --color-warning: #FFB300;
+    /* Mode sombre : bleu marine éclairci pour rester lisible sur fond foncé. */
+    --color-primary: #5b86c4;
+    --color-primary-hover: #7ea3d6;
+    --color-secondary: #1fc587;
+    --color-success: #1fc587;
+    --color-warning: #F59E0B;
     --color-danger: #ef5350;
-    --color-info: #60a5fa;
+    --color-info: #5b86c4;
     --color-ai: #7c4dff;
 
     --background: #0f172a;

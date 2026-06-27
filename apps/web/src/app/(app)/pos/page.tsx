@@ -695,6 +695,44 @@ export default function PosPage() {
       {showReceipt && lastSale && (
         <ReceiptModal sale={lastSale} onClose={() => setShowReceipt(false)} />
       )}
+
+      {/* 📱 Barre de panier fixe (mobile) — accès direct à l'encaissement sans scroller.
+          Positionnée au-dessus de la barre d'onglets + marge safe-area. */}
+      {cart.length > 0 && (
+        <div
+          className="fixed inset-x-0 z-30 px-3 sm:hidden"
+          style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="flex items-center gap-3 rounded-2xl bg-brand px-4 py-3 text-white shadow-xl shadow-brand/30">
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById('tour-cart')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="flex min-w-0 items-center gap-2.5"
+              aria-label="Voir le panier"
+            >
+              <span className="relative">
+                <ShoppingCart className="h-6 w-6" />
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-brand">
+                  {cart.reduce((s, l) => s + l.quantite, 0)}
+                </span>
+              </span>
+              <span className="tabular text-base font-bold">{total.toLocaleString()} F</span>
+            </button>
+            <button
+              type="button"
+              onClick={openCheckout}
+              disabled={busy || hasBelowFloor}
+              className="ml-auto rounded-xl bg-white px-5 py-2 text-sm font-bold text-brand shadow-sm transition-transform active:scale-95 disabled:opacity-60"
+            >
+              Encaisser
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
