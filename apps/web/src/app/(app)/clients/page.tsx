@@ -703,7 +703,35 @@ export default function ClientsPage() {
                     {ventesACredit.length === 0 ? (
                       <p className="text-slate-400 text-xs italic p-3 text-center border rounded-lg bg-slate-50/50">Aucune dette ouverte pour ce client.</p>
                     ) : (
-                      <div className="border rounded-xl overflow-hidden shadow-sm">
+                    <>
+                      {/* 📱 Mobile : cartes */}
+                      <div className="space-y-2 sm:hidden">
+                        {ventesACredit.map((s) => {
+                          const reste = s.total - s.montantVerse;
+                          return (
+                            <div key={s.id} className="rounded-xl border border-slate-200 p-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-xs font-semibold text-brand">
+                                  #{s.id.slice(0, 8).toUpperCase()}
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  {new Date(s.createdAt).toLocaleDateString('fr-FR')}
+                                </span>
+                              </div>
+                              <div className="mt-2 flex items-end justify-between">
+                                <span className="text-xs text-slate-500">
+                                  Payé {formatFCFA(s.montantVerse)} / {formatFCFA(s.total)}
+                                </span>
+                                <span className="tabular text-sm font-bold text-rose-600">
+                                  Reste {formatFCFA(reste)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* 🖥️ Tablette/Desktop : tableau */}
+                      <div className="hidden border rounded-xl overflow-hidden shadow-sm sm:block">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-50 border-b text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
                             <tr>
@@ -740,6 +768,7 @@ export default function ClientsPage() {
                           </tbody>
                         </table>
                       </div>
+                    </>
                     )}
                   </div>
 
@@ -749,7 +778,51 @@ export default function ClientsPage() {
                     {clientDetail.ventes.length === 0 ? (
                       <p className="text-slate-400 text-xs italic p-3 text-center border rounded-lg bg-slate-50/50">Aucune vente enregistrée pour ce client.</p>
                     ) : (
-                      <div className="border rounded-xl overflow-hidden shadow-sm max-h-60 overflow-y-auto">
+                    <>
+                      {/* 📱 Mobile : cartes */}
+                      <div className="max-h-72 space-y-2 overflow-y-auto sm:hidden">
+                        {clientDetail.ventes.map((s) => {
+                          const badgeStyle = STATUS_MAP[s.status] || { label: s.status, color: 'text-slate-700 bg-slate-50 border-slate-200' };
+                          const totalReturned = s.items.reduce((sum, item) => sum + (item.quantiteRetournee || 0), 0);
+                          return (
+                            <div key={s.id} className="rounded-xl border border-slate-200 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-xs font-semibold text-brand">
+                                  #{s.id.slice(0, 8).toUpperCase()}
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  {new Date(s.createdAt).toLocaleDateString('fr-FR')}
+                                </span>
+                              </div>
+                              <p className="mt-1 truncate text-xs text-slate-600">
+                                {s.items.map((it) => `${it.quantite}x ${it.product?.nom || 'Article'}`).join(', ')}
+                              </p>
+                              <div className="mt-2 flex items-center justify-between gap-2">
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${badgeStyle.color}`}>
+                                  {badgeStyle.label}
+                                  {totalReturned > 0 && (
+                                    <span className="ml-1 rounded bg-red-100 px-1 text-[9px] text-red-800">
+                                      Retour ({totalReturned})
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="tabular text-sm font-bold text-slate-800">
+                                  {formatFCFA(s.total)}
+                                </span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                className="mt-2 h-7 w-full px-2 text-[10px] border-slate-200 text-slate-700 hover:border-brand/40 hover:text-brand"
+                                onClick={() => setActiveReceiptSale(s)}
+                              >
+                                Reçu
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* 🖥️ Tablette/Desktop : tableau */}
+                      <div className="hidden border rounded-xl overflow-hidden shadow-sm max-h-60 overflow-y-auto sm:block">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-50 border-b text-slate-500 font-semibold uppercase tracking-wider text-[10px] sticky top-0">
                             <tr>
@@ -800,6 +873,7 @@ export default function ClientsPage() {
                           </tbody>
                         </table>
                       </div>
+                    </>
                     )}
                   </div>
 
@@ -809,7 +883,30 @@ export default function ClientsPage() {
                     {clientDetail.remboursements.length === 0 ? (
                       <p className="text-slate-400 text-xs italic p-3 text-center border rounded-lg bg-slate-50/50">Aucun remboursement enregistré.</p>
                     ) : (
-                      <div className="border rounded-xl overflow-hidden shadow-sm max-h-48 overflow-y-auto">
+                    <>
+                      {/* 📱 Mobile : cartes */}
+                      <div className="max-h-60 space-y-2 overflow-y-auto sm:hidden">
+                        {clientDetail.remboursements.map((p) => (
+                          <div key={p.id} className="rounded-xl border border-slate-200 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium text-slate-600">
+                                {PAYMENT_METHOD_LABELS[p.methode as PaymentMethod] || p.methode}
+                              </span>
+                              <span className="tabular text-sm font-bold text-emerald-700">
+                                +{formatFCFA(p.montant)}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+                              <span className="truncate italic">{p.note || '—'}</span>
+                              <span className="shrink-0">
+                                {new Date(p.createdAt).toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* 🖥️ Tablette/Desktop : tableau */}
+                      <div className="hidden border rounded-xl overflow-hidden shadow-sm max-h-48 overflow-y-auto sm:block">
                         <table className="w-full text-xs">
                           <thead className="bg-slate-50 border-b text-slate-500 font-semibold uppercase tracking-wider text-[10px] sticky top-0">
                             <tr>
@@ -839,6 +936,7 @@ export default function ClientsPage() {
                           </tbody>
                         </table>
                       </div>
+                    </>
                     )}
                   </div>
                 </div>
