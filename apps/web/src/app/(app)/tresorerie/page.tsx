@@ -452,7 +452,52 @@ export default function TresoreriePage() {
 
           {/* Table des mouvements */}
           <Card className="overflow-hidden p-0">
-            <div className="overflow-x-auto">
+            {/* 📱 Mobile : cartes empilées */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {loading && <div className="p-10 text-center text-slate-400">Chargement…</div>}
+              {!loading &&
+                movements.map((m) => (
+                  <div key={m.id} className="flex items-start justify-between gap-3 p-4">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-700">
+                        {m.categorie
+                          ? (EXPENSE_CATEGORY_LABELS[m.categorie as keyof typeof EXPENSE_CATEGORY_LABELS] ?? m.categorie)
+                          : (SOURCE_LABELS[m.source] ?? m.source)}
+                      </p>
+                      {m.note && <p className="truncate text-xs text-slate-400">{m.note}</p>}
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <Badge tone="neutral">{CASH_ACCOUNT_LABELS[m.compte]}</Badge>
+                        <span className="tabular text-[11px] text-slate-400">
+                          {new Date(m.createdAt).toLocaleDateString('fr-FR')} ·{' '}
+                          {new Date(m.createdAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`tabular font-bold ${m.type === 'IN' ? 'text-emerald-700' : 'text-red-600'}`}
+                      >
+                        {m.type === 'IN' ? '+' : '−'}
+                        {formatFCFA(m.montant)}
+                      </p>
+                      <p className="tabular text-[11px] text-slate-400">
+                        Solde {formatFCFA(m.soldeApres)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              {!loading && movements.length === 0 && (
+                <div className="p-12 text-center text-slate-400">
+                  Aucun mouvement sur cette période.
+                </div>
+              )}
+            </div>
+
+            {/* 🖥️ Desktop : tableau */}
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500">
                   <tr>

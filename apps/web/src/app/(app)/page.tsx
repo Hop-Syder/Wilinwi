@@ -183,6 +183,5 @@ export default function HubPage() {
         })}
       </div>
     </div>
-    </div >
   );
 }

@@ -400,7 +400,72 @@ export default function VentesPage() {
       {error && <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
       <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-        <div className="overflow-x-auto">
+        {/* 📱 Mobile : cartes empilées */}
+        <div className="divide-y divide-slate-100 md:hidden">
+          {sales.map((s) => {
+            const reste = s.total - s.montantVerse;
+            return (
+              <div key={s.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="tabular text-lg font-bold text-slate-900">{formatFCFA(s.total)}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {s.client?.nom || 'Comptoir'} ·{' '}
+                      {new Date(s.createdAt).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                    {s.vendeur?.nom && (
+                      <p className="text-[11px] text-slate-400">Vendeur : {s.vendeur.nom}</p>
+                    )}
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${STATUS[s.status]?.color || ''}`}
+                  >
+                    {STATUS[s.status]?.label || s.status}
+                  </span>
+                </div>
+                {reste > 0 && (
+                  <p className="mt-1 text-xs font-semibold text-amber-600">
+                    Reste dû : {formatFCFA(reste)}
+                  </p>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={() => setDetail(s)}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Détail
+                  </button>
+                  <button
+                    onClick={() => setReceipt(s)}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-brand transition-colors hover:bg-blue-50"
+                  >
+                    <ReceiptIcon className="h-3.5 w-3.5" /> Reçu
+                  </button>
+                  {s.status === 'PENDING_PAYMENT' && (
+                    <button
+                      onClick={() => setPaymentSale(s)}
+                      className="flex-1 rounded-lg bg-amber-100 py-2 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-200"
+                    >
+                      Encaisser
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {sales.length === 0 && (
+            <div className="p-12 text-center text-slate-400">
+              <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+              Aucune vente trouvée avec ces filtres.
+            </div>
+          )}
+        </div>
+
+        {/* 🖥️ Desktop : tableau */}
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 uppercase tracking-wider text-xs font-bold">
               <tr>
