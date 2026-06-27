@@ -107,6 +107,11 @@ export default function UtilisateursPage() {
     setBusy(true);
     setError(null);
     setNotice(null);
+    if (draft.pin && !/^\d{4}$/.test(draft.pin)) {
+      setError("Le code PIN doit comporter exactement 4 chiffres.");
+      setBusy(false);
+      return;
+    }
     try {
       if (draft.id) {
         await apiPatch(`/api/users/${draft.id}`, {
@@ -155,8 +160,12 @@ export default function UtilisateursPage() {
   }
 
   async function resetPin(u: UserDto) {
-    const pin = window.prompt(`Nouveau code PIN (4 à 6 chiffres) pour ${u.nom} :`);
+    const pin = window.prompt(`Nouveau code PIN (4 chiffres) pour ${u.nom} :`);
     if (!pin) return;
+    if (!/^\d{4}$/.test(pin)) {
+      alert("Le code PIN doit comporter exactement 4 chiffres.");
+      return;
+    }
     try {
       await apiPost(`/api/users/${u.id}/pin`, { pin });
       await load();
@@ -292,7 +301,7 @@ export default function UtilisateursPage() {
                 <Field label="Email (optionnel)"><Input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
               )}
               <Field label={draft.id ? 'Nouveau PIN (optionnel)' : 'Code PIN (optionnel)'}>
-                <Input inputMode="numeric" value={draft.pin} onChange={(e) => setDraft({ ...draft, pin: e.target.value })} placeholder="4 à 6 chiffres" />
+                <Input inputMode="numeric" value={draft.pin} onChange={(e) => setDraft({ ...draft, pin: e.target.value })} placeholder="4 chiffres" />
               </Field>
             </div>
 
