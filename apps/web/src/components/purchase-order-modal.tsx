@@ -238,7 +238,7 @@ export function PurchaseOrderModal({
               >
                 <option value="">Standard</option>
                 {selectedProduct?.variants.map((v) => (
-                  <option key={v.id} value={v.id}>{v.nom}</option>
+                  <option key={v.id} value={v.id}>{Object.entries(v.attributs).map(([k, val]) => `${k}: ${val}`).join(', ') || v.sku || v.id}</option>
                 ))}
               </select>
             </div>
