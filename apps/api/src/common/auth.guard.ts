@@ -115,11 +115,12 @@ export class AuthGuard implements CanActivate {
     const headerEtab = this.extractEtablissement(req.headers['x-etablissement-id']);
     const isOwner = resolved.role === 'OWNER';
     const canSeeAll = isOwner && resolved.etablissementIds.length >= 2;
+    // Vue globale « Tous » : lectures agrégées (etablissementId=null), écritures refusées.
+    const isGlobalView = headerEtab === 'ALL' && canSeeAll;
 
-    const etablissementId =
-      headerEtab === 'ALL' && canSeeAll
-        ? null
-        : headerEtab && resolved.etablissementIds.includes(headerEtab)
+    const etablissementId = isGlobalView
+      ? null
+      : headerEtab && resolved.etablissementIds.includes(headerEtab)
         ? headerEtab
         : (resolved.etablissementIds[0] ?? null);
 
@@ -131,6 +132,7 @@ export class AuthGuard implements CanActivate {
       plan: resolved.plan,
       modules: resolved.modules,
       etablissementId,
+      isGlobalView,
       etablissementIds: resolved.etablissementIds,
       subscriptionStatus: resolved.subscriptionStatus,
       dunning: resolved.dunning,

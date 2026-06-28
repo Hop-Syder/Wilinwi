@@ -54,8 +54,12 @@ export const AuthContextSchema = z.object({
   plan: PlanSchema,
   /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
   modules: z.array(z.enum(MODULES)).default([]),
-  /** Établissement courant (en-tête X-Etablissement-Id, borné à la liste autorisée). */
+  /** Établissement courant (en-tête X-Etablissement-Id, borné à la liste autorisée).
+   *  `null` = aucun établissement scopé (vue globale « Tous » ou aucun accès). */
   etablissementId: IdSchema.nullable().default(null),
+  /** Vue globale « Tous les établissements » (OWNER, ≥2 établissements). En vue
+   *  globale les lectures agrègent et les écritures scopées sont refusées. */
+  isGlobalView: z.boolean().default(false),
   /** Établissements auxquels l'utilisateur a accès. */
   etablissementIds: z.array(IdSchema).default([]),
   /** Statut d'abonnement de l'entreprise (facturation). */

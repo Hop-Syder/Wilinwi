@@ -61,6 +61,7 @@ export default function UtilisateursPage() {
   const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -84,11 +85,15 @@ export default function UtilisateursPage() {
 
   function openCreate() {
     setError(null);
+    setNotice(null);
+    setCreatedInviteLink(null);
     // Nouveau collaborateur : accès à tous les établissements par défaut.
     setDraft({ ...emptyDraft, etablissementIds: etablissements.map((e) => e.id) });
   }
   function openEdit(u: UserDto) {
     setError(null);
+    setNotice(null);
+    setCreatedInviteLink(null);
     setDraft({
       id: u.id,
       nom: u.nom,
@@ -107,6 +112,7 @@ export default function UtilisateursPage() {
     setBusy(true);
     setError(null);
     setNotice(null);
+    setCreatedInviteLink(null);
     if (draft.pin && !/^\d{4}$/.test(draft.pin)) {
       setError("Le code PIN doit comporter exactement 4 chiffres.");
       setBusy(false);
@@ -124,7 +130,7 @@ export default function UtilisateursPage() {
         });
         if (draft.pin) await apiPost(`/api/users/${draft.id}/pin`, { pin: draft.pin });
       } else {
-        await apiPost('/api/users', {
+        const created = await apiPost<UserDto>('/api/users', {
           nom: draft.nom,
           poste: draft.poste || undefined,
           role: draft.role,
@@ -135,7 +141,11 @@ export default function UtilisateursPage() {
           etablissementIds: draft.etablissementIds,
         });
         if (draft.email) {
-          setNotice(`Invitation envoyée par email à ${draft.email}. Le lien permet de définir le mot de passe.`);
+          if (created.invitationLink) {
+            setCreatedInviteLink(created.invitationLink);
+          } else {
+            setNotice(`Invitation envoyée par email à ${draft.email}. Le lien permet de définir le mot de passe.`);
+          }
         }
       }
       setDraft(null);
@@ -213,6 +223,43 @@ export default function UtilisateursPage() {
       {notice && (
         <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {notice}
+        </div>
+      )}
+      {createdInviteLink && (
+        <div className="mt-4 rounded-lg border border-brand/20 bg-brand/5 p-4 text-sm text-brand">
+          <p className="font-semibold mb-1">🎉 Collaborateur invité avec succès !</p>
+          <p className="text-xs text-slate-500 mb-3">
+            L&apos;invitation a été initiée. Si le collaborateur ne reçoit pas l&apos;email (SMTP non configuré ou spam), vous pouvez copier ce lien et lui envoyer manuellement :
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 max-w-xl">
+            <input
+              type="text"
+              readOnly
+              value={createdInviteLink}
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 outline-none"
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
+            <div className="flex gap-2 shrink-0">
+              <Button
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(createdInviteLink);
+                  alert("Lien d'invitation copié !");
+                }}
+                className="text-xs py-1 px-3 bg-brand text-white hover:bg-brand/90 transition-colors"
+              >
+                Copier
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCreatedInviteLink(null)}
+                className="text-xs py-1 px-3 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Fermer
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -25,6 +25,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import { Prisma, type TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { assertConcreteEtablissement } from '../common/scope';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
 
 @Injectable()
@@ -38,6 +39,8 @@ export class SalesService {
    * Idempotent via clientGeneratedId pour la synchronisation hors-ligne.
    */
   async create(ctx: AuthContext, input: CreateSaleInput) {
+    // Vue globale : impossible de rattacher la vente à une boutique → on refuse.
+    assertConcreteEtablissement(ctx);
     try {
       return await this.createInternal(ctx, input);
     } catch (err) {

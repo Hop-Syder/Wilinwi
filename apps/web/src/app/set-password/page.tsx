@@ -61,7 +61,7 @@ export default function SetPasswordPage() {
     <main className="flex min-h-screen items-center justify-center bg-brand px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
         <div className="flex items-center gap-2 mb-2">
-          <Image src="/logo-wilinwi.png" alt="Wilinwi Logo" width={36} height={36} className="object-contain" />
+          <Image src="/logo.png" alt="Wilinwi Logo" width={36} height={36} className="object-contain" />
           <h1 className="font-display text-2xl font-black text-brand">Wilinwi</h1>
         </div>
         <p className="text-sm text-slate-500">Bienvenue ! Définissez votre mot de passe.</p>

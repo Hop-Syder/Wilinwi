@@ -21,7 +21,7 @@ import { SupabaseAdminService } from './supabase-admin.service';
 
 const PIN_PLACEHOLDER_DOMAIN = '@pin.local';
 
-function toUserDto(u: User, etablissementIds: string[] = []): UserDto {
+function toUserDto(u: User, etablissementIds: string[] = [], invitationLink?: string): UserDto {
   return {
     id: u.id,
     nom: u.nom,
@@ -33,6 +33,7 @@ function toUserDto(u: User, etablissementIds: string[] = []): UserDto {
     permissions: u.permissions,
     hasPin: !!u.pinCode,
     etablissementIds,
+    invitationLink,
   };
 }
 
@@ -92,9 +93,12 @@ export class UsersService {
     // lien reçu) ; sinon utilisateur PIN-only (id applicatif, login sur poste partagé).
     let userId: string;
     let email: string;
+    let invitationLink: string | undefined;
     if (input.email) {
-      userId = await this.supabase.inviteByEmail(input.email);
+      const res = await this.supabase.inviteByEmail(input.email);
+      userId = res.id;
       email = input.email;
+      invitationLink = res.link;
     } else {
       userId = randomUUID();
       email = `pin_${userId}${PIN_PLACEHOLDER_DOMAIN}`;
@@ -150,7 +154,7 @@ export class UsersService {
         entityId: userId,
         metadata: { nom: input.nom, role: input.role },
       });
-      return toUserDto(user, etablissementIds);
+      return toUserDto(user, etablissementIds, invitationLink);
     } catch (err) {
       if (input.email) await this.supabase.deleteUser(userId).catch(() => undefined);
       throw err;

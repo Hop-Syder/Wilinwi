@@ -44,6 +44,8 @@ export const CAPABILITIES = [
   'stock:write',
   'inventory:count',
   'inventory:validate',
+  // Entrepôt — Fournisseurs & achats (MVP2)
+  'supplier:manage', // fournisseurs, bons de commande, réception, dettes fournisseurs
   // Ventes
   'sale:create',
   'sale:read',
@@ -78,6 +80,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   MANAGER: [
     'tenant:configure',
     'users:manage',
+    'supplier:manage',
     'stock:read',
     'stock:write',
     'inventory:count',
@@ -149,6 +152,7 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'stock:write': 'STOCK',
   'inventory:count': 'STOCK',
   'inventory:validate': 'STOCK',
+  'supplier:manage': 'STOCK',
   'sale:create': 'POS',
   'sale:read': 'POS',
   'sale:override_floor_price': 'POS',

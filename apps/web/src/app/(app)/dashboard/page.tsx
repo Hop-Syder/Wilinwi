@@ -13,18 +13,22 @@ import { TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle } from 'lu
 import {
   ResponsiveContainer,
   ComposedChart,
+  BarChart,
   Area,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from 'recharts';
+import { Store } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import { StatCard, Card, CardTitle, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
+import { useAuth } from '@/lib/auth-context';
 
 interface Dashboard {
   ventesDuJour: number;
@@ -38,11 +42,20 @@ interface Dashboard {
   };
 }
 
+interface EtabBreakdown {
+  etablissementId: string;
+  nom: string;
+  ventes: number;
+  nombreVentes: number;
+  depenses: number;
+}
+
 interface Report {
   chiffreAffaires: number;
   totalDepenses: number;
   benefice?: number;
   serie: { date: string; ca: number; ventes: number; depenses: number }[];
+  parEtablissement?: EtabBreakdown[];
 }
 
 const CA_COLOR = '#00A86B'; // vert émeraude (charte) — progression / chiffre d'affaires
@@ -55,6 +68,8 @@ const fmtK = (n: number) =>
   Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const isGlobalView = user?.etablissementId === 'ALL';
   const { data, loading, error } = useCachedQuery<Dashboard>('dashboard', () =>
     apiGet<Dashboard>('/api/analytics/dashboard'),
   );
@@ -263,6 +278,76 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Vue consolidée : ventes & dépenses par établissement (vue « Tous ») */}
+      {isGlobalView && (report?.parEtablissement?.length ?? 0) > 0 && (
+        <div className="mt-8">
+          <Card className="p-6">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
+                Vue consolidée
+              </span>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Store className="h-5 w-5 text-primary" /> Ventes &amp; dépenses par établissement
+              </CardTitle>
+            </div>
+
+            <div className="mt-6 h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={report!.parEtablissement}
+                  margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="nom"
+                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+                    interval={0}
+                  />
+                  <YAxis
+                    tickFormatter={fmtK}
+                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+                    width={44}
+                  />
+                  <Tooltip content={<EtabTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="ventes" name="Ventes" fill={CA_COLOR} radius={[3, 3, 0, 0]} maxBarSize={44} />
+                  <Bar dataKey="depenses" name="Dépenses" fill={DEP_COLOR} radius={[3, 3, 0, 0]} maxBarSize={44} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-left text-text-secondary">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Établissement</th>
+                    <th className="px-4 py-2 text-right font-medium">Ventes</th>
+                    <th className="px-4 py-2 text-right font-medium">Dépenses</th>
+                    <th className="py-2 pl-4 text-right font-medium">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report!.parEtablissement!.map((e) => (
+                    <tr key={e.etablissementId} className="border-b border-border/50 last:border-0">
+                      <td className="py-2 pr-4 font-medium text-text-primary">{e.nom}</td>
+                      <td className="tabular px-4 py-2 text-right" style={{ color: CA_COLOR }}>
+                        {formatFCFA(e.ventes)}
+                      </td>
+                      <td className="tabular px-4 py-2 text-right" style={{ color: DEP_COLOR }}>
+                        {formatFCFA(e.depenses)}
+                      </td>
+                      <td className="tabular py-2 pl-4 text-right font-semibold text-text-primary">
+                        {formatFCFA(e.ventes - e.depenses)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardTitle>
@@ -325,6 +410,35 @@ function ChartTooltip({ active, payload, label }: TooltipLike) {
           Net
         </span>
         <span className="tabular font-bold">{formatFCFA(ca - dep)}</span>
+      </p>
+    </div>
+  );
+}
+
+interface EtabTooltipProps {
+  active?: boolean;
+  label?: string | number;
+  payload?: { name?: string; dataKey?: string | number; value?: number }[];
+}
+
+function EtabTooltip({ active, payload, label }: EtabTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const ventes = Number(payload.find((p) => p.dataKey === 'ventes')?.value ?? 0);
+  const dep = Number(payload.find((p) => p.dataKey === 'depenses')?.value ?? 0);
+  return (
+    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg">
+      <p className="mb-1 font-semibold text-text-primary">{String(label)}</p>
+      <p className="flex items-center justify-between gap-4" style={{ color: CA_COLOR }}>
+        <span>Ventes</span>
+        <span className="tabular font-semibold">{formatFCFA(ventes)}</span>
+      </p>
+      <p className="flex items-center justify-between gap-4" style={{ color: DEP_COLOR }}>
+        <span>Dépenses</span>
+        <span className="tabular font-semibold">{formatFCFA(dep)}</span>
+      </p>
+      <p className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-1 text-text-primary">
+        <span>Net</span>
+        <span className="tabular font-bold">{formatFCFA(ventes - dep)}</span>
       </p>
     </div>
   );

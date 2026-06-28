@@ -19,6 +19,7 @@ import {
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { assertConcreteEtablissement } from '../common/scope';
 import { toClientDto } from './client.mapper';
 
 @Injectable()
@@ -88,6 +89,8 @@ export class ClientsService {
 
   /** Enregistre un remboursement : diminue le solde de crédit + historise. */
   async recordPayment(ctx: AuthContext, id: string, input: RecordClientPaymentInput) {
+    // L'encaissement entre en trésorerie → exige un établissement précis.
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const client = await this.ensureClient(tx, ctx.tenantId, id);
       if (input.montant > client.soldeCredit) {

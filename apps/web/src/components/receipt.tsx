@@ -80,7 +80,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
         <div id="receipt-print" className="px-5 py-4 font-mono text-[12px] text-slate-900">
           <div className="text-center">
             <div className="flex justify-center mb-1.5 no-print">
-              <Image src="/logo-wilinwi.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain animate-pulse" />
+              <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain animate-pulse" />
             </div>
             <div className="font-display text-lg font-bold">◈ WILINWI</div>
             <div className="text-[11px] text-slate-500">Reçu de caisse</div>

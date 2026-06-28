@@ -17,6 +17,7 @@ import type {
   ValidateInventoryInput,
 } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
+import { assertConcreteEtablissement } from '../common/scope';
 
 @Injectable()
 export class InventoryService {
@@ -24,6 +25,7 @@ export class InventoryService {
 
   /** 1. Lancer : fige le stock théorique des produits sélectionnés. */
   async start(ctx: AuthContext, input: StartInventoryInput) {
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const products = await tx.product.findMany({
         where: {

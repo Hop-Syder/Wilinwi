@@ -29,6 +29,7 @@ import {
   Menu,
   X,
   Truck,
+  Warehouse,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
@@ -44,6 +45,7 @@ const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: Modu
   { href: '/', label: 'Hub', icon: LayoutGrid },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3, module: 'ANALYTICS' },
   { href: '/stock', label: 'Stock', icon: Package, module: 'STOCK' },
+  { href: '/entrepot', label: 'Entrepôt', icon: Warehouse, module: 'STOCK' },
   { href: '/pos', label: 'Caisse', icon: ShoppingCart, module: 'POS' },
   { href: '/ventes', label: 'Ventes', icon: Receipt, module: 'POS' },
   { href: '/clients', label: 'Clients', icon: Users, module: 'CRM' },

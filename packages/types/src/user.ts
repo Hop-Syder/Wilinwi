@@ -61,4 +61,6 @@ export interface UserDto {
   hasPin: boolean;
   /** Établissements auxquels l'employé a accès. */
   etablissementIds: string[];
+  /** Lien d'invitation (Optionnel, renvoyé uniquement à la création pour transmission manuelle). */
+  invitationLink?: string;
 }

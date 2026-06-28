@@ -40,6 +40,9 @@ export default function PosPage() {
   const { refreshPending } = useSync();
   const { user } = useAuth();
   const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
+  // Vue globale « Tous les établissements » : on ne peut pas vendre (la vente doit
+  // être rattachée à une boutique précise) → on désactive l'encaissement.
+  const isGlobalView = user?.etablissementId === 'ALL';
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -367,6 +370,17 @@ export default function PosPage() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      {/* Vue globale : la vente exige une boutique précise */}
+      {isGlobalView && (
+        <div className="lg:col-span-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            Vous êtes en vue « Tous les établissements » — sélectionnez une boutique précise
+            (sélecteur en haut) pour encaisser une vente.
+          </p>
+        </div>
+      )}
+
       {/* Ventes refusées par le serveur (échec permanent) — action requise */}
       {rejected.length > 0 && (
         <div className="lg:col-span-2 rounded-xl border border-red-200 bg-red-50 p-3">
@@ -617,7 +631,7 @@ export default function PosPage() {
 
             <Button
               className="w-full h-12 text-lg"
-              disabled={cart.length === 0 || busy || hasBelowFloor}
+              disabled={cart.length === 0 || busy || hasBelowFloor || isGlobalView}
               onClick={openCheckout}
             >
               Encaisser
@@ -725,7 +739,7 @@ export default function PosPage() {
             <button
               type="button"
               onClick={openCheckout}
-              disabled={busy || hasBelowFloor}
+              disabled={busy || hasBelowFloor || isGlobalView}
               className="ml-auto rounded-xl bg-white px-5 py-2 text-sm font-bold text-brand shadow-sm transition-transform active:scale-95 disabled:opacity-60"
             >
               Encaisser

@@ -49,20 +49,37 @@ export class SupabaseAdminService {
   /**
    * Invite un collaborateur par email : Supabase crée le compte (sans mot de passe)
    * et envoie un email d'invitation pointant vers la page `/set-password` où le
-   * collaborateur définit son mot de passe à la 1ʳᵉ connexion. Renvoie son id.
+   * collaborateur définit son mot de passe à la 1ʳᵉ connexion. Renvoie son id et le lien.
    */
-  async inviteByEmail(email: string): Promise<string> {
+  async inviteByEmail(email: string): Promise<{ id: string; link?: string }> {
     const base = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(
       /\/$/,
       '',
     );
-    const { data, error } = await this.client.auth.admin.inviteUserByEmail(email, {
+    const { data: inviteData, error: inviteError } = await this.client.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${base}/set-password`,
     });
-    if (error || !data.user) {
-      throw new Error(`Invitation par email échouée: ${error?.message ?? 'inconnue'}`);
+    if (inviteError || !inviteData.user) {
+      throw new Error(`Invitation par email échouée: ${inviteError?.message ?? 'inconnue'}`);
     }
-    return data.user.id;
+
+    let link: string | undefined;
+    try {
+      const { data: linkData, error: linkError } = await this.client.auth.admin.generateLink({
+        type: 'invite',
+        email,
+        options: {
+          redirectTo: `${base}/set-password`,
+        },
+      });
+      if (!linkError && linkData?.properties?.action_link) {
+        link = linkData.properties.action_link;
+      }
+    } catch {
+      // Ignorer si la génération échoue
+    }
+
+    return { id: inviteData.user.id, link };
   }
 
   /** Injecte tenant_id/role/plan dans app_metadata → présents dans le JWT (SSO). */

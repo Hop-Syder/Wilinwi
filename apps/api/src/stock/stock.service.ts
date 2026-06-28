@@ -26,6 +26,7 @@ import {
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { assertConcreteEtablissement } from '../common/scope';
 import { toProductDto } from './product.mapper';
 
 @Injectable()
@@ -44,40 +45,18 @@ export class StockService {
         ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
       });
 
-      // Si un établissement spécifique est sélectionné, on calcule le stock scopé
+      // Établissement courant : stock scopé = Σ mouvements de CET établissement
+      // (grand livre unique). Vue globale (null) → Product.stock dénormalisé.
       if (ctx.etablissementId) {
-        // Étape 1 : Récupérer tous les produits ayant au moins un mouvement dans le tenant
-        const allMovements = await tx.stockMovement.findMany({
-          where: { tenantId: ctx.tenantId },
-          select: { productId: true },
-        });
-        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
-
-        // Étape 2 : Récupérer les mouvements de stock de cet établissement
-        const activeMovements = await tx.stockMovement.findMany({
-          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
-          select: { productId: true, variantId: true, quantite: true },
-        });
-
-        const stockByProduct: Record<string, number> = {};
-        const stockByVariant: Record<string, number> = {};
-        for (const m of activeMovements) {
-          if (m.variantId) {
-            stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
-          } else {
-            stockByProduct[m.productId] = (stockByProduct[m.productId] ?? 0) + m.quantite;
-          }
-        }
-
-        // Étape 3 : Assigner le stock scopé ou le fallback global
+        const { byProduct, byVariant } = await this.scopedStockMaps(
+          tx,
+          ctx.tenantId,
+          ctx.etablissementId,
+        );
         for (const p of prods) {
-          if (productsWithAnyMovements.has(p.id)) {
-            p.stock = stockByProduct[p.id] ?? 0;
-            if (p.variants) {
-              for (const v of p.variants) {
-                v.stock = stockByVariant[v.id] ?? 0;
-              }
-            }
+          p.stock = byProduct.get(p.id) ?? 0;
+          for (const v of p.variants) {
+            v.stock = byVariant.get(v.id) ?? 0;
           }
         }
       }
@@ -93,30 +72,24 @@ export class StockService {
   async getProduct(ctx: AuthContext, id: string) {
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const p = await this.ensureProduct(tx, ctx.tenantId, id);
+      // Stock scopé à l'établissement courant = Σ mouvements (grand livre).
       if (ctx.etablissementId) {
-        const hasAnyMovements = await tx.stockMovement.count({
-          where: { tenantId: ctx.tenantId, productId: p.id },
-        }) > 0;
-        if (hasAnyMovements) {
-          const movements = await tx.stockMovement.findMany({
-            where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId, productId: p.id },
-            select: { variantId: true, quantite: true },
-          });
-          let stockProduct = 0;
-          const stockByVariant: Record<string, number> = {};
-          for (const m of movements) {
-            if (m.variantId) {
-              stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
-            } else {
-              stockProduct += m.quantite;
-            }
+        const movements = await tx.stockMovement.findMany({
+          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId, productId: p.id },
+          select: { variantId: true, quantite: true },
+        });
+        let stockProduct = 0;
+        const stockByVariant: Record<string, number> = {};
+        for (const m of movements) {
+          if (m.variantId) {
+            stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
+          } else {
+            stockProduct += m.quantite;
           }
-          p.stock = stockProduct;
-          if (p.variants) {
-            for (const v of p.variants) {
-              v.stock = stockByVariant[v.id] ?? 0;
-            }
-          }
+        }
+        p.stock = stockProduct;
+        for (const v of p.variants) {
+          v.stock = stockByVariant[v.id] ?? 0;
         }
       }
       return p;
@@ -134,8 +107,8 @@ export class StockService {
     // Gating images : la galerie produit est réservée aux plans Business+ ;
     // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
     const photos = input.photos.slice(0, maxProductPhotos(ctx.plan));
-    const product = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.product.create({
+    const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const created = await tx.product.create({
         data: {
           tenantId: ctx.tenantId,
           nom: input.nom,
@@ -156,10 +129,81 @@ export class StockService {
             })),
           },
         },
-        include: { variants: true }
-      }),
-    );
+        include: { variants: true },
+      });
+
+      // Grand livre : le stock initial devient un mouvement IN rattaché à un
+      // établissement (courant, sinon primaire) → le stock scopé reste cohérent.
+      const etablissementId = ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
+      if (etablissementId) {
+        if (created.stock !== 0) {
+          await tx.stockMovement.create({
+            data: {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              productId: created.id,
+              variantId: null,
+              type: 'IN',
+              quantite: created.stock,
+              motif: 'Stock initial',
+            },
+          });
+        }
+        for (const v of created.variants) {
+          if (v.stock !== 0) {
+            await tx.stockMovement.create({
+              data: {
+                tenantId: ctx.tenantId,
+                etablissementId,
+                productId: created.id,
+                variantId: v.id,
+                type: 'IN',
+                quantite: v.stock,
+                motif: 'Stock initial',
+              },
+            });
+          }
+        }
+      }
+      return created;
+    });
     return toProductDto(product, ctx.role);
+  }
+
+  /** Établissement primaire (le plus ancien) du tenant — pour rattacher le stock initial. */
+  private async primaryEtablissementId(tx: TenantTx, tenantId: string): Promise<string | null> {
+    const first = await tx.etablissement.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    return first?.id ?? null;
+  }
+
+  /**
+   * Stock scopé d'un établissement = Σ mouvements (niveau produit hors variante +
+   * par variante). Deux `groupBy` bornés à l'établissement → pas de scan global.
+   */
+  private async scopedStockMaps(tx: TenantTx, tenantId: string, etablissementId: string) {
+    const [byProd, byVar] = await Promise.all([
+      tx.stockMovement.groupBy({
+        by: ['productId'],
+        where: { tenantId, etablissementId, variantId: null },
+        _sum: { quantite: true },
+      }),
+      tx.stockMovement.groupBy({
+        by: ['variantId'],
+        where: { tenantId, etablissementId, NOT: { variantId: null } },
+        _sum: { quantite: true },
+      }),
+    ]);
+    const byProduct = new Map<string, number>(
+      byProd.map((r) => [r.productId, r._sum.quantite ?? 0]),
+    );
+    const byVariant = new Map<string, number>(
+      byVar.filter((r) => r.variantId).map((r) => [r.variantId as string, r._sum.quantite ?? 0]),
+    );
+    return { byProduct, byVariant };
   }
 
   async update(ctx: AuthContext, id: string, input: UpdateProductInput) {
@@ -218,6 +262,8 @@ export class StockService {
    * atomique. La quantité est normalisée selon le type (IN +, OUT -, ADJUST signé).
    */
   async addMovement(ctx: AuthContext, input: CreateStockMovementInput) {
+    // Le mouvement doit être rattaché à une boutique précise (pas en vue globale).
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const product = await this.ensureProduct(tx, ctx.tenantId, input.productId);
       const delta = this.signedDelta(input.type, input.quantite);
@@ -302,56 +348,9 @@ export class StockService {
         select: { quantite: true },
       });
 
-      const currentSourceStock = movementsSource.reduce((acc, m) => acc + m.quantite, 0);
-
-      let finalSourceStock = currentSourceStock;
-      const allMovementsCount = await tx.stockMovement.count({
-        where: { tenantId: ctx.tenantId, productId: input.productId },
-      });
-
-      if (allMovementsCount === 0) {
-        const p = await tx.product.findFirst({
-          where: { id: input.productId, tenantId: ctx.tenantId },
-          include: { variants: true },
-        });
-        if (p) {
-          if (input.variantId) {
-            const v = p.variants.find((varItem) => varItem.id === input.variantId);
-            finalSourceStock = v ? v.stock : 0;
-          } else {
-            finalSourceStock = p.stock;
-          }
-        }
-      } else {
-        const p = await tx.product.findFirst({
-          where: { id: input.productId, tenantId: ctx.tenantId },
-          include: { variants: true },
-        });
-        const activeEtabs = await tx.etablissement.findMany({
-          where: { tenantId: ctx.tenantId },
-          orderBy: { createdAt: 'asc' },
-        });
-        const isPrimary = activeEtabs[0]?.id === source.id;
-
-        if (p && isPrimary) {
-          const allMovements = await tx.stockMovement.findMany({
-            where: { tenantId: ctx.tenantId, productId: input.productId, variantId: input.variantId ?? null },
-            select: { quantite: true },
-          });
-          const sumAll = allMovements.reduce((acc, m) => acc + m.quantite, 0);
-          
-          let globalDbStock = 0;
-          if (input.variantId) {
-            const v = p.variants.find((varItem) => varItem.id === input.variantId);
-            globalDbStock = v ? v.stock : 0;
-          } else {
-            globalDbStock = p.stock;
-          }
-
-          const untrackedInitialStock = Math.max(0, globalDbStock - sumAll);
-          finalSourceStock += untrackedInitialStock;
-        }
-      }
+      // Grand livre unifié : le stock disponible dans la source = Σ de ses mouvements
+      // (le stock initial y est inclus, étant lui-même un mouvement).
+      const finalSourceStock = movementsSource.reduce((acc, m) => acc + m.quantite, 0);
 
       if (finalSourceStock < input.quantite) {
         throw new BadRequestException(
@@ -397,26 +396,17 @@ export class StockService {
         where: { tenantId: ctx.tenantId, actif: true },
       });
 
+      // Valorisation scopée à l'établissement courant : Σ mouvements par produit
+      // (toutes variantes confondues). Vue globale (null) → Product.stock.
       if (ctx.etablissementId) {
-        const allMovements = await tx.stockMovement.findMany({
-          where: { tenantId: ctx.tenantId },
-          select: { productId: true },
-        });
-        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
-
-        const activeMovements = await tx.stockMovement.findMany({
+        const byProd = await tx.stockMovement.groupBy({
+          by: ['productId'],
           where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
-          select: { productId: true, quantite: true },
+          _sum: { quantite: true },
         });
-        const stockByProduct: Record<string, number> = {};
-        for (const m of activeMovements) {
-          stockByProduct[m.productId] = (stockByProduct[m.productId] ?? 0) + m.quantite;
-        }
-
+        const stockByProduct = new Map(byProd.map((r) => [r.productId, r._sum.quantite ?? 0]));
         for (const p of products) {
-          if (productsWithAnyMovements.has(p.id)) {
-            p.stock = stockByProduct[p.id] ?? 0;
-          }
+          p.stock = stockByProduct.get(p.id) ?? 0;
         }
       }
 

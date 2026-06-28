@@ -105,7 +105,7 @@ export class AuthService {
       throw new ForbiddenException('Seul le propriétaire peut inviter un autre propriétaire.');
     }
     // Invitation par email : le collaborateur définit son mot de passe via le lien reçu.
-    const userId = await this.supabase.inviteByEmail(input.email);
+    const { id: userId } = await this.supabase.inviteByEmail(input.email);
 
     try {
       await this.prisma.forTenant(ctx.tenantId, async (tx) => {

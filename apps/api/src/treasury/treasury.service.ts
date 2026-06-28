@@ -22,6 +22,7 @@ import {
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { assertConcreteEtablissement } from '../common/scope';
 
 export type Balances = Record<CashAccount, number>;
 
@@ -119,6 +120,7 @@ export class TreasuryService {
 
   /** Dépense (sortie). */
   async recordExpense(ctx: AuthContext, input: RecordExpenseInput) {
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.cashMovement.create({
         data: {
@@ -140,6 +142,7 @@ export class TreasuryService {
 
   /** Mouvement manuel (ajustement / solde d'ouverture). */
   async recordMovement(ctx: AuthContext, input: RecordCashMovementInput) {
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.cashMovement.create({
         data: {
@@ -163,6 +166,7 @@ export class TreasuryService {
    * Lève une BadRequestException si le solde du compte source est insuffisant.
    */
   async transfer(ctx: AuthContext, input: TransferInput) {
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       // Vérification du solde source (établissement courant)
       const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
@@ -260,6 +264,7 @@ export class TreasuryService {
    * Si un écart est constaté, un motif (note) est obligatoire.
    */
   async close(ctx: AuthContext, input: CashCloseInput) {
+    assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
       const soldeTheorique = balances[input.compte];

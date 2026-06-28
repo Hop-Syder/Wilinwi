@@ -288,6 +288,43 @@ export class AnalyticsService {
         ventes: v.ventes,
       }));
 
+      // Répartition PAR ÉTABLISSEMENT (ventes + dépenses), TOUTES boutiques —
+      // indépendante du périmètre courant, pour le tableau de bord global.
+      const etablissements = await tx.etablissement.findMany({
+        where: { tenantId: ctx.tenantId },
+        select: { id: true, nom: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      const salesByEtab = await tx.sale.groupBy({
+        by: ['etablissementId'],
+        where: {
+          tenantId: ctx.tenantId,
+          createdAt: { gte: from, lte: to },
+          status: { not: 'CANCELLED' },
+        },
+        _sum: { total: true },
+        _count: { _all: true },
+      });
+      const expByEtab = await tx.cashMovement.groupBy({
+        by: ['etablissementId'],
+        where: {
+          tenantId: ctx.tenantId,
+          type: 'OUT',
+          source: 'EXPENSE',
+          createdAt: { gte: from, lte: to },
+        },
+        _sum: { montant: true },
+      });
+      const salesEtabMap = new Map(salesByEtab.map((s) => [s.etablissementId, s]));
+      const expEtabMap = new Map(expByEtab.map((e) => [e.etablissementId, e._sum.montant ?? 0]));
+      const parEtablissement = etablissements.map((e) => ({
+        etablissementId: e.id,
+        nom: e.nom,
+        ventes: salesEtabMap.get(e.id)?._sum.total ?? 0,
+        nombreVentes: salesEtabMap.get(e.id)?._count._all ?? 0,
+        depenses: expEtabMap.get(e.id) ?? 0,
+      }));
+
       return {
         from: from.toISOString(),
         to: to.toISOString(),
@@ -300,6 +337,7 @@ export class AnalyticsService {
         serie,
         topProduits,
         parPaiement,
+        parEtablissement,
       };
     });
   }
