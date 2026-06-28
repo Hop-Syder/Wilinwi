@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const isGlobalView = user.etablissementId === null && (user.etablissements?.length ?? 0) > 1;
+  const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
 
   const canSee = (m?: ModuleKey | 'ADMIN', href?: string) => {
     // La Caisse est toujours masquée en vue "Tous les établissements".
