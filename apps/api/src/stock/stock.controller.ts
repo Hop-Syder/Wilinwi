@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   CreateProductSchema,
   CreateStockMovementSchema,
@@ -31,8 +31,11 @@ export class StockController {
 
   @RequireCapabilities('stock:read')
   @Get('products')
-  list(@CurrentUser() user: AuthContext) {
-    return this.stock.list(user);
+  list(
+    @CurrentUser() user: AuthContext,
+    @Query('global') global?: string,
+  ) {
+    return this.stock.list(user, global === 'true');
   }
 
   @RequireCapabilities('stock:read')

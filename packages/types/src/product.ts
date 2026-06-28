@@ -105,6 +105,9 @@ export const ProductDtoSchema = z.object({
   variants: z.array(ProductVariantDtoSchema).default([]),
   // Coût d'achat : sensible — présent uniquement pour OWNER/MANAGER.
   prixAchat: MoneySchema.optional(),
+  // Breakdown du stock par établissement (ex: { "uuid-A": 12, "uuid-B": 8 }).
+  // Présent uniquement dans la vue globale stock (OWNER/MANAGER).
+  stockParEtablissement: z.record(z.string(), z.number()).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 

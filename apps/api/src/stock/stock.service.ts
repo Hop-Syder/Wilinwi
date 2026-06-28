@@ -33,11 +33,12 @@ import { toProductDto } from './product.mapper';
 export class StockService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(ctx: AuthContext) {
+  async list(ctx: AuthContext, globalView = false) {
     // Rétrogradation Starter (impayé J+7) : catalogue bridé aux 50 articles les
     // plus anciens (les autres restent en base, simplement masqués).
     const downgraded = ctx.dunning.downgraded;
-    const products = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+
+    const { products, breakdownByProduct } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const prods = await tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
         include: { variants: true },
@@ -45,28 +46,38 @@ export class StockService {
         ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
       });
 
-      // Établissement courant : stock scopé = Σ mouvements de CET établissement
-      // (grand livre unique). Vue globale (null) → Product.stock dénormalisé.
-      if (ctx.etablissementId) {
-        const { byProduct, byVariant } = await this.scopedStockMaps(
-          tx,
-          ctx.tenantId,
-          ctx.etablissementId,
-        );
+      if (globalView) {
+        // Vue consolidée (page Stock) : Σ tous mouvements du tenant, toutes boutiques.
+        const { byProduct, byVariant, byEtablissement } = await this.globalStockMaps(tx, ctx.tenantId);
         for (const p of prods) {
           p.stock = byProduct.get(p.id) ?? 0;
           for (const v of p.variants) {
             v.stock = byVariant.get(v.id) ?? 0;
           }
         }
+        return { products: prods, breakdownByProduct: byEtablissement };
+      } else {
+        // Vue scopée (POS, autres) : stock de l'établissement courant uniquement.
+        if (ctx.etablissementId) {
+          const { byProduct, byVariant } = await this.scopedStockMaps(tx, ctx.tenantId, ctx.etablissementId);
+          for (const p of prods) {
+            p.stock = byProduct.get(p.id) ?? 0;
+            for (const v of p.variants) {
+              v.stock = byVariant.get(v.id) ?? 0;
+            }
+          }
+        }
+        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>() };
       }
-      return prods;
     });
 
     const sorted = downgraded
       ? [...products].sort((a, b) => a.nom.localeCompare(b.nom))
       : products;
-    return sorted.map((p) => toProductDto(p, ctx.role));
+
+    return sorted.map((p) =>
+      toProductDto(p, ctx.role, breakdownByProduct.get(p.id)),
+    );
   }
 
   async getProduct(ctx: AuthContext, id: string) {
@@ -204,6 +215,51 @@ export class StockService {
       byVar.filter((r) => r.variantId).map((r) => [r.variantId as string, r._sum.quantite ?? 0]),
     );
     return { byProduct, byVariant };
+  }
+
+  /**
+   * Stock global : Σ tous mouvements du tenant (toutes boutiques confondues).
+   * Retourne aussi un breakdown par établissement pour chaque produit.
+   * byEtablissement : Map<productId, Record<etablissementId, stockNet>>
+   */
+  private async globalStockMaps(tx: TenantTx, tenantId: string) {
+    const [byProd, byVar, byEtabProd] = await Promise.all([
+      // Stock total par produit (sans variante)
+      tx.stockMovement.groupBy({
+        by: ['productId'],
+        where: { tenantId, variantId: null },
+        _sum: { quantite: true },
+      }),
+      // Stock total par variante
+      tx.stockMovement.groupBy({
+        by: ['variantId'],
+        where: { tenantId, NOT: { variantId: null } },
+        _sum: { quantite: true },
+      }),
+      // Breakdown produit × établissement (pour OWNER/MANAGER)
+      tx.stockMovement.groupBy({
+        by: ['productId', 'etablissementId'],
+        where: { tenantId },
+        _sum: { quantite: true },
+      }),
+    ]);
+
+    const byProduct = new Map<string, number>(
+      byProd.map((r) => [r.productId, r._sum.quantite ?? 0]),
+    );
+    const byVariant = new Map<string, number>(
+      byVar.filter((r) => r.variantId).map((r) => [r.variantId as string, r._sum.quantite ?? 0]),
+    );
+
+    // byEtablissement : Map<productId, Record<etablissementId, stockNet>>
+    const byEtablissement = new Map<string, Record<string, number>>();
+    for (const row of byEtabProd) {
+      const existing = byEtablissement.get(row.productId) ?? {};
+      existing[row.etablissementId] = (existing[row.etablissementId] ?? 0) + (row._sum.quantite ?? 0);
+      byEtablissement.set(row.productId, existing);
+    }
+
+    return { byProduct, byVariant, byEtablissement };
   }
 
   async update(ctx: AuthContext, id: string, input: UpdateProductInput) {

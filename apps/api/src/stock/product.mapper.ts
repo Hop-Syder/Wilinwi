@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Mapper DTO/Entité pour product
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-06-28
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -17,7 +17,11 @@ import type { Product, ProductVariant } from '@wilinwi/db';
  * (prix d'achat, prix plancher) pour les rôles non autorisés (§3 / §9).
  * Cette fonction est l'unique point de sortie des produits vers le client.
  */
-export function toProductDto(product: Product & { variants?: ProductVariant[] }, role: Role): ProductDto {
+export function toProductDto(
+  product: Product & { variants?: ProductVariant[] },
+  role: Role,
+  stockParEtablissement?: Record<string, number>,
+): ProductDto {
   const base: ProductDto = {
     id: product.id,
     nom: product.nom,
@@ -44,5 +48,11 @@ export function toProductDto(product: Product & { variants?: ProductVariant[] },
   if (canSeeSensitivePricing(role)) {
     base.prixAchat = product.prixAchat;
   }
+
+  // Breakdown par établissement : réservé au PROPRIÉTAIRE (OWNER) uniquement.
+  if (role === 'OWNER' && stockParEtablissement) {
+    base.stockParEtablissement = stockParEtablissement;
+  }
+
   return base;
 }
