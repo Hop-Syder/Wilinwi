@@ -171,8 +171,8 @@ export class SuppliersService {
     return supplier;
   }
 
-  private accountForPayment(method: string) {
-    if (method === 'MOBILE_MONEY') return 'MTN_MOMO'; // default to MTN
+  private accountForPayment(method: string): 'CAISSE' | 'MOBILE_MONEY' | 'BANQUE' {
+    if (method === 'MOBILE_MONEY') return 'MOBILE_MONEY';
     if (method === 'CARD' || method === 'TRANSFER') return 'BANQUE';
     return 'CAISSE';
   }
