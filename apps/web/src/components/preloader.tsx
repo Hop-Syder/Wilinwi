@@ -27,14 +27,15 @@ export function Preloader({ message = 'Chargement de votre espace...', fullscree
     >
       <div className="relative flex flex-col items-center">
         {/* Glow effect behind the logo */}
-        <div className="absolute -inset-4 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-        
+        <div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
+
         {/* Logo container with scale animation */}
-        <div className="relative h-32 w-32 animate-pulse">
+        <div className="relative h-48 w-48 sm:h-56 sm:w-56 animate-pulse">
           <Image
             src="/logo.png"
             alt="Wilinwi Logo"
             fill
+            sizes="224px"
             className="object-contain"
             priority
           />
