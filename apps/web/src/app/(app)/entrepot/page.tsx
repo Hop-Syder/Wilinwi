@@ -36,7 +36,8 @@ const STATUS_LABELS = {
 };
 
 export default function EntrepotPage() {
-  const { currentEtablissementId, user } = useAuth();
+  const { user } = useAuth();
+  const currentEtablissementId = user?.etablissementId ?? null;
   const [activeTab, setActiveTab] = useState<'suppliers' | 'orders' | 'payments'>('suppliers');
   
   // Data states
