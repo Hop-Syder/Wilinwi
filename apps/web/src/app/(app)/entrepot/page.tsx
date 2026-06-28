@@ -19,11 +19,11 @@ import { SupplierFormModal, RecordSupplierPaymentModal } from '@/components/supp
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
 import type { SupplierDto, PurchaseOrderDto, EtablissementDto } from '@wilinwi/types';
 
-const STATUS_TONES = {
-  DRAFT: 'slate',
+const STATUS_TONES: Record<string, 'outline' | 'brand' | 'neutral' | 'success' | 'warning' | 'danger'> = {
+  DRAFT: 'neutral',
   ORDERED: 'brand',
   PARTIAL: 'warning',
-  RECEIVED: 'emerald',
+  RECEIVED: 'success',
   CANCELLED: 'danger',
 } as const;
 
