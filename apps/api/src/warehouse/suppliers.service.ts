@@ -93,7 +93,10 @@ export class SuppliersService {
   }
 
   async paySupplier(ctx: AuthContext, id: string, input: RecordSupplierPaymentInput) {
-    assertConcreteEtablissement(ctx);
+    const etablissementId = input.etablissementId ?? ctx.etablissementId;
+    if (!etablissementId) {
+      throw new BadRequestException("Veuillez sélectionner un établissement pour enregistrer ce règlement");
+    }
     
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const supplier = await this.ensureSupplier(tx, ctx.tenantId, id);
@@ -107,7 +110,7 @@ export class SuppliersService {
         data: {
           tenantId: ctx.tenantId,
           fournisseurId: id,
-          etablissementId: ctx.etablissementId,
+          etablissementId: etablissementId,
           montant: input.montant,
           methode: input.methode ?? 'CASH',
           note: input.note ?? null,
@@ -127,7 +130,7 @@ export class SuppliersService {
       await tx.cashMovement.create({
         data: {
           tenantId: ctx.tenantId,
-          etablissementId: ctx.etablissementId,
+          etablissementId: etablissementId,
           type: 'OUT',
           compte,
           montant: input.montant,

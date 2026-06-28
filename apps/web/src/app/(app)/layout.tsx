@@ -83,7 +83,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const canSee = (m?: ModuleKey | 'ADMIN') => {
+  const isGlobalView = user.etablissementId === null && (user.etablissements?.length ?? 0) > 1;
+
+  const canSee = (m?: ModuleKey | 'ADMIN', href?: string) => {
+    // La Caisse est toujours masquée en vue "Tous les établissements".
+    if (href === '/pos' && isGlobalView) return false;
     if (!m) return true;
     if (m === 'ADMIN') return user?.role === 'OWNER' || user?.role === 'MANAGER';
     return user?.modules.includes(m) ?? false;
@@ -232,7 +236,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <nav className="mt-2">
             <ul className="space-y-1">
-              {NAV.filter((item) => canSee(item.module)).map(({ href, label, icon: Icon }) => {
+              {NAV.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -298,7 +302,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="hidden w-52 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
             <ul className="space-y-1">
-              {NAV.filter((item) => canSee(item.module)).map(({ href, label, icon: Icon }) => {
+              {NAV.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -334,7 +338,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {NAV.filter((item) => canSee(item.module))
+          {NAV.filter((item) => canSee(item.module, item.href))
             .slice(0, 4)
             .map(({ href, label, icon: Icon }) => {
               const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

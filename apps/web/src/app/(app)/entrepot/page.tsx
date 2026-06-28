@@ -15,7 +15,7 @@ import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTri
 import { Button, Card, Badge } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { SupplierFormModal, RecordSupplierPaymentModal } from '@/components/supplier-modals';
+import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
 import type { SupplierDto, PurchaseOrderDto, EtablissementDto } from '@wilinwi/types';
 
@@ -56,6 +56,7 @@ export default function EntrepotPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierDto | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<SupplierDto | null>(null);
   const [showPoModal, setShowPoModal] = useState(false);
+  const [viewPoInvoice, setViewPoInvoice] = useState<PurchaseOrderDto | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -319,7 +320,14 @@ export default function EntrepotPage() {
                         <div>Reçu: {o.montantRecu.toLocaleString('fr-FR')}</div>
                         <div>Payé: {o.montantPaye.toLocaleString('fr-FR')}</div>
                       </td>
-                      <td className="px-4 py-3 text-right flex justify-end gap-2">
+                      <td className="px-4 py-3 text-right flex justify-end gap-2 items-center">
+                        <button
+                          onClick={() => setViewPoInvoice(o)}
+                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors"
+                          title="Voir la facture"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
                         {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
                           <Link href={`/entrepot/reception/${o.id}`}>
                             <Button size="sm" className="text-xs bg-brand hover:bg-brand/90 text-white">
@@ -410,6 +418,13 @@ export default function EntrepotPage() {
             setShowPoModal(false);
             void loadData();
           }}
+        />
+      )}
+
+      {viewPoInvoice && (
+        <PurchaseOrderInvoiceModal
+          order={viewPoInvoice}
+          onClose={() => setViewPoInvoice(null)}
         />
       )}
     </div>

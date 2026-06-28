@@ -33,6 +33,7 @@ export const RecordSupplierPaymentSchema = z.object({
   methode: PaymentMethodSchema.optional(),
   note: z.string().min(1).nullable().optional(),
   purchaseOrderId: IdSchema.optional(),
+  etablissementId: IdSchema.optional(),
 });
 export type RecordSupplierPaymentInput = z.infer<typeof RecordSupplierPaymentSchema>;
 

@@ -797,11 +797,12 @@ export class SalesService {
         where,
         orderBy: { createdAt: 'desc' },
         take: 100,
-        include: { 
-          items: { include: { priceOverride: true, product: true } }, 
+        include: {
+          items: { include: { priceOverride: true, product: true } },
           installment: true,
           client: true,
-          vendeur: { select: { id: true, nom: true, email: true } }
+          vendeur: { select: { id: true, nom: true, email: true } },
+          etablissement: { select: { id: true, nom: true } },
         },
       }),
     );

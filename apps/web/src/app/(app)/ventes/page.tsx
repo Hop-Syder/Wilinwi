@@ -3,32 +3,33 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Page Frontend de gestion, recherche et filtrage des ventes (POS)
+ * @description Page Ventes — Vue globale multi-boutiques (filtre et colonne Établissement) + vue boutique standard
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-06-28
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
 import { useEffect, useMemo, useState } from 'react';
-import { 
-  Receipt as ReceiptIcon, 
-  Ban, 
-  Eye, 
-  Search, 
-  Calendar, 
-  FileSpreadsheet, 
-  ArrowRight, 
-  X, 
-  CheckCircle2, 
-  DollarSign, 
+import {
+  Receipt as ReceiptIcon,
+  Ban,
+  Eye,
+  Search,
+  Calendar,
+  FileSpreadsheet,
+  ArrowRight,
+  X,
+  CheckCircle2,
+  DollarSign,
   CreditCard,
   AlertTriangle,
   ChevronRight,
   TrendingUp,
   User,
-  ShieldAlert
+  ShieldAlert,
+  Store,
 } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod, type ClientDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
@@ -41,6 +42,7 @@ import Link from 'next/link';
 interface Sale extends ReceiptSale {
   status: 'COMPLETED' | 'PENDING_PAYMENT' | 'PENDING_APPROVAL' | 'CANCELLED';
   vendeur?: { id: string; nom: string; email: string } | null;
+  etablissement?: { id: string; nom: string } | null;
 }
 
 const STATUS: Record<Sale['status'], { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral'; color: string }> = {
@@ -53,27 +55,30 @@ const STATUS: Record<Sale['status'], { label: string; tone: 'success' | 'warning
 export default function VentesPage() {
   const { user } = useAuth();
   const canCancel = user?.role === 'OWNER' || user?.role === 'MANAGER';
-  
+  // Vue globale = plusieurs établissements + aucun établissement sélectionné
+  const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
+
   // State
   const [sales, setSales] = useState<Sale[]>([]);
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  
+
   // Modals
   const [receipt, setReceipt] = useState<Sale | null>(null);
   const [detail, setDetail] = useState<Sale | null>(null);
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null);
   const [cancelSale, setCancelSale] = useState<Sale | null>(null);
-  
+
   // Filters
   const [filterPeriod, setFilterPeriod] = useState<'TODAY' | '7DAYS' | 'MONTH' | 'CUSTOM'>('TODAY');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterClientId, setFilterClientId] = useState('');
+  const [filterEtablissementId, setFilterEtablissementId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Payments & Cancellation Input
   const [payAmount, setPayAmount] = useState('');
   const [cancelReason, setCancelReason] = useState('Erreur de saisie');
@@ -86,7 +91,7 @@ export default function VentesPage() {
       let from = '';
       let to = '';
       const now = new Date();
-      
+
       if (filterPeriod === 'TODAY') {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
@@ -111,16 +116,16 @@ export default function VentesPage() {
           to = end.toISOString();
         }
       }
-      
+
       const params = new URLSearchParams();
       if (from) params.append('from', from);
       if (to) params.append('to', to);
       if (filterStatus !== 'ALL') params.append('status', filterStatus);
-      if (filterClientId) params.append('clientId', filterClientId);
+      // Vue boutique : filtre client / Vue globale : filtre établissement
+      if (!isGlobalView && filterClientId) params.append('clientId', filterClientId);
+      if (isGlobalView && filterEtablissementId) params.append('etablissementId', filterEtablissementId);
       if (searchQuery) params.append('q', searchQuery);
 
-      // Cache local (stale-while-revalidate) : on affiche la dernière liste connue
-      // pour ces filtres, puis on rafraîchit depuis le réseau.
       const qs = params.toString();
       const ck = user ? `${user.tenantId}:${user.userId}:pos/sales?${qs}` : null;
       if (ck) {
@@ -132,28 +137,29 @@ export default function VentesPage() {
       setSales(data);
       if (ck) void writeCache(ck, data);
     } catch (e: any) {
-      setError(e.message || "Erreur lors du chargement des ventes");
+      setError(e.message || 'Erreur lors du chargement des ventes');
     } finally {
       setBusy(false);
     }
   };
 
-  // Load clients & sales initially
+  // Chargement initial des clients (vue boutique uniquement)
   useEffect(() => {
+    if (isGlobalView) return;
     async function init() {
       try {
         const cl = await apiGet<ClientDto[]>('/api/crm/clients');
         setClients(cl);
       } catch (err) {
-        console.error("Erreur chargement clients:", err);
+        console.error('Erreur chargement clients:', err);
       }
     }
     init();
-  }, []);
+  }, [isGlobalView]);
 
   useEffect(() => {
     fetchSales();
-  }, [filterPeriod, customFrom, customTo, filterStatus, filterClientId]);
+  }, [filterPeriod, customFrom, customTo, filterStatus, filterClientId, filterEtablissementId]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -170,7 +176,7 @@ export default function VentesPage() {
         salesCount++;
         ca += s.total;
         encaisse += s.montantVerse;
-        resteDu += (s.total - s.montantVerse);
+        resteDu += s.total - s.montantVerse;
       }
     });
 
@@ -190,13 +196,10 @@ export default function VentesPage() {
     setBusy(true);
     try {
       await apiPost(`/api/pos/sales/${paymentSale.id}/payments`, { montant: amount });
-      
-      // Update drawer context
       if (detail && detail.id === paymentSale.id) {
         const updated = await apiGet<Sale>(`/api/pos/sales/${paymentSale.id}`);
         setDetail(updated);
       }
-      
       setPaymentSale(null);
       setPayAmount('');
       await fetchSales();
@@ -225,28 +228,30 @@ export default function VentesPage() {
 
   // CSV Export
   const exportCSV = () => {
-    const headers = ["ID Vente", "Date", "Heure", "Vendeur", "Client", "Articles", "Paiement", "Statut", "Total (FCFA)", "Paye (FCFA)", "Reste Du (FCFA)"];
-    const rows = sales.map(s => [
+    const headers = isGlobalView
+      ? ['ID Vente', 'Date', 'Heure', 'Vendeur', 'Établissement', 'Articles', 'Paiement', 'Statut', 'Total (FCFA)', 'Payé (FCFA)', 'Reste Dû (FCFA)']
+      : ['ID Vente', 'Date', 'Heure', 'Vendeur', 'Client', 'Articles', 'Paiement', 'Statut', 'Total (FCFA)', 'Payé (FCFA)', 'Reste Dû (FCFA)'];
+    const rows = sales.map((s) => [
       s.id,
       new Date(s.createdAt).toLocaleDateString('fr-FR'),
       new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       s.vendeur?.nom || 'N/A',
-      s.client?.nom || 'Client Comptoir',
+      isGlobalView ? (s.etablissement?.nom || '—') : (s.client?.nom || 'Client Comptoir'),
       s.items.reduce((n, it) => n + it.quantite, 0),
       PAYMENT_METHOD_LABELS[s.paymentMethod] || s.paymentMethod,
       STATUS[s.status]?.label || s.status,
       s.total,
       s.montantVerse,
-      s.total - s.montantVerse
+      s.total - s.montantVerse,
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(";"), ...rows.map(e => e.join(";"))].join("\n");
-    
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
     const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ventes_wilinwi_${new Date().toISOString().slice(0,10)}.csv`);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `ventes_wilinwi_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -257,18 +262,35 @@ export default function VentesPage() {
       {/* En-tête */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 via-blue-900 to-brand bg-clip-text text-transparent">Registre des ventes</h1>
-          <p className="mt-1 text-slate-500 text-sm">Consultez, recherchez, encaissez les soldes et annulez des transactions.</p>
+          <h1 className="font-display text-3xl font-black tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 via-blue-900 to-brand bg-clip-text text-transparent">
+            Registre des ventes
+          </h1>
+          <p className="mt-1 text-slate-500 text-sm">
+            {isGlobalView
+              ? 'Vue consolidée — toutes les boutiques confondues.'
+              : 'Consultez, recherchez, encaissez les soldes et annulez des transactions.'}
+          </p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={exportCSV} 
+        <Button
+          variant="outline"
+          onClick={exportCSV}
           disabled={sales.length === 0}
           className="flex items-center gap-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-700 shrink-0"
         >
           <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exporter en CSV
         </Button>
       </div>
+
+      {/* Bandeau vue globale */}
+      {isGlobalView && (
+        <div className="flex items-start gap-3 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3">
+          <Store className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+          <p className="text-sm text-brand/80">
+            <span className="font-semibold text-brand">Vue globale</span> — les ventes de toutes les boutiques sont affichées.
+            Utilisez le filtre <strong>Boutique</strong> pour isoler une boutique spécifique.
+          </p>
+        </div>
+      )}
 
       {/* Cartes KPI */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -348,22 +370,40 @@ export default function VentesPage() {
             </select>
           </div>
 
-          {/* Client */}
-          <div className="w-full lg:w-56 space-y-1">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Client</label>
-            <select
-              value={filterClientId}
-              onChange={(e) => setFilterClientId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none bg-white"
-            >
-              <option value="">Tous les clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nom} {c.telephone ? `(${c.telephone})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Filtre Boutique (vue globale) ou Client (vue boutique) */}
+          {isGlobalView ? (
+            <div className="w-full lg:w-56 space-y-1">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                <Store className="h-3.5 w-3.5" /> Boutique
+              </label>
+              <select
+                value={filterEtablissementId}
+                onChange={(e) => setFilterEtablissementId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none bg-white"
+              >
+                <option value="">Toutes les boutiques</option>
+                {(user?.etablissements ?? []).map((e) => (
+                  <option key={e.id} value={e.id}>{e.nom}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="w-full lg:w-56 space-y-1">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Client</label>
+              <select
+                value={filterClientId}
+                onChange={(e) => setFilterClientId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none bg-white"
+              >
+                <option value="">Tous les clients</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nom} {c.telephone ? `(${c.telephone})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Bouton de recherche manuelle */}
           <Button onClick={fetchSales} disabled={busy} className="lg:w-32 shrink-0">
@@ -410,26 +450,22 @@ export default function VentesPage() {
                   <div className="min-w-0">
                     <p className="tabular text-lg font-bold text-slate-900">{formatFCFA(s.total)}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {s.client?.nom || 'Comptoir'} ·{' '}
-                      {new Date(s.createdAt).toLocaleTimeString('fr-FR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {isGlobalView
+                        ? (s.etablissement?.nom ?? '—')
+                        : (s.client?.nom || 'Comptoir')}{' '}
+                      ·{' '}
+                      {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     {s.vendeur?.nom && (
                       <p className="text-[11px] text-slate-400">Vendeur : {s.vendeur.nom}</p>
                     )}
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${STATUS[s.status]?.color || ''}`}
-                  >
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${STATUS[s.status]?.color || ''}`}>
                     {STATUS[s.status]?.label || s.status}
                   </span>
                 </div>
                 {reste > 0 && (
-                  <p className="mt-1 text-xs font-semibold text-amber-600">
-                    Reste dû : {formatFCFA(reste)}
-                  </p>
+                  <p className="mt-1 text-xs font-semibold text-amber-600">Reste dû : {formatFCFA(reste)}</p>
                 )}
                 <div className="mt-3 flex items-center gap-2">
                   <button
@@ -472,7 +508,14 @@ export default function VentesPage() {
                 <th className="px-5 py-3.5">Heure / Date</th>
                 <th className="px-5 py-3.5">N° Vente</th>
                 <th className="px-5 py-3.5">Vendeur</th>
-                <th className="px-5 py-3.5">Client</th>
+                {/* En vue globale : colonne Boutique ; en vue boutique : colonne Client */}
+                {isGlobalView ? (
+                  <th className="px-5 py-3.5">
+                    <span className="flex items-center gap-1.5"><Store className="h-3.5 w-3.5" /> Boutique</span>
+                  </th>
+                ) : (
+                  <th className="px-5 py-3.5">Client</th>
+                )}
                 <th className="px-5 py-3.5">Statut</th>
                 <th className="px-5 py-3.5 text-right">Payé</th>
                 <th className="px-5 py-3.5 text-right">Reste dû</th>
@@ -489,18 +532,22 @@ export default function VentesPage() {
                       <div className="font-semibold text-slate-800">
                         {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
-                      <div className="text-[11px]">
-                        {new Date(s.createdAt).toLocaleDateString('fr-FR')}
-                      </div>
+                      <div className="text-[11px]">{new Date(s.createdAt).toLocaleDateString('fr-FR')}</div>
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-brand font-semibold">
                       #{s.id.slice(0, 8).toUpperCase()}
                     </td>
+                    <td className="px-5 py-3.5 text-slate-600 font-medium">{s.vendeur?.nom || '—'}</td>
+                    {/* Boutique ou Client selon le mode */}
                     <td className="px-5 py-3.5 text-slate-600 font-medium">
-                      {s.vendeur?.nom || '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600 font-medium">
-                      {s.client?.nom || <span className="text-slate-400 font-normal italic">Comptoir</span>}
+                      {isGlobalView ? (
+                        <span className="flex items-center gap-1.5">
+                          <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          {s.etablissement?.nom ?? <span className="text-slate-400 italic">—</span>}
+                        </span>
+                      ) : (
+                        s.client?.nom || <span className="text-slate-400 font-normal italic">Comptoir</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${STATUS[s.status]?.color || ''}`}>
@@ -572,7 +619,6 @@ export default function VentesPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
             <div className="mb-4 text-sm text-slate-600 space-y-1">
               <p>Vente : <span className="font-mono font-bold text-brand">#{paymentSale.id.slice(0, 8).toUpperCase()}</span></p>
               <p>Client : <span className="font-bold">{paymentSale.client?.nom || 'Client Comptoir'}</span></p>
@@ -583,7 +629,6 @@ export default function VentesPage() {
                 </span>
               </div>
             </div>
-
             <div className="space-y-3">
               <label className="block text-sm">
                 <span className="block font-medium text-slate-600 mb-1">Montant versé aujourd'hui (FCFA)</span>
@@ -596,16 +641,9 @@ export default function VentesPage() {
                 />
               </label>
             </div>
-
             <div className="mt-6 flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setPaymentSale(null)}>
-                Annuler
-              </Button>
-              <Button 
-                className="flex-1" 
-                onClick={handleAddPayment} 
-                disabled={busy || !payAmount}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setPaymentSale(null)}>Annuler</Button>
+              <Button className="flex-1" onClick={handleAddPayment} disabled={busy || !payAmount}>
                 {busy ? 'Règlement...' : 'Encaisser'}
               </Button>
             </div>
@@ -613,7 +651,7 @@ export default function VentesPage() {
         </div>
       )}
 
-      {/* MODALE D'ANNULATION DE VENTE AVEC MOTIF OBLIGATOIRE */}
+      {/* MODALE D'ANNULATION */}
       {cancelSale && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150">
@@ -621,17 +659,14 @@ export default function VentesPage() {
               <ShieldAlert className="h-6 w-6 shrink-0" />
               <h3 className="text-lg font-bold">Annuler la transaction</h3>
             </div>
-            
             <p className="text-xs text-slate-500 mb-4">
               Cette action est destructive. Le stock de la vente sera automatiquement ré-entré et la caisse sera ajustée à la baisse.
             </p>
-
             <div className="space-y-4">
               <div className="bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-600 border">
                 <p>N° Vente : <span className="font-mono font-bold text-slate-900">#{cancelSale.id.slice(0, 8).toUpperCase()}</span></p>
                 <p>Impact Caisse : <span className="font-bold text-rose-600">-{formatFCFA(cancelSale.montantVerse)}</span></p>
               </div>
-
               <label className="block text-sm">
                 <span className="block font-semibold text-slate-700 mb-1">Motif de l'annulation *</span>
                 <select
@@ -646,17 +681,9 @@ export default function VentesPage() {
                 </select>
               </label>
             </div>
-
             <div className="mt-6 flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setCancelSale(null)}>
-                Garder
-              </Button>
-              <Button 
-                variant="danger"
-                className="flex-1 bg-rose-600 hover:bg-rose-700" 
-                onClick={handleCancelSale} 
-                disabled={busy}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setCancelSale(null)}>Garder</Button>
+              <Button variant="danger" className="flex-1 bg-rose-600 hover:bg-rose-700" onClick={handleCancelSale} disabled={busy}>
                 {busy ? 'Annulation...' : 'Confirmer'}
               </Button>
             </div>
@@ -664,7 +691,7 @@ export default function VentesPage() {
         </div>
       )}
 
-      {/* DRAWER DE DÉTAIL DE LA VENTE */}
+      {/* DRAWER DE DÉTAIL */}
       {detail && (
         <div className="fixed inset-0 z-20 flex justify-end bg-black/40 backdrop-blur-sm" onClick={() => setDetail(null)}>
           <div
@@ -672,7 +699,6 @@ export default function VentesPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-6">
-              {/* Header Drawer */}
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="font-display text-xl font-black text-slate-800">
@@ -685,6 +711,11 @@ export default function VentesPage() {
                     <span className="text-xs text-slate-400 font-medium">
                       {new Date(detail.createdAt).toLocaleString('fr-FR')}
                     </span>
+                    {isGlobalView && detail.etablissement && (
+                      <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        <Store className="h-3 w-3" /> {detail.etablissement.nom}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => setDetail(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
@@ -692,7 +723,6 @@ export default function VentesPage() {
                 </button>
               </div>
 
-              {/* Infos Client & Vendeur */}
               <div className="grid grid-cols-2 gap-4 border-y border-slate-100 py-4">
                 <div className="text-xs">
                   <span className="block font-semibold text-slate-400 uppercase tracking-wider">Client</span>
@@ -706,7 +736,6 @@ export default function VentesPage() {
                 </div>
               </div>
 
-              {/* Items List */}
               <div>
                 <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Articles achetés</span>
                 <ul className="divide-y divide-slate-100">
@@ -721,7 +750,6 @@ export default function VentesPage() {
                 </ul>
               </div>
 
-              {/* Totaux & Reste à payer */}
               <div className="bg-slate-50 rounded-xl p-4 border space-y-2">
                 <div className="flex justify-between text-sm text-slate-500">
                   <span>Total Brut</span>
@@ -731,14 +759,12 @@ export default function VentesPage() {
                   <span>Encaissé ({PAYMENT_METHOD_LABELS[detail.paymentMethod]})</span>
                   <span className="tabular font-medium text-slate-700">{formatFCFA(detail.montantVerse)}</span>
                 </div>
-                
                 {detail.total - detail.montantVerse > 0 && (
                   <div className="flex justify-between text-sm border-t border-dashed border-slate-200 pt-2 text-amber-600 font-bold">
                     <span>Reste dû</span>
                     <span className="tabular">{formatFCFA(detail.total - detail.montantVerse)}</span>
                   </div>
                 )}
-                
                 <div className="flex justify-between border-t border-slate-200 pt-2 font-black text-slate-900">
                   <span>Total Net</span>
                   <span className="tabular text-brand">{formatFCFA(detail.total)}</span>
@@ -746,33 +772,28 @@ export default function VentesPage() {
               </div>
             </div>
 
-            {/* Actions Footer */}
             <div className="mt-8 space-y-2 pt-4 border-t border-slate-100">
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setReceipt(detail)}>
                   <ReceiptIcon className="h-4 w-4" /> Reçu
                 </Button>
                 <Link href={`/pos/returns?saleId=${detail.id}`} className="flex-1">
-                  <Button variant="outline" className="w-full justify-center">
-                    Retourner
-                  </Button>
+                  <Button variant="outline" className="w-full justify-center">Retourner</Button>
                 </Link>
               </div>
-
               {detail.status === 'PENDING_PAYMENT' && (
-                <Button 
+                <Button
                   className="w-full justify-center bg-amber-500 hover:bg-amber-600 text-white"
                   onClick={() => setPaymentSale(detail)}
                 >
                   Encaisser le reste ({formatFCFA(detail.total - detail.montantVerse)})
                 </Button>
               )}
-
               {canCancel && detail.status !== 'CANCELLED' && (
-                <Button 
-                  variant="danger" 
-                  className="w-full justify-center bg-rose-600 hover:bg-rose-700" 
-                  disabled={busy} 
+                <Button
+                  variant="danger"
+                  className="w-full justify-center bg-rose-600 hover:bg-rose-700"
+                  disabled={busy}
                   onClick={() => setCancelSale(detail)}
                 >
                   <Ban className="h-4 w-4" /> Annuler cette vente
