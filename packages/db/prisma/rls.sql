@@ -64,6 +64,17 @@ SELECT app.enable_tenant_rls('public.suppliers');
 SELECT app.enable_tenant_rls('public.purchase_orders');
 SELECT app.enable_tenant_rls('public.purchase_order_items');
 SELECT app.enable_tenant_rls('public.supplier_payments');
+SELECT app.enable_tenant_rls('public.product_stock');
+SELECT app.enable_tenant_rls('public.dispatch_orders');
+SELECT app.enable_tenant_rls('public.dispatch_order_items');
+
+-- Unicité du solde par emplacement : 1 ligne par (établissement, produit) au niveau
+-- produit, et 1 par (établissement, variante) au niveau variante (index partiels,
+-- car une contrainte unique standard traite les NULL comme distincts).
+CREATE UNIQUE INDEX IF NOT EXISTS product_stock_prod_etab_uq
+  ON public.product_stock (etablissement_id, product_id) WHERE variant_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS product_stock_var_etab_uq
+  ON public.product_stock (etablissement_id, variant_id) WHERE variant_id IS NOT NULL;
 
 -- La table `tenants` n'a pas de tenant_id : on la restreint à la ligne courante.
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;

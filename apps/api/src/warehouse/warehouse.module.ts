@@ -13,10 +13,12 @@ import { SuppliersController } from './suppliers.controller';
 import { SuppliersService } from './suppliers.service';
 import { PurchaseOrdersController } from './purchase-orders.controller';
 import { PurchaseOrdersService } from './purchase-orders.service';
+import { DispatchController } from './dispatch.controller';
+import { DispatchService } from './dispatch.service';
 
 @Module({
-  controllers: [SuppliersController, PurchaseOrdersController],
-  providers: [SuppliersService, PurchaseOrdersService],
-  exports: [SuppliersService, PurchaseOrdersService],
+  controllers: [SuppliersController, PurchaseOrdersController, DispatchController],
+  providers: [SuppliersService, PurchaseOrdersService, DispatchService],
+  exports: [SuppliersService, PurchaseOrdersService, DispatchService],
 })
 export class WarehouseModule {}

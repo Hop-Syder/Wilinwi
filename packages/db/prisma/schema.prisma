@@ -128,6 +128,8 @@ model Tenant {
   suppliers       Supplier[]
   purchaseOrders  PurchaseOrder[]
   supplierPayments SupplierPayment[]
+  productStocks   ProductStock[]
+  dispatchOrders  DispatchOrder[]
 
   @@map("tenants")
 }
@@ -159,6 +161,9 @@ model Etablissement {
   inventories    Inventory[]
   activityLogs   ActivityLog[]
   purchaseOrders PurchaseOrder[]
+  productStocks  ProductStock[]
+  dispatchSources      DispatchOrder[] @relation("DispatchSource")
+  dispatchDestinations DispatchOrder[] @relation("DispatchDestination")
 
   @@index([tenantId])
   @@map("etablissements")
@@ -273,6 +278,8 @@ model Product {
   movements StockMovement[]
   saleItems SaleItem[]
   purchaseItems PurchaseOrderItem[]
+  stocks    ProductStock[]
+  dispatchItems DispatchOrderItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -668,4 +675,81 @@ model SupplierPayment {
   @@index([tenantId])
   @@index([fournisseurId])
   @@map("supplier_payments")
+}
+
+// ─────────────────── Stock par emplacement (Phase A — projection) ───────────────────
+// Solde matérialisé du stock par (produit/variante × établissement). C'est la
+// PROJECTION du grand livre `StockMovement` (= Σ mouvements), pour des lectures
+// O(1) et un seuil de réappro `quantiteMin` propre à chaque emplacement.
+// Double-écriture avec `Product.stock` pendant la transition (cf. doc §7).
+// Unicité (etab, produit, variante) renforcée par index partiels (rls.sql).
+
+model ProductStock {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  productId       String   @map("product_id") @db.Uuid
+  variantId       String?  @map("variant_id") @db.Uuid
+  etablissementId String   @map("etablissement_id") @db.Uuid
+  quantite        Int      @default(0)
+  quantiteMin     Int      @default(0) @map("quantite_min") // alerte si quantite <= quantiteMin
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([etablissementId])
+  @@index([productId])
+  @@map("product_stock")
+}
+
+// ─────────────────── Dispatch / Transfert interne (Phase B) ───────────────────
+// Déplacement formel de marchandise entrepôt → boutique : brouillon → validation.
+// La validation déplace le stock des DEUX emplacements (ProductStock + mouvements).
+
+enum DispatchStatus {
+  DRAFT // créé, pas encore validé
+  VALIDATED // validé — le stock a bougé
+  CANCELLED // annulé avant validation
+}
+
+model DispatchOrder {
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  sourceId      String         @map("source_id") @db.Uuid // établissement source (entrepôt)
+  destinationId String         @map("destination_id") @db.Uuid // établissement destination (boutique)
+  reference     String
+  statut        DispatchStatus @default(DRAFT)
+  note          String?
+  createdBy     String         @map("created_by") @db.Uuid
+  validatedBy   String?        @map("validated_by") @db.Uuid
+  validatedAt   DateTime?      @map("validated_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source      Etablissement       @relation("DispatchSource", fields: [sourceId], references: [id])
+  destination Etablissement       @relation("DispatchDestination", fields: [destinationId], references: [id])
+  items       DispatchOrderItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, statut])
+  @@map("dispatch_orders")
+}
+
+model DispatchOrderItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  dispatchOrderId String  @map("dispatch_order_id") @db.Uuid
+  productId       String  @map("product_id") @db.Uuid
+  variantId       String? @map("variant_id") @db.Uuid
+  quantite        Int
+
+  dispatchOrder DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([dispatchOrderId])
+  @@map("dispatch_order_items")
 }

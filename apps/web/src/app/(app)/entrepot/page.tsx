@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle } from 'lucide-react';
 import { Button, Card, Badge } from '@wilinwi/ui';
+import { OfflineBanner } from '@/components/offline-banner';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
@@ -128,6 +129,12 @@ export default function EntrepotPage() {
           <p className="mt-1 text-sm text-slate-500">Gérez vos fournisseurs, bons de commande, réceptions et dettes.</p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/entrepot/dispatch"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <Truck className="h-4 w-4" /> Dispatch
+          </Link>
           {activeTab === 'suppliers' && (
             <Button onClick={() => { setSelectedSupplier(null); setShowSupplierModal(true); }}>
               <Plus className="h-4 w-4" /> Nouveau fournisseur
@@ -139,6 +146,10 @@ export default function EntrepotPage() {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <OfflineBanner message="Mode hors-ligne : la réception de commande et les transferts nécessitent une connexion." />
       </div>
 
       {/* KPI Cards (for suppliers & dettes) */}

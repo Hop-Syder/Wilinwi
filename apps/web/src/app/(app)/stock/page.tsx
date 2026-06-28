@@ -24,6 +24,7 @@ import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
 import { StockMovementModal, ProductFormModal, StockTransferModal } from '@/components/stock-modals';
+import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 
@@ -96,6 +97,7 @@ export default function StockPage() {
 
   return (
     <div>
+      <StockAlertsBanner />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

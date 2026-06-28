@@ -111,6 +111,25 @@ export const ProductDtoSchema = z.object({
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 
+/** Seuil de réappro d'un produit à un emplacement précis (alerte stock bas). */
+export const SetStockThresholdSchema = z.object({
+  etablissementId: IdSchema,
+  variantId: IdSchema.nullable().optional(),
+  quantiteMin: QuantitySchema.refine((q) => q >= 0, 'Le seuil doit être positif ou nul'),
+});
+export type SetStockThresholdInput = z.infer<typeof SetStockThresholdSchema>;
+
+/** Alerte de stock bas pour un (produit/variante × établissement). */
+export interface StockAlertDto {
+  productId: string;
+  productNom: string;
+  variantId: string | null;
+  etablissementId: string;
+  etablissementNom: string | null;
+  quantite: number;
+  quantiteMin: number;
+}
+
 /** Types de mouvement de stock. */
 export const STOCK_MOVEMENT_TYPES = ['IN', 'OUT', 'ADJUST'] as const;
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];

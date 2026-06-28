@@ -14,11 +14,13 @@ import {
   CreateProductSchema,
   CreateStockMovementSchema,
   CreateStockTransferSchema,
+  SetStockThresholdSchema,
   UpdateProductSchema,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
   type CreateStockTransferInput,
+  type SetStockThresholdInput,
   type UpdateProductInput,
 } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from '../common/decorators';
@@ -38,10 +40,28 @@ export class StockController {
     return this.stock.list(user, global === 'true');
   }
 
+  /** Alertes de stock bas (avant :id pour ne pas être capté par la route paramétrée). */
+  @RequireCapabilities('stock:read')
+  @Get('products/alerts')
+  alerts(@CurrentUser() user: AuthContext) {
+    return this.stock.alerts(user);
+  }
+
   @RequireCapabilities('stock:read')
   @Get('products/:id')
   getProduct(@CurrentUser() user: AuthContext, @Param('id') id: string) {
     return this.stock.getProduct(user, id);
+  }
+
+  /** Définit le seuil de réappro (alerte) d'un produit à un emplacement. */
+  @RequireCapabilities('stock:write')
+  @Patch('products/:id/threshold')
+  setThreshold(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SetStockThresholdSchema)) dto: SetStockThresholdInput,
+  ) {
+    return this.stock.setThreshold(user, id, dto);
   }
 
   @RequireCapabilities('stock:write')

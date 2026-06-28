@@ -67,8 +67,9 @@ export class TreasuryController {
     return this.treasury.listCloses(user, compte);
   }
 
-  /** POST /api/treasury/expenses — Enregistrer une dépense (sortie). */
-  @RequireCapabilities('treasury:write')
+  /** POST /api/treasury/expenses — Enregistrer une dépense (sortie).
+   *  Décaissement ESPÈCES (CAISSE) ouvert au caissier (restriction dans le service). */
+  @RequireCapabilities('cash:disburse')
   @Post('expenses')
   expense(
     @CurrentUser() user: AuthContext,

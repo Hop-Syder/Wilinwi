@@ -18,6 +18,7 @@ import type {
 } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
+import { applyStockDelta } from '../common/product-stock';
 
 @Injectable()
 export class InventoryService {
@@ -113,6 +114,17 @@ export class InventoryService {
           where: { id: item.productId },
           data: { stock: item.quantiteReelle },
         });
+        // Projection ProductStock : applique l'écart à l'établissement de l'inventaire.
+        const etablissementId = inv.etablissementId ?? ctx.etablissementId;
+        if (etablissementId) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: item.productId,
+            variantId: item.variantId,
+            delta: item.ecart,
+          });
+        }
       }
 
       return tx.inventory.update({

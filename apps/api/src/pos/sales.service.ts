@@ -26,6 +26,7 @@ import { randomBytes } from 'node:crypto';
 import { Prisma, type TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
+import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
 
 @Injectable()
@@ -100,7 +101,11 @@ export class SalesService {
           throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);
         }
 
-        const availableStock = variant ? variant.stock : product.stock;
+        // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock),
+        // et non plus le stock global du tenant.
+        const availableStock = ctx.etablissementId
+          ? await readStockAt(tx, ctx.etablissementId, product.id, item.variantId ?? null)
+          : variant ? variant.stock : product.stock;
         if (item.quantite > availableStock) {
           throw new BadRequestException(
             `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
@@ -300,6 +305,16 @@ export class SalesService {
           data: { stock: { decrement: item.quantite } },
         });
       }
+      // Projection ProductStock : décrément à la boutique vendeuse.
+      if (etablissementId) {
+        await applyStockDelta(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId,
+          productId: item.productId,
+          variantId: item.variantId,
+          delta: -item.quantite,
+        });
+      }
     }
 
     // Dérogations de cette vente → approuvées par le gérant courant.
@@ -490,6 +505,16 @@ export class SalesService {
               data: { stock: { increment: item.quantite } },
             });
           }
+          // Projection ProductStock : ré-entrée à la boutique de la vente.
+          if (etablissementId) {
+            await applyStockDelta(tx, {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              productId: item.productId,
+              variantId: item.variantId,
+              delta: item.quantite,
+            });
+          }
         }
 
         // Reversal trésorerie : on ressort la part encaissée (en ventilant le mixte).
@@ -618,6 +643,16 @@ export class SalesService {
           await tx.productVariant.update({
             where: { id: item.variantId },
             data: { stock: { increment: ret.quantiteRetournee } },
+          });
+        }
+        // Projection ProductStock : ré-entrée à la boutique de la vente.
+        if (etablissementId) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: item.productId,
+            variantId: item.variantId,
+            delta: ret.quantiteRetournee,
           });
         }
 

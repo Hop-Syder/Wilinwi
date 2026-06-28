@@ -13,6 +13,7 @@ import type { AuthContext, CreatePurchaseOrderInput, ReceivePurchaseOrderInput }
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { ActivityService } from '../common/activity.service';
+import { applyStockDelta } from '../common/product-stock';
 import { toPurchaseOrderDto } from './purchase-order.mapper';
 
 @Injectable()
@@ -173,6 +174,14 @@ export class PurchaseOrdersService {
             data: { stock: { increment: rx.quantite } },
           });
         }
+        // Projection ProductStock : entrée à l'établissement de réception du BC.
+        await applyStockDelta(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId: po.etablissementId,
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          delta: rx.quantite,
+        });
       }
 
       // Calcul de la dette fournisseur générée

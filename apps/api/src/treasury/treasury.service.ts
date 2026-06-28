@@ -9,10 +9,11 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   CASH_ACCOUNTS,
   CASH_ACCOUNT_LABELS,
+  hasCapability,
   type AuthContext,
   type CashAccount,
   type CashCloseInput,
@@ -121,6 +122,14 @@ export class TreasuryService {
   /** Dépense (sortie). */
   async recordExpense(ctx: AuthContext, input: RecordExpenseInput) {
     assertConcreteEtablissement(ctx);
+    // Décaissement : un opérateur de caisse sans `treasury:write` (le caissier)
+    // ne peut sortir QUE des espèces (compte CAISSE). Mobile Money / Banque
+    // restent réservés au gérant/propriétaire.
+    if (!hasCapability(ctx.role, 'treasury:write') && input.compte !== 'CAISSE') {
+      throw new ForbiddenException(
+        'Le caissier ne peut décaisser que des espèces (caisse). Mobile Money / Banque sont réservés au gérant.',
+      );
+    }
     return this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.cashMovement.create({
         data: {

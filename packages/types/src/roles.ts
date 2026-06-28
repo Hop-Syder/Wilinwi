@@ -55,6 +55,7 @@ export const CAPABILITIES = [
   // Caisse
   'cash:collect',
   'cash:close',
+  'cash:disburse', // décaisser des ESPÈCES de la caisse (le tenant de caisse : OWNER/MANAGER/CASHIER)
   // CRM — Clients & dettes (MVP2)
   'client:read', // voir l'identité des clients (nom, téléphone)
   'client:write', // créer/modifier les clients, définir le plafond
@@ -85,6 +86,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'stock:write',
     'inventory:count',
     'inventory:validate',
+    'supplier:manage',
     'sale:create',
     'sale:read',
     'sale:override_floor_price',
@@ -92,6 +94,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'sale:return',
     'cash:collect',
     'cash:close',
+    'cash:disburse',
     'client:read',
     'client:write',
     'client:view_credit',
@@ -108,6 +111,7 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'sale:return',
     'cash:collect',
     'cash:close',
+    'cash:disburse',
     'client:read',
     'client:view_credit',
     'client:collect_payment',
@@ -160,6 +164,7 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'sale:return': 'POS',
   'cash:collect': 'POS',
   'cash:close': 'POS',
+  'cash:disburse': 'POS',
   'client:read': 'CRM',
   'client:write': 'CRM',
   'client:view_credit': 'CRM',

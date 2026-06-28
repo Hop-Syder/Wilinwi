@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRightLeft, Clock, Package } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
-import { apiGet, ApiError } from '@/lib/api';
+import { apiGet, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { StockMovementModal } from '@/components/stock-modals';
 
@@ -123,6 +123,14 @@ export default function ProductStockDetailsPage() {
         )}
       </div>
 
+      {canWrite && (
+        <ThresholdCard
+          productId={product.id}
+          etablissementId={user?.etablissementId ?? null}
+          defaultMin={product.seuilAlerte ?? 0}
+        />
+      )}
+
       <div>
         <h2 className="mb-4 flex items-center text-lg font-bold text-slate-900">
           <Clock className="mr-2 h-5 w-5 text-slate-400" />
@@ -177,12 +185,76 @@ export default function ProductStockDetailsPage() {
       </div>
 
       {showMovementModal && (
-        <StockMovementModal 
-          product={product} 
-          onClose={() => setShowMovementModal(false)} 
-          onSuccess={() => { setShowMovementModal(false); void loadData(); }} 
+        <StockMovementModal
+          product={product}
+          onClose={() => setShowMovementModal(false)}
+          onSuccess={() => { setShowMovementModal(false); void loadData(); }}
         />
       )}
     </div>
+  );
+}
+
+/** Seuil de réappro (alerte stock bas) pour l'établissement courant. */
+function ThresholdCard({
+  productId,
+  etablissementId,
+  defaultMin,
+}: {
+  productId: string;
+  etablissementId: string | null;
+  defaultMin: number;
+}) {
+  const isGlobal = etablissementId === 'ALL' || !etablissementId;
+  const [value, setValue] = useState(String(defaultMin));
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    if (isGlobal) return;
+    setSaving(true);
+    setErr(null);
+    setDone(false);
+    try {
+      await apiPatch(`/api/stock/products/${productId}/threshold`, {
+        etablissementId,
+        quantiteMin: Number(value) || 0,
+      });
+      setDone(true);
+    } catch (e) {
+      setErr((e as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <p className="text-sm font-semibold text-slate-800">Seuil d'alerte de stock</p>
+      <p className="mt-0.5 text-xs text-slate-500">
+        Alerte « stock bas » quand la quantité de cet établissement passe sous ce seuil.
+      </p>
+      {isGlobal ? (
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
+          Sélectionnez un établissement précis (sélecteur en haut) pour définir son seuil.
+        </p>
+      ) : (
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            value={value}
+            onChange={(e) => { setValue(e.target.value); setDone(false); }}
+            className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+          />
+          <Button variant="emerald" disabled={saving} onClick={save}>
+            {saving ? 'Enregistrement…' : 'Définir le seuil'}
+          </Button>
+          {done && <span className="text-sm font-medium text-emerald-600">✓ Enregistré</span>}
+        </div>
+      )}
+      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+    </Card>
   );
 }

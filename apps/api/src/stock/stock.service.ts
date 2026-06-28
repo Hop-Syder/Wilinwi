@@ -22,11 +22,14 @@ import {
   type CreateProductInput,
   type CreateStockMovementInput,
   type CreateStockTransferInput,
+  type SetStockThresholdInput,
+  type StockAlertDto,
   type UpdateProductInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
+import { applyStockDelta } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
 
 @Injectable()
@@ -83,20 +86,17 @@ export class StockService {
   async getProduct(ctx: AuthContext, id: string) {
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const p = await this.ensureProduct(tx, ctx.tenantId, id);
-      // Stock scopé à l'établissement courant = Σ mouvements (grand livre).
+      // Stock scopé à l'établissement courant = projection ProductStock (O(1)).
       if (ctx.etablissementId) {
-        const movements = await tx.stockMovement.findMany({
-          where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId, productId: p.id },
+        const rows = await tx.productStock.findMany({
+          where: { etablissementId: ctx.etablissementId, productId: p.id },
           select: { variantId: true, quantite: true },
         });
         let stockProduct = 0;
         const stockByVariant: Record<string, number> = {};
-        for (const m of movements) {
-          if (m.variantId) {
-            stockByVariant[m.variantId] = (stockByVariant[m.variantId] ?? 0) + m.quantite;
-          } else {
-            stockProduct += m.quantite;
-          }
+        for (const r of rows) {
+          if (r.variantId) stockByVariant[r.variantId] = r.quantite;
+          else stockProduct = r.quantite;
         }
         p.stock = stockProduct;
         for (const v of p.variants) {
@@ -160,6 +160,15 @@ export class StockService {
             },
           });
         }
+        // Projection : crée la ligne ProductStock (même à 0, pour porter le seuil).
+        await applyStockDelta(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId,
+          productId: created.id,
+          variantId: null,
+          delta: created.stock,
+          quantiteMin: created.seuilAlerte,
+        });
         for (const v of created.variants) {
           if (v.stock !== 0) {
             await tx.stockMovement.create({
@@ -174,6 +183,13 @@ export class StockService {
               },
             });
           }
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: created.id,
+            variantId: v.id,
+            delta: v.stock,
+          });
         }
       }
       return created;
@@ -192,28 +208,20 @@ export class StockService {
   }
 
   /**
-   * Stock scopé d'un établissement = Σ mouvements (niveau produit hors variante +
-   * par variante). Deux `groupBy` bornés à l'établissement → pas de scan global.
+   * Stock scopé d'un établissement = lecture directe de la projection ProductStock
+   * (O(lignes de l'établissement) — plus de scan/agrégation du grand livre).
    */
   private async scopedStockMaps(tx: TenantTx, tenantId: string, etablissementId: string) {
-    const [byProd, byVar] = await Promise.all([
-      tx.stockMovement.groupBy({
-        by: ['productId'],
-        where: { tenantId, etablissementId, variantId: null },
-        _sum: { quantite: true },
-      }),
-      tx.stockMovement.groupBy({
-        by: ['variantId'],
-        where: { tenantId, etablissementId, NOT: { variantId: null } },
-        _sum: { quantite: true },
-      }),
-    ]);
-    const byProduct = new Map<string, number>(
-      byProd.map((r) => [r.productId, r._sum.quantite ?? 0]),
-    );
-    const byVariant = new Map<string, number>(
-      byVar.filter((r) => r.variantId).map((r) => [r.variantId as string, r._sum.quantite ?? 0]),
-    );
+    const rows = await tx.productStock.findMany({
+      where: { tenantId, etablissementId },
+      select: { productId: true, variantId: true, quantite: true },
+    });
+    const byProduct = new Map<string, number>();
+    const byVariant = new Map<string, number>();
+    for (const r of rows) {
+      if (r.variantId) byVariant.set(r.variantId, r.quantite);
+      else byProduct.set(r.productId, r.quantite);
+    }
     return { byProduct, byVariant };
   }
 
@@ -252,8 +260,10 @@ export class StockService {
     );
 
     // byEtablissement : Map<productId, Record<etablissementId, stockNet>>
+    // (les mouvements non rattachés à un établissement — etablissementId null — sont ignorés)
     const byEtablissement = new Map<string, Record<string, number>>();
     for (const row of byEtabProd) {
+      if (!row.etablissementId) continue;
       const existing = byEtablissement.get(row.productId) ?? {};
       existing[row.etablissementId] = (existing[row.etablissementId] ?? 0) + (row._sum.quantite ?? 0);
       byEtablissement.set(row.productId, existing);
@@ -359,6 +369,15 @@ export class StockService {
         data: { stock: { increment: delta } },
       });
 
+      // Projection ProductStock (solde par emplacement).
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: ctx.etablissementId!,
+        productId: input.productId,
+        variantId: input.variantId ?? null,
+        delta,
+      });
+
       return movement;
     });
   }
@@ -425,6 +444,13 @@ export class StockService {
           motif: `Transfert vers ${destination.nom}`,
         },
       });
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: source.id,
+        productId: input.productId,
+        variantId: input.variantId ?? null,
+        delta: -input.quantite,
+      });
 
       const destMovement = await tx.stockMovement.create({
         data: {
@@ -436,6 +462,13 @@ export class StockService {
           quantite: input.quantite,
           motif: `Transfert depuis ${source.nom}`,
         },
+      });
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: destination.id,
+        productId: input.productId,
+        variantId: input.variantId ?? null,
+        delta: input.quantite,
       });
 
       return destMovement;
@@ -452,15 +485,17 @@ export class StockService {
         where: { tenantId: ctx.tenantId, actif: true },
       });
 
-      // Valorisation scopée à l'établissement courant : Σ mouvements par produit
-      // (toutes variantes confondues). Vue globale (null) → Product.stock.
+      // Valorisation scopée à l'établissement courant : projection ProductStock
+      // (toutes lignes produit + variantes sommées). Vue globale (null) → Product.stock.
       if (ctx.etablissementId) {
-        const byProd = await tx.stockMovement.groupBy({
-          by: ['productId'],
+        const rows = await tx.productStock.findMany({
           where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
-          _sum: { quantite: true },
+          select: { productId: true, quantite: true },
         });
-        const stockByProduct = new Map(byProd.map((r) => [r.productId, r._sum.quantite ?? 0]));
+        const stockByProduct = new Map<string, number>();
+        for (const r of rows) {
+          stockByProduct.set(r.productId, (stockByProduct.get(r.productId) ?? 0) + r.quantite);
+        }
         for (const p of products) {
           p.stock = stockByProduct.get(p.id) ?? 0;
         }
@@ -474,6 +509,73 @@ export class StockService {
       }
       return { valeurAchat, valeurCatalogue, nbProduits: products.length };
     });
+  }
+
+  /**
+   * Alertes de stock bas : lignes ProductStock où quantite ≤ quantiteMin (seuil > 0),
+   * pour l'établissement courant (ou tous en vue globale).
+   */
+  async alerts(ctx: AuthContext): Promise<StockAlertDto[]> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const rows = await tx.productStock.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          quantiteMin: { gt: 0 },
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
+        include: {
+          product: { select: { nom: true } },
+          etablissement: { select: { nom: true } },
+        },
+        orderBy: { quantite: 'asc' },
+        take: 500,
+      });
+      return rows
+        .filter((r) => r.quantite <= r.quantiteMin)
+        .map((r) => ({
+          productId: r.productId,
+          productNom: r.product.nom,
+          variantId: r.variantId,
+          etablissementId: r.etablissementId,
+          etablissementNom: r.etablissement?.nom ?? null,
+          quantite: r.quantite,
+          quantiteMin: r.quantiteMin,
+        }));
+    });
+  }
+
+  /** Définit le seuil de réappro (quantiteMin) d'un produit à un emplacement. */
+  async setThreshold(ctx: AuthContext, productId: string, input: SetStockThresholdInput) {
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      await this.ensureProduct(tx, ctx.tenantId, productId);
+      const etab = await tx.etablissement.findFirst({
+        where: { id: input.etablissementId, tenantId: ctx.tenantId },
+      });
+      if (!etab) throw new NotFoundException('Établissement introuvable');
+      const variantId = input.variantId ?? null;
+      const existing = await tx.productStock.findFirst({
+        where: { etablissementId: input.etablissementId, productId, variantId },
+        select: { id: true },
+      });
+      if (existing) {
+        await tx.productStock.update({
+          where: { id: existing.id },
+          data: { quantiteMin: input.quantiteMin },
+        });
+      } else {
+        await tx.productStock.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: input.etablissementId,
+            productId,
+            variantId,
+            quantite: 0,
+            quantiteMin: input.quantiteMin,
+          },
+        });
+      }
+    });
+    return { ok: true as const };
   }
 
   private signedDelta(type: CreateStockMovementInput['type'], qty: number): number {
