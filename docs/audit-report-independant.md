@@ -10,6 +10,8 @@
 > **Périmètre** : MVP1 « Le Socle », branche `main`, commit `07c53f0`.
 > **Posture** : audit en lecture seule. Aucun fichier de code modifié ; ce rapport est le seul livrable.
 > **Date** : 21 juin 2026.
+> 
+> **Mise à jour post-audit (28 Juin 2026)** : L'architecture de stock a évolué. Le stock n'est plus global par produit. Les réceptions de bons de commande se font uniquement dans un **Magasin central**, suivi d'un transfert (**Dispatch**) vers les boutiques, qui possèdent désormais leur propre stock local.
 
 ---
 

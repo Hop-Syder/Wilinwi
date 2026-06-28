@@ -42,6 +42,10 @@ packages:
 - **Système à 4 prix** : `prixAchat ≤ prixPlancher ≤ prixCatalogue` (produit) +
   `prixReel` (par ligne de vente). Vente sous le plancher → **opération strictement refusée** 
   par le backend et l'UI (anti-fraude absolu, l'état PENDING_APPROVAL n'est plus actif).
+- **Architecture de Stock Centralisé (Hub & Spoke)** : 
+  - Les commandes fournisseurs sont réceptionnées **uniquement** dans un `Magasin` (Entrepôt central).
+  - Le stock est tracé par localisation géographique via un modèle dédié (`ProductStock`), et non plus globalement.
+  - L'approvisionnement des boutiques se fait via des transferts internes (**Dispatch**) depuis le Magasin.
 - **Offline-first** : le POS enregistre en IndexedDB et synchronise via
   `POST /api/sync/sales` (idempotent par `clientGeneratedId`). Le serveur reste la
   source de vérité finale.

@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle } from 'lucide-react';
 import { Button, Card, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
@@ -120,6 +122,30 @@ export default function EntrepotPage() {
 
   const totalDetteFournisseurs = suppliers.reduce((sum, s) => sum + (s.soldeDette || 0), 0);
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-entrepot-kpis',
+      title: 'Vos indicateurs entrepôt',
+      content:
+        "Suivez d'un coup d'œil le nombre de fournisseurs, le total que vous leur devez (dettes) et les commandes en cours.",
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-entrepot-tabs',
+      title: 'Fournisseurs, commandes, paiements',
+      content:
+        'Créez vos fournisseurs, rédigez un bon de commande, puis « Réceptionnez » la livraison : le stock entre à l\'entrepôt et la dette fournisseur se met à jour. Réglez les fournisseurs depuis l\'onglet paiements.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-entrepot-dispatch',
+      title: 'Approvisionner les boutiques',
+      content:
+        'Le bouton « Dispatch » transfère la marchandise de l\'entrepôt vers une boutique. À la validation, le stock quitte l\'entrepôt et arrive en boutique, prêt à la vente.',
+      position: 'bottom',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -128,8 +154,9 @@ export default function EntrepotPage() {
           <h1 className="font-display text-2xl font-bold text-brand">Approvisionnement & Entrepôt</h1>
           <p className="mt-1 text-sm text-slate-500">Gérez vos fournisseurs, bons de commande, réceptions et dettes.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link
+            id="tour-entrepot-dispatch"
             href="/entrepot/dispatch"
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
           >
@@ -145,6 +172,17 @@ export default function EntrepotPage() {
               <Plus className="h-4 w-4" /> Rédiger un Bon
             </Button>
           )}
+          <ContextualHelp
+            storageKey="wilinwi_entrepot_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Ajouter un fournisseur', description: 'Onglet « Fournisseurs » → Nouveau fournisseur. Renseignez nom, téléphone et contact. Sa dette se calcule automatiquement à chaque réception.' },
+              { title: 'Commander puis réceptionner', description: 'Onglet « Commandes » → Rédiger un Bon (produits, quantités, prix d\'achat). À l\'arrivée du camion, ouvrez le bon et « Réceptionnez » : le stock entre à l\'entrepôt, la dette fournisseur augmente du montant reçu (moins l\'acompte).' },
+              { title: 'Payer un fournisseur', description: 'Sur une fiche fournisseur, enregistrez un règlement : la dette baisse et la sortie d\'argent est inscrite en trésorerie. On ne peut pas payer plus que la dette due.' },
+              { title: 'Approvisionner une boutique (Dispatch)', description: 'Bouton « Dispatch » → choisissez entrepôt source et boutique destination, ajoutez les produits, puis validez. Le stock quitte l\'entrepôt et arrive en boutique, prêt à la vente.' },
+              { title: 'Réception & dispatch en ligne uniquement', description: 'Ces opérations modifient le stock de deux endroits : elles exigent une connexion active. Un bandeau vous prévient si vous êtes hors-ligne.' },
+            ]}
+          />
         </div>
       </div>
 
@@ -153,7 +191,7 @@ export default function EntrepotPage() {
       </div>
 
       {/* KPI Cards (for suppliers & dettes) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div id="tour-entrepot-kpis" className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="flex items-center gap-4 p-4 border border-brand/10 bg-brand/5">
           <div className="rounded-xl bg-brand/10 p-3 text-brand">
             <Truck className="h-6 w-6" />
@@ -190,7 +228,7 @@ export default function EntrepotPage() {
       </div>
 
       {/* Tab Switcher & Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border-b border-slate-200 pb-2">
+      <div id="tour-entrepot-tabs" className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border-b border-slate-200 pb-2">
         <div className="flex gap-2 text-sm font-medium">
           <button
             onClick={() => { setActiveTab('suppliers'); setSearchQuery(''); }}

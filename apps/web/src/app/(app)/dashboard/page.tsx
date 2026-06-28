@@ -140,6 +140,11 @@ export default function DashboardPage() {
                   'Le graphe compare votre chiffre d\'affaires (en vert) à vos dépenses (en rouge). L\'écart, c\'est votre résultat.',
               },
               {
+                title: 'Une boutique ou toutes',
+                description:
+                  'Le sélecteur en haut bascule entre une boutique précise et « Tous les établissements ». En vue globale, le tableau de bord ajoute un graphe des ventes et dépenses par boutique.',
+              },
+              {
                 title: 'Optimiser le réassort',
                 description:
                   'Les panneaux "Ruptures" et "Produits dormants" vous aident à savoir quoi racheter et quoi écouler.',

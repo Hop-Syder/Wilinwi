@@ -268,6 +268,14 @@ export default function TresoreriePage() {
                 description: 'Onglet "Dépense" → choisissez le compte, la catégorie et le montant. Exemple : payer le loyer depuis la Caisse.',
               },
               {
+                title: 'Qui décaisse la caisse',
+                description: 'Les sorties d\'espèces (compte Caisse) peuvent être faites par le caissier en plus du gérant et du propriétaire. Mobile Money et Banque restent réservés au gérant/propriétaire.',
+              },
+              {
+                title: 'Trésorerie par boutique',
+                description: 'Soldes, dépenses et clôtures sont propres à l\'établissement sélectionné en haut. Choisissez la boutique avant d\'enregistrer une opération.',
+              },
+              {
                 title: 'Virer l\'argent de la caisse en banque',
                 description: 'Onglet "Virement" → Source : Caisse, Destination : Banque, montant. Le solde est vérifié avant l\'envoi.',
               },

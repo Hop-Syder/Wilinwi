@@ -16,6 +16,8 @@
 > **Auteur** : DEXTY (Nexus Partners)  
 > **Date d'évaluation** : 21 Juin 2026  
 > **Version cible** : MVP1 « Le Socle » (POS, Stock, Pay, CRM, Analytics, Sync, Admin)
+> 
+> **Mise à jour post-audit (28 Juin 2026)** : L'architecture logistique a été repensée. Le stock n'est plus global au produit, mais tracé par localisation géographique. Les bons de commande fournisseurs sont réceptionnés dans un **Magasin central**, puis transférés aux boutiques via un système de **Dispatch**.
 
 ---
 

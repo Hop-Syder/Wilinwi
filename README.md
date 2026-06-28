@@ -22,11 +22,12 @@ Pour en savoir plus sur l'architecture complète, les conventions de code et les
 
 ---
 
-## 🛠️ Stack Technologique
+## 🛠️ Stack Technologique & Architecture Cible
 
 - **Frontend** : Next.js 15 (App Router) · React 19 · TailwindCSS 3
-- **Backend** : NestJS 11 · Architecture modulaire (modules: auth, stock, inventory, pos, crm, treasury, analytics, sync, admin)
+- **Backend** : NestJS 11 · Architecture modulaire (auth, stock, inventory, pos, crm, treasury, analytics, sync, admin)
 - **Base de Données** : PostgreSQL (Supabase) · Prisma ORM · Row-Level Security (RLS)
+- **Logistique** : Architecture "Magasin Central" (Réception globale) avec système de "Dispatch" (transferts internes) vers les boutiques.
 - **Offline / Sync** : Dexie.js (IndexedDB) · SyncEngine
 - **Tooling & CI/CD** : Turborepo (Monorepo) · pnpm · GitHub Actions
 

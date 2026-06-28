@@ -111,8 +111,10 @@ export default function StockPage() {
             storageKey="wilinwi_stock_tour_done"
             tourSteps={tourSteps}
             useCases={[
+              { title: 'Stock par boutique', description: 'Chaque établissement a son propre stock. Le sélecteur en haut change la boutique affichée ; « Tous les établissements » montre le total consolidé et le détail par boutique.' },
               { title: 'Entrée de marchandise', description: 'Cliquez sur l\'icône de mouvement sur la ligne d\'un produit, choisissez "Entrée" et indiquez la quantité reçue.' },
-              { title: 'Déclarer une casse ou perte', description: 'Utilisez un mouvement de type "Sortie (-)" avec le motif "Casse", "Péremption" ou "Perte".' },
+              { title: 'Transférer entre boutiques', description: 'Pour déplacer du stock de l\'entrepôt (ou d\'une boutique) vers une autre, passez par Entrepôt → Dispatch : la validation déplace le stock des deux côtés.' },
+              { title: 'Alerte stock bas', description: 'Sur la fiche d\'un produit, définissez un seuil de réappro par établissement. Un bandeau « stock bas » s\'affiche en haut quand un produit passe sous son seuil.' },
               { title: 'Corriger un écart (Ajustement)', description: 'Lors d\'un inventaire, utilisez l\'Ajustement pour définir la quantité exacte en rayon.' },
             ]}
           />

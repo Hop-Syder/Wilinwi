@@ -440,6 +440,7 @@ export default function PosPage() {
               storageKey="wilinwi_pos_tour_done"
               tourSteps={tourSteps}
               useCases={[
+                { title: 'Choisir la boutique', description: 'La caisse vend pour la boutique sélectionnée dans le sélecteur en haut, et décrémente SON stock. En vue « Tous les établissements », l\'encaissement est désactivé : choisissez une boutique précise.' },
                 { title: 'Faire une remise (Négociation)', description: 'Cliquez sur le prix réel d\'un produit dans le panier et modifiez-le. Le système vérifiera automatiquement que vous restez au-dessus du prix plancher.' },
                 { title: 'Vente à crédit ou acompte', description: 'Dans le panneau d\'encaissement, changez le mode de paiement sur Acompte/Crédit, sélectionnez un client enregistré, et indiquez le montant versé aujourd\'hui.' },
                 { title: 'Travailler sans connexion', description: 'Continuez d\'encaisser même sans internet. Les ventes sont sauvegardées localement et seront synchronisées automatiquement au retour de la connexion.' },

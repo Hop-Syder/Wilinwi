@@ -328,6 +328,7 @@ export default function ClientsPage() {
             storageKey="wilinwi_clients_tour_done"
             tourSteps={tourSteps}
             useCases={[
+              { title: 'Clients partagés', description: 'Le fichier clients est commun à toute l\'entreprise : un client créé dans une boutique est reconnu dans les autres (même dette, même historique).' },
               { title: 'Vente à crédit', description: 'Sélectionnez un client et cochez "Crédit" ou "Acompte" en caisse pour générer une dette automatique.' },
               { title: 'Lettrage de remboursement', description: 'Lors d\'un encaissement, vous pouvez lettrer sur une vente précise ou utiliser le mode FIFO.' },
               { title: 'Plafonds de crédit', description: 'Empêche le vendeur d\'autoriser des ventes si le plafond défini pour le client est dépassé.' }
