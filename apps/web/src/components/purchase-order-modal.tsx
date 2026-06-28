@@ -80,7 +80,10 @@ export function PurchaseOrderModal({
 
     const prod = products.find((x) => x.id === selectedProductId)!;
     const variant = prod.variants.find((v) => v.id === selectedVariantId);
-    const label = variant ? `${prod.nom} (${variant.nom})` : prod.nom;
+    const variantLabel = variant
+      ? Object.entries(variant.attributs).map(([k, v]) => `${k}: ${v}`).join(', ')
+      : null;
+    const label = variantLabel ? `${prod.nom} (${variantLabel})` : prod.nom;
 
     // Check if item already added
     const existsIndex = items.findIndex(
