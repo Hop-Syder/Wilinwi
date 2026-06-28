@@ -326,9 +326,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Content main */}
+        {/* La `key` sur l'établissement courant remonte le contenu de page à chaque
+            changement de boutique → toutes les pages re-chargent les données de la
+            boutique choisie (y compris celles qui ne passent pas par useCachedQuery). */}
         <main className="min-w-0 flex-1">
           <DunningBanner />
-          {children}
+          <div key={user.etablissementId ?? 'none'}>{children}</div>
         </main>
       </div>
 

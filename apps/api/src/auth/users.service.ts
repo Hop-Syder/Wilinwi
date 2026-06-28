@@ -62,6 +62,12 @@ export class UsersService {
       tx.user.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
         orderBy: { nom: 'asc' },
+        include: {
+          etablissements: {
+            include: { etablissement: { select: { nom: true, actif: true } } },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
       }),
     );
     return users.map((u) => ({
@@ -70,6 +76,10 @@ export class UsersService {
       role: u.role,
       poste: u.poste,
       hasPin: !!u.pinCode,
+      // Boutiques accessibles (pour l'affichage sous le profil au verrouillage).
+      boutiques: u.etablissements
+        .filter((e) => e.etablissement.actif)
+        .map((e) => e.etablissement.nom),
     }));
   }
 

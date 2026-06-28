@@ -19,6 +19,8 @@ export interface PinUser {
   id: string;
   nom: string;
   role: string;
+  /** Boutiques accessibles — affichées sous le profil. */
+  boutiques?: string[];
 }
 
 interface PinSwitchModalProps {
@@ -88,9 +90,17 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
                   <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand/10 text-brand">
                     <span className="text-xl font-bold">{u.nom.charAt(0).toUpperCase()}</span>
                   </div>
-                  <div className="text-center">
+                  <div className="min-w-0 text-center">
                     <div className="font-semibold text-slate-900">{u.nom}</div>
                     <div className="text-xs font-medium text-slate-500">{u.role}</div>
+                    {u.boutiques && u.boutiques.length > 0 && (
+                      <div
+                        className="mt-0.5 max-w-[130px] truncate text-[11px] font-medium text-brand"
+                        title={u.boutiques.join(', ')}
+                      >
+                        🏪 {u.boutiques.join(', ')}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
