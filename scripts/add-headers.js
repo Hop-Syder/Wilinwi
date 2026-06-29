@@ -107,7 +107,7 @@ function processFile(filePath) {
 }
 
 DIRECTORIES_TO_SCAN.forEach((dir) => {
-  const absolutePath = path.join(__dirname, dir);
+  const absolutePath = path.join(__dirname, '..', dir); // '..' car on est dans scripts/
   if (fs.existsSync(absolutePath)) {
     processDirectory(absolutePath);
   }

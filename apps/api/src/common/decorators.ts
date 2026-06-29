@@ -9,8 +9,9 @@
  */
 // ──────────────────────────────────
 
-import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, SetMetadata, UseGuards, type ExecutionContext } from '@nestjs/common';
 import type { AuthContext, Capability } from '@wilinwi/types';
+import { PlatformAdminGuard } from './platform-admin.guard';
 
 /** Marque une route comme publique (pas de JWT requis). */
 export const IS_PUBLIC_KEY = 'isPublic';
@@ -27,3 +28,6 @@ export const CurrentUser = createParamDecorator(
     return req.user as AuthContext;
   },
 );
+
+/** Marque une route comme réservée aux super-administrateurs plateforme. */
+export const PlatformAdmin = () => UseGuards(PlatformAdminGuard);

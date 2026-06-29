@@ -48,6 +48,8 @@ export interface SessionUser {
   /** Statut d'abonnement + état de relance d'impayé (facturation). */
   subscriptionStatus: SubscriptionStatus;
   dunning: DunningState;
+  /** Indique si l'utilisateur est un super-admin plateforme (Nexus super-admin). */
+  isPlatformAdmin: boolean;
 }
 
 interface MeResponse {
@@ -61,6 +63,7 @@ interface MeResponse {
   etablissements?: SessionEtablissement[];
   subscriptionStatus?: SubscriptionStatus;
   dunning?: DunningState;
+  isPlatformAdmin?: boolean;
   profile?: {
     nom: string;
     tenant?: {
@@ -130,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         etablissements: etabs,
         subscriptionStatus: me.subscriptionStatus ?? 'ACTIVE',
         dunning: me.dunning ?? ACTIVE_DUNNING,
+        isPlatformAdmin: me.isPlatformAdmin ?? false,
       });
     } catch {
       clearPinToken();

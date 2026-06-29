@@ -130,6 +130,7 @@ model Tenant {
   supplierPayments SupplierPayment[]
   productStocks   ProductStock[]
   dispatchOrders  DispatchOrder[]
+  notifications   Notification[]
 
   @@map("tenants")
 }
@@ -752,4 +753,34 @@ model DispatchOrderItem {
   @@index([tenantId])
   @@index([dispatchOrderId])
   @@map("dispatch_order_items")
+}
+
+// ─────────────────── Notifications in-app (centre de pilotage) ───────────────────
+// Alertes poussées au propriétaire/gérant (stock bas, impayé…). État de lecture au
+// niveau entreprise (lu = traité par un admin). Dérivées des alertes déjà calculées.
+
+enum NotificationType {
+  STOCK_LOW // produit sous son seuil de réappro
+  PAST_DUE // abonnement impayé
+  SUPPLIER_DEBT // dette fournisseur
+  INFO
+}
+
+model Notification {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  etablissementId String?          @map("etablissement_id") @db.Uuid
+  type            NotificationType
+  titre           String
+  message         String
+  /// Référence de l'entité concernée (ex: productId) — sert à la déduplication.
+  entityId        String?          @map("entity_id")
+  readAt          DateTime?        @map("read_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, readAt])
+  @@index([tenantId, type])
+  @@map("notifications")
 }

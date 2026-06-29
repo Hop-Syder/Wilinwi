@@ -66,5 +66,7 @@ export const AuthContextSchema = z.object({
   subscriptionStatus: SubscriptionStatusSchema.default('ACTIVE'),
   /** État de relance d'impayé (dérivé de pastDueSince) — pilote les restrictions. */
   dunning: DunningStateSchema.default(ACTIVE_DUNNING),
+  /** Indique si l'utilisateur est un super-admin plateforme (Nexus super-admin). */
+  isPlatformAdmin: z.boolean().default(false),
 });
 export type AuthContext = z.infer<typeof AuthContextSchema>;

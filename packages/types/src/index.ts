@@ -23,3 +23,6 @@ export * from './user.js';
 export * from './supplier.js';
 export * from './purchase.js';
 export * from './dispatch.js';
+export * from './notification.js';
+export * from './platform.js';
+

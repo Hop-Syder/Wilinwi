@@ -16,7 +16,8 @@
     "db:generate": "pnpm --filter @wilinwi/db generate",
     "db:migrate": "pnpm --filter @wilinwi/db migrate",
     "db:seed": "pnpm --filter @wilinwi/db seed",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "headers:add": "node scripts/add-headers.js"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

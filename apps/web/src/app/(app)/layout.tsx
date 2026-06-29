@@ -30,6 +30,7 @@ import {
   X,
   Truck,
   Warehouse,
+  ShieldAlert,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
@@ -40,6 +41,7 @@ import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
 import { Preloader } from '@/components/preloader';
 import { EtablissementSwitcher } from '@/components/etablissement-switcher';
 import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
+import { NotificationBell } from '@/components/notification-bell';
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
   { href: '/', label: 'Hub', icon: LayoutGrid },
@@ -62,6 +64,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(false);
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const menuItems = [...NAV];
+  if (user?.isPlatformAdmin) {
+    menuItems.push({ href: '/platform', label: 'Plateforme', icon: ShieldAlert });
+  }
 
   async function lock() {
     try {
@@ -155,7 +162,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3">
             <OfflineIndicator state={state} pending={pending} />
-            
+            <NotificationBell />
+
             {/* Badge Utilisateur (Desktop) */}
             <div className="hidden items-center gap-3 rounded border border-border bg-surface p-1.5 pr-3 shadow-sm sm:flex">
               <div className="flex h-7 w-7 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
@@ -236,7 +244,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <nav className="mt-2">
             <ul className="space-y-1">
-              {NAV.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
+              {menuItems.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -302,7 +310,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="hidden w-52 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
             <ul className="space-y-1">
-              {NAV.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
+              {menuItems.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -341,7 +349,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {NAV.filter((item) => canSee(item.module, item.href))
+          {menuItems.filter((item) => canSee(item.module, item.href))
             .slice(0, 4)
             .map(({ href, label, icon: Icon }) => {
               const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

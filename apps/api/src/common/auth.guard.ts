@@ -124,11 +124,19 @@ export class AuthGuard implements CanActivate {
         ? headerEtab
         : (resolved.etablissementIds[0] ?? null);
 
+    const email = (payload.email as string) ?? '';
+    const adminEmails = this.config.get<string>('PLATFORM_ADMIN_EMAILS', '');
+    const isPlatformAdmin = adminEmails
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(email.toLowerCase());
+
     const ctx: AuthContext = {
       userId,
       tenantId,
       role: resolved.role,
-      email: (payload.email as string) ?? '',
+      email,
       plan: resolved.plan,
       modules: resolved.modules,
       etablissementId,
@@ -136,6 +144,7 @@ export class AuthGuard implements CanActivate {
       etablissementIds: resolved.etablissementIds,
       subscriptionStatus: resolved.subscriptionStatus,
       dunning: resolved.dunning,
+      isPlatformAdmin,
     };
     req.user = ctx;
     return true;

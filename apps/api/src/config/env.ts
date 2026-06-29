@@ -24,6 +24,8 @@ export const EnvSchema = z.object({
   CORS_ORIGINS: z.string().optional(),
   /** URL de base du frontend (lien d'invitation → /set-password). Déf. localhost:3000. */
   WEB_BASE_URL: z.string().url().optional(),
+  /** Allowlist des emails d'administration plateforme, séparés par des virgules. */
+  PLATFORM_ADMIN_EMAILS: z.string().default(''),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

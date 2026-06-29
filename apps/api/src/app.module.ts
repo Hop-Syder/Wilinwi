@@ -28,6 +28,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SyncModule } from './sync/sync.module';
 import { AdminModule } from './admin/admin.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Controller()
 class HealthController {
@@ -66,6 +68,8 @@ class HealthController {
     SyncModule,
     AdminModule,
     WarehouseModule,
+    NotificationsModule,
+    PlatformModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
