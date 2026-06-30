@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { AdminPrismaService } from '../common/admin-prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
 import type {
   PlatformTenantDto,
@@ -29,13 +29,13 @@ import type {
 @Injectable()
 export class PlatformService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly adminPrisma: AdminPrismaService,
     private readonly planConfig: PlanConfigService,
   ) {}
 
   /** Retourne la synthèse globale de tous les tenants (entreprises) en contournant la RLS. */
   async getTenantsOverview(): Promise<PlatformTenantDto[]> {
-    return this.prisma.client.$queryRaw<PlatformTenantDto[]>`
+    return this.adminPrisma.client.$queryRaw<PlatformTenantDto[]>`
       SELECT
         id,
         nom,
@@ -53,7 +53,7 @@ export class PlatformService {
 
   /** Retourne la liste des établissements d'un tenant spécifique en contournant la RLS. */
   async getTenantEtablissements(tenantId: string): Promise<PlatformEtablissementDto[]> {
-    return this.prisma.client.$queryRaw<PlatformEtablissementDto[]>`
+    return this.adminPrisma.client.$queryRaw<PlatformEtablissementDto[]>`
       SELECT
         id,
         nom,
@@ -69,7 +69,7 @@ export class PlatformService {
    * (ACTIVE, impayé purgé) et reporte l'échéance d'un cycle. Source de vérité = le serveur.
    */
   async recordPayment(tenantId: string): Promise<PlatformPaymentResultDto> {
-    const rows = await this.prisma.client.$queryRaw<PlatformPaymentResultDto[]>`
+    const rows = await this.adminPrisma.client.$queryRaw<PlatformPaymentResultDto[]>`
       SELECT
         subscription_status AS "subscriptionStatus",
         subscription_due_date AS "subscriptionDueDate"
@@ -85,7 +85,7 @@ export class PlatformService {
    * dont l'échéance est dépassée. Renvoie le nombre marqué.
    */
   async runOverdue(): Promise<PlatformOverdueResultDto> {
-    const rows = await this.prisma.client.$queryRaw<{ markedPastDue: number }[]>`
+    const rows = await this.adminPrisma.client.$queryRaw<{ markedPastDue: number }[]>`
       SELECT app.billing_run_overdue()::integer AS "markedPastDue"
     `;
     return { markedPastDue: rows[0]?.markedPastDue ?? 0 };
@@ -93,14 +93,14 @@ export class PlatformService {
 
   /** Change le plan d'une entreprise (super-admin). Fonction `void` → $executeRaw. */
   async changePlan(tenantId: string, plan: Plan): Promise<void> {
-    await this.prisma.client.$executeRaw`
+    await this.adminPrisma.client.$executeRaw`
       SELECT app.billing_set_plan(${tenantId}::uuid, ${plan}::text)
     `;
   }
 
   /** Change le statut d'abonnement (suspension / réactivation / annulation). Fonction `void` → $executeRaw. */
   async setStatus(tenantId: string, status: SubscriptionStatus): Promise<void> {
-    await this.prisma.client.$executeRaw`
+    await this.adminPrisma.client.$executeRaw`
       SELECT app.billing_set_status(${tenantId}::uuid, ${status}::text)
     `;
   }
@@ -111,7 +111,7 @@ export class PlatformService {
    * invalide le cache pour une prise d'effet immédiate.
    */
   async setPlanConfig(plan: Plan, input: UpdatePlanConfigInput): Promise<PlanConfigDto> {
-    await this.prisma.client.$executeRaw`
+    await this.adminPrisma.client.$executeRaw`
       SELECT app.platform_set_plan_config(
         ${plan}::text, ${input.label}::text,
         ${input.priceMonthly}::int, ${input.priceYearly}::int,
@@ -130,7 +130,7 @@ export class PlatformService {
    * La prise d'effet est immédiate : l'AuthGuard relit `module_addons` à chaque requête.
    */
   async setTenantModules(tenantId: string, modules: ModuleKey[]): Promise<{ moduleAddons: ModuleKey[] }> {
-    await this.prisma.client.$executeRaw`
+    await this.adminPrisma.client.$executeRaw`
       SELECT app.platform_set_tenant_modules(${tenantId}::uuid, ${modules}::text[])
     `;
     return { moduleAddons: modules };
@@ -138,7 +138,7 @@ export class PlatformService {
 
   /** KPIs agrégés de la plateforme (Lot 2.5) — MRR, ventes 30 j, croissance, etc. */
   async getMetrics(): Promise<PlatformMetricsDto> {
-    const rows = await this.prisma.client.$queryRaw<PlatformMetricsDto[]>`
+    const rows = await this.adminPrisma.client.$queryRaw<PlatformMetricsDto[]>`
       SELECT
         tenants_total::int        AS "tenantsTotal",
         tenants_active::int       AS "tenantsActive",
@@ -158,7 +158,7 @@ export class PlatformService {
 
   /** Flux d'audit cross-tenant : dernières actions, tout locataire confondu. */
   async getRecentActivity(limit = 20): Promise<PlatformActivityDto[]> {
-    return this.prisma.client.$queryRaw<PlatformActivityDto[]>`
+    return this.adminPrisma.client.$queryRaw<PlatformActivityDto[]>`
       SELECT
         id,
         tenant_id  AS "tenantId",

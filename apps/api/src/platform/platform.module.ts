@@ -10,12 +10,13 @@
 // ──────────────────────────────────
 
 import { Module } from '@nestjs/common';
+import { AdminPrismaService } from '../common/admin-prisma.service';
 import { PlatformController } from './platform.controller';
 import { PlatformService } from './platform.service';
 
 @Module({
   controllers: [PlatformController],
-  providers: [PlatformService],
+  providers: [PlatformService, AdminPrismaService],
   exports: [PlatformService],
 })
 export class PlatformModule {}

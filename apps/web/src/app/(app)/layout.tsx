@@ -30,7 +30,6 @@ import {
   X,
   Truck,
   Warehouse,
-  ShieldAlert,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
@@ -65,10 +64,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // La console super-admin vit désormais dans une app séparée (apps/admin-web,
+  // domaine dédié) — plus aucun code admin dans l'app cliente.
   const menuItems = [...NAV];
-  if (user?.isPlatformAdmin) {
-    menuItems.push({ href: '/platform', label: 'Plateforme', icon: ShieldAlert });
-  }
 
   async function lock() {
     try {

@@ -17,6 +17,10 @@ export const EnvSchema = z.object({
   API_PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1).optional(),
+  /** Connexion du module plateforme via le rôle `wilinwi_admin` (seul habilité à
+   *  appeler les fonctions cross-tenant `app.*`). Sépare le privilège admin du rôle
+   *  applicatif public. Si absent, les routes /platform échouent (fail-closed). */
+  ADMIN_DATABASE_URL: z.string().optional(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(1),
