@@ -4,7 +4,7 @@
  * @organization Nexus Partners
  * @description README principal détaillant l'architecture, le CI/CD, les déploiements Vercel/Railway et les correctifs DB
  * @created 2026-06-19
- * @updated 2026-06-20
+ * @updated 2026-06-30
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -24,12 +24,17 @@ Pour en savoir plus sur l'architecture complète, les conventions de code et les
 
 ## 🛠️ Stack Technologique & Architecture Cible
 
-- **Frontend** : Next.js 15 (App Router) · React 19 · TailwindCSS 3
-- **Backend** : NestJS 11 · Architecture modulaire (auth, stock, inventory, pos, crm, treasury, analytics, sync, admin)
+- **Frontends** : Next.js 15 (App Router) · React 19 · TailwindCSS 3
+  - `apps/web` — SaaS client (Hub + modules), port **3000**
+  - `apps/admin-web` — **console super-admin Nexus** (séparée), port **3001**
+- **Backend** : NestJS 11 · architecture modulaire — `auth, etablissement, stock, inventory, pos, crm, treasury, analytics, sync, admin, warehouse, notifications, plans, platform`
 - **Base de Données** : PostgreSQL (Supabase) · Prisma ORM · Row-Level Security (RLS)
+- **Sécurité plateforme** : double rôle DB — `wilinwi_app` (public, RLS) **vs** `wilinwi_admin` (seul à exécuter les fonctions cross-tenant `app.*`). Voir [§ Console super-admin & sécurité](#-console-super-admin--sécurité).
 - **Logistique** : Architecture "Magasin Central" (Réception globale) avec système de "Dispatch" (transferts internes) vers les boutiques.
 - **Offline / Sync** : Dexie.js (IndexedDB) · SyncEngine
 - **Tooling & CI/CD** : Turborepo (Monorepo) · pnpm · GitHub Actions
+
+> Détail de l'architecture, des conventions et du modèle de sécurité : [CLAUDE.md](CLAUDE.md).
 
 ---
 
@@ -49,11 +54,48 @@ pnpm --filter @wilinwi/db generate
 pnpm --filter @wilinwi/db migrate
 pnpm --filter @wilinwi/db rls
 
-# 4. Lancer les serveurs de développement (Frontend & Backend)
+# 4. Lancer les serveurs de développement (API + 2 frontends)
 pnpm dev
-# L'API NestJS sera disponible sur http://localhost:4000
-# L'application Next.js sera disponible sur http://localhost:3000
+# API NestJS         → http://localhost:4000
+# SaaS client (web)  → http://localhost:3000
+# Console super-admin → http://localhost:3001
 ```
+
+> Variables d'environnement clés (`.env` racine) : `DATABASE_URL` (rôle `wilinwi_app`),
+> `DIRECT_URL` (rôle `postgres`, migrations), **`ADMIN_DATABASE_URL`** (rôle `wilinwi_admin`,
+> module plateforme), **`PLATFORM_ADMIN_EMAILS`** (allowlist des super-admins), `SUPABASE_*`,
+> `NEXT_PUBLIC_*`, `CORS_ORIGINS`.
+
+---
+
+## 🔐 Console super-admin & sécurité
+
+La console d'exploitation du SaaS (entreprises, facturation, plans/tarifs, modules à la carte,
+métriques) vit dans une **application séparée** (`apps/admin-web`, :3001), **distincte du SaaS
+client** : aucune ligne de code admin n'est livrée dans `apps/web`.
+
+Trois barrières **indépendantes** protègent les opérations cross-tenant :
+
+1. **Identité** — accès réservé aux e-mails de `PLATFORM_ADMIN_EMAILS` ; le backend calcule
+   `isPlatformAdmin` et garde les routes avec `@PlatformAdmin` (`PlatformAdminGuard`).
+2. **Privilège base (verrou)** — les fonctions cross-tenant `app.*` (qui **contournent la RLS**)
+   sont **réservées au rôle `wilinwi_admin`** et **révoquées** au rôle applicatif public
+   `wilinwi_app`. Même une API publique compromise ne peut pas déclencher d'opération cross-tenant.
+   → rôle créé via [`packages/db/prisma/admin-role.sql.example`](packages/db/prisma/admin-role.sql.example) ;
+   le module `platform` se connecte via `ADMIN_DATABASE_URL` (`AdminPrismaService`).
+3. **Réseau (recommandé en prod)** — placer `admin-web` derrière un contrôle d'accès (Cloudflare
+   Access / allowlist IP), sur un domaine dédié.
+
+```bash
+# Créer le rôle admin + appliquer le verrou (une fois, après les fonctions plateforme) :
+#   1. copier admin-role.sql.example → y mettre un mot de passe fort
+#   2. prisma db execute --url "$DIRECT_URL" --file admin-role.sql
+#   3. renseigner ADMIN_DATABASE_URL (pooler session 5432, rôle wilinwi_admin)
+```
+
+> Le module plateforme s'appuie sur des fonctions `SECURITY DEFINER` du schéma `app`
+> ([`packages/db/prisma/platform.sql`](packages/db/prisma/platform.sql)) — non exposées par
+> PostgREST. Vérifier le verrou : `wilinwi_app` doit recevoir `permission denied` sur `app.platform_*`.
 
 ---
 
@@ -121,7 +163,17 @@ Le Frontend Next.js est optimisé pour être hébergé sur **Vercel**, ce qui ga
   - `NEXT_PUBLIC_SUPABASE_URL` (L'URL du projet Supabase)
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Clé publique anonyme Supabase)
 
-### 2. Backend (`apps/api`) sur Railway
+### 2. Console super-admin (`apps/admin-web`) sur Vercel
+
+Déployée comme un **projet Vercel distinct**, sur un **domaine dédié** (ex. `admin.wilinwi.com`),
+idéalement protégé par **Cloudflare Access** ou une allowlist IP.
+
+- **Root Directory** : `apps/admin-web`
+- **Build Command** : `cd ../.. && pnpm turbo run build --filter=admin-web`
+- **Variables** : `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- ⚠️ Ajouter l'origine de `admin-web` à **`CORS_ORIGINS`** de l'API.
+
+### 3. Backend (`apps/api`) sur Railway
 
 L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement de production stable et auto-scalable, idéal pour les applications Node.js nécessitant un cycle de vie long et stable (APIs RESTful classiques, modules complexes, etc.).
 
@@ -132,9 +184,11 @@ L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement 
 - **Build Command** : `pnpm turbo run build --filter=api`
 - **Start Command** : `pnpm --filter api start:prod`
 - **Variables d'environnement requises** :
-  - `DATABASE_URL` (URL de pooling session Supabase : port 5432, indispensable pour la bonne exécution des transactions Prisma `withTenant`)
-  - `PORT` (Injecté automatiquement par Railway, NestJS doit écouter sur ce port dynamiquement)
-  - Toutes les autres variables de sécurité et d'authentification nécessaires au fonctionnement de l'API.
+  - `DATABASE_URL` (pooling session Supabase, port 5432, rôle `wilinwi_app` — indispensable aux transactions `withTenant`)
+  - **`ADMIN_DATABASE_URL`** (pooling session 5432, rôle `wilinwi_admin` — module plateforme ; sans elle les routes `/platform` échouent, _fail-closed_)
+  - **`PLATFORM_ADMIN_EMAILS`** (allowlist des super-admins, séparés par des virgules)
+  - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`
+  - `PORT` (injecté automatiquement par Railway)
 
 ---
 

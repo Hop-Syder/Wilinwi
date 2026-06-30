@@ -13,10 +13,12 @@
 Le projet Admin couvre **deux niveaux** :
 
 - **Entreprise (back‑office OWNER/MANAGER)** — piloter SON commerce. **Quasi complet.**
-- **Plateforme (super‑admin Nexus)** — exploiter le SaaS (entreprises, facturation, config). **À bâtir.**
+- **Plateforme (super‑admin Nexus)** — exploiter le SaaS (entreprises, facturation, config). **Livrée**
+  (console séparée `admin-web`) ; reste la passerelle d'encaissement en ligne (§2.2).
 
 Contrainte transverse : **multi‑tenant + RLS**. Toute lecture cross‑tenant (niveau plateforme)
-exige un accès contrôlé (fonction `SECURITY DEFINER` ou rôle dédié), jamais le rôle applicatif.
+passe par une fonction `SECURITY DEFINER` du schéma `app`, **réservée au rôle dédié `wilinwi_admin`**
+(jamais le rôle applicatif `wilinwi_app`).
 
 ---
 
@@ -66,40 +68,53 @@ exige un accès contrôlé (fonction `SECURITY DEFINER` ou rôle dédié), jamai
 
 ---
 
-## 2. ⛔ RESTE À FAIRE — Plateforme (super‑admin)
+## 2. ✅ RÉALISÉ — Plateforme (super‑admin)
 
-### 2.1 Console super‑admin « Entreprises » — ⛔ (L)
-**But** : un opérateur Nexus pilote toutes les entreprises.
-- **Identité super‑admin** : allowlist d'emails (env `PLATFORM_ADMIN_EMAILS`) + `@PlatformAdmin` guard.
-- **Accès cross‑tenant contrôlé** : fonction `app.platform_tenants_overview()` `SECURITY DEFINER`
-  (lecture seule, agrégats : plan, statut, nb établissements/users/ventes, créé le).
-- **API** `GET /platform/tenants` + **page** `/platform` (liste, recherche, fiche entreprise).
-- `me` renvoie `isPlatformAdmin` ; entrée nav conditionnelle.
-- **Critères** : isolation respectée (aucune donnée sensible cross‑tenant), gating strict, audité.
-- **Dépendances** : aucune. **Risque** : sécurité (fuite cross‑tenant) → revue obligatoire.
+> Console séparée `apps/admin-web` (:3001) + module `apps/api/src/platform`. Accès cross‑tenant
+> par fonctions `SECURITY DEFINER` du schéma `app` ([platform.sql](../packages/db/prisma/platform.sql)),
+> gardées par `@PlatformAdmin`, et **verrouillées au rôle DB `wilinwi_admin`** (cf. §2.6).
 
-### 2.2 Facturation en ligne + déclencheur d'impayé — ⛔ (XL)
-- Intégration prestataire (**FedaPay / Wave / Mobile Money / CB**) : paiement d'abonnement, webhooks,
-  factures/reçus, historique des règlements.
-- **Cron quotidien** qui fait *entrer* en `PAST_DUE` (échéance impayée) et avancer les étapes — la
-  mécanique d'effets existe déjà (`computeDunning`).
-- **Dépendances** : §2.1 (back‑office facturation) + **arbitrage prestataire** (businessplan.md).
+### 2.1 Console super‑admin « Entreprises » — ✅ (L)
+- **Identité super‑admin** : allowlist `PLATFORM_ADMIN_EMAILS` → `ctx.isPlatformAdmin` + `PlatformAdminGuard`.
+- **Accès cross‑tenant** : `app.platform_tenants_overview()` / `app.platform_tenant_etablissements()`
+  (`SECURITY DEFINER`, agrégats : plan, statut, échéance, nb users/établissements, modules, créé le).
+- **API** `GET /platform/tenants` + `…/:id/etablissements` ; **page** `/platform` (liste, recherche,
+  KPI, fiche entreprise). `me` renvoie `isPlatformAdmin`.
 
-### 2.3 Plans / tarifs / limites éditables — 🟡 (M)
-- Sortir `PLAN_LIMITS` / `PLAN_MODULES` / tarifs du **code** vers une **config en base** pilotable
-  (table `plan_configs` lue au runtime), éditable depuis la console super‑admin.
-- **Critères** : changer un prix/limite sans redéploiement ; valeurs par défaut = actuelles.
-- **Dépendances** : §2.1 (écran d'édition).
+### 2.2 Facturation — cœur indépendant du prestataire — ✅ / ⛔ passerelle (XL)
+- ✅ **Échéance + cycle** (`subscriptionDueDate`, `billingCycle`), **paiement manuel** (régularise +
+  reporte d'un cycle : `app.billing_record_payment`), **détection d'impayés** (`app.billing_run_overdue`
+  → `PAST_DUE`), **changer de plan / suspendre / réactiver** (cross‑tenant). UI dans la fiche entreprise.
+- La *mécanique d'effets* (`computeDunning`) était déjà là ; le **déclencheur** existe désormais (bouton
+  « Lancer la facturation » + fonction relève).
+- ⛔ **Reste** : la **passerelle d'encaissement en ligne** (FedaPay / Wave / CB) + webhooks + cron — elle
+  viendra simplement brancher un webhook sur `billing_record_payment`. **Bloquée : arbitrage prestataire.**
 
-### 2.4 Modules premium à la carte + feature flags — 🟡 (M)
-- Activer/désactiver un module **à l'unité** par entreprise (AI, Market, Payroll, Analytics+, API).
-- Flags d'expérimentation / déploiement progressif.
-- **Dépendances** : §2.3 (modèle de config).
+### 2.3 Plans / tarifs / limites éditables — ✅ (M)
+- Table **`plan_configs`** (prix mensuel/annuel, `maxUsers/Etablissements/Devices/Photos`, `-1` = illimité),
+  lue au runtime via **`PlanConfigService`** (cache) ; enforcement câblé (users, établissements, photos).
+- Édition depuis la console (`PATCH /platform/plans/:plan`) **sans redéploiement** ; prix dynamiques
+  côté `/parametres`. Défauts = valeurs du code + tarifs réels du business plan.
 
-### 2.5 Audit cross‑tenant + métriques plateforme — ⛔ (M)
-- Vue agrégée du journal d'activité + métriques d'usage (ventes, volumétrie, santé API) par entreprise.
-- Alertes plateforme (impayés, anomalies, abus).
-- **Dépendances** : §2.1.
+### 2.4 Modules premium à la carte — ✅ (M)
+- **`Tenant.moduleAddons`** : modules activés **à l'unité** par entreprise, **en plus** du plan ; câblés
+  dans le gating (`effectiveModules(…, extraModules)`), **neutralisés si impayé (J+7)**.
+- UI toggles dans la fiche entreprise (`PATCH /platform/tenants/:id/modules`), effet immédiat.
+- *Feature flags d'expérimentation : non couverts (le socle de config est en place pour les ajouter).*
+
+### 2.5 Audit cross‑tenant + métriques plateforme — ✅ (M)
+- **KPIs** (`app.platform_metrics`) : MRR estimé, GMV 30 j, ventes, nouvelles/actives/impayés, users.
+- **Flux d'audit cross‑tenant** (`app.platform_recent_activity`) + répartition par plan. Page `/platform`.
+
+### 2.6 Séparation & durcissement sécurité — ✅ (L)
+- **Front séparé** : `apps/admin-web` (:3001, login dédié, garde super‑admin) ; **aucune** ligne admin
+  dans `apps/web` (route `/platform` + entrée de menu retirées).
+- **Verrou base** : rôle **`wilinwi_admin`** (seul à exécuter les `app.*` admin) ; **REVOKE** au rôle
+  public `wilinwi_app` ([admin-role.sql.example](../packages/db/prisma/admin-role.sql.example)). Le module
+  plateforme se connecte via **`ADMIN_DATABASE_URL`** (`AdminPrismaService`). Vérifié : `wilinwi_app` →
+  `permission denied`, RLS intacte.
+- **3 barrières indépendantes** : identité (allowlist+guard) · privilège DB (verrou) · réseau (recommandé :
+  Cloudflare Access / IP devant `admin-web`, à brancher en prod).
 
 ---
 
@@ -116,39 +131,36 @@ exige un accès contrôlé (fonction `SECURITY DEFINER` ou rôle dédié), jamai
 
 ---
 
-## 4. Roadmap recommandée
+## 4. Roadmap — état
 
 ```
-LOT 0 — Finitions rapides (S, ~1 j)
-  ├─ Sortie de caisse (POS) · responsivité tutoriel · aides Ventes/Livraisons/Paramètres
-  └─ Commit propre du gros lot (tout est en local non commité)
+✅ LOT 1 — Config pilotable      §2.3 plan_configs (prix/limites éditables, runtime)
+✅ LOT 2 — Console super‑admin   §2.1 entreprises + actions (paiement, plan, suspension) · §2.5 audit/métriques
+✅ LOT 4 — Premium               §2.4 modules à la carte par entreprise (moduleAddons)
+✅ LOT 5 — Séparation/sécurité   §2.6 admin-web séparée + verrou base (rôle wilinwi_admin)
 
-LOT 1 — Config pilotable (M)
-  └─ §2.3 Plans/limites éditables en base (socle de la console + facturation)
+⛔ LOT 3 — Facturation en ligne  §2.2 passerelle (FedaPay/Wave/CB) + webhooks + cron PAST_DUE
+          → BLOQUÉ : arbitrage prestataire + identifiants API
 
-LOT 2 — Console super‑admin (L)
-  └─ §2.1 Entreprises (read) → puis actions (suspendre, changer plan) → §2.5 audit/métriques
-
-LOT 3 — Facturation (XL, après arbitrage prestataire)
-  └─ §2.2 Paiement abonnement + webhooks + cron PAST_DUE
-
-LOT 4 — Premium & flags (M)
-  └─ §2.4 Modules à la carte + feature flags
+🟡 LOT 0 — Finitions back‑office (cf. §3) : sortie de caisse (POS), tutoriel responsive, aides manquantes
 ```
 
 ---
 
-## 5. Arbitrages bloquants (décisions attendues)
+## 5. Arbitrages restants (décisions attendues)
 
-1. **Prestataire de facturation** (FedaPay / Wave / CB ?) + cycle (mensuel/annuel) → débloque §2.2.
-2. **Périmètre super‑admin** : lecture seule d'abord, ou actions (suspendre / changer plan / impersonation) → cadre §2.1.
+1. **Prestataire de facturation** (FedaPay / Wave / CB ?) + identifiants API → seul point qui débloque §2.2.
+   Le cœur de facturation est prêt : le webhook se branchera sur `app.billing_record_payment`.
+2. **Réseau admin** : contrôle d'accès devant `admin-web` (Cloudflare Access / IP) à activer en prod.
 3. **Site e‑commerce Enterprise** : prestation dédiée ou futur module standard ?
 
 ---
 
 ## 6. Synthèse
 
-- **Back‑office entreprise : ~95 % fait** — il ne reste que des finitions (sortie de caisse, aides, tutoriel, nettoyage technique).
-- **Plateforme super‑admin : à bâtir** — c'est le cœur du « projet admin » restant : console entreprises,
-  facturation, config pilotable, métriques. Les fondations (DB, types, RLS, dunning) sont prêtes.
-- **Prochain pas conseillé** : LOT 0 (finitions + commit), puis LOT 1 (config pilotable) comme socle.
+- **Back‑office entreprise : ~95 % fait** — reliquats = finitions (sortie de caisse, aides, tutoriel, nettoyage technique).
+- **Plateforme super‑admin : livrée** — console séparée (`admin-web`), entreprises, **facturation manuelle**
+  (échéances, dunning, paiement/plan/suspension), **plans/tarifs/limites éditables**, **modules à la carte**,
+  **métriques & audit cross‑tenant**, le tout **verrouillé au niveau base** (rôle `wilinwi_admin`).
+- **Seul manque structurant** : la **passerelle d'encaissement en ligne** (LOT 3), en attente de l'arbitrage
+  prestataire — tout le reste du circuit d'abonnement fonctionne déjà (paiement enregistré manuellement).

@@ -10,17 +10,20 @@ dès le premier jour, même hors-ligne.
 ## Architecture — monolithe modulaire
 
 Un **seul backend** (NestJS) découpé en modules internes + **une seule base
-PostgreSQL** (Supabase) protégée par **Row-Level Security**. Plusieurs frontends
-possibles ; pour MVP1, une seule app Next.js avec une section par module + un
-**Hub** (portail SSO) au-dessus.
+PostgreSQL** (Supabase) protégée par **Row-Level Security**. **Deux frontends** Next.js :
+le SaaS client (Hub + un onglet par module) et la **console super-admin séparée**.
 
 ```
 apps/
-  api/        NestJS — modules: auth, stock, inventory, pos, crm, treasury, analytics, sync, admin
-  web/        Next.js (App Router) — Hub + sections /pos /stock /dashboard /ventes /clients /tresorerie /parametres
+  api/        NestJS — modules: auth, etablissement, stock, inventory, pos, crm, treasury,
+              analytics, sync, admin, warehouse, notifications, plans, platform
+  web/        Next.js (App Router) :3000 — Hub + /pos /stock /dashboard /ventes /clients
+              /tresorerie /entrepot /parametres  (SaaS client ; AUCUN code admin)
+  admin-web/  Next.js (App Router) :3001 — console super-admin Nexus (/platform) + login dédié
 packages:
   types/      Zod schemas + rôles/capacités + gating (source de vérité partagée)
-  db/         Prisma schema + RLS (prisma/rls.sql) + seed + client withTenant()
+  db/         Prisma schema + RLS (prisma/rls.sql) + fonctions plateforme (prisma/platform.sql)
+              + verrou rôle admin (prisma/admin-role.sql.example) + seed + client withTenant()
   ui/         Design system Wilinwi (Tailwind preset + composants brandés)
   offline/    IndexedDB (Dexie) + file de synchronisation (SyncEngine)
 ```
@@ -49,6 +52,20 @@ packages:
 - **Offline-first** : le POS enregistre en IndexedDB et synchronise via
   `POST /api/sync/sales` (idempotent par `clientGeneratedId`). Le serveur reste la
   source de vérité finale.
+- **Console plateforme (super-admin) + séparation** : l'exploitation du SaaS (entreprises,
+  facturation, plans/tarifs, modules à la carte, métriques) vit dans `apps/admin-web` (app
+  séparée) et le module `apps/api/src/platform`. Trois barrières **indépendantes** :
+  1. **Identité** : allowlist `PLATFORM_ADMIN_EMAILS` → `ctx.isPlatformAdmin` ; routes gardées par
+     `@PlatformAdmin` (`PlatformAdminGuard`).
+  2. **Accès cross-tenant** : uniquement via des fonctions `SECURITY DEFINER` du schéma `app`
+     ([packages/db/prisma/platform.sql](packages/db/prisma/platform.sql)), non exposées par PostgREST.
+     Appelées avec le **client brut** (`$queryRaw`), jamais `forTenant`.
+  3. **Verrou base** : ces fonctions sont **réservées au rôle `wilinwi_admin`** et **révoquées** au
+     rôle public `wilinwi_app` (cf. [admin-role.sql.example](packages/db/prisma/admin-role.sql.example)).
+     Le module plateforme se connecte via `ADMIN_DATABASE_URL` (`AdminPrismaService`) ; tout le reste
+     de l'API garde `DATABASE_URL` (`PrismaService`, RLS). Exception : `app.current_tenant_id()` (helper
+     RLS) reste exécutable par tous. Tarifs/limites pilotables → table `plan_configs` (lue par
+     `PlanConfigService`, cache) ; modules « à la carte » par entreprise → `Tenant.moduleAddons`.
 
 ## Démarrer
 
@@ -59,11 +76,24 @@ cp .env.example .env            # renseigner Supabase + DATABASE_URL/DIRECT_URL
 # Base de données (charger d'abord .env : `set -a && . ./.env && set +a`)
 pnpm --filter @wilinwi/db exec prisma migrate dev --name init   # crée les tables
 pnpm --filter @wilinwi/db exec prisma db execute --url "$DIRECT_URL" --file prisma/rls.sql  # RLS
+pnpm --filter @wilinwi/db exec prisma db execute --url "$DIRECT_URL" --file prisma/platform.sql  # fonctions plateforme
 pnpm --filter @wilinwi/db seed                                  # boutique démo
 
-# Dev (API :4000, web :3000)
+# Dev (API :4000, web :3000, admin-web :3001)
 pnpm dev
 ```
+
+### Console plateforme — rôle admin & verrou (important)
+
+Le module `platform` exige le rôle `wilinwi_admin` (seul habilité aux fonctions `app.*`) :
+
+1. Créer le rôle + appliquer le verrou : adapter `packages/db/prisma/admin-role.sql.example`
+   (mot de passe), puis `prisma db execute --url "$DIRECT_URL" --file admin-role.sql`.
+2. **`ADMIN_DATABASE_URL`** → rôle `wilinwi_admin` via le **pooler session (5432)**.
+3. **`PLATFORM_ADMIN_EMAILS`** → e-mails autorisés à ouvrir `admin-web` (:3001).
+
+Vérifier le verrou : `wilinwi_app` doit recevoir `permission denied` sur `app.platform_metrics()`,
+tandis que `wilinwi_admin` l'exécute. La RLS reste vérifiée par `prisma/verify-isolation.ts`.
 
 ### RLS & rôles de connexion (important)
 
@@ -100,6 +130,16 @@ Vérifier l'isolation : `pnpm --filter @wilinwi/db exec tsx prisma/verify-isolat
 - Charte : `#0005ea` (bleu), `#00A86B` (vert), `#F59E0B` (orange) ; Inter/Poppins +
   DM Mono pour les chiffres (classe `.tabular`).
 
-## Hors périmètre (MVP2/3)
+## Déjà livré au-delà du MVP1 « Socle »
 
-Fournisseurs, livraisons, Market WhatsApp, fidélité, abonnements FedaPay intégrés, notifications, multi-boutiques, app Flutter, IA. Le découpage modulaire les anticipe sans réécriture.
+Multi-établissements (entreprise → établissements + accès par employé), entrepôt &
+approvisionnement (fournisseurs/dette, commandes, réception, **Dispatch**), stock par
+emplacement (`ProductStock`), livraisons, **centre de notifications** in-app, et toute la
+**console super-admin** : entreprises, facturation manuelle (échéances, dunning, paiement),
+plans/tarifs/limites éditables (`plan_configs`), modules à la carte, métriques & audit cross-tenant.
+
+## Hors périmètre (à venir)
+
+**Passerelle de paiement** réelle pour les abonnements (FedaPay/Wave/CB + webhooks + cron
+`PAST_DUE`) — différée, en attente de l'arbitrage prestataire. Market WhatsApp, fidélité,
+app Flutter, IA. Le découpage modulaire les anticipe sans réécriture.
