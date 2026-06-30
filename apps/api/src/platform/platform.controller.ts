@@ -31,6 +31,10 @@ import {
   type Plan,
   type PlatformMetricsDto,
   type PlatformActivityDto,
+  type PlatformTimeseriesPointDto,
+  type PlatformActivationFunnelDto,
+  type PlatformInactiveTenantDto,
+  type PlatformGeoCountryDto,
 } from '@wilinwi/types';
 
 @Controller('platform')
@@ -55,6 +59,33 @@ export class PlatformController {
   getActivity(@Query('limit') limit?: string): Promise<PlatformActivityDto[]> {
     const n = Math.min(100, Math.max(1, Number.parseInt(limit ?? '', 10) || 20));
     return this.platformService.getRecentActivity(n);
+  }
+
+  /** GET /api/platform/timeseries?days= — Séries d'évolution (inscriptions, ventes, GMV). */
+  @Get('timeseries')
+  getTimeseries(@Query('days') days?: string): Promise<PlatformTimeseriesPointDto[]> {
+    const n = Math.min(365, Math.max(1, Number.parseInt(days ?? '', 10) || 30));
+    return this.platformService.getTimeseries(n);
+  }
+
+  /** GET /api/platform/activation — Funnel d'activation des entreprises. */
+  @Get('activation')
+  getActivation(): Promise<PlatformActivationFunnelDto> {
+    return this.platformService.getActivationFunnel();
+  }
+
+  /** GET /api/platform/inactive?limit= — Entreprises non activées (à relancer). */
+  @Get('inactive')
+  getInactive(@Query('limit') limit?: string): Promise<PlatformInactiveTenantDto[]> {
+    const n = Math.min(200, Math.max(1, Number.parseInt(limit ?? '', 10) || 50));
+    return this.platformService.getInactiveTenants(n);
+  }
+
+  /** GET /api/platform/geo?days= — Provenance géographique (pays) des IP tracées. */
+  @Get('geo')
+  getGeo(@Query('days') days?: string): Promise<PlatformGeoCountryDto[]> {
+    const n = Math.min(365, Math.max(1, Number.parseInt(days ?? '', 10) || 90));
+    return this.platformService.getGeoBreakdown(n);
   }
 
   /** GET /api/platform/tenants/:id/etablissements — Récupère les établissements du tenant. */

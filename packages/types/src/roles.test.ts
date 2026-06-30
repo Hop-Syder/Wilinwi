@@ -86,4 +86,44 @@ describe('modules premium à la carte (add-ons)', () => {
     const withAddon = effectiveModules('OWNER', 'STARTER', false, [], ['PAY']);
     expect(withAddon.includes('PAY')).toBe(true);
   });
+
+  it('fusionne les modules du plan ET les add-ons (union)', () => {
+    const mods = effectiveModules('OWNER', 'STARTER', false, [], ['PAY', 'CRM']);
+    // Modules STARTER conservés…
+    expect(mods).toEqual(expect.arrayContaining(['POS', 'STOCK', 'ANALYTICS']));
+    // …+ les deux add-ons débloqués.
+    expect(mods).toEqual(expect.arrayContaining(['PAY', 'CRM']));
+    // Mais rien d'autre (pas de fuite : MARKET/AI non demandés).
+    expect(mods.includes('MARKET')).toBe(false);
+    expect(mods.includes('AI')).toBe(false);
+  });
+
+  it('un add-on NE contourne PAS le périmètre du rôle (intersection)', () => {
+    // SELLER n'a que POS/STOCK dans son rôle : un add-on CRM ne doit rien débloquer.
+    const mods = effectiveModules('SELLER', 'ENTERPRISE', false, [], ['CRM']);
+    expect(mods.includes('CRM')).toBe(false);
+    expect(mods).toEqual(expect.arrayContaining(['POS', 'STOCK']));
+  });
+
+  it('add-ons idempotents si déjà inclus dans le plan (pas de doublon)', () => {
+    const mods = effectiveModules('OWNER', 'PRO', false, [], ['PAY']); // PAY déjà dans PRO
+    expect(mods.filter((m) => m === 'PAY')).toHaveLength(1);
+  });
+});
+
+describe('neutralisation des add-ons à la rétrogradation (impayé J+7)', () => {
+  // L'AuthGuard, quand `dunning.downgraded === true`, appelle effectiveModules avec
+  // le plan ramené à STARTER ET extraModules = [] → les premiums disparaissent.
+  it('un BUSINESS avec add-on IA perd tous ses premiums une fois rétrogradé', () => {
+    const actif = effectiveModules('OWNER', 'BUSINESS', false, [], ['AI']);
+    expect(actif).toEqual(expect.arrayContaining(['PAY', 'CRM', 'MARKET', 'AI']));
+
+    // Rétrogradation : plan → STARTER, add-ons neutralisés.
+    const retrograde = effectiveModules('OWNER', 'STARTER', false, []);
+    for (const premium of ['PAY', 'CRM', 'MARKET', 'AI'] as const) {
+      expect(retrograde.includes(premium)).toBe(false);
+    }
+    // Ne reste que les essentiels.
+    expect(retrograde).toEqual(expect.arrayContaining(['POS', 'STOCK', 'ANALYTICS']));
+  });
 });

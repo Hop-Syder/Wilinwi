@@ -24,7 +24,9 @@ RETURNS TABLE(
   etablissements_count bigint,
   subscription_due_date timestamptz,
   billing_cycle text,
-  module_addons text[]
+  module_addons text[],
+  owner_name text,
+  owner_email text
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -41,7 +43,10 @@ AS $$
     (SELECT COUNT(*)::bigint FROM public.etablissements e WHERE e.tenant_id = t.id) AS etablissements_count,
     t.subscription_due_date,
     t.billing_cycle::text,
-    t.module_addons
+    t.module_addons,
+    -- Propriétaire principal (OWNER) — nom + e-mail de contact pour le support.
+    (SELECT u.nom::text   FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_name,
+    (SELECT u.email::text FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_email
   FROM public.tenants t
   ORDER BY t.created_at DESC;
 $$;
@@ -199,4 +204,102 @@ AS $$
   LEFT JOIN public.users u ON u.id = a.user_id
   ORDER BY a.created_at DESC
   LIMIT GREATEST(1, LEAST(p_limit, 100));
+$$;
+
+-- 10. Séries temporelles d'évolution (courbes) : par jour sur p_days derniers jours —
+--     nouvelles entreprises, ventes (volume + GMV), + cumul d'entreprises.
+CREATE OR REPLACE FUNCTION app.platform_timeseries(p_days int DEFAULT 30)
+RETURNS TABLE (
+  day date,
+  new_tenants int,
+  cumulative_tenants int,
+  sales_count int,
+  sales_revenue bigint
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  WITH bounds AS (
+    SELECT GREATEST(1, LEAST(p_days, 365)) AS n
+  ),
+  days AS (
+    SELECT generate_series((now()::date - (n - 1)), now()::date, interval '1 day')::date AS day
+    FROM bounds
+  )
+  SELECT
+    d.day,
+    (SELECT count(*) FROM public.tenants t WHERE t.created_at::date = d.day)::int AS new_tenants,
+    (SELECT count(*) FROM public.tenants t WHERE t.created_at::date <= d.day)::int AS cumulative_tenants,
+    (SELECT count(*) FROM public.sales s
+       WHERE s.status <> 'CANCELLED' AND s.created_at::date = d.day)::int AS sales_count,
+    (SELECT COALESCE(sum(s.total), 0) FROM public.sales s
+       WHERE s.status <> 'CANCELLED' AND s.created_at::date = d.day)::bigint AS sales_revenue
+  FROM days d
+  ORDER BY d.day;
+$$;
+
+-- 11. Funnel d'activation : un compte est « activé » quand il a créé ≥ 10 articles
+--     ET réalisé au moins une vente non annulée. Étapes intermédiaires comptées.
+CREATE OR REPLACE FUNCTION app.platform_activation_funnel()
+RETURNS TABLE (
+  total int,
+  with_any_product int,
+  with_10_products int,
+  with_any_sale int,
+  activated int
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  WITH per AS (
+    SELECT
+      t.id,
+      (SELECT count(*) FROM public.products p WHERE p.tenant_id = t.id) AS pc,
+      (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED') AS sc
+    FROM public.tenants t
+  )
+  SELECT
+    count(*)::int,
+    count(*) FILTER (WHERE pc >= 1)::int,
+    count(*) FILTER (WHERE pc >= 10)::int,
+    count(*) FILTER (WHERE sc >= 1)::int,
+    count(*) FILTER (WHERE pc >= 10 AND sc >= 1)::int
+  FROM per;
+$$;
+
+-- 12. Comptes NON activés : créés mais < 10 articles ou aucune vente — pour relance.
+CREATE OR REPLACE FUNCTION app.platform_inactive_tenants(p_limit int DEFAULT 50)
+RETURNS TABLE (
+  id uuid,
+  nom text,
+  products_count int,
+  sales_count int,
+  created_at timestamptz
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT t.id, t.nom::text,
+    (SELECT count(*) FROM public.products p WHERE p.tenant_id = t.id)::int AS products_count,
+    (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED')::int AS sales_count,
+    t.created_at
+  FROM public.tenants t
+  WHERE NOT (
+    (SELECT count(*) FROM public.products p WHERE p.tenant_id = t.id) >= 10
+    AND (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED') >= 1
+  )
+  ORDER BY t.created_at DESC
+  LIMIT GREATEST(1, LEAST(p_limit, 200));
+$$;
+
+-- 13. Hits par IP (cross-tenant) sur p_days derniers jours — la géolocalisation
+--     (IP → pays/ville) est faite côté API par geoip-lite (hors-ligne, RGPD-friendly).
+CREATE OR REPLACE FUNCTION app.platform_ip_hits(p_days int DEFAULT 90)
+RETURNS TABLE (ip text, hits int)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT a.ip::text, count(*)::int
+  FROM public.activity_logs a
+  WHERE a.ip IS NOT NULL AND a.ip <> ''
+    AND a.created_at > now() - make_interval(days => GREATEST(1, LEAST(p_days, 365)))
+  GROUP BY a.ip
+  ORDER BY count(*) DESC
+  LIMIT 5000;
 $$;

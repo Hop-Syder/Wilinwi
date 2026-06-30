@@ -37,6 +37,9 @@ import { Button, Card, Badge, Input, StatCard } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import { PlanEditor } from './plan-editor';
 import { PlatformMetrics } from './platform-metrics';
+import { PlatformEvolution } from './platform-evolution';
+import { PlatformActivation } from './platform-activation';
+import { PlatformGeo } from './platform-geo';
 import {
   PLANS,
   MODULES,
@@ -330,6 +333,15 @@ export default function PlatformPage() {
       {/* Métriques business + flux d'audit (Lot 2.5) */}
       <PlatformMetrics tenants={tenants} />
 
+      {/* Courbes d'évolution (analytics #1) */}
+      <PlatformEvolution />
+
+      {/* Funnel d'activation + comptes à relancer (analytics #3) */}
+      <PlatformActivation />
+
+      {/* Provenance géographique (analytics #2) */}
+      <PlatformGeo />
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Liste des entreprises (Col 1 & 2) */}
         <div className="lg:col-span-2 space-y-4">
@@ -475,6 +487,18 @@ export default function PlatformPage() {
                         {STATUS_LABELS[selectedTenant.subscriptionStatus]}
                       </Badge>
                     </div>
+                  </div>
+                  <div className="col-span-2 pt-2 border-t border-border/50 mt-1">
+                    <div className="text-text-secondary font-medium">Propriétaire (OWNER)</div>
+                    <div className="font-bold text-text-primary mt-1">{selectedTenant.ownerName ?? '—'}</div>
+                    {selectedTenant.ownerEmail && (
+                      <a
+                        href={`mailto:${selectedTenant.ownerEmail}`}
+                        className="font-mono text-[10px] text-primary mt-0.5 block break-all hover:underline"
+                      >
+                        {selectedTenant.ownerEmail}
+                      </a>
+                    )}
                   </div>
                   <div className="col-span-2 pt-2 border-t border-border/50 mt-1">
                     <div className="text-text-secondary font-medium">Identifiant unique (ID)</div>

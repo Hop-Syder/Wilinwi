@@ -35,6 +35,9 @@ export const PlatformTenantSchema = z.object({
   billingCycle: BillingCycleSchema,
   /** Modules premium activés « à la carte » pour cette entreprise (Lot 2.4). */
   moduleAddons: z.array(ModuleKeySchema),
+  /** Propriétaire principal (rôle OWNER) — nom + e-mail de contact (support). */
+  ownerName: z.string().nullable(),
+  ownerEmail: z.string().nullable(),
 });
 export type PlatformTenantDto = z.infer<typeof PlatformTenantSchema>;
 
@@ -75,6 +78,45 @@ export const PlatformMetricsSchema = z.object({
   mrr: z.number().int().nonnegative(),
 });
 export type PlatformMetricsDto = z.infer<typeof PlatformMetricsSchema>;
+
+/** Provenance géographique agrégée (un pays). */
+export const PlatformGeoCountrySchema = z.object({
+  countryCode: z.string(), // ISO-3166 alpha-2, ou 'XX' = inconnu/local
+  country: z.string(),
+  ipCount: z.number().int().nonnegative(), // IP distinctes (≈ visiteurs)
+  hits: z.number().int().nonnegative(), // requêtes tracées
+});
+export type PlatformGeoCountryDto = z.infer<typeof PlatformGeoCountrySchema>;
+
+/** Funnel d'activation : un compte est « activé » à ≥ 10 articles ET ≥ 1 vente. */
+export const PlatformActivationFunnelSchema = z.object({
+  total: z.number().int().nonnegative(),
+  withAnyProduct: z.number().int().nonnegative(),
+  with10Products: z.number().int().nonnegative(),
+  withAnySale: z.number().int().nonnegative(),
+  activated: z.number().int().nonnegative(),
+});
+export type PlatformActivationFunnelDto = z.infer<typeof PlatformActivationFunnelSchema>;
+
+/** Une entreprise non encore activée (à relancer). */
+export const PlatformInactiveTenantSchema = z.object({
+  id: IdSchema,
+  nom: z.string(),
+  productsCount: z.number().int().nonnegative(),
+  salesCount: z.number().int().nonnegative(),
+  createdAt: z.coerce.date(),
+});
+export type PlatformInactiveTenantDto = z.infer<typeof PlatformInactiveTenantSchema>;
+
+/** Un point de la série temporelle d'évolution (un jour). */
+export const PlatformTimeseriesPointSchema = z.object({
+  day: z.string(), // 'YYYY-MM-DD'
+  newTenants: z.number().int().nonnegative(),
+  cumulativeTenants: z.number().int().nonnegative(),
+  salesCount: z.number().int().nonnegative(),
+  salesRevenue: z.number().int().nonnegative(),
+});
+export type PlatformTimeseriesPointDto = z.infer<typeof PlatformTimeseriesPointSchema>;
 
 /** Une entrée du flux d'audit cross-tenant. */
 export const PlatformActivitySchema = z.object({

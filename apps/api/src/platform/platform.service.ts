@@ -10,6 +10,7 @@
 // ──────────────────────────────────
 
 import { Injectable, NotFoundException } from '@nestjs/common';
+import geoip from 'geoip-lite';
 import { AdminPrismaService } from '../common/admin-prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
 import type {
@@ -19,6 +20,10 @@ import type {
   PlatformOverdueResultDto,
   PlatformMetricsDto,
   PlatformActivityDto,
+  PlatformTimeseriesPointDto,
+  PlatformActivationFunnelDto,
+  PlatformInactiveTenantDto,
+  PlatformGeoCountryDto,
   PlanConfigDto,
   UpdatePlanConfigInput,
   Plan,
@@ -46,7 +51,9 @@ export class PlatformService {
         etablissements_count::integer AS "etablissementsCount",
         subscription_due_date AS "subscriptionDueDate",
         billing_cycle AS "billingCycle",
-        module_addons AS "moduleAddons"
+        module_addons AS "moduleAddons",
+        owner_name AS "ownerName",
+        owner_email AS "ownerEmail"
       FROM app.platform_tenants_overview()
     `;
   }
@@ -154,6 +161,83 @@ export class PlatformService {
     const result = rows[0];
     if (!result) throw new NotFoundException('Métriques indisponibles.');
     return result;
+  }
+
+  /** Séries temporelles d'évolution (courbes) : par jour sur `days` derniers jours. */
+  async getTimeseries(days = 30): Promise<PlatformTimeseriesPointDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformTimeseriesPointDto[]>`
+      SELECT
+        to_char(day, 'YYYY-MM-DD') AS "day",
+        new_tenants               AS "newTenants",
+        cumulative_tenants        AS "cumulativeTenants",
+        sales_count               AS "salesCount",
+        sales_revenue::int        AS "salesRevenue"
+      FROM app.platform_timeseries(${days}::int)
+    `;
+  }
+
+  /**
+   * Provenance géographique : géolocalise (hors-ligne, geoip-lite) les IP tracées
+   * dans le journal d'activité et agrège par pays. Aucune donnée ne sort du serveur.
+   */
+  async getGeoBreakdown(days = 90): Promise<PlatformGeoCountryDto[]> {
+    const rows = await this.adminPrisma.client.$queryRaw<{ ip: string; hits: number }[]>`
+      SELECT ip, hits FROM app.platform_ip_hits(${days}::int)
+    `;
+    const names = new Intl.DisplayNames(['fr'], { type: 'region' });
+    const byCountry = new Map<string, { ipCount: number; hits: number }>();
+    for (const { ip, hits } of rows) {
+      const geo = geoip.lookup(ip);
+      const cc = geo?.country || 'XX'; // XX = privé/local/non résolu
+      const agg = byCountry.get(cc) ?? { ipCount: 0, hits: 0 };
+      agg.ipCount += 1;
+      agg.hits += Number(hits);
+      byCountry.set(cc, agg);
+    }
+    return [...byCountry.entries()]
+      .map(([countryCode, { ipCount, hits }]) => ({
+        countryCode,
+        country:
+          countryCode === 'XX'
+            ? 'Inconnu / local'
+            : (() => {
+                try {
+                  return names.of(countryCode) ?? countryCode;
+                } catch {
+                  return countryCode;
+                }
+              })(),
+        ipCount,
+        hits,
+      }))
+      .sort((a, b) => b.ipCount - a.ipCount);
+  }
+
+  /** Funnel d'activation (≥ 10 articles ET ≥ 1 vente = activé). */
+  async getActivationFunnel(): Promise<PlatformActivationFunnelDto> {
+    const rows = await this.adminPrisma.client.$queryRaw<PlatformActivationFunnelDto[]>`
+      SELECT
+        total,
+        with_any_product AS "withAnyProduct",
+        with_10_products AS "with10Products",
+        with_any_sale    AS "withAnySale",
+        activated
+      FROM app.platform_activation_funnel()
+    `;
+    return rows[0] ?? { total: 0, withAnyProduct: 0, with10Products: 0, withAnySale: 0, activated: 0 };
+  }
+
+  /** Entreprises non activées (créées mais < 10 articles ou aucune vente) — pour relance. */
+  async getInactiveTenants(limit = 50): Promise<PlatformInactiveTenantDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformInactiveTenantDto[]>`
+      SELECT
+        id,
+        nom,
+        products_count AS "productsCount",
+        sales_count    AS "salesCount",
+        created_at     AS "createdAt"
+      FROM app.platform_inactive_tenants(${limit}::int)
+    `;
   }
 
   /** Flux d'audit cross-tenant : dernières actions, tout locataire confondu. */
