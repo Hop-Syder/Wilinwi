@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { PlatformAdmin } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PlatformService } from './platform.service';
@@ -29,6 +29,8 @@ import {
   type PlanConfigDto,
   type UpdatePlanConfigInput,
   type Plan,
+  type PlatformMetricsDto,
+  type PlatformActivityDto,
 } from '@wilinwi/types';
 
 @Controller('platform')
@@ -40,6 +42,19 @@ export class PlatformController {
   @Get('tenants')
   getTenants(): Promise<PlatformTenantDto[]> {
     return this.platformService.getTenantsOverview();
+  }
+
+  /** GET /api/platform/metrics — KPIs agrégés de la plateforme (MRR, ventes, croissance). */
+  @Get('metrics')
+  getMetrics(): Promise<PlatformMetricsDto> {
+    return this.platformService.getMetrics();
+  }
+
+  /** GET /api/platform/activity?limit= — Flux d'audit cross-tenant (dernières actions). */
+  @Get('activity')
+  getActivity(@Query('limit') limit?: string): Promise<PlatformActivityDto[]> {
+    const n = Math.min(100, Math.max(1, Number.parseInt(limit ?? '', 10) || 20));
+    return this.platformService.getRecentActivity(n);
   }
 
   /** GET /api/platform/tenants/:id/etablissements — Récupère les établissements du tenant. */

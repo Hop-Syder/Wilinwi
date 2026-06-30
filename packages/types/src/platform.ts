@@ -62,6 +62,32 @@ export const PlatformOverdueResultSchema = z.object({
 });
 export type PlatformOverdueResultDto = z.infer<typeof PlatformOverdueResultSchema>;
 
+/** KPIs agrégés de la plateforme (Lot 2.5). Montants en FCFA. */
+export const PlatformMetricsSchema = z.object({
+  tenantsTotal: z.number().int().nonnegative(),
+  tenantsActive: z.number().int().nonnegative(),
+  tenantsPastDue: z.number().int().nonnegative(),
+  newTenants30d: z.number().int().nonnegative(),
+  usersActive: z.number().int().nonnegative(),
+  etablissementsTotal: z.number().int().nonnegative(),
+  sales30dCount: z.number().int().nonnegative(),
+  sales30dRevenue: z.number().int().nonnegative(),
+  mrr: z.number().int().nonnegative(),
+});
+export type PlatformMetricsDto = z.infer<typeof PlatformMetricsSchema>;
+
+/** Une entrée du flux d'audit cross-tenant. */
+export const PlatformActivitySchema = z.object({
+  id: IdSchema,
+  tenantId: IdSchema,
+  tenantNom: z.string(),
+  userNom: z.string().nullable(),
+  action: z.string(),
+  entity: z.string().nullable(),
+  createdAt: z.coerce.date(),
+});
+export type PlatformActivityDto = z.infer<typeof PlatformActivitySchema>;
+
 export const PlatformEtablissementSchema = z.object({
   id: IdSchema,
   nom: z.string(),

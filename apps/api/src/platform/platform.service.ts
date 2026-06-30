@@ -17,6 +17,8 @@ import type {
   PlatformEtablissementDto,
   PlatformPaymentResultDto,
   PlatformOverdueResultDto,
+  PlatformMetricsDto,
+  PlatformActivityDto,
   PlanConfigDto,
   UpdatePlanConfigInput,
   Plan,
@@ -132,5 +134,40 @@ export class PlatformService {
       SELECT app.platform_set_tenant_modules(${tenantId}::uuid, ${modules}::text[])
     `;
     return { moduleAddons: modules };
+  }
+
+  /** KPIs agrégés de la plateforme (Lot 2.5) — MRR, ventes 30 j, croissance, etc. */
+  async getMetrics(): Promise<PlatformMetricsDto> {
+    const rows = await this.prisma.client.$queryRaw<PlatformMetricsDto[]>`
+      SELECT
+        tenants_total::int        AS "tenantsTotal",
+        tenants_active::int       AS "tenantsActive",
+        tenants_past_due::int     AS "tenantsPastDue",
+        new_tenants_30d::int      AS "newTenants30d",
+        users_active::int         AS "usersActive",
+        etablissements_total::int AS "etablissementsTotal",
+        sales_30d_count::int      AS "sales30dCount",
+        sales_30d_revenue::int    AS "sales30dRevenue",
+        mrr::int                  AS "mrr"
+      FROM app.platform_metrics()
+    `;
+    const result = rows[0];
+    if (!result) throw new NotFoundException('Métriques indisponibles.');
+    return result;
+  }
+
+  /** Flux d'audit cross-tenant : dernières actions, tout locataire confondu. */
+  async getRecentActivity(limit = 20): Promise<PlatformActivityDto[]> {
+    return this.prisma.client.$queryRaw<PlatformActivityDto[]>`
+      SELECT
+        id,
+        tenant_id  AS "tenantId",
+        tenant_nom AS "tenantNom",
+        user_nom   AS "userNom",
+        action,
+        entity,
+        created_at AS "createdAt"
+      FROM app.platform_recent_activity(${limit}::int)
+    `;
   }
 }

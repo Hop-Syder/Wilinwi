@@ -36,6 +36,7 @@ import {
 import { Button, Card, Badge, Input, StatCard } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import { PlanEditor } from './plan-editor';
+import { PlatformMetrics } from './platform-metrics';
 import {
   PLANS,
   MODULES,
@@ -325,6 +326,9 @@ export default function PlatformPage() {
           accent="gold"
         />
       </div>
+
+      {/* Métriques business + flux d'audit (Lot 2.5) */}
+      <PlatformMetrics tenants={tenants} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Liste des entreprises (Col 1 & 2) */}

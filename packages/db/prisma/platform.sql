@@ -136,3 +136,67 @@ $$;
 CREATE OR REPLACE FUNCTION app.platform_set_tenant_modules(p_tenant uuid, p_modules text[])
 RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public
 AS $$ UPDATE public.tenants SET module_addons = COALESCE(p_modules, '{}') WHERE id = p_tenant $$;
+
+-- ============================================================================
+-- Audit & métriques plateforme (Lot 2.5) — agrégats cross-tenant, lecture seule.
+-- ============================================================================
+
+-- 8. KPIs agrégés de la plateforme. MRR = somme du prix mensuel-équivalent des
+--    entreprises ACTIVE (annuel → /12 ; prix null « sur devis » → 0). GMV 30 j =
+--    total des ventes non annulées sur les 30 derniers jours.
+CREATE OR REPLACE FUNCTION app.platform_metrics()
+RETURNS TABLE (
+  tenants_total bigint,
+  tenants_active bigint,
+  tenants_past_due bigint,
+  new_tenants_30d bigint,
+  users_active bigint,
+  etablissements_total bigint,
+  sales_30d_count bigint,
+  sales_30d_revenue bigint,
+  mrr bigint
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT
+    (SELECT count(*) FROM public.tenants),
+    (SELECT count(*) FROM public.tenants WHERE subscription_status = 'ACTIVE'),
+    (SELECT count(*) FROM public.tenants WHERE subscription_status = 'PAST_DUE'),
+    (SELECT count(*) FROM public.tenants WHERE created_at > now() - interval '30 days'),
+    (SELECT count(*) FROM public.users WHERE actif),
+    (SELECT count(*) FROM public.etablissements),
+    (SELECT count(*) FROM public.sales
+       WHERE status <> 'CANCELLED' AND created_at > now() - interval '30 days'),
+    (SELECT COALESCE(sum(total), 0) FROM public.sales
+       WHERE status <> 'CANCELLED' AND created_at > now() - interval '30 days'),
+    (SELECT COALESCE(sum(
+        CASE WHEN t.billing_cycle = 'YEARLY'
+             THEN COALESCE(pc.price_yearly, 0) / 12
+             ELSE COALESCE(pc.price_monthly, 0) END
+      ), 0)
+      FROM public.tenants t
+      JOIN public.plan_configs pc ON pc.plan = t.plan
+      WHERE t.subscription_status = 'ACTIVE');
+$$;
+
+-- 9. Flux d'audit cross-tenant : dernières actions, tout locataire confondu.
+CREATE OR REPLACE FUNCTION app.platform_recent_activity(p_limit int DEFAULT 20)
+RETURNS TABLE (
+  id uuid,
+  tenant_id uuid,
+  tenant_nom text,
+  user_nom text,
+  action text,
+  entity text,
+  created_at timestamptz
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT a.id, a.tenant_id, t.nom::text, u.nom::text,
+         a.action::text, a.entity::text, a.created_at
+  FROM public.activity_logs a
+  JOIN public.tenants t ON t.id = a.tenant_id
+  LEFT JOIN public.users u ON u.id = a.user_id
+  ORDER BY a.created_at DESC
+  LIMIT GREATEST(1, LEAST(p_limit, 100));
+$$;
