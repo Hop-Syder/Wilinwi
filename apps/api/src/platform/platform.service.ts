@@ -9,25 +9,42 @@
  */
 // ──────────────────────────────────
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
-import type { PlatformTenantDto, PlatformEtablissementDto } from '@wilinwi/types';
+import { PlanConfigService } from '../common/plan-config.service';
+import type {
+  PlatformTenantDto,
+  PlatformEtablissementDto,
+  PlatformPaymentResultDto,
+  PlatformOverdueResultDto,
+  PlanConfigDto,
+  UpdatePlanConfigInput,
+  Plan,
+  ModuleKey,
+  SubscriptionStatus,
+} from '@wilinwi/types';
 
 @Injectable()
 export class PlatformService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planConfig: PlanConfigService,
+  ) {}
 
   /** Retourne la synthèse globale de tous les tenants (entreprises) en contournant la RLS. */
   async getTenantsOverview(): Promise<PlatformTenantDto[]> {
     return this.prisma.client.$queryRaw<PlatformTenantDto[]>`
-      SELECT 
+      SELECT
         id,
         nom,
         plan,
         subscription_status AS "subscriptionStatus",
         created_at AS "createdAt",
         active_users_count::integer AS "activeUsersCount",
-        etablissements_count::integer AS "etablissementsCount"
+        etablissements_count::integer AS "etablissementsCount",
+        subscription_due_date AS "subscriptionDueDate",
+        billing_cycle AS "billingCycle",
+        module_addons AS "moduleAddons"
       FROM app.platform_tenants_overview()
     `;
   }
@@ -35,7 +52,7 @@ export class PlatformService {
   /** Retourne la liste des établissements d'un tenant spécifique en contournant la RLS. */
   async getTenantEtablissements(tenantId: string): Promise<PlatformEtablissementDto[]> {
     return this.prisma.client.$queryRaw<PlatformEtablissementDto[]>`
-      SELECT 
+      SELECT
         id,
         nom,
         type,
@@ -43,5 +60,77 @@ export class PlatformService {
         created_at AS "createdAt"
       FROM app.platform_tenant_etablissements(${tenantId}::uuid)
     `;
+  }
+
+  /**
+   * Enregistre un règlement (paiement hors-ligne / manuel) : régularise l'abonnement
+   * (ACTIVE, impayé purgé) et reporte l'échéance d'un cycle. Source de vérité = le serveur.
+   */
+  async recordPayment(tenantId: string): Promise<PlatformPaymentResultDto> {
+    const rows = await this.prisma.client.$queryRaw<PlatformPaymentResultDto[]>`
+      SELECT
+        subscription_status AS "subscriptionStatus",
+        subscription_due_date AS "subscriptionDueDate"
+      FROM app.billing_record_payment(${tenantId}::uuid)
+    `;
+    const result = rows[0];
+    if (!result) throw new NotFoundException('Entreprise introuvable.');
+    return result;
+  }
+
+  /**
+   * Relève les impayés : passe en PAST_DUE toutes les entreprises ACTIVE/TRIALING
+   * dont l'échéance est dépassée. Renvoie le nombre marqué.
+   */
+  async runOverdue(): Promise<PlatformOverdueResultDto> {
+    const rows = await this.prisma.client.$queryRaw<{ markedPastDue: number }[]>`
+      SELECT app.billing_run_overdue()::integer AS "markedPastDue"
+    `;
+    return { markedPastDue: rows[0]?.markedPastDue ?? 0 };
+  }
+
+  /** Change le plan d'une entreprise (super-admin). Fonction `void` → $executeRaw. */
+  async changePlan(tenantId: string, plan: Plan): Promise<void> {
+    await this.prisma.client.$executeRaw`
+      SELECT app.billing_set_plan(${tenantId}::uuid, ${plan}::text)
+    `;
+  }
+
+  /** Change le statut d'abonnement (suspension / réactivation / annulation). Fonction `void` → $executeRaw. */
+  async setStatus(tenantId: string, status: SubscriptionStatus): Promise<void> {
+    await this.prisma.client.$executeRaw`
+      SELECT app.billing_set_status(${tenantId}::uuid, ${status}::text)
+    `;
+  }
+
+  /**
+   * Met à jour la configuration tarifaire/limites d'un plan (super-admin).
+   * Écrit via la fonction privilégiée (RLS bloque l'écriture directe), puis
+   * invalide le cache pour une prise d'effet immédiate.
+   */
+  async setPlanConfig(plan: Plan, input: UpdatePlanConfigInput): Promise<PlanConfigDto> {
+    await this.prisma.client.$executeRaw`
+      SELECT app.platform_set_plan_config(
+        ${plan}::text, ${input.label}::text,
+        ${input.priceMonthly}::int, ${input.priceYearly}::int,
+        ${input.maxUsers}::int, ${input.maxEtablissements}::int,
+        ${input.maxDevices}::int, ${input.maxPhotos}::int
+      )
+    `;
+    this.planConfig.invalidate();
+    const updated = await this.planConfig.get(plan);
+    if (!updated) throw new NotFoundException('Plan introuvable.');
+    return updated;
+  }
+
+  /**
+   * Définit les modules « à la carte » d'une entreprise (Lot 2.4) — remplace l'ensemble.
+   * La prise d'effet est immédiate : l'AuthGuard relit `module_addons` à chaque requête.
+   */
+  async setTenantModules(tenantId: string, modules: ModuleKey[]): Promise<{ moduleAddons: ModuleKey[] }> {
+    await this.prisma.client.$executeRaw`
+      SELECT app.platform_set_tenant_modules(${tenantId}::uuid, ${modules}::text[])
+    `;
+    return { moduleAddons: modules };
   }
 }

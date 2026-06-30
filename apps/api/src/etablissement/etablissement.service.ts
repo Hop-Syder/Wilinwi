@@ -16,7 +16,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  PLAN_LIMITS,
   type AuthContext,
   type CreateEtablissementInput,
   type EtablissementDto,
@@ -24,6 +23,7 @@ import {
 } from '@wilinwi/types';
 import type { Etablissement } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { PlanConfigService } from '../common/plan-config.service';
 import { ActivityService } from '../common/activity.service';
 
 function toDto(e: Etablissement): EtablissementDto {
@@ -43,6 +43,7 @@ export class EtablissementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly planConfig: PlanConfigService,
   ) {}
 
   /** Tous les établissements de l'entreprise (gestion — OWNER/MANAGER). */
@@ -68,9 +69,9 @@ export class EtablissementService {
   }
 
   async create(ctx: AuthContext, input: CreateEtablissementInput): Promise<EtablissementDto> {
+    // Quota d'établissements selon le plan (config pilotable en base — Starter 1 · Pro 2 · Business+ illimité).
+    const max = (await this.planConfig.getLimits(ctx.plan)).maxEtablissements;
     const etab = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      // Quota d'établissements selon le plan (Starter 1 · Pro 2 · Business+ illimité).
-      const max = PLAN_LIMITS[ctx.plan].maxEtablissements;
       const count = await tx.etablissement.count({ where: { tenantId: ctx.tenantId } });
       if (count >= max) {
         throw new ConflictException(

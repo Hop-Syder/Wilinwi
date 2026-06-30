@@ -12,22 +12,78 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  Building2, 
-  Search, 
-  Users, 
-  Store, 
-  Calendar, 
+import {
+  Building2,
+  Search,
+  Users,
+  Store,
+  Calendar,
   ShieldCheck,
-  ChevronRight, 
-  X, 
+  ChevronRight,
+  X,
   RefreshCw,
   Sparkles,
-  MapPin
+  MapPin,
+  CreditCard,
+  Clock,
+  AlertTriangle,
+  Ban,
+  PlayCircle,
+  Puzzle,
+  Lock,
+  Save
 } from 'lucide-react';
 import { Button, Card, Badge, Input, StatCard } from '@wilinwi/ui';
-import { apiGet, ApiError } from '@/lib/api';
-import type { PlatformTenantDto, PlatformEtablissementDto } from '@wilinwi/types';
+import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
+import { PlanEditor } from './plan-editor';
+import {
+  PLANS,
+  MODULES,
+  PLAN_MODULES,
+  type Plan,
+  type ModuleKey,
+  type SubscriptionStatus,
+  type PlatformTenantDto,
+  type PlatformEtablissementDto,
+  type PlatformPaymentResultDto,
+  type PlatformOverdueResultDto,
+} from '@wilinwi/types';
+
+const MODULE_LABELS: Record<ModuleKey, string> = {
+  POS: 'Caisse (POS)',
+  STOCK: 'Stock',
+  PAY: 'Trésorerie',
+  CRM: 'CRM Clients',
+  MARKET: 'Market',
+  ANALYTICS: 'Analytics',
+  AI: 'Assistant IA',
+  DELIVERY: 'Livraisons',
+};
+
+const STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  ACTIVE: 'Actif',
+  TRIALING: 'Essai',
+  PAST_DUE: 'Impayé',
+  CANCELLED: 'Suspendu',
+};
+const STATUS_TONE: Record<SubscriptionStatus, 'success' | 'warning' | 'danger' | 'neutral'> = {
+  ACTIVE: 'success',
+  TRIALING: 'warning',
+  PAST_DUE: 'danger',
+  CANCELLED: 'neutral',
+};
+
+function formatDate(value: string | Date | null): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Jours restants (négatif = en retard) jusqu'à l'échéance. */
+function daysUntil(value: string | Date | null): number | null {
+  if (!value) return null;
+  const ms = new Date(value).getTime() - Date.now();
+  return Math.ceil(ms / 86_400_000);
+}
 
 export default function PlatformPage() {
   const [tenants, setTenants] = useState<PlatformTenantDto[]>([]);
@@ -40,6 +96,103 @@ export default function PlatformPage() {
   const [etablissements, setEtablissements] = useState<PlatformEtablissementDto[]>([]);
   const [loadingEtabs, setLoadingEtabs] = useState(false);
   const [etabsError, setEtabsError] = useState<string | null>(null);
+
+  // Facturation (actions super-admin)
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  // Modules « à la carte » (brouillon éditable du tenant sélectionné)
+  const [moduleDraft, setModuleDraft] = useState<ModuleKey[]>([]);
+
+  /** Remplace localement un tenant mis à jour (liste + sélection) sans recharger tout. */
+  function patchTenant(id: string, patch: Partial<PlatformTenantDto>) {
+    setTenants((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    setSelectedTenant((t) => (t && t.id === id ? { ...t, ...patch } : t));
+  }
+
+  async function recordPayment(tenant: PlatformTenantDto) {
+    setActionBusy('payment');
+    setFeedback(null);
+    try {
+      const res = await apiPost<PlatformPaymentResultDto>(`/api/platform/tenants/${tenant.id}/payment`, {});
+      patchTenant(tenant.id, {
+        subscriptionStatus: res.subscriptionStatus,
+        subscriptionDueDate: res.subscriptionDueDate,
+      });
+      setFeedback({ kind: 'ok', text: `Paiement enregistré — échéance reportée au ${formatDate(res.subscriptionDueDate)}.` });
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec de l’enregistrement du paiement.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function changePlan(tenant: PlatformTenantDto, plan: Plan) {
+    if (plan === tenant.plan) return;
+    setActionBusy('plan');
+    setFeedback(null);
+    try {
+      await apiPost(`/api/platform/tenants/${tenant.id}/plan`, { plan });
+      patchTenant(tenant.id, { plan });
+      setFeedback({ kind: 'ok', text: `Plan changé en ${plan}.` });
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec du changement de plan.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function setStatus(tenant: PlatformTenantDto, status: SubscriptionStatus) {
+    setActionBusy('status');
+    setFeedback(null);
+    try {
+      await apiPost(`/api/platform/tenants/${tenant.id}/status`, { status });
+      patchTenant(tenant.id, { subscriptionStatus: status });
+      setFeedback({ kind: 'ok', text: `Statut mis à jour : ${STATUS_LABELS[status]}.` });
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec du changement de statut.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function runOverdue() {
+    setActionBusy('overdue');
+    setFeedback(null);
+    try {
+      const res = await apiPost<PlatformOverdueResultDto>('/api/platform/billing/run-overdue', {});
+      setFeedback({
+        kind: 'ok',
+        text:
+          res.markedPastDue === 0
+            ? 'Facturation passée : aucun nouvel impayé.'
+            : `Facturation passée : ${res.markedPastDue} entreprise(s) marquée(s) impayée(s).`,
+      });
+      await loadTenants();
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec de la relève des impayés.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  function toggleModule(mod: ModuleKey) {
+    setModuleDraft((d) => (d.includes(mod) ? d.filter((m) => m !== mod) : [...d, mod]));
+  }
+
+  async function saveModules(tenant: PlatformTenantDto) {
+    setActionBusy('modules');
+    setFeedback(null);
+    try {
+      await apiPatch(`/api/platform/tenants/${tenant.id}/modules`, { modules: moduleDraft });
+      patchTenant(tenant.id, { moduleAddons: moduleDraft });
+      setFeedback({ kind: 'ok', text: 'Modules à la carte mis à jour (effet immédiat).' });
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec de la mise à jour des modules.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
 
   async function loadTenants() {
     setLoading(true);
@@ -56,6 +209,8 @@ export default function PlatformPage() {
 
   async function loadEtablissements(tenant: PlatformTenantDto) {
     setSelectedTenant(tenant);
+    setModuleDraft(tenant.moduleAddons);
+    setFeedback(null);
     setLoadingEtabs(true);
     setEtabsError(null);
     setEtablissements([]);
@@ -99,17 +254,45 @@ export default function PlatformPage() {
             Supervisez les boutiques, abonnements et points de vente enregistrés sur Wilinwi.
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={loadTenants} 
-          disabled={loading}
-          className="flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Rafraîchir
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={runOverdue}
+            disabled={loading || actionBusy !== null}
+            className="flex items-center gap-1.5"
+            title="Marque en impayé les abonnements dont l’échéance est dépassée"
+          >
+            <AlertTriangle className={`h-4 w-4 ${actionBusy === 'overdue' ? 'animate-pulse' : ''}`} />
+            Lancer la facturation
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadTenants}
+            disabled={loading}
+            className="flex items-center gap-1.5"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Rafraîchir
+          </Button>
+        </div>
       </div>
+
+      {feedback && (
+        <div
+          className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+            feedback.kind === 'ok'
+              ? 'border-success/30 bg-success/5 text-success'
+              : 'border-danger/30 bg-danger/5 text-danger'
+          }`}
+        >
+          <span className="font-medium">{feedback.text}</span>
+          <button onClick={() => setFeedback(null)} className="shrink-0 opacity-70 hover:opacity-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Cartes KPI (Premium Black Luxury Design) */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -220,10 +403,8 @@ export default function PlatformPage() {
                             </Badge>
                           </td>
                           <td className="p-4">
-                            <Badge 
-                              variant={t.subscriptionStatus === 'ACTIVE' ? 'success' : 'danger'}
-                            >
-                              {t.subscriptionStatus === 'ACTIVE' ? 'Actif' : 'Impayé'}
+                            <Badge variant={STATUS_TONE[t.subscriptionStatus]}>
+                              {STATUS_LABELS[t.subscriptionStatus]}
                             </Badge>
                           </td>
                           <td className="p-4 text-center">
@@ -285,13 +466,170 @@ export default function PlatformPage() {
                   </div>
                   <div>
                     <div className="text-text-secondary font-medium">Statut abt.</div>
-                    <div className="font-bold text-text-primary mt-1">{selectedTenant.subscriptionStatus}</div>
+                    <div className="mt-1">
+                      <Badge variant={STATUS_TONE[selectedTenant.subscriptionStatus]}>
+                        {STATUS_LABELS[selectedTenant.subscriptionStatus]}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="col-span-2 pt-2 border-t border-border/50 mt-1">
                     <div className="text-text-secondary font-medium">Identifiant unique (ID)</div>
                     <div className="font-mono text-[10px] text-text-primary mt-1 select-all break-all">{selectedTenant.id}</div>
                   </div>
                 </div>
+
+                {/* Facturation */}
+                <div className="space-y-3 rounded-lg border border-border bg-surface-hover/20 p-3">
+                  <h4 className="font-bold text-xs text-text-primary flex items-center gap-1.5">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    Facturation
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <div className="text-text-secondary font-medium flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" /> Échéance
+                      </div>
+                      <div className="font-bold text-text-primary mt-1">{formatDate(selectedTenant.subscriptionDueDate)}</div>
+                      {(() => {
+                        const d = daysUntil(selectedTenant.subscriptionDueDate);
+                        if (d === null) return null;
+                        return (
+                          <div className={`text-[10px] mt-0.5 font-semibold ${d < 0 ? 'text-danger' : d <= 7 ? 'text-warning' : 'text-text-secondary'}`}>
+                            {d < 0 ? `En retard de ${Math.abs(d)} j` : d === 0 ? "Aujourd'hui" : `Dans ${d} j`}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <div className="text-text-secondary font-medium">Cycle</div>
+                      <div className="font-bold text-text-primary mt-1">
+                        {selectedTenant.billingCycle === 'YEARLY' ? 'Annuel' : 'Mensuel'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enregistrer un règlement */}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => recordPayment(selectedTenant)}
+                    disabled={actionBusy !== null}
+                    className="w-full flex items-center justify-center gap-1.5"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {actionBusy === 'payment' ? 'Enregistrement…' : 'Enregistrer un règlement'}
+                  </Button>
+
+                  {/* Changer de plan */}
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-medium text-text-secondary">Changer de plan</div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {PLANS.map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => changePlan(selectedTenant, p)}
+                          disabled={actionBusy !== null || p === selectedTenant.plan}
+                          className={`rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-100 ${
+                            p === selectedTenant.plan
+                              ? 'border-primary bg-primary/10 text-primary cursor-default'
+                              : 'border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-text-primary disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-text-secondary'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Suspendre / Réactiver */}
+                  {selectedTenant.subscriptionStatus === 'CANCELLED' ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setStatus(selectedTenant, 'ACTIVE')}
+                      disabled={actionBusy !== null}
+                      className="w-full flex items-center justify-center gap-1.5 text-success border-success/40 hover:bg-success/5"
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      Réactiver l&apos;abonnement
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setStatus(selectedTenant, 'CANCELLED')}
+                      disabled={actionBusy !== null}
+                      className="w-full flex items-center justify-center gap-1.5 text-danger border-danger/40 hover:bg-danger/5"
+                    >
+                      <Ban className="h-4 w-4" />
+                      Suspendre l&apos;abonnement
+                    </Button>
+                  )}
+                </div>
+
+                {/* Modules à la carte (Lot 2.4) */}
+                {(() => {
+                  const planSet = new Set(PLAN_MODULES[selectedTenant.plan]);
+                  const dirty =
+                    [...moduleDraft].sort().join(',') !==
+                    [...selectedTenant.moduleAddons].sort().join(',');
+                  return (
+                    <div className="space-y-3 rounded-lg border border-border bg-surface-hover/20 p-3">
+                      <h4 className="font-bold text-xs text-text-primary flex items-center gap-1.5">
+                        <Puzzle className="h-4 w-4 text-primary" />
+                        Modules à la carte
+                      </h4>
+                      <div className="space-y-1.5">
+                        {MODULES.map((mod) => {
+                          const included = planSet.has(mod);
+                          const active = included || moduleDraft.includes(mod);
+                          return (
+                            <button
+                              key={mod}
+                              type="button"
+                              disabled={included || actionBusy !== null}
+                              onClick={() => toggleModule(mod)}
+                              className={`flex w-full items-center justify-between rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                                active
+                                  ? 'border-primary/30 bg-primary/5 text-text-primary'
+                                  : 'border-border bg-surface text-text-secondary hover:border-primary/40'
+                              } ${included ? 'cursor-default opacity-90' : ''}`}
+                            >
+                              <span className="font-medium">{MODULE_LABELS[mod]}</span>
+                              {included ? (
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-text-secondary">
+                                  <Lock className="h-3 w-3" /> Inclus
+                                </span>
+                              ) : (
+                                <span
+                                  className={`relative h-4 w-7 rounded-full transition-colors ${active ? 'bg-primary' : 'bg-border'}`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${active ? 'left-3.5' : 'left-0.5'}`}
+                                  />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-text-secondary">
+                        Activés en plus du plan. Neutralisés automatiquement si l&apos;abonnement est impayé (J+7).
+                      </p>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => saveModules(selectedTenant)}
+                        disabled={!dirty || actionBusy !== null}
+                        className="w-full flex items-center justify-center gap-1.5"
+                      >
+                        <Save className="h-4 w-4" />
+                        {actionBusy === 'modules' ? 'Enregistrement…' : 'Enregistrer les modules'}
+                      </Button>
+                    </div>
+                  );
+                })()}
 
                 {/* Liste des points de vente (établissements) */}
                 <div className="space-y-2">
@@ -350,6 +688,9 @@ export default function PlatformPage() {
           )}
         </div>
       </div>
+
+      {/* Plans & tarifs éditables (Lot 2.3) */}
+      <PlanEditor />
     </div>
   );
 }

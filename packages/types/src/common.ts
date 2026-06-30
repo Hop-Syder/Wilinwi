@@ -31,6 +31,7 @@ export const UNLIMITED = Number.POSITIVE_INFINITY;
 /** Modules de l'écosystème (gating du Hub). */
 export const MODULES = ['POS', 'STOCK', 'PAY', 'CRM', 'MARKET', 'ANALYTICS', 'AI', 'DELIVERY'] as const;
 export type ModuleKey = (typeof MODULES)[number];
+export const ModuleKeySchema = z.enum(MODULES);
 
 /**
  * Modules inclus par plan — pilote le gating premium du Hub.

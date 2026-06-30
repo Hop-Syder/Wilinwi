@@ -8,7 +8,6 @@ import {
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import {
-  PLAN_LIMITS,
   type AuthContext,
   type CreateUserInput,
   type UpdateUserInput,
@@ -16,6 +15,7 @@ import {
 } from '@wilinwi/types';
 import type { User, TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { PlanConfigService } from '../common/plan-config.service';
 import { ActivityService } from '../common/activity.service';
 import { SupabaseAdminService } from './supabase-admin.service';
 
@@ -43,6 +43,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseAdminService,
     private readonly activity: ActivityService,
+    private readonly planConfig: PlanConfigService,
   ) {}
 
   async list(ctx: AuthContext): Promise<UserDto[]> {
@@ -88,8 +89,8 @@ export class UsersService {
     if (input.role === 'OWNER' && ctx.role !== 'OWNER') {
       throw new ForbiddenException('Seul le propriétaire peut créer un autre propriétaire.');
     }
-    // Limite d'utilisateurs selon l'abonnement (§8).
-    const max = PLAN_LIMITS[ctx.plan].maxUsers;
+    // Limite d'utilisateurs selon l'abonnement (§8) — config pilotable en base.
+    const max = (await this.planConfig.getLimits(ctx.plan)).maxUsers;
     const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.user.count({ where: { tenantId: ctx.tenantId, actif: true } }),
     );

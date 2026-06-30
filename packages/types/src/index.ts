@@ -25,4 +25,5 @@ export * from './purchase.js';
 export * from './dispatch.js';
 export * from './notification.js';
 export * from './platform.js';
+export * from './plan-config.js';
 

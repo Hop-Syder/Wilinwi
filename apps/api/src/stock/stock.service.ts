@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common';
 import {
   DOWNGRADE_MAX_PRODUCTS,
-  maxProductPhotos,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
@@ -28,13 +27,17 @@ import {
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { PlanConfigService } from '../common/plan-config.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
 
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planConfig: PlanConfigService,
+  ) {}
 
   async list(ctx: AuthContext, globalView = false) {
     // Rétrogradation Starter (impayé J+7) : catalogue bridé aux 50 articles les
@@ -117,7 +120,7 @@ export class StockService {
     }
     // Gating images : la galerie produit est réservée aux plans Business+ ;
     // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
-    const photos = input.photos.slice(0, maxProductPhotos(ctx.plan));
+    const photos = input.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const created = await tx.product.create({
         data: {
@@ -276,7 +279,7 @@ export class StockService {
     const { variants, ...scalars } = input;
     // Gating images : on borne la galerie au nombre autorisé par le plan.
     if (scalars.photos !== undefined) {
-      scalars.photos = scalars.photos.slice(0, maxProductPhotos(ctx.plan));
+      scalars.photos = scalars.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
     }
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       await this.ensureProduct(tx, ctx.tenantId, id);

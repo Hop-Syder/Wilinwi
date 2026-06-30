@@ -16,8 +16,10 @@ import { jwtVerify } from 'jose';
 import {
   computeDunning,
   effectiveModules,
+  MODULES,
   RoleSchema,
   type AuthContext,
+  type ModuleKey,
   type Plan,
   type SubscriptionStatus,
 } from '@wilinwi/types';
@@ -84,6 +86,11 @@ export class AuthGuard implements CanActivate {
       const dunning = computeDunning(subscriptionStatus, tenant.pastDueSince);
       const realPlan = tenant.plan as Plan;
       const effectivePlan: Plan = dunning.downgraded ? 'STARTER' : realPlan;
+      // Modules « à la carte » de l'entreprise (Lot 2.4) — neutralisés tant que l'abonnement
+      // est rétrogradé pour impayé (J+7+), comme le plan lui-même.
+      const moduleAddons: ModuleKey[] = dunning.downgraded
+        ? []
+        : (tenant.moduleAddons.filter((m) => (MODULES as readonly string[]).includes(m)) as ModuleKey[]);
       // Établissements accessibles à l'utilisateur (uniquement ceux encore actifs).
       const access = await tx.userEtablissement.findMany({
         where: { userId, etablissement: { actif: true } },
@@ -105,6 +112,7 @@ export class AuthGuard implements CanActivate {
           effectivePlan,
           dbUser.customPermissions,
           dbUser.permissions,
+          moduleAddons,
         ),
         etablissementIds,
       };

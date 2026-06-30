@@ -40,6 +40,30 @@ enum Plan {
   ENTERPRISE
 }
 
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+/// Configuration tarifaire & limites par plan, pilotable depuis la console super-admin
+/// (Lot 2.3). Table de RÉFÉRENCE globale (non multi-tenant) : lue au runtime par tous,
+/// écrite uniquement par le super-admin via une fonction SECURITY DEFINER.
+/// Convention : une limite à `-1` signifie « illimité » (Infinity n'est pas stockable).
+/// Prix en FCFA (entier) ; `null` = « sur devis » (ex. ENTERPRISE), `0` = gratuit (STARTER).
+model PlanConfig {
+  plan              Plan      @id
+  label             String
+  priceMonthly      Int?      @map("price_monthly")
+  priceYearly       Int?      @map("price_yearly")
+  maxUsers          Int       @default(-1) @map("max_users")
+  maxEtablissements Int       @default(-1) @map("max_etablissements")
+  maxDevices        Int       @default(-1) @map("max_devices")
+  maxPhotos         Int       @default(0) @map("max_photos")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("plan_configs")
+}
+
 enum SubscriptionStatus {
   ACTIVE
   TRIALING
@@ -108,6 +132,13 @@ model Tenant {
   subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
   /// Date de passage en impayé (PAST_DUE) → pilote la relance progressive (J+0/J+3/J+7/J+30).
   pastDueSince       DateTime?          @map("past_due_since")
+  /// Échéance du prochain règlement d'abonnement (null = facturation non configurée).
+  subscriptionDueDate DateTime?         @map("subscription_due_date")
+  /// Cycle de facturation (mensuel/annuel) — sert à reporter l'échéance au paiement.
+  billingCycle       BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  /// Modules premium activés « à la carte » pour cette entreprise, en plus de ceux
+  /// inclus dans son plan (Lot 2.4). Valeurs = clés de MODULES. Neutralisés si impayé (J+7).
+  moduleAddons       String[]           @default([]) @map("module_addons")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 

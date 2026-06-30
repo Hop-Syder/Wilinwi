@@ -14,8 +14,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight, Store } from 'lucide-react';
-import { PLAN_MODULES, MODULES, type Plan } from '@wilinwi/types';
+import { PLAN_MODULES, MODULES, type Plan, type PlanConfigDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+
+/** Libellé tarifaire d'un plan : `null` = sur devis · `0` = gratuit · sinon montant/mois. */
+function formatPlanPrice(cfg: PlanConfigDto | undefined): string {
+  if (!cfg || cfg.priceMonthly === null) return 'Sur devis';
+  if (cfg.priceMonthly === 0) return 'Gratuit';
+  return `${formatFCFA(cfg.priceMonthly)}/mois`;
+}
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
@@ -72,6 +79,7 @@ const MODULE_LABELS: Record<string, string> = {
 export default function ParametresPage() {
   const { user, refreshUser } = useAuth();
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
+  const [planConfigs, setPlanConfigs] = useState<Record<Plan, PlanConfigDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +89,12 @@ export default function ParametresPage() {
     setLoading(true);
     setError(null);
     try {
-      const t = await apiGet<TenantInfo>('/api/admin/tenant');
+      const [t, plans] = await Promise.all([
+        apiGet<TenantInfo>('/api/admin/tenant'),
+        apiGet<PlanConfigDto[]>('/api/plans'),
+      ]);
       setTenant(t);
+      setPlanConfigs(Object.fromEntries(plans.map((p) => [p.plan, p])) as Record<Plan, PlanConfigDto>);
     } catch (e) {
       setError((e as ApiError).message);
     } finally {
@@ -246,7 +258,9 @@ export default function ParametresPage() {
                   {info.label}
                 </div>
                 <p className="mt-3 text-sm text-slate-600">{info.desc}</p>
-                <p className="mt-2 font-display text-lg font-bold text-slate-800">{info.price}</p>
+                <p className="mt-2 font-display text-lg font-bold text-slate-800">
+                  {planConfigs ? formatPlanPrice(planConfigs[plan]) : info.price}
+                </p>
 
                 <div className="mt-4 space-y-1.5">
                   {MODULES.map((mod) => {

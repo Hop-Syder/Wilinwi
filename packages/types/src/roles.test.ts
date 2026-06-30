@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { describe, expect, it } from 'vitest';
-import { canSeeSensitivePricing, hasCapability, type Role } from './roles.js';
+import { canSeeSensitivePricing, hasCapability, effectiveModules, type Role } from './roles.js';
 import { planIncludesModule } from './common.js';
 
 describe('sécurité au niveau champ (prix sensibles)', () => {
@@ -75,5 +75,15 @@ describe('gating des modules par plan', () => {
     expect(planIncludesModule('BUSINESS', 'MARKET')).toBe(true);
     expect(planIncludesModule('BUSINESS', 'AI')).toBe(false);
     expect(planIncludesModule('ENTERPRISE', 'AI')).toBe(true);
+  });
+});
+
+describe('modules premium à la carte (add-ons)', () => {
+  it('un add-on débloque un module au-delà du plan', () => {
+    const base = effectiveModules('OWNER', 'STARTER', false, []);
+    expect(base.includes('PAY')).toBe(false);
+
+    const withAddon = effectiveModules('OWNER', 'STARTER', false, [], ['PAY']);
+    expect(withAddon.includes('PAY')).toBe(true);
   });
 });

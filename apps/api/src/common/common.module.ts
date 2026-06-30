@@ -12,6 +12,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaService } from './prisma.service';
+import { PlanConfigService } from './plan-config.service';
 import { AuthGuard } from './auth.guard';
 import { CapabilitiesGuard } from './capabilities.guard';
 import { ActivityService } from './activity.service';
@@ -27,11 +28,12 @@ import { ActivityInterceptor } from './activity.interceptor';
   controllers: [ActivityController],
   providers: [
     PrismaService,
+    PlanConfigService,
     ActivityService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CapabilitiesGuard },
     { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
-  exports: [PrismaService, ActivityService],
+  exports: [PrismaService, PlanConfigService, ActivityService],
 })
 export class CommonModule {}

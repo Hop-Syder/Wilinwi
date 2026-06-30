@@ -187,18 +187,20 @@ export const ROLE_MODULES: Record<Role, readonly ModuleKey[]> = {
 
 /**
  * Modules réellement accessibles à un utilisateur :
- *   (overrides si personnalisé, sinon défaut du rôle) ∩ modules inclus dans le plan.
+ *   (overrides si personnalisé, sinon défaut du rôle) ∩ (modules du plan ∪ add-ons entreprise).
+ * `extraModules` = modules activés « à la carte » pour l'entreprise (Lot 2.4).
  */
 export function effectiveModules(
   role: Role,
   plan: Plan,
   customPermissions: boolean,
   permissions: readonly string[],
+  extraModules: readonly ModuleKey[] = [],
 ): ModuleKey[] {
   const base = customPermissions
     ? (permissions.filter((p) => (MODULES as readonly string[]).includes(p)) as ModuleKey[])
     : ROLE_MODULES[role];
-  const planSet = new Set(PLAN_MODULES[plan]);
+  const planSet = new Set<ModuleKey>([...PLAN_MODULES[plan], ...extraModules]);
   return base.filter((m) => planSet.has(m));
 }
 
@@ -211,8 +213,11 @@ export function effectiveCapabilities(
   plan: Plan,
   customPermissions: boolean,
   permissions: readonly string[],
+  extraModules: readonly ModuleKey[] = [],
 ): Capability[] {
-  const mods = new Set<ModuleKey>(effectiveModules(role, plan, customPermissions, permissions));
+  const mods = new Set<ModuleKey>(
+    effectiveModules(role, plan, customPermissions, permissions, extraModules),
+  );
   return ROLE_CAPABILITIES[role].filter((cap) => {
     const m = CAP_MODULE[cap];
     return m === 'ADMIN' || mods.has(m);
