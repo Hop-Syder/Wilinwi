@@ -102,18 +102,23 @@ async function findAuthUserByEmail(email: string): Promise<string | null> {
   return null;
 }
 
-/** Crée (ou récupère) le compte auth confirmé et aligne son mot de passe. */
+/**
+ * Crée (ou récupère) le compte auth confirmé, aligne mot de passe ET
+ * app_metadata { tenant_id, role, plan } — exigé par l'AuthGuard de l'API
+ * (sans tenant_id dans le JWT → 401 « Profil utilisateur incomplet »).
+ */
 async function ensureAuthUser(email: string, password: string): Promise<string> {
+  const app_metadata = { tenant_id: TENANT_ID, role: 'OWNER', plan: 'BUSINESS' };
   const res = await adminFetch('/admin/users', {
     method: 'POST',
-    body: JSON.stringify({ email, password, email_confirm: true }),
+    body: JSON.stringify({ email, password, email_confirm: true, app_metadata }),
   });
   if (res.ok) {
     const body = (await res.json()) as { id: string };
     return body.id;
   }
 
-  // Compte déjà existant → on le retrouve et on (ré)aligne le mot de passe.
+  // Compte déjà existant → on le retrouve et on (ré)aligne mot de passe + claims.
   const existingId = await findAuthUserByEmail(email);
   if (!existingId) {
     const detail = await res.text();
@@ -121,9 +126,9 @@ async function ensureAuthUser(email: string, password: string): Promise<string> 
   }
   const upd = await adminFetch(`/admin/users/${existingId}`, {
     method: 'PUT',
-    body: JSON.stringify({ password, email_confirm: true }),
+    body: JSON.stringify({ password, email_confirm: true, app_metadata }),
   });
-  if (!upd.ok) throw new Error(`Mise à jour du mot de passe échouée: HTTP ${upd.status}`);
+  if (!upd.ok) throw new Error(`Mise à jour du compte auth échouée: HTTP ${upd.status}`);
   return existingId;
 }
 
@@ -136,15 +141,15 @@ async function main() {
   console.log(`   Compte auth propriétaire: ${OWNER_EMAIL} (${ownerId})`);
 
   await withTenant(TENANT_ID, async (tx) => {
-    // Entreprise de test : `internal` pour ne pas polluer les métriques plateforme.
+    // `internal: false` → visible dans la console plateforme comme un vrai client.
     await tx.tenant.upsert({
       where: { id: TENANT_ID },
-      update: { plan: 'BUSINESS' },
+      update: { plan: 'BUSINESS', internal: false },
       create: {
         id: TENANT_ID,
         nom: 'Groupe Prestige Bénin',
         plan: 'BUSINESS',
-        internal: true,
+        internal: false,
       },
     });
 
