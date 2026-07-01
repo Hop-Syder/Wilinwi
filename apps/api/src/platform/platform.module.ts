@@ -11,10 +11,12 @@
 
 import { Module } from '@nestjs/common';
 import { AdminPrismaService } from '../common/admin-prisma.service';
+import { AuthModule } from '../auth/auth.module';
 import { PlatformController } from './platform.controller';
 import { PlatformService } from './platform.service';
 
 @Module({
+  imports: [AuthModule], // pour SupabaseAdminService (reset mot de passe)
   controllers: [PlatformController],
   providers: [PlatformService, AdminPrismaService],
   exports: [PlatformService],

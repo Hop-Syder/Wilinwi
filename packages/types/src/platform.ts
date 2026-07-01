@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { IdSchema, PlanSchema, ModuleKeySchema } from './common.js';
+import { RoleSchema } from './roles.js';
 import { SubscriptionStatusSchema } from './dunning.js';
 import { EtablissementTypeSchema } from './etablissement.js';
 
@@ -138,3 +139,69 @@ export const PlatformEtablissementSchema = z.object({
   createdAt: z.coerce.date(),
 });
 export type PlatformEtablissementDto = z.infer<typeof PlatformEtablissementSchema>;
+
+// ─────────────────────────── Cockpit (Lot cockpit) ───────────────────────────
+
+/** Un utilisateur vu depuis la console (cross-tenant). */
+export const PlatformUserSchema = z.object({
+  id: IdSchema,
+  nom: z.string(),
+  email: z.string(),
+  role: RoleSchema,
+  actif: z.boolean(),
+  tenantId: IdSchema,
+  tenantNom: z.string(),
+  lastLogin: z.coerce.date().nullable(),
+  createdAt: z.coerce.date(),
+});
+export type PlatformUserDto = z.infer<typeof PlatformUserSchema>;
+
+/** Entrée : (dé)bloquer un utilisateur. */
+export const PlatformSetUserActiveSchema = z.object({ active: z.boolean() });
+export type PlatformSetUserActiveInput = z.infer<typeof PlatformSetUserActiveSchema>;
+
+/** Un événement de connexion (best-effort, PIN). */
+export const PlatformUserLoginSchema = z.object({
+  id: IdSchema,
+  createdAt: z.coerce.date(),
+  ip: z.string().nullable(),
+  deviceLabel: z.string().nullable(),
+});
+export type PlatformUserLoginDto = z.infer<typeof PlatformUserLoginSchema>;
+
+/** Résultat d'une réinitialisation de mot de passe (mot de passe temporaire). */
+export const PlatformResetPasswordSchema = z.object({ tempPassword: z.string() });
+export type PlatformResetPasswordDto = z.infer<typeof PlatformResetPasswordSchema>;
+
+/** Indicateurs financiers de la plateforme. Montants en FCFA. churn = proxy snapshot. */
+export const PlatformRevenueSchema = z.object({
+  mrr: z.number().int().nonnegative(),
+  arr: z.number().int().nonnegative(),
+  active: z.number().int().nonnegative(),
+  trialing: z.number().int().nonnegative(),
+  cancelled: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  arpu: z.number().int().nonnegative(),
+  churnRate: z.number().nonnegative(),
+  ltv: z.number().int().nonnegative(),
+});
+export type PlatformRevenueDto = z.infer<typeof PlatformRevenueSchema>;
+
+/** Un abonnement arrivant à échéance (ou dépassé). */
+export const PlatformExpiringSubscriptionSchema = z.object({
+  id: IdSchema,
+  nom: z.string(),
+  plan: PlanSchema,
+  subscriptionStatus: SubscriptionStatusSchema,
+  subscriptionDueDate: z.coerce.date(),
+  daysLeft: z.number().int(),
+  ownerEmail: z.string().nullable(),
+});
+export type PlatformExpiringSubscriptionDto = z.infer<typeof PlatformExpiringSubscriptionSchema>;
+
+/** Répartition des établissements par ville. */
+export const PlatformEtabGeoSchema = z.object({
+  ville: z.string(),
+  count: z.number().int().nonnegative(),
+});
+export type PlatformEtabGeoDto = z.infer<typeof PlatformEtabGeoSchema>;

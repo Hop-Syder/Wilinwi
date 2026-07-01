@@ -17,6 +17,7 @@ import {
   PlatformChangePlanSchema,
   PlatformSetStatusSchema,
   PlatformSetModulesSchema,
+  PlatformSetUserActiveSchema,
   UpdatePlanConfigSchema,
   PlanSchema,
   type PlatformTenantDto,
@@ -35,6 +36,13 @@ import {
   type PlatformActivationFunnelDto,
   type PlatformInactiveTenantDto,
   type PlatformGeoCountryDto,
+  type PlatformUserDto,
+  type PlatformUserLoginDto,
+  type PlatformRevenueDto,
+  type PlatformExpiringSubscriptionDto,
+  type PlatformEtabGeoDto,
+  type PlatformResetPasswordDto,
+  type PlatformSetUserActiveInput,
 } from '@wilinwi/types';
 
 @Controller('platform')
@@ -86,6 +94,66 @@ export class PlatformController {
   getGeo(@Query('days') days?: string): Promise<PlatformGeoCountryDto[]> {
     const n = Math.min(365, Math.max(1, Number.parseInt(days ?? '', 10) || 90));
     return this.platformService.getGeoBreakdown(n);
+  }
+
+  // ───────────────────────────── Cockpit ─────────────────────────────
+
+  /** GET /api/platform/users?search=&limit= — Utilisateurs cross-tenant. */
+  @Get('users')
+  getUsers(@Query('search') search?: string, @Query('limit') limit?: string): Promise<PlatformUserDto[]> {
+    const n = Math.min(500, Math.max(1, Number.parseInt(limit ?? '', 10) || 100));
+    return this.platformService.getUsers(search ?? '', n);
+  }
+
+  /** POST /api/platform/users/:id/block — (Dé)bloque un utilisateur. */
+  @Post('users/:id/block')
+  @HttpCode(200)
+  async setUserActive(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(PlatformSetUserActiveSchema)) dto: PlatformSetUserActiveInput,
+  ): Promise<{ ok: true }> {
+    await this.platformService.setUserActive(id, dto.active);
+    return { ok: true };
+  }
+
+  /** POST /api/platform/users/:id/reset-pin — Réinitialise le PIN à 0000. */
+  @Post('users/:id/reset-pin')
+  @HttpCode(200)
+  async resetPin(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ ok: true }> {
+    await this.platformService.resetUserPin(id);
+    return { ok: true };
+  }
+
+  /** POST /api/platform/users/:id/reset-password — Réinitialise le mot de passe (temporaire). */
+  @Post('users/:id/reset-password')
+  @HttpCode(200)
+  resetPassword(@Param('id', new ParseUUIDPipe()) id: string): Promise<PlatformResetPasswordDto> {
+    return this.platformService.resetUserPassword(id);
+  }
+
+  /** GET /api/platform/users/:id/logins — Historique de connexion (best-effort). */
+  @Get('users/:id/logins')
+  getUserLogins(@Param('id', new ParseUUIDPipe()) id: string): Promise<PlatformUserLoginDto[]> {
+    return this.platformService.getUserLogins(id);
+  }
+
+  /** GET /api/platform/revenue — Indicateurs financiers (MRR/ARR/ARPU/LTV/churn). */
+  @Get('revenue')
+  getRevenue(): Promise<PlatformRevenueDto> {
+    return this.platformService.getRevenue();
+  }
+
+  /** GET /api/platform/subscriptions/expiring?days= — Abonnements à échéance. */
+  @Get('subscriptions/expiring')
+  getExpiring(@Query('days') days?: string): Promise<PlatformExpiringSubscriptionDto[]> {
+    const n = Math.min(365, Math.max(1, Number.parseInt(days ?? '', 10) || 14));
+    return this.platformService.getExpiringSubscriptions(n);
+  }
+
+  /** GET /api/platform/etablissements-geo — Établissements par ville. */
+  @Get('etablissements-geo')
+  getEtabGeo(): Promise<PlatformEtabGeoDto[]> {
+    return this.platformService.getEtablissementsGeo();
   }
 
   /** GET /api/platform/tenants/:id/etablissements — Récupère les établissements du tenant. */

@@ -10,9 +10,12 @@
 // ──────────────────────────────────
 
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import geoip from 'geoip-lite';
 import { AdminPrismaService } from '../common/admin-prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
+import { SupabaseAdminService } from '../auth/supabase-admin.service';
 import type {
   PlatformTenantDto,
   PlatformEtablissementDto,
@@ -24,6 +27,12 @@ import type {
   PlatformActivationFunnelDto,
   PlatformInactiveTenantDto,
   PlatformGeoCountryDto,
+  PlatformUserDto,
+  PlatformUserLoginDto,
+  PlatformRevenueDto,
+  PlatformExpiringSubscriptionDto,
+  PlatformEtabGeoDto,
+  PlatformResetPasswordDto,
   PlanConfigDto,
   UpdatePlanConfigInput,
   Plan,
@@ -36,6 +45,7 @@ export class PlatformService {
   constructor(
     private readonly adminPrisma: AdminPrismaService,
     private readonly planConfig: PlanConfigService,
+    private readonly supabaseAdmin: SupabaseAdminService,
   ) {}
 
   /** Retourne la synthèse globale de tous les tenants (entreprises) en contournant la RLS. */
@@ -252,6 +262,87 @@ export class PlatformService {
         entity,
         created_at AS "createdAt"
       FROM app.platform_recent_activity(${limit}::int)
+    `;
+  }
+
+  // ───────────────────────────── Cockpit ─────────────────────────────
+
+  /** Utilisateurs (cross-tenant) avec recherche + dernière connexion. */
+  async getUsers(search = '', limit = 100): Promise<PlatformUserDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformUserDto[]>`
+      SELECT
+        id, nom, email, role, actif,
+        tenant_id  AS "tenantId",
+        tenant_nom AS "tenantNom",
+        last_login AS "lastLogin",
+        created_at AS "createdAt"
+      FROM app.platform_users(${search}::text, ${limit}::int)
+    `;
+  }
+
+  /** Bloque / débloque un utilisateur. */
+  async setUserActive(userId: string, active: boolean): Promise<void> {
+    await this.adminPrisma.client.$executeRaw`
+      SELECT app.platform_set_user_active(${userId}::uuid, ${active}::boolean)
+    `;
+  }
+
+  /** Réinitialise le PIN à 0000 (hash bcrypt calculé ici). */
+  async resetUserPin(userId: string): Promise<void> {
+    const hash = await bcrypt.hash('0000', 10);
+    await this.adminPrisma.client.$executeRaw`
+      SELECT app.platform_set_user_pin(${userId}::uuid, ${hash}::text)
+    `;
+  }
+
+  /** Réinitialise le mot de passe : génère un mot de passe temporaire (rendu une fois). */
+  async resetUserPassword(userId: string): Promise<PlatformResetPasswordDto> {
+    const tempPassword = randomBytes(9).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 12);
+    await this.supabaseAdmin.setPassword(userId, tempPassword);
+    return { tempPassword };
+  }
+
+  /** Historique de connexion (best-effort : événements PIN_LOGIN). */
+  async getUserLogins(userId: string, limit = 20): Promise<PlatformUserLoginDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformUserLoginDto[]>`
+      SELECT id, created_at AS "createdAt", ip, device_label AS "deviceLabel"
+      FROM app.platform_user_logins(${userId}::uuid, ${limit}::int)
+    `;
+  }
+
+  /** Indicateurs financiers (MRR/ARR/ARPU/LTV/churn). */
+  async getRevenue(): Promise<PlatformRevenueDto> {
+    const rows = await this.adminPrisma.client.$queryRaw<PlatformRevenueDto[]>`
+      SELECT
+        mrr, arr, active, trialing, cancelled, total, arpu,
+        churn_rate AS "churnRate",
+        ltv
+      FROM app.platform_revenue_metrics()
+    `;
+    return (
+      rows[0] ?? {
+        mrr: 0, arr: 0, active: 0, trialing: 0, cancelled: 0, total: 0, arpu: 0, churnRate: 0, ltv: 0,
+      }
+    );
+  }
+
+  /** Abonnements arrivant à échéance (ou dépassés) sous `days` jours. */
+  async getExpiringSubscriptions(days = 14): Promise<PlatformExpiringSubscriptionDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformExpiringSubscriptionDto[]>`
+      SELECT
+        id, nom, plan,
+        subscription_status   AS "subscriptionStatus",
+        subscription_due_date AS "subscriptionDueDate",
+        days_left             AS "daysLeft",
+        owner_email           AS "ownerEmail"
+      FROM app.platform_expiring_subscriptions(${days}::int)
+    `;
+  }
+
+  /** Répartition des établissements par ville. */
+  async getEtablissementsGeo(): Promise<PlatformEtabGeoDto[]> {
+    return this.adminPrisma.client.$queryRaw<PlatformEtabGeoDto[]>`
+      SELECT ville, count FROM app.platform_etablissements_geo()
     `;
   }
 }

@@ -96,4 +96,10 @@ export class SupabaseAdminService {
   async deleteUser(userId: string): Promise<void> {
     await this.client.auth.admin.deleteUser(userId);
   }
+
+  /** Définit un nouveau mot de passe (réinitialisation par le super-admin). */
+  async setPassword(userId: string, password: string): Promise<void> {
+    const { error } = await this.client.auth.admin.updateUserById(userId, { password });
+    if (error) throw new Error(`Réinitialisation du mot de passe échouée: ${error.message}`);
+  }
 }

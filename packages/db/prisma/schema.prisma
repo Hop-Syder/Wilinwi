@@ -139,6 +139,9 @@ model Tenant {
   /// Modules premium activés « à la carte » pour cette entreprise, en plus de ceux
   /// inclus dans son plan (Lot 2.4). Valeurs = clés de MODULES. Neutralisés si impayé (J+7).
   moduleAddons       String[]           @default([]) @map("module_addons")
+  /// Entreprise INTERNE (compte super-admin Nexus, démo…) : exclue des vues, métriques
+  /// et funnel de la console plateforme pour ne pas polluer les chiffres clients.
+  internal           Boolean            @default(false)
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 

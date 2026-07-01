@@ -48,6 +48,7 @@ AS $$
     (SELECT u.nom::text   FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_name,
     (SELECT u.email::text FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_email
   FROM public.tenants t
+  WHERE NOT t.internal
   ORDER BY t.created_at DESC;
 $$;
 
@@ -164,16 +165,18 @@ RETURNS TABLE (
 LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
 AS $$
   SELECT
-    (SELECT count(*) FROM public.tenants),
-    (SELECT count(*) FROM public.tenants WHERE subscription_status = 'ACTIVE'),
-    (SELECT count(*) FROM public.tenants WHERE subscription_status = 'PAST_DUE'),
-    (SELECT count(*) FROM public.tenants WHERE created_at > now() - interval '30 days'),
-    (SELECT count(*) FROM public.users WHERE actif),
-    (SELECT count(*) FROM public.etablissements),
-    (SELECT count(*) FROM public.sales
-       WHERE status <> 'CANCELLED' AND created_at > now() - interval '30 days'),
-    (SELECT COALESCE(sum(total), 0) FROM public.sales
-       WHERE status <> 'CANCELLED' AND created_at > now() - interval '30 days'),
+    (SELECT count(*) FROM public.tenants WHERE NOT internal),
+    (SELECT count(*) FROM public.tenants WHERE NOT internal AND subscription_status = 'ACTIVE'),
+    (SELECT count(*) FROM public.tenants WHERE NOT internal AND subscription_status = 'PAST_DUE'),
+    (SELECT count(*) FROM public.tenants WHERE NOT internal AND created_at > now() - interval '30 days'),
+    (SELECT count(*) FROM public.users u JOIN public.tenants t ON t.id = u.tenant_id
+       WHERE u.actif AND NOT t.internal),
+    (SELECT count(*) FROM public.etablissements e JOIN public.tenants t ON t.id = e.tenant_id
+       WHERE NOT t.internal),
+    (SELECT count(*) FROM public.sales s JOIN public.tenants t ON t.id = s.tenant_id
+       WHERE NOT t.internal AND s.status <> 'CANCELLED' AND s.created_at > now() - interval '30 days'),
+    (SELECT COALESCE(sum(s.total), 0) FROM public.sales s JOIN public.tenants t ON t.id = s.tenant_id
+       WHERE NOT t.internal AND s.status <> 'CANCELLED' AND s.created_at > now() - interval '30 days'),
     (SELECT COALESCE(sum(
         CASE WHEN t.billing_cycle = 'YEARLY'
              THEN COALESCE(pc.price_yearly, 0) / 12
@@ -181,7 +184,7 @@ AS $$
       ), 0)
       FROM public.tenants t
       JOIN public.plan_configs pc ON pc.plan = t.plan
-      WHERE t.subscription_status = 'ACTIVE');
+      WHERE NOT t.internal AND t.subscription_status = 'ACTIVE');
 $$;
 
 -- 9. Flux d'audit cross-tenant : dernières actions, tout locataire confondu.
@@ -227,12 +230,12 @@ AS $$
   )
   SELECT
     d.day,
-    (SELECT count(*) FROM public.tenants t WHERE t.created_at::date = d.day)::int AS new_tenants,
-    (SELECT count(*) FROM public.tenants t WHERE t.created_at::date <= d.day)::int AS cumulative_tenants,
-    (SELECT count(*) FROM public.sales s
-       WHERE s.status <> 'CANCELLED' AND s.created_at::date = d.day)::int AS sales_count,
-    (SELECT COALESCE(sum(s.total), 0) FROM public.sales s
-       WHERE s.status <> 'CANCELLED' AND s.created_at::date = d.day)::bigint AS sales_revenue
+    (SELECT count(*) FROM public.tenants t WHERE NOT t.internal AND t.created_at::date = d.day)::int AS new_tenants,
+    (SELECT count(*) FROM public.tenants t WHERE NOT t.internal AND t.created_at::date <= d.day)::int AS cumulative_tenants,
+    (SELECT count(*) FROM public.sales s JOIN public.tenants t ON t.id = s.tenant_id
+       WHERE NOT t.internal AND s.status <> 'CANCELLED' AND s.created_at::date = d.day)::int AS sales_count,
+    (SELECT COALESCE(sum(s.total), 0) FROM public.sales s JOIN public.tenants t ON t.id = s.tenant_id
+       WHERE NOT t.internal AND s.status <> 'CANCELLED' AND s.created_at::date = d.day)::bigint AS sales_revenue
   FROM days d
   ORDER BY d.day;
 $$;
@@ -255,6 +258,7 @@ AS $$
       (SELECT count(*) FROM public.products p WHERE p.tenant_id = t.id) AS pc,
       (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED') AS sc
     FROM public.tenants t
+    WHERE NOT t.internal
   )
   SELECT
     count(*)::int,
@@ -281,7 +285,7 @@ AS $$
     (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED')::int AS sales_count,
     t.created_at
   FROM public.tenants t
-  WHERE NOT (
+  WHERE NOT t.internal AND NOT (
     (SELECT count(*) FROM public.products p WHERE p.tenant_id = t.id) >= 10
     AND (SELECT count(*) FROM public.sales s WHERE s.tenant_id = t.id AND s.status <> 'CANCELLED') >= 1
   )
@@ -303,3 +307,145 @@ AS $$
   ORDER BY count(*) DESC
   LIMIT 5000;
 $$;
+
+-- ============================================================================
+-- Cockpit — Utilisateurs, Revenus, Abonnements, Géo établissements (Lot cockpit).
+-- Toutes excluent les tenants `internal`.
+-- ============================================================================
+
+-- 14. Utilisateurs (cross-tenant) avec recherche + dernière connexion (PIN).
+CREATE OR REPLACE FUNCTION app.platform_users(p_search text DEFAULT '', p_limit int DEFAULT 100)
+RETURNS TABLE (
+  id uuid, nom text, email text, role text, actif boolean,
+  tenant_id uuid, tenant_nom text, last_login timestamptz, created_at timestamptz
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT
+    u.id, u.nom::text, u.email::text, u.role::text, u.actif,
+    u.tenant_id, t.nom::text,
+    (SELECT max(a.created_at) FROM public.activity_logs a
+       WHERE a.user_id = u.id AND a.action = 'PIN_LOGIN'),
+    u.created_at
+  FROM public.users u
+  JOIN public.tenants t ON t.id = u.tenant_id
+  WHERE NOT t.internal
+    AND ( p_search = '' OR p_search IS NULL
+          OR u.nom ILIKE '%' || p_search || '%'
+          OR u.email ILIKE '%' || p_search || '%'
+          OR t.nom ILIKE '%' || p_search || '%' )
+  ORDER BY u.created_at DESC
+  LIMIT GREATEST(1, LEAST(p_limit, 500));
+$$;
+
+-- 15. Bloquer / débloquer un utilisateur.
+CREATE OR REPLACE FUNCTION app.platform_set_user_active(p_user uuid, p_active boolean)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public
+AS $$ UPDATE public.users SET actif = p_active WHERE id = p_user $$;
+
+-- 16. Réinitialiser le PIN (le hash bcrypt est calculé côté API).
+CREATE OR REPLACE FUNCTION app.platform_set_user_pin(p_user uuid, p_hash text)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public
+AS $$ UPDATE public.users SET pin_code = p_hash WHERE id = p_user $$;
+
+-- 17. Historique de connexion (best-effort : événements PIN_LOGIN).
+CREATE OR REPLACE FUNCTION app.platform_user_logins(p_user uuid, p_limit int DEFAULT 20)
+RETURNS TABLE (id uuid, created_at timestamptz, ip text, device_label text)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT a.id, a.created_at, a.ip::text, a.device_label::text
+  FROM public.activity_logs a
+  WHERE a.user_id = p_user AND a.action = 'PIN_LOGIN'
+  ORDER BY a.created_at DESC
+  LIMIT GREATEST(1, LEAST(p_limit, 100));
+$$;
+
+-- 18. Métriques financières : MRR/ARR/ARPU/LTV + churn (proxy snapshot = annulés/total).
+CREATE OR REPLACE FUNCTION app.platform_revenue_metrics()
+RETURNS TABLE (
+  mrr int, arr int, active int, trialing int, cancelled int, total int,
+  arpu int, churn_rate double precision, ltv int
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  WITH agg AS (
+    SELECT
+      COALESCE(sum(CASE WHEN t.subscription_status = 'ACTIVE' THEN
+        CASE WHEN t.billing_cycle = 'YEARLY' THEN COALESCE(pc.price_yearly, 0) / 12
+             ELSE COALESCE(pc.price_monthly, 0) END
+      ELSE 0 END), 0)::numeric AS mrr,
+      count(*) FILTER (WHERE t.subscription_status = 'ACTIVE')   AS active,
+      count(*) FILTER (WHERE t.subscription_status = 'TRIALING') AS trialing,
+      count(*) FILTER (WHERE t.subscription_status = 'CANCELLED') AS cancelled,
+      count(*) AS total
+    FROM public.tenants t
+    JOIN public.plan_configs pc ON pc.plan = t.plan
+    WHERE NOT t.internal
+  )
+  SELECT
+    mrr::int,
+    (mrr * 12)::int,
+    active::int, trialing::int, cancelled::int, total::int,
+    (CASE WHEN active > 0 THEN mrr / active ELSE 0 END)::int AS arpu,
+    (CASE WHEN total > 0 THEN cancelled::float8 / total ELSE 0 END) AS churn_rate,
+    (CASE
+       WHEN cancelled > 0 THEN round((mrr / GREATEST(active, 1)) * total::numeric / cancelled)
+       ELSE (mrr / GREATEST(active, 1)) * 24
+     END)::int AS ltv
+  FROM agg;
+$$;
+
+-- 19. Abonnements qui arrivent à échéance (ou déjà dépassés) sous p_days jours.
+CREATE OR REPLACE FUNCTION app.platform_expiring_subscriptions(p_days int DEFAULT 14)
+RETURNS TABLE (
+  id uuid, nom text, plan text, subscription_status text,
+  subscription_due_date timestamptz, days_left int, owner_email text
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT
+    t.id, t.nom::text, t.plan::text, t.subscription_status::text, t.subscription_due_date,
+    (t.subscription_due_date::date - now()::date)::int AS days_left,
+    (SELECT u.email::text FROM public.users u
+       WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_email
+  FROM public.tenants t
+  WHERE NOT t.internal
+    AND t.subscription_due_date IS NOT NULL
+    AND t.subscription_status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
+    AND t.subscription_due_date <= now() + make_interval(days => GREATEST(0, LEAST(p_days, 365)))
+  ORDER BY t.subscription_due_date ASC
+  LIMIT 200;
+$$;
+
+-- 20. Répartition géographique des établissements (par ville).
+CREATE OR REPLACE FUNCTION app.platform_etablissements_geo()
+RETURNS TABLE (ville text, count int)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT COALESCE(NULLIF(trim(e.ville), ''), 'Non renseignée') AS ville, count(*)::int
+  FROM public.etablissements e
+  JOIN public.tenants t ON t.id = e.tenant_id
+  WHERE NOT t.internal
+  GROUP BY 1
+  ORDER BY count(*) DESC;
+$$;
+
+-- ============================================================================
+-- VERROU (idempotent) — réservé au rôle admin, ré-appliqué à CHAQUE déploiement.
+-- Ferme le trou : les fonctions `app.*` (qui contournent la RLS) ne sont exécutables
+-- QUE par `wilinwi_admin`, jamais par le rôle applicatif public. Exception : le helper
+-- RLS `app.current_tenant_id()` doit rester exécutable par tous (appelé par les policies).
+-- (S'exécute seulement si les rôles existent — sur une base fraîche, admin-role.sql suit.)
+-- ============================================================================
+DO $lock$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wilinwi_admin') THEN
+    REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA app FROM PUBLIC;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO wilinwi_admin;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wilinwi_app') THEN
+      REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA app FROM wilinwi_app;
+    END IF;
+    GRANT EXECUTE ON FUNCTION app.current_tenant_id() TO PUBLIC;
+  END IF;
+END
+$lock$;
