@@ -25,7 +25,7 @@ interface Draft {
   maxUsers: string; // '' = illimité (-1)
   maxEtablissements: string;
   maxDevices: string;
-  maxPhotos: string; // 0+ (pas d'illimité)
+  maxPhotos: string; // '' = illimité (-1) · '0' = désactivé
 }
 
 const toLimitStr = (v: number) => (v < 0 ? '' : String(v));
@@ -39,7 +39,7 @@ function toDraft(c: PlanConfigDto): Draft {
     maxUsers: toLimitStr(c.maxUsers),
     maxEtablissements: toLimitStr(c.maxEtablissements),
     maxDevices: toLimitStr(c.maxDevices),
-    maxPhotos: String(c.maxPhotos),
+    maxPhotos: toLimitStr(c.maxPhotos),
   };
 }
 
@@ -54,7 +54,7 @@ function draftToInput(d: Draft): UpdatePlanConfigInput {
     maxUsers: parseLimit(d.maxUsers),
     maxEtablissements: parseLimit(d.maxEtablissements),
     maxDevices: parseLimit(d.maxDevices),
-    maxPhotos: Math.max(0, Math.trunc(Number(d.maxPhotos) || 0)),
+    maxPhotos: parseLimit(d.maxPhotos), // vide = illimité (-1) · 0 = désactivé
   };
 }
 
@@ -172,7 +172,7 @@ export function PlanEditor() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Appareils" value={d.maxDevices} placeholder="Illimité" onChange={(v) => patch(plan, 'maxDevices', v)} />
-                  <Field label="Photos/produit" value={d.maxPhotos} onChange={(v) => patch(plan, 'maxPhotos', v)} />
+                  <Field label="Photos/produit" value={d.maxPhotos} placeholder="Illimité" onChange={(v) => patch(plan, 'maxPhotos', v)} />
                 </div>
                 <Button
                   variant={savedPlan === plan ? 'outline' : 'primary'}

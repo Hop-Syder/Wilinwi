@@ -38,7 +38,7 @@ export const PlanConfigSchema = z.object({
   maxUsers: z.number().int().min(LIMIT_UNLIMITED),
   maxEtablissements: z.number().int().min(LIMIT_UNLIMITED),
   maxDevices: z.number().int().min(LIMIT_UNLIMITED),
-  maxPhotos: z.number().int().nonnegative(),
+  maxPhotos: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = désactivé
   updatedAt: z.coerce.date(),
 });
 export type PlanConfigDto = z.infer<typeof PlanConfigSchema>;
@@ -51,6 +51,6 @@ export const UpdatePlanConfigSchema = z.object({
   maxUsers: z.number().int().min(LIMIT_UNLIMITED),
   maxEtablissements: z.number().int().min(LIMIT_UNLIMITED),
   maxDevices: z.number().int().min(LIMIT_UNLIMITED),
-  maxPhotos: z.number().int().nonnegative(),
+  maxPhotos: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = désactivé
 });
 export type UpdatePlanConfigInput = z.infer<typeof UpdatePlanConfigSchema>;

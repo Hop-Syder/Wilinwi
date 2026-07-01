@@ -235,9 +235,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* Sélecteur d'établissement (mobile) */}
-          <div className="mb-4" onClick={() => setIsMobileMenuOpen(false)}>
-            <EtablissementSwitcher className="w-full" />
+          {/* Sélecteur d'établissement (mobile) — on ne ferme le drawer qu'à la SÉLECTION
+              d'une boutique (onSelect), pas à l'ouverture du menu déroulant. */}
+          <div className="mb-4">
+            <EtablissementSwitcher className="w-full" onSelect={() => setIsMobileMenuOpen(false)} />
           </div>
 
           <nav className="mt-2">

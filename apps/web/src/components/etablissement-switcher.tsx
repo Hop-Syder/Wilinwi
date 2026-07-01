@@ -14,7 +14,14 @@ import { ETABLISSEMENT_TYPE_LABELS } from '@wilinwi/types';
 import { cn } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
 
-export function EtablissementSwitcher({ className }: { className?: string }) {
+export function EtablissementSwitcher({
+  className,
+  onSelect,
+}: {
+  className?: string;
+  /** Appelé UNIQUEMENT quand une boutique est choisie (ex. fermer le drawer mobile). */
+  onSelect?: () => void;
+}) {
   const { user, setEtablissement } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,6 +83,7 @@ export function EtablissementSwitcher({ className }: { className?: string }) {
                   onClick={() => {
                     setOpen(false);
                     if (user?.etablissementId !== 'ALL') void setEtablissement('ALL');
+                    onSelect?.();
                   }}
                   className={cn(
                     'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors border-b border-border/50',
@@ -101,6 +109,7 @@ export function EtablissementSwitcher({ className }: { className?: string }) {
                     onClick={() => {
                       setOpen(false);
                       if (!active) void setEtablissement(e.id);
+                      onSelect?.();
                     }}
                     className={cn(
                       'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors',

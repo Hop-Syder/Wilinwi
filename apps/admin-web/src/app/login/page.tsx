@@ -13,9 +13,11 @@ import { useRouter } from 'next/navigation';
 import { Button, Input } from '@wilinwi/ui';
 import { Mail, Lock, ShieldCheck, ArrowRight } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +28,14 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError(null);
     const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return setError(error.message);
+    if (error) {
+      setLoading(false);
+      return setError(error.message);
+    }
+    // Charge le profil AVANT de naviguer → le layout /platform trouve `user` prêt
+    // (plus de redirection intempestive vers /login). Le préloader du bouton reste
+    // affiché jusqu'à la navigation.
+    await refreshUser();
     router.push('/platform');
   }
 

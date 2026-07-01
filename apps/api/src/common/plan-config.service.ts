@@ -78,7 +78,7 @@ export class PlanConfigService {
       maxUsers: resolveLimit(c.maxUsers),
       maxEtablissements: resolveLimit(c.maxEtablissements),
       maxDevices: resolveLimit(c.maxDevices),
-      maxPhotos: c.maxPhotos,
+      maxPhotos: resolveLimit(c.maxPhotos), // -1 → Infinity (illimité) ; 0 = désactivé
     };
   }
 

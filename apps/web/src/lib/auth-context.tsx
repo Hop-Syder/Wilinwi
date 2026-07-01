@@ -86,10 +86,10 @@ interface AuthState {
 const AuthCtx = createContext<AuthState>({
   user: null,
   loading: true,
-  signOut: async () => {},
-  refreshUser: async () => {},
-  loginWithPin: async () => {},
-  setEtablissement: async () => {},
+  signOut: async () => { },
+  refreshUser: async () => { },
+  loginWithPin: async () => { },
+  setEtablissement: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {

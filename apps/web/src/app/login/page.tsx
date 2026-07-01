@@ -17,10 +17,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Input } from '@wilinwi/ui';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Mail, Lock, ArrowRight, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +51,13 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return setError(error.message);
+    if (error) {
+      setLoading(false);
+      return setError(error.message);
+    }
+    // Charge le profil AVANT de naviguer → le Hub trouve `user` prêt (plus de
+    // redirection intempestive vers /login). Le préloader du bouton reste affiché.
+    await refreshUser();
     router.push('/');
   }
 
