@@ -39,4 +39,3 @@ __pycache__/
 coverage/
 .agent/
 scripts/watch.sh
-packages/db/prisma/seed-prestige.ts
