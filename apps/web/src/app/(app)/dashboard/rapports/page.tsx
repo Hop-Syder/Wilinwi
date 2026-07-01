@@ -15,6 +15,8 @@ import { Card, StatCard, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface Report {
   from: string;
@@ -90,6 +92,21 @@ export default function RapportsPage() {
     URL.revokeObjectURL(url);
   }
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-rapports-period',
+      title: 'Choisissez la période',
+      content: 'Comparez vos performances sur 7 jours, 30 jours, le mois en cours ou une plage de dates personnalisée.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-rapports-tendance',
+      title: 'Tendance et détails',
+      content: 'Visualisez l\'évolution du chiffre d\'affaires jour par jour, le top des produits vendus et la répartition par mode de paiement.',
+      position: 'top',
+    },
+  ];
+
   const periods: { key: Period; label: string }[] = [
     { key: '7', label: '7 jours' },
     { key: '30', label: '30 jours' },
@@ -141,17 +158,28 @@ export default function RapportsPage() {
         <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
           <TrendingUp className="h-6 w-6" /> Rapports
         </h1>
-        <button
-          onClick={exportCSV}
-          disabled={!data || data.serie.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" /> Exporter CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_rapports_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Bénéfice (marge)', description: 'Si vous avez accès au coût d\'achat, le bénéfice net remplace le nombre d\'articles vendus dans les KPIs.' },
+              { title: 'Export CSV', description: 'Exportez la série quotidienne du chiffre d\'affaires pour l\'analyser ailleurs (tableur, comptabilité).' },
+              { title: 'Suspension pour impayé', description: 'En cas d\'abonnement impayé, les rapports avancés et l\'export sont suspendus jusqu\'à régularisation.' },
+            ]}
+          />
+          <button
+            onClick={exportCSV}
+            disabled={!data || data.serie.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" /> Exporter CSV
+          </button>
+        </div>
       </div>
 
       {/* Sélecteur de période */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div id="tour-rapports-period" className="mt-4 flex flex-wrap items-center gap-2">
         {periods.map((p) => (
           <button
             key={p.key}
@@ -207,7 +235,7 @@ export default function RapportsPage() {
           </div>
 
           {/* Tendance (barres CSS) */}
-          <Card className="mt-6 p-5">
+          <Card id="tour-rapports-tendance" className="mt-6 p-5">
             <h2 className="mb-4 font-display text-lg font-semibold text-slate-900">
               Tendance des ventes
             </h2>

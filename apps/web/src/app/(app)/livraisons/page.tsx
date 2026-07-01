@@ -13,6 +13,8 @@ import { Card, Button, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface Delivery {
   id: string;
@@ -52,6 +54,30 @@ export default function LivraisonsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
 
+  const tourSteps: TourStep[] = isManager
+    ? [
+        {
+          targetId: 'tour-livraisons-assign',
+          title: 'Assigner une livraison',
+          content: 'Choisissez une vente récente, un livreur et une adresse pour créer une course à livrer.',
+          position: 'bottom',
+        },
+        {
+          targetId: 'tour-livraisons-list',
+          title: 'Suivre les courses',
+          content: 'Retrouvez ici toutes les livraisons de la boutique, avec leur statut et le livreur assigné.',
+          position: 'top',
+        },
+      ]
+    : [
+        {
+          targetId: 'tour-livraisons-list',
+          title: 'Vos courses assignées',
+          content: 'Retrouvez ici les livraisons qui vous sont confiées, avec l\'adresse et le téléphone du client.',
+          position: 'top',
+        },
+      ];
+
   async function markDelivered(id: string) {
     setBusyId(id);
     try {
@@ -70,11 +96,24 @@ export default function LivraisonsPage() {
         <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
           <Truck className="h-6 w-6" /> Livraisons
         </h1>
-        {isManager && (
-          <Button onClick={() => setAssignOpen(true)}>
-            <Plus className="h-4 w-4" /> Assigner une livraison
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_livraisons_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Rôle Livreur', description: 'Un collaborateur avec le rôle "Livreur" ne voit que les courses qui lui sont assignées.' },
+              { title: 'Marquer une livraison', description: 'Le livreur clique sur "Marquer livré" une fois la course terminée ; le statut passe à "Livré".' },
+              { title: 'Adresse et téléphone', description: 'L\'adresse et le numéro du client sont affichés pour faciliter le contact et l\'itinéraire.' },
+            ]}
+          />
+          {isManager && (
+            <div id="tour-livraisons-assign">
+              <Button onClick={() => setAssignOpen(true)}>
+                <Plus className="h-4 w-4" /> Assigner une livraison
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
       <p className="mt-1 text-sm text-slate-500">
         {isManager
@@ -90,12 +129,12 @@ export default function LivraisonsPage() {
       )}
 
       {!loading && deliveries.length === 0 ? (
-        <Card className="mt-6 border-dashed p-10 text-center text-slate-400">
+        <Card id="tour-livraisons-list" className="mt-6 border-dashed p-10 text-center text-slate-400">
           <Truck className="mx-auto mb-3 h-10 w-10 text-slate-300" />
           Aucune livraison{isManager ? '' : ' assignée'} pour le moment.
         </Card>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <ul id="tour-livraisons-list" className="mt-6 space-y-3">
           {deliveries.map((d) => (
             <li key={d.id}>
               <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">

@@ -60,6 +60,12 @@ export const PlatformPaymentResultSchema = z.object({
 });
 export type PlatformPaymentResultDto = z.infer<typeof PlatformPaymentResultSchema>;
 
+/** Résultat de la suppression définitive d'une entreprise. */
+export const PlatformDeleteTenantResultSchema = z.object({
+  deletedUsers: z.number().int().nonnegative(),
+});
+export type PlatformDeleteTenantResultDto = z.infer<typeof PlatformDeleteTenantResultSchema>;
+
 /** Résultat d'un cycle de relève des impayés. */
 export const PlatformOverdueResultSchema = z.object({
   markedPastDue: z.number().int().nonnegative(),

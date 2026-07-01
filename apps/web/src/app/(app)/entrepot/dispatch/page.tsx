@@ -21,6 +21,8 @@ import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useSync } from '@/lib/use-sync';
 import { OfflineBanner } from '@/components/offline-banner';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 type Row = { productId: string; quantite: string };
 
@@ -46,6 +48,21 @@ export default function DispatchPage() {
   const [note, setNote] = useState('');
   const [validateNow, setValidateNow] = useState(true);
   const [rows, setRows] = useState<Row[]>([{ productId: '', quantite: '' }]);
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-dispatch-new',
+      title: 'Créer un transfert',
+      content: 'Choisissez une source (entrepôt), une destination (boutique) et les produits à transférer, puis validez pour déplacer le stock immédiatement.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-dispatch-list',
+      title: 'Suivre les dispatchs',
+      content: 'Un brouillon peut être validé ou annulé plus tard ; une fois validé, le stock est déplacé et l\'opération n\'est plus modifiable.',
+      position: 'top',
+    },
+  ];
 
   async function load() {
     try {
@@ -133,9 +150,22 @@ export default function DispatchPage() {
             Transférez la marchandise de l'entrepôt vers une boutique. La validation déplace le stock.
           </p>
         </div>
-        <Button onClick={openCreate} disabled={offline}>
-          <Plus className="h-4 w-4" /> Nouveau dispatch
-        </Button>
+        <div className="flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_dispatch_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Brouillon vs validation immédiate', description: 'Décochez "Valider immédiatement" pour préparer un dispatch sans encore déplacer le stock.' },
+              { title: 'Annulation', description: 'Seul un dispatch en brouillon peut être annulé ; une fois validé, le mouvement de stock est définitif.' },
+              { title: 'Hors-ligne', description: 'La création et la validation d\'un dispatch nécessitent une connexion internet.' },
+            ]}
+          />
+          <div id="tour-dispatch-new">
+            <Button onClick={openCreate} disabled={offline}>
+              <Plus className="h-4 w-4" /> Nouveau dispatch
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -144,7 +174,7 @@ export default function DispatchPage() {
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-6 space-y-3">
+      <div id="tour-dispatch-list" className="mt-6 space-y-3">
         {list.map((d) => (
           <Card key={d.id} className="p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">

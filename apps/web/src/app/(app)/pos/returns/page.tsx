@@ -16,6 +16,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Badge, Card, CardHeader, CardTitle, CardContent } from '@wilinwi/ui';
 import { ArrowLeft, Search, CheckCircle2, RotateCcw, CreditCard, Banknote } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface SaleItemDto {
   id: string;
@@ -49,6 +51,21 @@ function ReturnsContent() {
   const [returns, setReturns] = useState<Record<string, number>>({});
   const [action, setAction] = useState<'REFUND_CASH' | 'CREATE_CREDIT'>('REFUND_CASH');
   const [success, setSuccess] = useState(false);
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-returns-search',
+      title: 'Retrouvez la vente',
+      content: 'Entrez l\'ID de la vente à retourner (visible sur le reçu ou dans le Registre des ventes).',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-returns-compensation',
+      title: 'Choisissez le mode de retour',
+      content: 'Indiquez la quantité retournée par article, puis choisissez un remboursement ou un avoir client (nécessite un client rattaché).',
+      position: 'top',
+    },
+  ];
 
   const handleSearch = async (targetId?: string) => {
     const idToSearch = targetId || searchId;
@@ -138,13 +155,22 @@ function ReturnsContent() {
           </Button>
           <h1 className="font-display text-xl font-bold text-slate-900">Retours & Avoirs</h1>
         </div>
+        <ContextualHelp
+          storageKey="wilinwi_pos_returns_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Retour partiel', description: 'Vous pouvez retourner seulement une partie des articles d\'une vente ; le reste reste facturé normalement.' },
+            { title: 'Avoir client', description: 'L\'avoir n\'est possible que si la vente est rattachée à un client (pas pour une vente comptoir).' },
+            { title: 'Stock ré-injecté', description: 'Chaque article retourné est automatiquement remis en stock.' },
+          ]}
+        />
       </header>
 
       <main className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           
           {/* RECHERCHE */}
-          <Card>
+          <Card id="tour-returns-search">
             <CardHeader>
               <CardTitle>Rechercher une vente</CardTitle>
             </CardHeader>
@@ -242,7 +268,7 @@ function ReturnsContent() {
                   })}
                 </div>
 
-                <div className="mt-8 rounded-2xl bg-slate-100 p-6">
+                <div id="tour-returns-compensation" className="mt-8 rounded-2xl bg-slate-100 p-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                     <div className="space-y-3 flex-1 w-full">
                       <label className="text-sm font-semibold text-slate-700">Méthode de compensation</label>

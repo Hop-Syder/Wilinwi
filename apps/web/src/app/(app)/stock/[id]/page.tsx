@@ -9,6 +9,8 @@ import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { StockMovementModal } from '@/components/stock-modals';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 type Movement = {
   id: string;
@@ -63,6 +65,23 @@ export default function ProductStockDetailsPage() {
     return <div className="p-4 text-slate-500">Chargement...</div>;
   }
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-stockdetail-kpis',
+      title: "Vue d'ensemble du produit",
+      content: canSeeCost
+        ? 'Stock actuel, prix catalogue, prix plancher (négociation) et prix d\'achat (coût, votre marge) en un coup d\'œil.'
+        : 'Stock actuel et prix pratiqués pour ce produit.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-stockdetail-history',
+      title: 'Historique des mouvements',
+      content: 'Chaque entrée (réception), sortie (vente) ou ajustement manuel de ce produit est tracé ici avec sa date et son motif.',
+      position: 'top',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -74,6 +93,15 @@ export default function ProductStockDetailsPage() {
           <p className="text-sm text-slate-500">{product.sku ? `SKU: ${product.sku}` : 'Aucun SKU'} • {product.categorie || 'Sans catégorie'}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_stock_detail_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Mouvement manuel', description: 'Utilisez "Mouvement manuel" pour corriger un stock après un inventaire, une casse ou une perte.' },
+              { title: 'Seuil d\'alerte par boutique', description: 'Le seuil de stock bas peut être défini différemment pour chaque établissement.' },
+              { title: 'Prix plancher visible par tous', description: 'Le prix plancher est visible par tous les vendeurs (négociation) ; le prix d\'achat reste réservé à OWNER/MANAGER.' },
+            ]}
+          />
           {canWrite && (
             <Button onClick={() => setShowMovementModal(true)}>
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Mouvement manuel
@@ -92,7 +120,7 @@ export default function ProductStockDetailsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div id="tour-stockdetail-kpis" className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card className="p-4">
           <p className="text-sm font-medium text-slate-500">Stock actuel</p>
           <div className="mt-2 flex items-baseline gap-2">
@@ -136,7 +164,7 @@ export default function ProductStockDetailsPage() {
           <Clock className="mr-2 h-5 w-5 text-slate-400" />
           Historique des Mouvements
         </h2>
-        <Card className="overflow-x-auto p-0">
+        <Card id="tour-stockdetail-history" className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-left text-slate-500">
               <tr>

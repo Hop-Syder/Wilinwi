@@ -430,6 +430,58 @@ AS $$
   ORDER BY count(*) DESC;
 $$;
 
+-- 21. Suppression DÉFINITIVE d'une entreprise et de TOUTES ses données (irréversible).
+--     Ordre enfants → parents (les FK par défaut sont RESTRICT, on ne dépend pas des
+--     cascades). Refuse les entreprises internes. Renvoie les ids des utilisateurs
+--     supprimés pour que l'API purge aussi leurs comptes Supabase Auth (best-effort).
+CREATE OR REPLACE FUNCTION app.platform_delete_tenant(p_tenant uuid)
+RETURNS uuid[] LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_user_ids uuid[];
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.tenants WHERE id = p_tenant) THEN
+    RAISE EXCEPTION 'TENANT_NOT_FOUND';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.tenants WHERE id = p_tenant AND internal) THEN
+    RAISE EXCEPTION 'TENANT_INTERNAL';
+  END IF;
+
+  SELECT COALESCE(array_agg(id), '{}') INTO v_user_ids
+  FROM public.users WHERE tenant_id = p_tenant;
+
+  DELETE FROM public.price_overrides      WHERE tenant_id = p_tenant;
+  DELETE FROM public.sale_installments    WHERE tenant_id = p_tenant;
+  DELETE FROM public.sale_items           WHERE tenant_id = p_tenant;
+  DELETE FROM public.client_payments      WHERE tenant_id = p_tenant;
+  DELETE FROM public.public_receipts      WHERE tenant_id = p_tenant;
+  DELETE FROM public.cash_movements       WHERE tenant_id = p_tenant;
+  DELETE FROM public.cash_closes          WHERE tenant_id = p_tenant;
+  DELETE FROM public.dispatch_order_items WHERE tenant_id = p_tenant;
+  DELETE FROM public.dispatch_orders      WHERE tenant_id = p_tenant;
+  DELETE FROM public.supplier_payments    WHERE tenant_id = p_tenant;
+  DELETE FROM public.purchase_order_items WHERE tenant_id = p_tenant;
+  DELETE FROM public.purchase_orders      WHERE tenant_id = p_tenant;
+  DELETE FROM public.suppliers            WHERE tenant_id = p_tenant;
+  DELETE FROM public.inventory_items      WHERE tenant_id = p_tenant;
+  DELETE FROM public.inventories          WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_stock        WHERE tenant_id = p_tenant;
+  DELETE FROM public.stock_movements      WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_variants     WHERE tenant_id = p_tenant;
+  DELETE FROM public.notifications        WHERE tenant_id = p_tenant;
+  DELETE FROM public.sales                WHERE tenant_id = p_tenant;
+  DELETE FROM public.clients              WHERE tenant_id = p_tenant;
+  DELETE FROM public.products             WHERE tenant_id = p_tenant;
+  DELETE FROM public.activity_logs        WHERE tenant_id = p_tenant;
+  DELETE FROM public.user_etablissements  WHERE tenant_id = p_tenant;
+  DELETE FROM public.users                WHERE tenant_id = p_tenant;
+  DELETE FROM public.etablissements       WHERE tenant_id = p_tenant;
+  DELETE FROM public.tenants              WHERE id = p_tenant;
+
+  RETURN v_user_ids;
+END;
+$$;
+
 -- ============================================================================
 -- VERROU (idempotent) — réservé au rôle admin, ré-appliqué à CHAQUE déploiement.
 -- Ferme le trou : les fonctions `app.*` (qui contournent la RLS) ne sont exécutables

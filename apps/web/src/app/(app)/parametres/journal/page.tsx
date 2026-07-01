@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { Card, Badge, Button } from '@wilinwi/ui';
 import { apiGet, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface ActivityRow {
   id: string;
@@ -136,6 +138,21 @@ export default function JournalPage() {
     );
   }, [enriched, query]);
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-journal-search',
+      title: 'Filtrez le journal',
+      content: 'Recherchez par type d\'action, nom de collaborateur ou entité concernée pour retrouver un événement précis.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-journal-table',
+      title: 'Toutes les actions tracées',
+      content: 'Chaque vente, modification de produit, mouvement de trésorerie ou changement de collaborateur est journalisé avec son auteur et sa date.',
+      position: 'top',
+    },
+  ];
+
   return (
     <div>
       <Link
@@ -144,14 +161,26 @@ export default function JournalPage() {
       >
         <ArrowLeft className="h-4 w-4" /> Paramètres
       </Link>
-      <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
-        <History className="h-6 w-6" /> Journal d&apos;activité
-      </h1>
-      <p className="mt-1 text-sm text-slate-500">Historique des actions de votre équipe.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
+            <History className="h-6 w-6" /> Journal d&apos;activité
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">Historique des actions de votre équipe.</p>
+        </div>
+        <ContextualHelp
+          storageKey="wilinwi_journal_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Réservé au propriétaire', description: 'Seul le rôle OWNER peut consulter le journal d\'activité de l\'équipe.' },
+            { title: 'Traçabilité anti-fraude', description: 'Utile pour vérifier qui a annulé une vente, modifié un prix ou effectué un virement de trésorerie.' },
+          ]}
+        />
+      </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      <div className="relative mt-6 max-w-md">
+      <div id="tour-journal-search" className="relative mt-6 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
           type="text"
@@ -162,7 +191,7 @@ export default function JournalPage() {
         />
       </div>
 
-      <Card className="mt-4 overflow-x-auto p-0">
+      <Card id="tour-journal-table" className="mt-4 overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 text-left text-slate-500">
             <tr>

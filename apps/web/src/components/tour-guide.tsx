@@ -26,6 +26,7 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileSheetPos, setMobileSheetPos] = useState<'top' | 'bottom'>('bottom');
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +60,10 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
   // 2) Positionnement de la bulle (desktop) une fois sa taille réelle connue.
   useLayoutEffect(() => {
     if (isMobile) {
-      setCoords(null); // mobile : feuille ancrée en bas (CSS pur)
+      setCoords(null); // mobile : feuille ancrée en haut ou en bas (CSS pur)
+      // Cible dans la moitié basse de l'écran → bulle en haut, pour ne pas
+      // écraser le texte contre l'élément surligné et garder les deux lisibles.
+      setMobileSheetPos(rect && rect.top > window.innerHeight / 2 ? 'top' : 'bottom');
       return;
     }
     const pop = popoverRef.current;
@@ -124,7 +128,7 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
         onClick={onComplete}
       />
 
-      {/* Bulle : feuille en bas sur mobile, ancrée près de la cible sur desktop.
+      {/* Bulle : feuille en haut ou en bas sur mobile (selon position de la cible), ancrée près de la cible sur desktop.
           Structure flex-column : en-tête + contenu DÉFILABLE + pied FIXE
           → les boutons Précédent/Suivant restent toujours visibles (fix Android).
           Hauteur en dvh (viewport dynamique) + marge safe-area (barre de gestes). */}
@@ -137,7 +141,9 @@ export function TourGuide({ steps, onComplete }: TourGuideProps) {
         }
         style={
           isMobile
-            ? { bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }
+            ? mobileSheetPos === 'top'
+              ? { top: 'calc(0.75rem + env(safe-area-inset-top))' }
+              : { bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }
             : {
                 top: coords?.top ?? 0,
                 left: coords?.left ?? 0,

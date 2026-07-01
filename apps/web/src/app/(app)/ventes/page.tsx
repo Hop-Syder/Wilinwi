@@ -37,6 +37,8 @@ import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 import Link from 'next/link';
 
 interface Sale extends ReceiptSale {
@@ -82,6 +84,21 @@ export default function VentesPage() {
   // Payments & Cancellation Input
   const [payAmount, setPayAmount] = useState('');
   const [cancelReason, setCancelReason] = useState('Erreur de saisie');
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-ventes-filters',
+      title: 'Recherchez et filtrez',
+      content: 'Filtrez par période, statut ou client (et par boutique en vue globale) pour retrouver rapidement une transaction.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-ventes-table',
+      title: 'Consultez et agissez',
+      content: 'Ouvrez le détail d\'une vente pour voir le reçu, encaisser un reste dû ou annuler la transaction si besoin.',
+      position: 'top',
+    },
+  ];
 
   // Load Sales
   const fetchSales = async () => {
@@ -271,14 +288,26 @@ export default function VentesPage() {
               : 'Consultez, recherchez, encaissez les soldes et annulez des transactions.'}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={exportCSV}
-          disabled={sales.length === 0}
-          className="flex items-center gap-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-700 shrink-0"
-        >
-          <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exporter en CSV
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <ContextualHelp
+            storageKey="wilinwi_ventes_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Vue globale multi-boutiques', description: 'Sans boutique sélectionnée, retrouvez les ventes de toutes vos boutiques et filtrez-les par établissement.' },
+              { title: 'Encaisser un reste dû', description: 'Une vente à crédit ou avec acompte reste "En attente" jusqu\'au règlement complet du solde.' },
+              { title: 'Annuler une vente', description: 'L\'annulation ré-injecte automatiquement le stock vendu et ajuste la caisse à la baisse.' },
+              { title: 'Export CSV', description: 'Exportez la liste filtrée des ventes pour votre comptabilité ou votre suivi externe.' },
+            ]}
+          />
+          <Button
+            variant="outline"
+            onClick={exportCSV}
+            disabled={sales.length === 0}
+            className="flex items-center gap-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-700"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exporter en CSV
+          </Button>
+        </div>
       </div>
 
       {/* Bandeau vue globale */}
@@ -321,7 +350,7 @@ export default function VentesPage() {
       </div>
 
       {/* Barre de Filtres */}
-      <Card className="p-4 border-slate-200/80 shadow-sm space-y-4">
+      <Card id="tour-ventes-filters" className="p-4 border-slate-200/80 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-end">
           {/* Recherche */}
           <div className="flex-1 space-y-1">
@@ -439,7 +468,7 @@ export default function VentesPage() {
       {/* Table des Ventes */}
       {error && <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
-      <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+      <Card id="tour-ventes-table" className="overflow-hidden border-slate-200/80 shadow-sm">
         {/* 📱 Mobile : cartes empilées */}
         <div className="divide-y divide-slate-100 md:hidden">
           {sales.map((s) => {

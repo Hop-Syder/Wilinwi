@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { PlatformAdmin } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PlatformService } from './platform.service';
@@ -43,6 +43,7 @@ import {
   type PlatformEtabGeoDto,
   type PlatformResetPasswordDto,
   type PlatformSetUserActiveInput,
+  type PlatformDeleteTenantResultDto,
 } from '@wilinwi/types';
 
 @Controller('platform')
@@ -191,6 +192,13 @@ export class PlatformController {
   ): Promise<{ ok: true }> {
     await this.platformService.setStatus(id, dto.status);
     return { ok: true };
+  }
+
+  /** DELETE /api/platform/tenants/:id — Supprime DÉFINITIVEMENT une entreprise (irréversible). */
+  @Delete('tenants/:id')
+  @HttpCode(200)
+  deleteTenant(@Param('id', new ParseUUIDPipe()) id: string): Promise<PlatformDeleteTenantResultDto> {
+    return this.platformService.deleteTenant(id);
   }
 
   /** POST /api/platform/billing/run-overdue — Relève les impayés (échéances dépassées → PAST_DUE). */

@@ -25,6 +25,8 @@ function formatPlanPrice(cfg: PlanConfigDto | undefined): string {
 }
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 interface TenantInfo {
   id: string;
@@ -147,16 +149,41 @@ export default function ParametresPage() {
   const currentPlan = tenant?.plan ?? user?.plan ?? 'STARTER';
   const isOwner = user?.role === 'OWNER';
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-parametres-links',
+      title: 'Administration de la boutique',
+      content: 'Gérez vos établissements, vos collaborateurs (rôles, PIN) et consultez le journal d\'audit de l\'équipe.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-parametres-plans',
+      title: 'Choisir un plan',
+      content: 'Chaque plan débloque des modules et des limites différentes (établissements, utilisateurs). Seul le propriétaire peut changer de plan.',
+      position: 'top',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* En-tête */}
-      <div>
-        <h1 className="font-display text-2xl font-bold text-brand">Paramètres</h1>
-        <p className="mt-1 text-sm text-slate-500">Gestion du compte et du plan d'abonnement.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-brand">Paramètres</h1>
+          <p className="mt-1 text-sm text-slate-500">Gestion du compte et du plan d'abonnement.</p>
+        </div>
+        <ContextualHelp
+          storageKey="wilinwi_parametres_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Modules à la carte', description: 'Selon votre plan, certains modules (CRM, Market, IA…) sont débloqués ou non — visible dans "Modules débloqués".' },
+            { title: 'Abonnement impayé', description: 'En cas d\'impayé, une relance progressive restreint puis bloque certaines fonctionnalités jusqu\'à régularisation.' },
+          ]}
+        />
       </div>
 
       {/* Accès rapides administration */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div id="tour-parametres-links" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Link href="/parametres/etablissements" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
           <span className="flex items-center gap-3">
             <span className="rounded-xl bg-emerald/10 p-2.5 text-emerald"><Store className="h-5 w-5" /></span>
@@ -226,7 +253,7 @@ export default function ParametresPage() {
       )}
 
       {/* Sélection du plan */}
-      <div>
+      <div id="tour-parametres-plans">
         <h2 className="mb-3 font-display font-semibold text-slate-800">Choisir un plan</h2>
         {!isOwner && (
           <p className="mb-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">

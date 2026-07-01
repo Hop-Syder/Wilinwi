@@ -21,6 +21,8 @@ import {
 } from '@wilinwi/types';
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 const MODULE_LABELS: Record<ModuleKey, string> = {
   POS: 'Caisse',
@@ -204,6 +206,21 @@ export default function UtilisateursPage() {
     });
   }
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-utilisateurs-new',
+      title: 'Invitez un collaborateur',
+      content: 'Choisissez un rôle (Owner, Manager, Seller, Cashier, Delivery) qui définit ses capacités par défaut, et fixez-lui un code PIN pour la caisse.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-utilisateurs-list',
+      title: 'Accès et permissions',
+      content: 'Personnalisez les modules accessibles ou limitez l\'accès à certains établissements pour chaque collaborateur.',
+      position: 'top',
+    },
+  ];
+
   return (
     <div>
       <Link href="/parametres" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
@@ -214,9 +231,22 @@ export default function UtilisateursPage() {
           <h1 className="font-display text-2xl font-bold text-brand">Utilisateurs</h1>
           <p className="mt-1 text-sm text-slate-500">Collaborateurs, rôles, permissions et codes PIN.</p>
         </div>
-        <Button onClick={openCreate}>
-          <UserPlus className="h-4 w-4" /> Nouveau collaborateur
-        </Button>
+        <div className="flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_utilisateurs_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Code PIN', description: 'Le PIN (4 chiffres) permet de basculer rapidement d\'utilisateur sur la caisse partagée sans se reconnecter.' },
+              { title: 'Permissions personnalisées', description: 'Par défaut, l\'accès aux modules suit le rôle ; cochez "Permissions personnalisées" pour affiner au cas par cas.' },
+              { title: 'Établissements accessibles', description: 'Aucune case cochée = accès à tous les établissements. Utile pour restreindre un vendeur à sa seule boutique.' },
+            ]}
+          />
+          <div id="tour-utilisateurs-new">
+            <Button onClick={openCreate}>
+              <UserPlus className="h-4 w-4" /> Nouveau collaborateur
+            </Button>
+          </div>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -263,7 +293,7 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      <Card className="mt-6 overflow-x-auto p-0">
+      <Card id="tour-utilisateurs-list" className="mt-6 overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 text-left text-slate-500">
             <tr>

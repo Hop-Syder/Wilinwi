@@ -16,6 +16,8 @@ import { ArrowLeft, CheckCircle2, AlertTriangle, Truck } from 'lucide-react';
 import { Button, Card, Input } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import type { PurchaseOrderDto } from '@wilinwi/types';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 export default function ReceptionPage() {
   const { id } = useParams() as { id: string };
@@ -29,6 +31,21 @@ export default function ReceptionPage() {
   // Saisie des quantités reçues (clé: itemId, valeur: quantite reçue maintenant)
   const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({});
   const [montantPaye, setMontantPaye] = useState('0');
+
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-reception-items',
+      title: 'Saisissez les quantités reçues',
+      content: 'Une réception peut être partielle : le "reste à recevoir" pour chaque produit reste ouvert pour une prochaine livraison.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-reception-payment',
+      title: 'Paiement au fournisseur',
+      content: 'Renseignez un acompte payé immédiatement ; le solde restant est automatiquement ajouté à la dette du fournisseur.',
+      position: 'top',
+    },
+  ];
 
   useEffect(() => {
     async function loadPo() {
@@ -133,6 +150,15 @@ export default function ReceptionPage() {
           <h1 className="font-display text-2xl font-bold text-brand">Réception de commande</h1>
           <p className="mt-1 text-sm text-slate-500">Saisissez les quantités reçues pour le bon {po.reference}.</p>
         </div>
+        <ContextualHelp
+          storageKey="wilinwi_reception_tour_done"
+          tourSteps={tourSteps}
+          useCases={[
+            { title: 'Réception partielle', description: 'Si le fournisseur livre en plusieurs fois, réceptionnez seulement ce qui arrive à chaque passage.' },
+            { title: 'Mise à jour du stock', description: 'Valider la réception ajoute immédiatement les quantités reçues au stock du lieu de livraison (Magasin).' },
+            { title: 'Dette fournisseur', description: 'Le montant non payé à la réception est automatiquement ajouté à la dette du fournisseur, suivie dans le module Entrepôt.' },
+          ]}
+        />
       </div>
 
       <Card className="p-4 bg-slate-50 border border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -156,7 +182,7 @@ export default function ReceptionPage() {
 
       <form onSubmit={submit} className="space-y-6">
         {/* Table of items */}
-        <Card className="overflow-hidden p-0 border border-slate-100">
+        <Card id="tour-reception-items" className="overflow-hidden p-0 border border-slate-100">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium">
               <tr>
@@ -196,7 +222,7 @@ export default function ReceptionPage() {
         </Card>
 
         {/* Payment input */}
-        <Card className="p-6 border border-slate-100 space-y-4">
+        <Card id="tour-reception-payment" className="p-6 border border-slate-100 space-y-4">
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-brand" /> Règlement à la réception
           </h3>

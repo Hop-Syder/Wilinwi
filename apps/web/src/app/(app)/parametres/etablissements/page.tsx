@@ -20,6 +20,8 @@ import {
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { ContextualHelp } from '@/components/contextual-help';
+import type { TourStep } from '@/components/tour-guide';
 
 type Draft = {
   id?: string;
@@ -120,6 +122,21 @@ export default function EtablissementsPage() {
     }
   }
 
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-etablissements-new',
+      title: 'Créez vos établissements',
+      content: 'Chaque boutique, point de vente ou entrepôt de l\'entreprise est un établissement distinct : les ventes et le stock y sont rattachés.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-etablissements-list',
+      title: 'Gérez le cycle de vie',
+      content: 'Préférez désactiver un établissement plutôt que de le supprimer dès qu\'il a des données rattachées (ventes, stock…).',
+      position: 'top',
+    },
+  ];
+
   return (
     <div>
       <Link href="/parametres" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
@@ -132,14 +149,26 @@ export default function EtablissementsPage() {
             Vos boutiques, points de vente, entrepôts… Chaque vente et chaque mouvement appartient à un établissement.
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Nouvel établissement
-        </Button>
+        <div className="flex items-center gap-2">
+          <ContextualHelp
+            storageKey="wilinwi_etablissements_tour_done"
+            tourSteps={tourSteps}
+            useCases={[
+              { title: 'Magasin (entrepôt central)', description: 'Les commandes fournisseurs sont réceptionnées uniquement dans un établissement de type Magasin, puis redistribuées par Dispatch.' },
+              { title: 'Suppression impossible', description: 'La suppression échoue si des ventes, du stock ou d\'autres données sont déjà rattachées à l\'établissement — désactivez-le à la place.' },
+            ]}
+          />
+          <div id="tour-etablissements-new">
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4" /> Nouvel établissement
+            </Button>
+          </div>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div id="tour-etablissements-list" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {items.map((e) => (
           <Card key={e.id} className="flex items-start justify-between gap-3 p-4">
             <div className="flex min-w-0 items-start gap-3">

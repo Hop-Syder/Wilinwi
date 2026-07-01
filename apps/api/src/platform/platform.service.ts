@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import geoip from 'geoip-lite';
@@ -33,6 +33,7 @@ import type {
   PlatformExpiringSubscriptionDto,
   PlatformEtabGeoDto,
   PlatformResetPasswordDto,
+  PlatformDeleteTenantResultDto,
   PlanConfigDto,
   UpdatePlanConfigInput,
   Plan,
@@ -120,6 +121,37 @@ export class PlatformService {
     await this.adminPrisma.client.$executeRaw`
       SELECT app.billing_set_status(${tenantId}::uuid, ${status}::text)
     `;
+  }
+
+  /**
+   * Supprime DÉFINITIVEMENT une entreprise et toutes ses données (irréversible).
+   * La fonction SQL supprime tout en une transaction et renvoie les ids des
+   * utilisateurs ; leurs comptes Supabase Auth sont ensuite purgés (best-effort).
+   */
+  async deleteTenant(tenantId: string): Promise<PlatformDeleteTenantResultDto> {
+    let userIds: string[];
+    try {
+      const rows = await this.adminPrisma.client.$queryRaw<{ userIds: string[] }[]>`
+        SELECT app.platform_delete_tenant(${tenantId}::uuid) AS "userIds"
+      `;
+      userIds = rows[0]?.userIds ?? [];
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('TENANT_NOT_FOUND')) throw new NotFoundException('Entreprise introuvable.');
+      if (msg.includes('TENANT_INTERNAL')) {
+        throw new ForbiddenException('Suppression refusée : entreprise interne à la plateforme.');
+      }
+      throw err;
+    }
+    for (const id of userIds) {
+      try {
+        await this.supabaseAdmin.deleteUser(id);
+      } catch {
+        // Best-effort : les données du tenant sont déjà supprimées ; un compte auth
+        // orphelin n'ouvre l'accès à rien (le contexte tenant n'existe plus).
+      }
+    }
+    return { deletedUsers: userIds.length };
   }
 
   /**

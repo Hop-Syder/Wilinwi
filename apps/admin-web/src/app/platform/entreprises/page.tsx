@@ -27,9 +27,10 @@ import {
   Puzzle,
   Lock,
   Save,
+  Trash2,
 } from 'lucide-react';
 import { Button, Card, Badge, Input } from '@wilinwi/ui';
-import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
+import { api, apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import {
   PLANS,
   MODULES,
@@ -41,6 +42,7 @@ import {
   type PlatformEtablissementDto,
   type PlatformPaymentResultDto,
   type PlatformOverdueResultDto,
+  type PlatformDeleteTenantResultDto,
 } from '@wilinwi/types';
 
 const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -93,6 +95,10 @@ export default function EntreprisesPage() {
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [moduleDraft, setModuleDraft] = useState<ModuleKey[]>([]);
 
+  // Suppression définitive : cible + nom saisi pour confirmation.
+  const [deleteTarget, setDeleteTarget] = useState<PlatformTenantDto | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+
   function patchTenant(id: string, patch: Partial<PlatformTenantDto>) {
     setTenants((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     setSelectedTenant((t) => (t && t.id === id ? { ...t, ...patch } : t));
@@ -139,6 +145,28 @@ export default function EntreprisesPage() {
       setFeedback({ kind: 'ok', text: `Statut mis à jour : ${STATUS_LABELS[status]}.` });
     } catch (err) {
       setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec du changement de statut.' });
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function deleteTenant(tenant: PlatformTenantDto) {
+    setActionBusy('delete');
+    setFeedback(null);
+    try {
+      const res = await api<PlatformDeleteTenantResultDto>(`/api/platform/tenants/${tenant.id}`, {
+        method: 'DELETE',
+      });
+      setTenants((list) => list.filter((t) => t.id !== tenant.id));
+      setSelectedTenant(null);
+      setDeleteTarget(null);
+      setDeleteConfirm('');
+      setFeedback({
+        kind: 'ok',
+        text: `Entreprise « ${tenant.nom} » supprimée définitivement (${res.deletedUsers} compte(s) utilisateur purgé(s)).`,
+      });
+    } catch (err) {
+      setFeedback({ kind: 'err', text: (err as ApiError).message || 'Échec de la suppression de l’entreprise.' });
     } finally {
       setActionBusy(null);
     }
@@ -590,6 +618,32 @@ export default function EntreprisesPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Zone de danger */}
+                <div className="space-y-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+                  <h4 className="flex items-center gap-1.5 text-xs font-bold text-danger">
+                    <AlertTriangle className="h-4 w-4" />
+                    Zone de danger
+                  </h4>
+                  <p className="text-[11px] text-text-secondary">
+                    Supprime l&apos;entreprise, ses utilisateurs, établissements, ventes, stock et
+                    tout l&apos;historique. <span className="font-semibold text-danger">Irréversible.</span>{' '}
+                    Pour couper l&apos;accès sans perte de données, préférez « Suspendre l&apos;abonnement ».
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDeleteConfirm('');
+                      setDeleteTarget(selectedTenant);
+                    }}
+                    disabled={actionBusy !== null}
+                    className="flex w-full items-center justify-center gap-1.5 border-danger/40 text-danger hover:bg-danger/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Supprimer l&apos;entreprise
+                  </Button>
+                </div>
               </div>
             </Card>
           ) : (
@@ -603,6 +657,63 @@ export default function EntreprisesPage() {
           )}
         </div>
       </div>
+
+      {/* Modale de confirmation de suppression définitive */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={() => actionBusy === null && setDeleteTarget(null)}
+        >
+          <Card className="w-full max-w-md border-danger/30 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2.5 text-danger">
+              <Trash2 className="h-6 w-6 shrink-0" />
+              <h3 className="text-lg font-extrabold">Supprimer « {deleteTarget.nom} » ?</h3>
+            </div>
+            <div className="mt-3 space-y-2 rounded-lg border border-danger/20 bg-danger/5 p-3 text-xs text-text-secondary">
+              <p>
+                Cette action supprime <span className="font-bold text-danger">définitivement</span> :{' '}
+                {deleteTarget.activeUsersCount} utilisateur(s), {deleteTarget.etablissementsCount} établissement(s),
+                toutes les ventes, le stock, les clients et l&apos;historique complet.
+              </p>
+              <p className="font-semibold text-text-primary">
+                Aucune récupération possible. Les comptes de connexion sont également révoqués.
+              </p>
+            </div>
+            <label className="mt-4 block text-sm">
+              <span className="mb-1 block font-medium text-text-secondary">
+                Tapez le nom exact de l&apos;entreprise pour confirmer :{' '}
+                <span className="select-all font-mono font-bold text-text-primary">{deleteTarget.nom}</span>
+              </span>
+              <Input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={deleteTarget.nom}
+                autoFocus
+              />
+            </label>
+            <div className="mt-5 flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => setDeleteTarget(null)}
+                disabled={actionBusy !== null}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                className="flex-1 !bg-danger hover:!bg-danger/90"
+                disabled={deleteConfirm !== deleteTarget.nom || actionBusy !== null}
+                onClick={() => deleteTenant(deleteTarget)}
+              >
+                {actionBusy === 'delete' ? 'Suppression…' : 'Supprimer définitivement'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
