@@ -40,6 +40,7 @@ import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
 import { Preloader } from '@/components/preloader';
 import { EtablissementSwitcher } from '@/components/etablissement-switcher';
 import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
+import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { NotificationBell } from '@/components/notification-bell';
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
@@ -56,7 +57,7 @@ const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: Modu
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut, loginWithPin } = useAuth();
+  const { user, loading, signOut, loginWithPin, refreshUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { state, pending } = useSync();
@@ -120,6 +121,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onCancel={hasPin ? () => setLocked(false) : undefined}
       />
     );
+  }
+
+  // Onboarding localisation : bloque le propriétaire (après le déverrouillage PIN)
+  // tant que le pays/ville du siège n'est pas renseigné — comptes neufs ou existants.
+  if (user.role === 'OWNER' && !user.pays) {
+    return <OnboardingLocalisationModal onDone={refreshUser} />;
   }
 
   // Impayé J+30 : écran bloquant — sauf l'OWNER sur les Paramètres (pour régulariser).

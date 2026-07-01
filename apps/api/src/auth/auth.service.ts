@@ -170,6 +170,8 @@ export class AuthService {
           tenant: {
             select: {
               nom: true,
+              pays: true,
+              ville: true,
             },
           },
         },

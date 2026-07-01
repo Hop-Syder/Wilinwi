@@ -41,6 +41,9 @@ export interface SessionUser {
   /** Modules effectivement accessibles (rôle ∩ overrides ∩ plan). */
   modules: ModuleKey[];
   boutiqueNom?: string;
+  /** Localisation du siège (null tant que l'onboarding Pays & Ville n'est pas fait). */
+  pays?: string | null;
+  ville?: string | null;
   /** Établissement courant (résolu par le backend, borné à la liste autorisée). */
   etablissementId: string | null;
   /** Établissements accessibles (sélecteur). */
@@ -68,6 +71,8 @@ interface MeResponse {
     nom: string;
     tenant?: {
       nom: string;
+      pays?: string | null;
+      ville?: string | null;
     };
   };
 }
@@ -129,6 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         plan: me.plan,
         modules: me.modules ?? [],
         boutiqueNom: me.profile?.tenant?.nom,
+        pays: me.profile?.tenant?.pays ?? null,
+        ville: me.profile?.tenant?.ville ?? null,
         etablissementId: valid ? stored : me.etablissementId,
         etablissements: etabs,
         subscriptionStatus: me.subscriptionStatus ?? 'ACTIVE',

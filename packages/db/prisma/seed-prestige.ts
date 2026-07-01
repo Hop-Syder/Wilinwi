@@ -11,6 +11,7 @@
  */
 // ──────────────────────────────────
 
+import bcrypt from 'bcryptjs';
 import { prisma, withTenant } from '../src/index.js';
 
 // Identifiants fixes pour un seed idempotent (rejouable).
@@ -21,6 +22,7 @@ const ETAB_PARFUM_ID = '00000000-0000-0000-0000-0000000000c3';
 const OWNER_EMAIL = 'christian@prestige.bj';
 const OWNER_PASSWORD = '12345678';
 const OWNER_NOM = 'Chérif Christian';
+const OWNER_PIN = '1234'; // PIN poste partagé — hashé bcrypt comme dans l'API
 
 const SEUIL_ALERTE = 5;
 
@@ -153,15 +155,17 @@ async function main() {
       },
     });
 
+    const pinHash = await bcrypt.hash(OWNER_PIN, 10);
     await tx.user.upsert({
       where: { id: ownerId },
-      update: { nom: OWNER_NOM, role: 'OWNER', actif: true },
+      update: { nom: OWNER_NOM, role: 'OWNER', actif: true, pinCode: pinHash },
       create: {
         id: ownerId,
         tenantId: TENANT_ID,
         nom: OWNER_NOM,
         email: OWNER_EMAIL,
         role: 'OWNER',
+        pinCode: pinHash,
       },
     });
 

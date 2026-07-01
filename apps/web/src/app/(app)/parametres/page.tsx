@@ -26,6 +26,7 @@ function formatPlanPrice(cfg: PlanConfigDto | undefined): string {
 import { apiGet, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ContextualHelp } from '@/components/contextual-help';
+import { ChangePasswordCard } from '@/components/change-password-card';
 import type { TourStep } from '@/components/tour-guide';
 
 interface TenantInfo {
@@ -354,6 +355,9 @@ export default function ParametresPage() {
           })}
         </div>
       </Card>
+
+      {/* Sécurité : changement du mot de passe de connexion */}
+      <ChangePasswordCard />
 
       {/* Simulation impayé (test/backoffice — OWNER uniquement) */}
       {isOwner && (

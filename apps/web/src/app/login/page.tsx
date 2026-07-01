@@ -178,6 +178,14 @@ export default function LoginPage() {
                     className="w-full h-10 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
                     autoComplete="current-password"
                   />
+                  <div className="text-right">
+                    <Link
+                      href="/reset-password"
+                      className="text-[11px] font-semibold text-primary hover:text-primary-dark hover:underline transition-colors"
+                    >
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
                 </div>
 
                 {error && (
