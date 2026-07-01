@@ -11,6 +11,7 @@ import { Printer, X } from 'lucide-react';
 import Image from 'next/image';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
+import { useAuth } from '@/lib/auth-context';
 
 export interface ReceiptSale {
   id: string;
@@ -50,6 +51,8 @@ function receiptText(sale: ReceiptSale): string {
 }
 
 export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: () => void }) {
+  const { user } = useAuth();
+  const entreprise = user?.boutiqueNom ?? 'Wilinwi';
   const phone = (sale.client?.telephone ?? '').replace(/[^0-9]/g, '');
   const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(receiptText(sale))}`;
   // QR → page Wilinwi (choix du canal : PDF/WhatsApp/SMS/Email). Repli wa.me si pas de code.
@@ -79,10 +82,10 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
         {/* Zone imprimable 80mm */}
         <div id="receipt-print" className="px-5 py-4 font-mono text-[12px] text-slate-900">
           <div className="text-center">
-            <div className="flex justify-center mb-1.5 no-print">
-              <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain animate-pulse" />
+            <div className="mb-1 flex items-center justify-center gap-2">
+              <Image src="/logo.png" alt="Wilinwi Logo" width={28} height={28} className="object-contain" />
+              <span className="font-display text-lg font-bold">{entreprise}</span>
             </div>
-            <div className="font-display text-lg font-bold">◈ WILINWI</div>
             <div className="text-[11px] text-slate-500">Reçu de caisse</div>
             <div className="mt-1 tabular text-[11px]">
               N° {sale.id.slice(0, 8).toUpperCase()}

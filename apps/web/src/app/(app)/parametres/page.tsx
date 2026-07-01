@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight, Store } from 'lucide-react';
 import { PLAN_MODULES, MODULES, type Plan, type PlanConfigDto } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+import { Button, Card, formatFCFA } from '@wilinwi/ui';
 
 /** Libellé tarifaire d'un plan : `null` = sur devis · `0` = gratuit · sinon montant/mois. */
 function formatPlanPrice(cfg: PlanConfigDto | undefined): string {
@@ -127,23 +127,6 @@ export default function ParametresPage() {
       setError((e as ApiError).message);
     } finally {
       setUpgrading(null);
-    }
-  }
-
-  async function simulateSubscription(status: 'ACTIVE' | 'PAST_DUE', daysOverdue?: number) {
-    if (user?.role !== 'OWNER') return;
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await apiPatch<{ message: string; tenant: TenantInfo }>(
-        '/api/admin/tenant/subscription',
-        { status, daysOverdue },
-      );
-      setTenant(res.tenant);
-      setSuccess(res.message);
-      if (refreshUser) await refreshUser();
-    } catch (e) {
-      setError((e as ApiError).message);
     }
   }
 
@@ -359,28 +342,6 @@ export default function ParametresPage() {
       {/* Sécurité : changement du mot de passe de connexion */}
       <ChangePasswordCard />
 
-      {/* Simulation impayé (test/backoffice — OWNER uniquement) */}
-      {isOwner && (
-        <Card className="border-dashed">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-display font-semibold text-slate-800">Simulation impayé (test)</h2>
-            <Badge tone={user?.dunning.stage === 'ACTIVE' ? 'success' : 'danger'}>
-              {user?.dunning.stage ?? 'ACTIVE'}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Déclenche les étapes de relance pour visualiser bannière, restrictions et blocage.
-            La caisse reste active jusqu'à J+30.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => void simulateSubscription('ACTIVE')}>À jour</Button>
-            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 0)}>J+0 (avert.)</Button>
-            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 3)}>J+3 (restriction)</Button>
-            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 7)}>J+7 (Starter)</Button>
-            <Button variant="outline" onClick={() => void simulateSubscription('PAST_DUE', 30)}>J+30 (blocage)</Button>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

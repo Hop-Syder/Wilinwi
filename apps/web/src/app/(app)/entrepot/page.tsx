@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle, FileDown } from 'lucide-react';
 import { Button, Card, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -20,6 +20,7 @@ import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
+import { generatePurchaseOrderPdf } from '@/lib/purchase-order-pdf';
 import type { SupplierDto, PurchaseOrderDto, EtablissementDto } from '@wilinwi/types';
 
 const STATUS_TONES: Record<string, 'outline' | 'brand' | 'neutral' | 'success' | 'warning' | 'danger'> = {
@@ -60,6 +61,16 @@ export default function EntrepotPage() {
   const [showPaymentModal, setShowPaymentModal] = useState<SupplierDto | null>(null);
   const [showPoModal, setShowPoModal] = useState(false);
   const [viewPoInvoice, setViewPoInvoice] = useState<PurchaseOrderDto | null>(null);
+  const [downloadingPoId, setDownloadingPoId] = useState<string | null>(null);
+
+  async function handleDownloadPoPdf(order: PurchaseOrderDto) {
+    setDownloadingPoId(order.id);
+    try {
+      await generatePurchaseOrderPdf(order, user?.boutiqueNom ?? 'Wilinwi');
+    } finally {
+      setDownloadingPoId(null);
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -376,6 +387,14 @@ export default function EntrepotPage() {
                           title="Voir la facture"
                         >
                           <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => void handleDownloadPoPdf(o)}
+                          disabled={downloadingPoId === o.id}
+                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors disabled:opacity-50"
+                          title="Télécharger la facture PDF"
+                        >
+                          <FileDown className="h-4 w-4" />
                         </button>
                         {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
                           <Link href={`/entrepot/reception/${o.id}`}>

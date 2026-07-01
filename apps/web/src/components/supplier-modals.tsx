@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, FileDown } from 'lucide-react';
 import { Button, Input } from '@wilinwi/ui';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { generatePurchaseOrderPdf } from '@/lib/purchase-order-pdf';
 import type { SupplierDto, PurchaseOrderDto } from '@wilinwi/types';
 
 interface SupplierFormModalProps {
@@ -98,8 +100,6 @@ export function SupplierFormModal({ supplier, onClose, onSuccess }: SupplierForm
     </div>
   );
 }
-
-import { useAuth } from '@/lib/auth-context';
 
 interface RecordPaymentModalProps {
   supplier: SupplierDto;
@@ -225,6 +225,18 @@ interface PurchaseOrderInvoiceModalProps {
 }
 
 export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoiceModalProps) {
+  const { user } = useAuth();
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadPdf() {
+    setDownloading(true);
+    try {
+      await generatePurchaseOrderPdf(order, user?.boutiqueNom ?? 'Wilinwi');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   const STATUS_LABELS: Record<string, string> = {
     DRAFT: 'Brouillon',
     ORDERED: 'Commandé',
@@ -242,6 +254,9 @@ export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoi
             <p className="text-slate-500 font-mono mt-1">{order.reference}</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => void downloadPdf()} disabled={downloading} className="print:hidden">
+              <FileDown className="mr-2 h-4 w-4" /> {downloading ? 'Génération…' : 'Facture PDF'}
+            </Button>
             <Button variant="outline" onClick={() => window.print()} className="print:hidden">
               <Printer className="mr-2 h-4 w-4" /> Imprimer
             </Button>
