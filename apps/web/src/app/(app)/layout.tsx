@@ -135,7 +135,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans antialiased text-text-primary relative overflow-hidden">
+    // Pas d'overflow-hidden ici : il neutraliserait le `sticky` du header
+    // (les halos décoratifs sont rognés par leur propre conteneur ci-dessous).
+    <div className="min-h-screen bg-background font-sans antialiased text-text-primary relative">
       {/* Conteneur de navigation fixe (Sticky) */}
       <div className="sticky top-0 z-30 w-full">
         {/* Ligne de dégradé de marque en haut (Black Luxury: Gold, Blue, Green) */}
@@ -203,9 +205,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
       </div>
 
-      {/* Halos lumineux en arrière-plan (Or et Bleu) */}
-      <div className="absolute top-[-200px] left-1/4 -z-10 h-[600px] w-[600px] rounded-full bg-gold/[0.03] blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 -z-10 h-[700px] w-[700px] rounded-full bg-brand/[0.03] blur-[150px] pointer-events-none" />
+      {/* Halos lumineux en arrière-plan (Or et Bleu) — rognés par leur wrapper */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-[-200px] left-1/4 h-[600px] w-[600px] rounded-full bg-gold/[0.03] blur-[120px]" />
+        <div className="absolute bottom-10 right-10 h-[700px] w-[700px] rounded-full bg-brand/[0.03] blur-[150px]" />
+      </div>
 
       {/* Overlay pour le menu mobile */}
       {isMobileMenuOpen && (
