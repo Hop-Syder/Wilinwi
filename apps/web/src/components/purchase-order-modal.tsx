@@ -30,11 +30,17 @@ export function PurchaseOrderModal({
   const [products, setProducts] = useState<ProductDto[]>([]);
   
   const [fournisseurId, setFournisseurId] = useState('');
-  const [etablissementId, setEtablissementId] = useState(
-    currentEtablissementId && currentEtablissementId !== 'ALL'
-      ? currentEtablissementId
-      : etablissements[0]?.id ?? ''
-  );
+  // Hub & Spoke : s'il existe au moins un entrepôt, la réception se fait à
+  // l'entrepôt (le backend refuse les autres destinations). Sans entrepôt
+  // (mono-boutique), tous les établissements restent proposés.
+  const entrepots = etablissements.filter((e) => e.type === 'ENTREPOT');
+  const destinations = entrepots.length > 0 ? entrepots : etablissements;
+  const [etablissementId, setEtablissementId] = useState(() => {
+    const current =
+      currentEtablissementId && currentEtablissementId !== 'ALL' ? currentEtablissementId : null;
+    if (current && destinations.some((e) => e.id === current)) return current;
+    return destinations[0]?.id ?? '';
+  });
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<DraftItem[]>([]);
   
@@ -195,10 +201,15 @@ export function PurchaseOrderModal({
               onChange={(e) => setEtablissementId(e.target.value)}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand"
             >
-              {etablissements.map((e) => (
+              {destinations.map((e) => (
                 <option key={e.id} value={e.id}>{e.nom}</option>
               ))}
             </select>
+            {entrepots.length > 0 && (
+              <p className="mt-1 text-[11px] text-slate-400">
+                La marchandise entre par l&apos;entrepôt, puis approvisionne les boutiques via Dispatch.
+              </p>
+            )}
           </div>
         </div>
 

@@ -13,7 +13,11 @@ import { prisma, withTenant } from '../src/index.js';
 
 // Vérifie l'isolation multi-tenant : RLS au niveau base + filtres applicatifs.
 const A = '00000000-0000-0000-0000-0000000000a1'; // tenant démo (seed)
-const B = '00000000-0000-0000-0000-0000000000a2'; // tenant de test
+// ⚠️ UUID RÉSERVÉ à ce script — jamais utilisé par un seed ou un vrai compte
+// (l'ancien '…a2' est devenu le tenant Prestige : son nettoyage supprimait
+// de vraies données). Le garde-fou sur le nom ci-dessous protège en plus.
+const B = 'ffffffff-0000-0000-0000-00000000b0b0';
+const B_NOM = 'Boutique Test B (verify-isolation)';
 
 async function main() {
   // Prépare un second tenant avec un produit qui lui est propre.
@@ -21,7 +25,7 @@ async function main() {
     await tx.tenant.upsert({
       where: { id: B },
       update: {},
-      create: { id: B, nom: 'Boutique Test B', plan: 'STARTER' },
+      create: { id: B, nom: B_NOM, plan: 'STARTER', internal: true },
     });
     const exists = await tx.product.findFirst({ where: { tenantId: B, sku: 'B-ONLY' } });
     if (!exists) {
@@ -56,8 +60,15 @@ async function main() {
       : "⚠️ RLS contournée par le rôle de connexion — l'isolation repose sur les filtres applicatifs (tenant_id explicite partout).",
   );
 
-  // Nettoyage du tenant de test.
+  // Nettoyage du tenant de test — garde-fou : on ne supprime QUE si le tenant
+  // est bien celui créé par ce script (nom sentinelle), jamais un vrai compte.
   await withTenant(B, async (tx) => {
+    const target = await tx.tenant.findUnique({ where: { id: B }, select: { nom: true } });
+    if (target?.nom !== B_NOM) {
+      throw new Error(
+        `Nettoyage refusé : le tenant ${B} n'est pas le tenant de test attendu (« ${target?.nom} »).`,
+      );
+    }
     await tx.product.deleteMany({ where: { tenantId: B } });
     await tx.tenant.delete({ where: { id: B } });
   });

@@ -276,13 +276,26 @@ export class StockService {
   }
 
   async update(ctx: AuthContext, id: string, input: UpdateProductInput) {
+    // Le stock ne se modifie JAMAIS par PATCH produit (exclu du schéma) : uniquement
+    // via un mouvement (ADJUST/IN/OUT) qui tient grand livre + projection à jour.
     const { variants, ...scalars } = input;
     // Gating images : on borne la galerie au nombre autorisé par le plan.
     if (scalars.photos !== undefined) {
       scalars.photos = scalars.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
     }
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      await this.ensureProduct(tx, ctx.tenantId, id);
+      const existing = await this.ensureProduct(tx, ctx.tenantId, id);
+
+      // Invariant des 4 prix vérifié sur les valeurs FINALES (existant ⊕ patch) :
+      // une mise à jour partielle ne peut pas casser prixAchat ≤ plancher ≤ catalogue.
+      const prixAchat = scalars.prixAchat ?? existing.prixAchat;
+      const prixPlancher = scalars.prixPlancher ?? existing.prixPlancher;
+      const prixCatalogue = scalars.prixCatalogue ?? existing.prixCatalogue;
+      if (!(prixAchat <= prixPlancher && prixPlancher <= prixCatalogue)) {
+        throw new BadRequestException(
+          `Prix incohérents : il faut prix d'achat (${prixAchat}) ≤ prix plancher (${prixPlancher}) ≤ prix catalogue (${prixCatalogue}).`,
+        );
+      }
 
       if (variants) {
         const existingVariants = await tx.productVariant.findMany({ where: { productId: id } });
@@ -295,16 +308,16 @@ export class StockService {
 
         for (const v of variants) {
           if (v.id) {
+            // Le stock d'une variante existante ne bouge pas ici (grand livre only).
             await tx.productVariant.update({
               where: { id: v.id },
               data: {
                 attributs: v.attributs,
                 sku: v.sku ?? null,
-                stock: v.stock,
               }
             });
           } else {
-            await tx.productVariant.create({
+            const createdVariant = await tx.productVariant.create({
               data: {
                 tenantId: ctx.tenantId,
                 productId: id,
@@ -313,6 +326,30 @@ export class StockService {
                 stock: v.stock,
               }
             });
+            // Stock initial de la NOUVELLE variante = mouvement IN + projection,
+            // comme à la création du produit (cohérence grand livre).
+            const etablissementId =
+              ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
+            if (etablissementId && createdVariant.stock !== 0) {
+              await tx.stockMovement.create({
+                data: {
+                  tenantId: ctx.tenantId,
+                  etablissementId,
+                  productId: id,
+                  variantId: createdVariant.id,
+                  type: 'IN',
+                  quantite: createdVariant.stock,
+                  motif: 'Stock initial (variante)',
+                },
+              });
+              await applyStockDelta(tx, {
+                tenantId: ctx.tenantId,
+                etablissementId,
+                productId: id,
+                variantId: createdVariant.id,
+                delta: createdVariant.stock,
+              });
+            }
           }
         }
       }

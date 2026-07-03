@@ -13,6 +13,7 @@
 
 import bcrypt from 'bcryptjs';
 import { prisma, withTenant } from '../src/index.js';
+import { ensureAuthUser } from './seed-auth.js';
 
 // Identifiants fixes pour un seed idempotent (rejouable).
 const TENANT_ID = '00000000-0000-0000-0000-0000000000a2';
@@ -62,84 +63,16 @@ const PRODUITS_PARFUMS: SeedProduct[] = [
   { nom: 'Parfum Solide Ambre Céleste', sku: 'PRF-SOL-AMB', categorie: 'Solides', prixAchat: 2500, prixPlancher: 4000, prixCatalogue: 6000, stock: 40 },
 ];
 
-// ─────────────────── Supabase Auth (admin REST, sans dépendance) ───────────────────
-// Le package db ne dépend pas de @supabase/supabase-js : on parle directement à
-// l'API admin GoTrue avec la clé service role (Node ≥ 18 → fetch natif).
-
-function supabaseEnv(): { url: string; key: string } {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      'SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis (charger .env : `set -a && . ./.env && set +a`).',
-    );
-  }
-  return { url: url.replace(/\/$/, ''), key };
-}
-
-async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
-  const { url, key } = supabaseEnv();
-  return fetch(`${url}/auth/v1${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
-}
-
-/** Cherche un compte auth par email (pagination de l'API admin). */
-async function findAuthUserByEmail(email: string): Promise<string | null> {
-  for (let page = 1; page <= 20; page++) {
-    const res = await adminFetch(`/admin/users?page=${page}&per_page=100`);
-    if (!res.ok) throw new Error(`Liste des comptes auth échouée: HTTP ${res.status}`);
-    const body = (await res.json()) as { users?: Array<{ id: string; email?: string }> };
-    const users = body.users ?? [];
-    const match = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-    if (match) return match.id;
-    if (users.length < 100) return null;
-  }
-  return null;
-}
-
-/**
- * Crée (ou récupère) le compte auth confirmé, aligne mot de passe ET
- * app_metadata { tenant_id, role, plan } — exigé par l'AuthGuard de l'API
- * (sans tenant_id dans le JWT → 401 « Profil utilisateur incomplet »).
- */
-async function ensureAuthUser(email: string, password: string): Promise<string> {
-  const app_metadata = { tenant_id: TENANT_ID, role: 'OWNER', plan: 'BUSINESS' };
-  const res = await adminFetch('/admin/users', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, email_confirm: true, app_metadata }),
-  });
-  if (res.ok) {
-    const body = (await res.json()) as { id: string };
-    return body.id;
-  }
-
-  // Compte déjà existant → on le retrouve et on (ré)aligne mot de passe + claims.
-  const existingId = await findAuthUserByEmail(email);
-  if (!existingId) {
-    const detail = await res.text();
-    throw new Error(`Création du compte auth échouée (HTTP ${res.status}): ${detail}`);
-  }
-  const upd = await adminFetch(`/admin/users/${existingId}`, {
-    method: 'PUT',
-    body: JSON.stringify({ password, email_confirm: true, app_metadata }),
-  });
-  if (!upd.ok) throw new Error(`Mise à jour du compte auth échouée: HTTP ${upd.status}`);
-  return existingId;
-}
-
 // ───────────────────────────────── Seed ─────────────────────────────────
 
 async function main() {
   console.log('🌱 Seed Wilinwi — Groupe Prestige Bénin…');
 
-  const ownerId = await ensureAuthUser(OWNER_EMAIL, OWNER_PASSWORD);
+  const ownerId = await ensureAuthUser(OWNER_EMAIL, OWNER_PASSWORD, {
+    tenantId: TENANT_ID,
+    role: 'OWNER',
+    plan: 'BUSINESS',
+  });
   console.log(`   Compte auth propriétaire: ${OWNER_EMAIL} (${ownerId})`);
 
   await withTenant(TENANT_ID, async (tx) => {

@@ -394,7 +394,6 @@ export default function VentesPage() {
               <option value="ALL">Tous les statuts</option>
               <option value="COMPLETED">Payée</option>
               <option value="PENDING_PAYMENT">Crédit / Acompte</option>
-              <option value="PENDING_APPROVAL">À valider</option>
               <option value="CANCELLED">Annulée</option>
             </select>
           </div>

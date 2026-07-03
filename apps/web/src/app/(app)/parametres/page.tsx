@@ -13,9 +13,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, RefreshCw, Users2, History, ChevronRight, Store } from 'lucide-react';
-import { PLAN_MODULES, MODULES, type Plan, type PlanConfigDto } from '@wilinwi/types';
-import { Button, Card, formatFCFA } from '@wilinwi/ui';
+import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, Users2, History, ChevronRight, Store } from 'lucide-react';
+import { PLAN_MODULES, MODULES, COUNTRY_NAMES, citiesOf, type Plan, type PlanConfigDto } from '@wilinwi/types';
+import { Card, formatFCFA } from '@wilinwi/ui';
 
 /** Libellé tarifaire d'un plan : `null` = sur devis · `0` = gratuit · sinon montant/mois. */
 function formatPlanPrice(cfg: PlanConfigDto | undefined): string {
@@ -68,6 +68,9 @@ const PLAN_INFO: Record<Plan, { label: string; color: string; icon: React.Elemen
   },
 };
 
+/** Modules annoncés mais pas encore livrés (hors périmètre MVP) — affichés « Bientôt ». */
+const UPCOMING_MODULES = new Set(['MARKET', 'AI']);
+
 const MODULE_LABELS: Record<string, string> = {
   POS: 'Caisse (POS)',
   STOCK: 'Gestion Stock',
@@ -84,9 +87,15 @@ export default function ParametresPage() {
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [planConfigs, setPlanConfigs] = useState<Record<Plan, PlanConfigDto> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Localisation du siège — initialisée depuis la session (profil tenant).
+  const [locPays, setLocPays] = useState(user?.pays ?? '');
+  const [locVille, setLocVille] = useState(user?.ville ?? '');
+  useEffect(() => {
+    setLocPays(user?.pays ?? '');
+    setLocVille(user?.ville ?? '');
+  }, [user?.pays, user?.ville]);
 
   async function load() {
     setLoading(true);
@@ -108,27 +117,6 @@ export default function ParametresPage() {
   useEffect(() => {
     void load();
   }, []);
-
-  async function changePlan(plan: Plan) {
-    if (user?.role !== 'OWNER') {
-      setError('Seul le propriétaire peut modifier le plan.');
-      return;
-    }
-    setUpgrading(plan);
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await apiPatch<{ message: string; tenant: TenantInfo }>('/api/admin/tenant/plan', { plan });
-      setTenant(res.tenant);
-      setSuccess(res.message);
-      // Rafraîchit le contexte auth pour que le plan soit mis à jour partout
-      if (refreshUser) await refreshUser();
-    } catch (e) {
-      setError((e as ApiError).message);
-    } finally {
-      setUpgrading(null);
-    }
-  }
 
   const currentPlan = tenant?.plan ?? user?.plan ?? 'STARTER';
   const isOwner = user?.role === 'OWNER';
@@ -224,6 +212,74 @@ export default function ParametresPage() {
         </div>
       </Card>
 
+      {/* Localisation du siège (pays/ville — éditable par le propriétaire) */}
+      {isOwner && (
+        <Card className="p-5">
+          <h2 className="font-display font-semibold text-slate-800">Localisation</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Pays et ville du siège de votre entreprise.
+          </p>
+          <form
+            className="mt-3 flex flex-wrap items-end gap-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setError(null);
+              setSuccess(null);
+              try {
+                const res = await apiPatch<{ message: string }>('/api/admin/tenant/localisation', {
+                  pays: locPays,
+                  ville: locVille,
+                });
+                setSuccess(res.message);
+                if (refreshUser) await refreshUser();
+              } catch (err) {
+                setError((err as ApiError).message);
+              }
+            }}
+          >
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Pays</span>
+              <select
+                value={locPays}
+                onChange={(e) => {
+                  setLocPays(e.target.value);
+                  setLocVille('');
+                }}
+                required
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand"
+              >
+                <option value="" disabled>Choisir…</option>
+                {COUNTRY_NAMES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Ville</span>
+              <select
+                value={locVille}
+                onChange={(e) => setLocVille(e.target.value)}
+                required
+                disabled={!locPays}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand disabled:opacity-50"
+              >
+                <option value="" disabled>{locPays ? 'Choisir…' : 'Pays d’abord'}</option>
+                {citiesOf(locPays).map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              disabled={!locPays || !locVille}
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-50"
+            >
+              Enregistrer
+            </button>
+          </form>
+        </Card>
+      )}
+
       {/* Alertes */}
       {error && (
         <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -291,25 +347,21 @@ export default function ParametresPage() {
                       Plan actif ✓
                     </div>
                   ) : (
-                    <Button
-                      className="w-full"
-                      variant={plan === 'BUSINESS' ? 'primary' : 'outline'}
-                      disabled={!isOwner || upgrading !== null}
-                      onClick={() => void changePlan(plan)}
+                    // Le changement de plan passe par l'équipe Wilinwi (facturation),
+                    // plus de self-service gratuit.
+                    <a
+                      href={`mailto:support@wilinwi.com?subject=${encodeURIComponent(`Changement de plan → ${info.label}`)}&body=${encodeURIComponent(`Bonjour,\n\nJe souhaite passer mon abonnement Wilinwi au plan ${info.label}.\n\nEntreprise : ${tenant?.nom ?? ''}`)}`}
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold transition-colors ${
+                        plan === 'BUSINESS'
+                          ? 'bg-brand text-white hover:bg-brand/90'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      } ${!isOwner ? 'pointer-events-none opacity-50' : ''}`}
                     >
-                      {upgrading === plan ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Mise à jour…
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-center gap-1.5">
-                          {(plan === 'BUSINESS' || plan === 'ENTERPRISE') && (
-                            <Sparkles className="h-3.5 w-3.5" />
-                          )}
-                          Passer en {info.label}
-                        </span>
+                      {(plan === 'BUSINESS' || plan === 'ENTERPRISE') && (
+                        <Sparkles className="h-3.5 w-3.5" />
                       )}
-                    </Button>
+                      Demander le plan {info.label}
+                    </a>
                   )}
                 </div>
               </div>
@@ -323,7 +375,8 @@ export default function ParametresPage() {
         <h2 className="font-display font-semibold text-slate-800">Modules débloqués</h2>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {MODULES.map((mod) => {
-            const included = PLAN_MODULES[currentPlan]?.includes(mod);
+            const upcoming = UPCOMING_MODULES.has(mod);
+            const included = !upcoming && PLAN_MODULES[currentPlan]?.includes(mod);
             return (
               <div
                 key={mod}
@@ -332,7 +385,12 @@ export default function ParametresPage() {
                 }`}
               >
                 {included ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 text-center">—</span>}
-                {MODULE_LABELS[mod] ?? mod}
+                <span className="min-w-0 truncate">{MODULE_LABELS[mod] ?? mod}</span>
+                {upcoming && (
+                  <span className="ml-auto shrink-0 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                    Bientôt
+                  </span>
+                )}
               </div>
             );
           })}

@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common';
 import {
   accountForPayment,
-  hasCapability,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
@@ -76,7 +75,6 @@ export class SalesService {
         if (existing) return existing;
       }
 
-      const canOverride = hasCapability(ctx.role, 'sale:override_floor_price');
       let total = 0;
       const lines: {
         productId: string;
@@ -84,9 +82,6 @@ export class SalesService {
         quantite: number;
         prixReel: number;
         coutUnitaire: number;
-        prixPlancher: number;
-        sousPlancher: boolean;
-        motif?: string;
       }[] = [];
 
       for (const item of input.items) {
@@ -101,19 +96,29 @@ export class SalesService {
           throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);
         }
 
-        // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock),
-        // et non plus le stock global du tenant.
-        const availableStock = ctx.etablissementId
-          ? await readStockAt(tx, ctx.etablissementId, product.id, item.variantId ?? null)
-          : variant ? variant.stock : product.stock;
+        // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock).
+        // Pas de repli sur le stock global : sans établissement courant la vente
+        // est déjà refusée en amont (assertConcreteEtablissement) — on garde un
+        // refus explicite plutôt qu'un fallback silencieux si ce chemin changeait.
+        if (!ctx.etablissementId) {
+          throw new BadRequestException(
+            'Vente impossible sans établissement courant : sélectionnez une boutique.',
+          );
+        }
+        const availableStock = await readStockAt(
+          tx,
+          ctx.etablissementId,
+          product.id,
+          item.variantId ?? null,
+        );
         if (item.quantite > availableStock) {
           throw new BadRequestException(
             `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
           );
         }
 
-        const sousPlancher = item.prixReel < product.prixPlancher;
-        if (sousPlancher) {
+        // Anti-fraude absolu : vente sous le prix plancher strictement refusée.
+        if (item.prixReel < product.prixPlancher) {
           throw new BadRequestException(
             `Opération refusée : le prix de vente de "${product.nom}" (${item.prixReel}) est inférieur au prix plancher fixe (${product.prixPlancher}).`,
           );
@@ -126,8 +131,6 @@ export class SalesService {
           quantite: item.quantite,
           prixReel: item.prixReel,
           coutUnitaire: product.prixAchat,
-          prixPlancher: product.prixPlancher,
-          sousPlancher,
         });
       }
 
@@ -168,18 +171,15 @@ export class SalesService {
       // Crédit client : vérifier le plafond avant de créer la vente.
       await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
       
-      // Le prix plancher est maintenant un blocage strict en amont (l.100).
-      // L'état PENDING_APPROVAL n'est plus utilisé de façon active.
-      const needsApproval = false;
-
-      // Création de la vente + lignes
+      // Création de la vente + lignes. Le prix plancher est un blocage strict en
+      // amont : aucune vente n'atteint ce point sous le plancher (pas d'approbation).
       const created = await tx.sale.create({
         data: {
           tenantId: ctx.tenantId,
           etablissementId: ctx.etablissementId,
           vendeurId: ctx.userId,
           clientId: input.clientId ?? null,
-          status: needsApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
+          status: 'COMPLETED',
           paymentMethod: input.paymentMethod,
           total,
           // Acompte voulu mémorisé (appliqué à la finalisation).
@@ -194,7 +194,7 @@ export class SalesService {
       });
 
       for (const line of lines) {
-        const saleItem = await tx.saleItem.create({
+        await tx.saleItem.create({
           data: {
             tenantId: ctx.tenantId,
             saleId: created.id,
@@ -205,26 +205,10 @@ export class SalesService {
             coutUnitaire: line.coutUnitaire,
           },
         });
-        if (line.sousPlancher) {
-          await tx.priceOverride.create({
-            data: {
-              tenantId: ctx.tenantId,
-              saleItemId: saleItem.id,
-              prixPlancher: line.prixPlancher,
-              prixApplique: line.prixReel,
-              motif: line.motif!,
-              status: 'PENDING',
-              requestedBy: ctx.userId,
-            },
-          });
-        }
       }
 
-      // La vente est toujours valide et au-dessus du plancher à ce stade,
-      // on la finalise immédiatement.
-      if (!needsApproval) {
-        await this.finalize(tx, ctx, created.id);
-      }
+      // La vente est valide et au-dessus du plancher : finalisation immédiate.
+      await this.finalize(tx, ctx, created.id);
 
       return tx.sale.findUnique({
         where: { id: created.id },
@@ -232,41 +216,6 @@ export class SalesService {
       });
     });
 
-    return sale ? toSaleDto(sale, ctx.role) : sale;
-  }
-
-  /**
-   * Validation gérant d'une vente en attente (§5.5).
-   * Approuvée → finalisation (stock décrémenté, paiement). Rejetée → annulée.
-   */
-  async approveSale(ctx: AuthContext, saleId: string, approuve: boolean) {
-    if (!hasCapability(ctx.role, 'sale:override_floor_price')) {
-      throw new ForbiddenException('Seul un gérant peut valider une vente sous le plancher');
-    }
-    const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const target = await tx.sale.findFirst({
-        where: { id: saleId, tenantId: ctx.tenantId },
-      });
-      if (!target) throw new NotFoundException('Vente introuvable');
-      if (target.status !== 'PENDING_APPROVAL') {
-        throw new BadRequestException("Cette vente n'est pas en attente de validation");
-      }
-
-      if (approuve) {
-        await this.finalize(tx, ctx, saleId);
-      } else {
-        await tx.priceOverride.updateMany({
-          where: { saleItem: { saleId } },
-          data: { status: 'REJECTED', approvedBy: ctx.userId, approvedAt: new Date() },
-        });
-        await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
-      }
-
-      return tx.sale.findUnique({
-        where: { id: saleId },
-        include: { items: { include: { priceOverride: true } }, installment: true },
-      });
-    });
     return sale ? toSaleDto(sale, ctx.role) : sale;
   }
 
@@ -316,12 +265,6 @@ export class SalesService {
         });
       }
     }
-
-    // Dérogations de cette vente → approuvées par le gérant courant.
-    await tx.priceOverride.updateMany({
-      where: { saleItem: { saleId }, status: 'PENDING' },
-      data: { status: 'APPROVED', approvedBy: ctx.userId, approvedAt: new Date() },
-    });
 
     const { montantVerse, status } = this.resolvePayment(
       sale.paymentMethod,
@@ -872,22 +815,6 @@ export class SalesService {
     );
     if (!sale) throw new NotFoundException('Vente introuvable');
     return toSaleDto(sale, ctx.role);
-  }
-
-  /** Ventes en attente de validation gérant (écran « à valider »). */
-  async pendingSales(ctx: AuthContext) {
-    const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.sale.findMany({
-        where: {
-          tenantId: ctx.tenantId,
-          status: 'PENDING_APPROVAL',
-          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
-        },
-        orderBy: { createdAt: 'asc' },
-        include: { items: { include: { priceOverride: true, product: true } } },
-      }),
-    );
-    return toSaleDtoList(sales, ctx.role);
   }
 
   /**

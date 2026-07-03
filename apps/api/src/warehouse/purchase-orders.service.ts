@@ -66,6 +66,27 @@ export class PurchaseOrdersService {
       });
       if (!supplier) throw new NotFoundException('Fournisseur introuvable');
 
+      // Hub & Spoke : la marchandise fournisseur entre par l'ENTREPÔT central,
+      // puis approvisionne les boutiques via Dispatch. Exception : une entreprise
+      // sans aucun entrepôt (mono-boutique) réceptionne directement en boutique.
+      const destination = await tx.etablissement.findFirst({
+        where: { id: input.etablissementId, tenantId: ctx.tenantId, actif: true },
+        select: { id: true, nom: true, type: true },
+      });
+      if (!destination) throw new NotFoundException('Établissement de destination introuvable');
+      if (destination.type !== 'ENTREPOT') {
+        const hasWarehouse = await tx.etablissement.findFirst({
+          where: { tenantId: ctx.tenantId, type: 'ENTREPOT', actif: true },
+          select: { id: true },
+        });
+        if (hasWarehouse) {
+          throw new BadRequestException(
+            `Les commandes fournisseurs se réceptionnent à l'entrepôt central, pas à « ${destination.nom} ». ` +
+              'Choisissez votre entrepôt comme destination, puis approvisionnez la boutique via un Dispatch.',
+          );
+        }
+      }
+
       // Calculer le montant total
       const montantTotal = input.items.reduce(
         (sum, item) => sum + item.quantiteCommandee * item.prixUnitaire,

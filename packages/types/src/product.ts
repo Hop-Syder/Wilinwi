@@ -67,7 +67,11 @@ export const CreateProductSchema = CreateProductSchemaBase.superRefine((data, ct
 });
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 
-export const UpdateProductSchema = CreateProductSchemaBase.partial().superRefine((data, ctx) => {
+// `stock` est exclu du PATCH : toute variation de stock passe par un mouvement
+// (IN/OUT/ADJUST) qui maintient le grand livre et la projection ProductStock.
+export const UpdateProductSchema = CreateProductSchemaBase.omit({ stock: true })
+  .partial()
+  .superRefine((data, ctx) => {
   // If all three prices are provided, check the condition
   if (
     data.prixAchat !== undefined &&
@@ -82,9 +86,9 @@ export const UpdateProductSchema = CreateProductSchemaBase.partial().superRefine
       });
     }
   }
-  // Note: if only one or two prices are updated, we can't reliably check against the missing one(s) here.
-  // The database constraints or service layer should ideally handle cross-field validation on partial updates.
-});
+    // Mise à jour partielle (1 ou 2 prix) : la validation croisée contre les valeurs
+    // existantes est faite côté service (StockService.update), source de vérité.
+  });
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 
 /**

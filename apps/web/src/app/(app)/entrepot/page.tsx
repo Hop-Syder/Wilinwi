@@ -31,6 +31,17 @@ const STATUS_TONES: Record<string, 'outline' | 'brand' | 'neutral' | 'success' |
   CANCELLED: 'danger',
 } as const;
 
+/** Ligne de règlement fournisseur (GET /api/suppliers/payments). */
+interface SupplierPaymentRow {
+  id: string;
+  fournisseurId: string;
+  etablissementId?: string | null;
+  montant: number;
+  methode: string;
+  note?: string | null;
+  createdAt: string;
+}
+
 const STATUS_LABELS = {
   DRAFT: 'Brouillon',
   ORDERED: 'Commandé',
@@ -47,7 +58,7 @@ export default function EntrepotPage() {
   // Data states
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<SupplierPaymentRow[]>([]);
   const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
   
   // Filters & loading
@@ -79,7 +90,7 @@ export default function EntrepotPage() {
       const [sups, ords, pays, etabs] = await Promise.all([
         apiGet<SupplierDto[]>('/api/suppliers'),
         apiGet<PurchaseOrderDto[]>('/api/purchase-orders'),
-        apiGet<any[]>('/api/suppliers/payments'),
+        apiGet<SupplierPaymentRow[]>('/api/suppliers/payments'),
         apiGet<EtablissementDto[]>('/api/etablissements'),
       ]);
       setSuppliers(sups);
@@ -87,7 +98,7 @@ export default function EntrepotPage() {
       setPayments(pays);
       setEtablissements(etabs);
     } catch (e) {
-      setError('Impossible de charger les données du module d&apos;approvisionnement.');
+      setError("Impossible de charger les données du module d'approvisionnement.");
     } finally {
       setLoading(false);
     }

@@ -10,32 +10,50 @@
 // ──────────────────────────────────
 
 import { prisma, withTenant } from '../src/index.js';
+import { ensureAuthUser, hasSupabaseEnv } from './seed-auth.js';
 
 // Identifiants fixes pour un seed idempotent (rejouable).
 const DEMO_TENANT_ID = '00000000-0000-0000-0000-0000000000a1';
 const DEMO_OWNER_ID = '00000000-0000-0000-0000-0000000000b1';
 const DEMO_ETAB_ID = '00000000-0000-0000-0000-0000000000c1';
+const DEMO_OWNER_EMAIL = 'owner@demo.wilinwi.com';
+const DEMO_OWNER_PASSWORD = 'demo-wilinwi';
 
 async function main() {
   console.log('🌱 Seed Wilinwi — boutique démo…');
 
+  // Compte auth réel si les creds Supabase sont présents (sinon id fixe, non
+  // connectable — suffisant pour peupler la base en environnement minimal).
+  let ownerId = DEMO_OWNER_ID;
+  if (hasSupabaseEnv()) {
+    ownerId = await ensureAuthUser(DEMO_OWNER_EMAIL, DEMO_OWNER_PASSWORD, {
+      tenantId: DEMO_TENANT_ID,
+      role: 'OWNER',
+      plan: 'PRO',
+    });
+    console.log(`   Compte auth démo: ${DEMO_OWNER_EMAIL} / ${DEMO_OWNER_PASSWORD}`);
+  } else {
+    console.log('   (SUPABASE_URL absent → propriétaire démo sans compte auth connectable)');
+  }
+
   // Le tenant + son propriétaire (bootstrap : on pose le contexte tenant
   // avant les insertions pour satisfaire la RLS).
   await withTenant(DEMO_TENANT_ID, async (tx) => {
+    // `internal: true` → exclu des vues/métriques de la console plateforme.
     await tx.tenant.upsert({
       where: { id: DEMO_TENANT_ID },
-      update: {},
-      create: { id: DEMO_TENANT_ID, nom: 'Boutique Démo Wilinwi', plan: 'PRO' },
+      update: { internal: true },
+      create: { id: DEMO_TENANT_ID, nom: 'Boutique Démo Wilinwi', plan: 'PRO', internal: true },
     });
 
     await tx.user.upsert({
-      where: { id: DEMO_OWNER_ID },
+      where: { id: ownerId },
       update: {},
       create: {
-        id: DEMO_OWNER_ID,
+        id: ownerId,
         tenantId: DEMO_TENANT_ID,
         nom: 'Awa la Propriétaire',
-        email: 'owner@demo.wilinwi.com',
+        email: DEMO_OWNER_EMAIL,
         role: 'OWNER',
       },
     });
@@ -52,11 +70,11 @@ async function main() {
       },
     });
     await tx.userEtablissement.upsert({
-      where: { userId_etablissementId: { userId: DEMO_OWNER_ID, etablissementId: DEMO_ETAB_ID } },
+      where: { userId_etablissementId: { userId: ownerId, etablissementId: DEMO_ETAB_ID } },
       update: {},
       create: {
         tenantId: DEMO_TENANT_ID,
-        userId: DEMO_OWNER_ID,
+        userId: ownerId,
         etablissementId: DEMO_ETAB_ID,
       },
     });
