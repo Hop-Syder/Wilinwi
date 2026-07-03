@@ -242,9 +242,11 @@ export default function RapportsPage() {
             {data.serie.length === 0 ? (
               <p className="text-sm text-slate-400">Aucune vente sur la période.</p>
             ) : (
-              <div className="flex h-40 items-end gap-1 overflow-x-auto">
+              // h-full + justify-end sur chaque colonne : sans hauteur définie sur le
+              // parent, les hauteurs en % des barres se résolvaient à 0 (barres invisibles).
+              <div className="flex h-40 items-stretch gap-1 overflow-x-auto">
                 {data.serie.map((s) => (
-                  <div key={s.date} className="flex min-w-[10px] flex-1 flex-col items-center gap-1">
+                  <div key={s.date} className="flex h-full min-w-[10px] flex-1 flex-col items-center justify-end gap-1">
                     <div
                       className="w-full rounded-t bg-brand/80 transition-all hover:bg-brand"
                       style={{ height: `${Math.max(2, (s.ca / maxCa) * 100)}%` }}
