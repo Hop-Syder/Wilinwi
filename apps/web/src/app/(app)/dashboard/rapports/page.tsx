@@ -16,6 +16,7 @@ import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
 import { ContextualHelp } from '@/components/contextual-help';
+import { DonutChart, DONUT_PALETTE, type DonutSlice } from '@/components/donut-chart';
 import type { TourStep } from '@/components/tour-guide';
 
 interface Report {
@@ -141,6 +142,38 @@ export default function RapportsPage() {
   const panierAnime = useCountUp(data?.panierMoyen ?? 0);
   const margeAnime = useCountUp(data?.benefice ?? data?.articlesVendus ?? 0);
 
+  // Périmètre du rapport : vue globale (tous les établissements) ou boutique courante.
+  const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
+  const scopeLabel = isGlobalView
+    ? 'Vue globale — tous les établissements'
+    : user?.etablissements?.find((e) => e.id === user.etablissementId)?.nom ?? '';
+
+  // Donut « Top produits » : top 5 (part du CA) + « Autres » agrégé.
+  const [activeTop, setActiveTop] = useState<number | null>(null);
+  const topSlices: DonutSlice[] = useMemo(() => {
+    if (!data) return [];
+    const top = data.topProduits.slice(0, 5);
+    const slices: DonutSlice[] = top.map((p, i) => ({ label: p.nom, value: p.ca, color: DONUT_PALETTE[i] }));
+    const autres = data.topProduits.slice(5).reduce((sum, p) => sum + p.ca, 0);
+    if (autres > 0) slices.push({ label: 'Autres', value: autres, color: '#94a3b8' });
+    return slices.filter((s) => s.value > 0);
+  }, [data]);
+
+  // Donut « Par mode de paiement » (part du montant encaissé).
+  const [activePay, setActivePay] = useState<number | null>(null);
+  const paySlices: DonutSlice[] = useMemo(() => {
+    if (!data) return [];
+    return data.parPaiement
+      .slice()
+      .sort((a, b) => b.montant - a.montant)
+      .map((p, i) => ({
+        label: PAYMENT_METHOD_LABELS[p.methode as PaymentMethod] ?? p.methode,
+        value: p.montant,
+        color: DONUT_PALETTE[i % DONUT_PALETTE.length],
+      }))
+      .filter((s) => s.value > 0);
+  }, [data]);
+
   function exportCSV() {
     if (!data) return;
     const rows = [
@@ -222,9 +255,16 @@ export default function RapportsPage() {
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
-          <TrendingUp className="h-6 w-6" /> Rapports
-        </h1>
+        <div>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
+            <TrendingUp className="h-6 w-6" /> Rapports
+          </h1>
+          {scopeLabel && (
+            <p className="mt-0.5 text-sm font-medium text-slate-500">
+              Rapport détaillé · <span className={isGlobalView ? 'text-brand font-semibold' : ''}>{scopeLabel}</span>
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <ContextualHelp
             storageKey="wilinwi_rapports_tour_done"
@@ -377,57 +417,106 @@ export default function RapportsPage() {
           </Card>
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Top produits */}
+            {/* Top produits — donut (part du CA) + légende chiffrée */}
             <Card className="p-5">
               <h2 className="mb-4 font-display text-lg font-semibold text-slate-900">
                 Top produits
               </h2>
-              {data.topProduits.length === 0 ? (
+              {topSlices.length === 0 ? (
                 <p className="text-sm text-slate-400">—</p>
               ) : (
-                <ul className="space-y-2">
-                  {data.topProduits.map((p, i) => (
-                    <li key={i} className="flex items-center justify-between text-sm">
-                      <span className="truncate text-slate-700">
-                        <span className="mr-2 text-slate-400">{i + 1}.</span>
-                        {p.nom}
-                      </span>
-                      <span className="shrink-0 text-slate-500">
-                        <span className="tabular font-medium text-slate-800">{formatQty(p.quantite)}</span> ·{' '}
-                        <span className="tabular">{formatFCFA(p.ca)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="flex flex-col items-center gap-5 sm:flex-row">
+                  <DonutChart
+                    slices={topSlices}
+                    format={formatFCFA}
+                    centerTitle="CA produits"
+                    activeIndex={activeTop}
+                    onActiveChange={setActiveTop}
+                  />
+                  <ul className="w-full min-w-0 space-y-2">
+                    {topSlices.map((s, i) => {
+                      const produit = data.topProduits.find((p) => p.nom === s.label);
+                      return (
+                        <li
+                          key={s.label}
+                          onMouseEnter={() => setActiveTop(i)}
+                          onMouseLeave={() => setActiveTop(null)}
+                          className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-sm transition-colors ${
+                            activeTop === i ? 'bg-slate-50' : ''
+                          }`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2 text-slate-700">
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: s.color }}
+                            />
+                            <span className="truncate">{s.label}</span>
+                          </span>
+                          <span className="shrink-0 pl-2 text-slate-500">
+                            {produit && (
+                              <>
+                                <span className="tabular font-medium text-slate-800">
+                                  {formatQty(produit.quantite)}
+                                </span>{' '}
+                                ·{' '}
+                              </>
+                            )}
+                            <span className="tabular">{formatFCFA(s.value)}</span>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </Card>
 
-            {/* Répartition par paiement */}
+            {/* Par mode de paiement — donut (part des encaissements) + légende chiffrée */}
             <Card className="p-5">
               <h2 className="mb-4 font-display text-lg font-semibold text-slate-900">
                 Par mode de paiement
               </h2>
-              {data.parPaiement.length === 0 ? (
+              {paySlices.length === 0 ? (
                 <p className="text-sm text-slate-400">—</p>
               ) : (
-                <ul className="space-y-2">
-                  {data.parPaiement
-                    .slice()
-                    .sort((a, b) => b.montant - a.montant)
-                    .map((p) => (
-                      <li key={p.methode} className="flex items-center justify-between text-sm">
-                        <span className="text-slate-700">
-                          {PAYMENT_METHOD_LABELS[p.methode as PaymentMethod] ?? p.methode}
-                        </span>
-                        <span className="shrink-0 text-slate-500">
-                          <span className="tabular font-medium text-slate-800">
-                            {formatFCFA(p.montant)}
-                          </span>{' '}
-                          · {p.ventes}
-                        </span>
-                      </li>
-                    ))}
-                </ul>
+                <div className="flex flex-col items-center gap-5 sm:flex-row">
+                  <DonutChart
+                    slices={paySlices}
+                    format={formatFCFA}
+                    centerTitle="Encaissé"
+                    activeIndex={activePay}
+                    onActiveChange={setActivePay}
+                  />
+                  <ul className="w-full min-w-0 space-y-2">
+                    {paySlices.map((s, i) => {
+                      const paiement = data.parPaiement.find(
+                        (p) => (PAYMENT_METHOD_LABELS[p.methode as PaymentMethod] ?? p.methode) === s.label,
+                      );
+                      return (
+                        <li
+                          key={s.label}
+                          onMouseEnter={() => setActivePay(i)}
+                          onMouseLeave={() => setActivePay(null)}
+                          className={`flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-sm transition-colors ${
+                            activePay === i ? 'bg-slate-50' : ''
+                          }`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2 text-slate-700">
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: s.color }}
+                            />
+                            <span className="truncate">{s.label}</span>
+                          </span>
+                          <span className="shrink-0 pl-2 text-slate-500">
+                            <span className="tabular font-medium text-slate-800">{formatFCFA(s.value)}</span>
+                            {paiement && <> · {paiement.ventes}</>}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </Card>
           </div>
