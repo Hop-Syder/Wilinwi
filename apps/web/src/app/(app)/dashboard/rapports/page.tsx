@@ -7,11 +7,11 @@
  *   top produits, répartition par paiement, export CSV. (OT-5)
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, TrendingUp, Lock } from 'lucide-react';
+import { ArrowLeft, Download, TrendingUp, Lock, Receipt, Wallet, PiggyBank, Package, ShoppingBasket } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
-import { Card, StatCard, formatFCFA, formatQty } from '@wilinwi/ui';
+import { Card, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
@@ -34,6 +34,58 @@ interface Report {
 type Period = '7' | '30' | 'month' | 'custom';
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Compteur animé (600 ms, easing cubique) — désactivé si `prefers-reduced-motion`. */
+function useCountUp(target: number): number {
+  const [value, setValue] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      prev.current = target;
+      setValue(target);
+      return;
+    }
+    const from = prev.current;
+    prev.current = target;
+    const start = performance.now();
+    const dur = 600;
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return value;
+}
+
+/** Mini-KPI intégré à la carte Tendance (texte en encre, pastille de couleur). */
+function KpiInline({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 leading-tight">
+        <div className="truncate text-[11px] font-medium text-slate-400">{label}</div>
+        <div className="tabular truncate text-sm font-bold text-slate-900">{value}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function RapportsPage() {
   const { user } = useAuth();
@@ -73,6 +125,21 @@ export default function RapportsPage() {
     () => (data ? Math.max(1, ...data.serie.map((s) => s.ca)) : 1),
     [data],
   );
+  const avgCa = useMemo(
+    () =>
+      data && data.serie.length > 0
+        ? Math.round(data.serie.reduce((sum, s) => sum + s.ca, 0) / data.serie.length)
+        : 0,
+    [data],
+  );
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const hovered = hoverIdx !== null ? data?.serie[hoverIdx] : null;
+
+  // Compteurs animés des KPI intégrés à la carte Tendance.
+  const caAnime = useCountUp(data?.chiffreAffaires ?? 0);
+  const ventesAnime = useCountUp(data?.nombreVentes ?? 0);
+  const panierAnime = useCountUp(data?.panierMoyen ?? 0);
+  const margeAnime = useCountUp(data?.benefice ?? data?.articlesVendus ?? 0);
 
   function exportCSV() {
     if (!data) return;
@@ -222,44 +289,91 @@ export default function RapportsPage() {
 
       {data && (
         <>
-          {/* KPIs */}
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Chiffre d'affaires" value={formatFCFA(data.chiffreAffaires)} accent="brand" />
-            <StatCard label="Ventes" value={formatQty(data.nombreVentes)} accent="emerald" />
-            <StatCard label="Panier moyen" value={formatFCFA(data.panierMoyen)} accent="gold" />
-            {data.benefice !== undefined ? (
-              <StatCard label="Bénéfice (marge)" value={formatFCFA(data.benefice)} accent="emerald" />
-            ) : (
-              <StatCard label="Articles vendus" value={formatQty(data.articlesVendus)} accent="brand" />
-            )}
-          </div>
-
-          {/* Tendance (barres CSS) */}
+          {/* Tendance des ventes : KPI intégrés + barres animées + moyenne + lecture au survol */}
           <Card id="tour-rapports-tendance" className="mt-6 p-5">
-            <h2 className="mb-4 font-display text-lg font-semibold text-slate-900">
-              Tendance des ventes
-            </h2>
+            <style>{`@keyframes wl-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }`}</style>
+
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-display text-lg font-semibold text-slate-900">
+                Tendance des ventes
+              </h2>
+              {/* Lecture au survol : détail du jour pointé, sinon moyenne de la période. */}
+              <p className="tabular text-xs font-medium text-slate-500">
+                {hovered ? (
+                  <>
+                    <span className="font-bold text-brand">
+                      {new Date(hovered.date).toLocaleDateString('fr-FR', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>{' '}
+                    · {formatFCFA(hovered.ca)} · {hovered.ventes} vente(s)
+                  </>
+                ) : (
+                  <>Moyenne : {formatFCFA(avgCa)}/jour</>
+                )}
+              </p>
+            </div>
+
+            {/* KPI de la période (compteurs animés) */}
+            <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <KpiInline icon={Wallet} label="Chiffre d'affaires" value={formatFCFA(caAnime)} tone="bg-brand/10 text-brand" />
+              <KpiInline icon={Receipt} label="Ventes" value={formatQty(ventesAnime)} tone="bg-emerald-100 text-emerald-600" />
+              <KpiInline icon={ShoppingBasket} label="Panier moyen" value={formatFCFA(panierAnime)} tone="bg-gold/10 text-gold-700" />
+              {data.benefice !== undefined ? (
+                <KpiInline icon={PiggyBank} label="Bénéfice (marge)" value={formatFCFA(margeAnime)} tone="bg-emerald-100 text-emerald-600" />
+              ) : (
+                <KpiInline icon={Package} label="Articles vendus" value={formatQty(margeAnime)} tone="bg-brand/10 text-brand" />
+              )}
+            </div>
+
             {data.serie.length === 0 ? (
               <p className="text-sm text-slate-400">Aucune vente sur la période.</p>
             ) : (
-              // h-full + justify-end sur chaque colonne : sans hauteur définie sur le
-              // parent, les hauteurs en % des barres se résolvaient à 0 (barres invisibles).
-              <div className="flex h-40 items-stretch gap-1 overflow-x-auto">
-                {data.serie.map((s) => (
-                  <div key={s.date} className="flex h-full min-w-[10px] flex-1 flex-col items-center justify-end gap-1">
-                    <div
-                      className="w-full rounded-t bg-brand/80 transition-all hover:bg-brand"
-                      style={{ height: `${Math.max(2, (s.ca / maxCa) * 100)}%` }}
-                      title={`${s.date} · ${formatFCFA(s.ca)} · ${s.ventes} vente(s)`}
-                    />
+              <div className="relative" onMouseLeave={() => setHoverIdx(null)}>
+                {/* Ligne de moyenne (repère, or) */}
+                {avgCa > 0 && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold/70"
+                    style={{ bottom: `${Math.min(96, (avgCa / maxCa) * 100)}%` }}
+                  >
+                    <span className="absolute right-0 -top-4 rounded bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold text-gold-700">
+                      moy.
+                    </span>
                   </div>
-                ))}
+                )}
+
+                {/* h-full + justify-end sur chaque colonne : sans hauteur définie sur le
+                    parent, les hauteurs en % des barres se résolvaient à 0 (invisibles). */}
+                <div className="flex h-44 items-stretch gap-1 overflow-x-auto">
+                  {data.serie.map((s, i) => (
+                    <div
+                      key={s.date}
+                      onMouseEnter={() => setHoverIdx(i)}
+                      className="flex h-full min-w-[10px] flex-1 cursor-pointer flex-col items-center justify-end"
+                      title={`${s.date} · ${formatFCFA(s.ca)} · ${s.ventes} vente(s)`}
+                    >
+                      <div
+                        className="w-full origin-bottom rounded-t bg-gradient-to-t from-brand to-brand/50 transition-opacity duration-150 motion-reduce:!animate-none"
+                        style={{
+                          height: `${Math.max(2, (s.ca / maxCa) * 100)}%`,
+                          animation: 'wl-bar-grow 0.5s ease-out both',
+                          animationDelay: `${Math.min(i * 25, 900)}ms`,
+                          opacity: hoverIdx === null || hoverIdx === i ? 1 : 0.35,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Axe des dates (début / fin) */}
+                <div className="mt-1.5 flex justify-between text-[10px] font-medium text-slate-400">
+                  <span>{new Date(data.from).toLocaleDateString('fr-FR')}</span>
+                  <span>{new Date(data.to).toLocaleDateString('fr-FR')}</span>
+                </div>
               </div>
             )}
-            <p className="mt-2 text-center text-xs text-slate-400">
-              Du {new Date(data.from).toLocaleDateString('fr-FR')} au{' '}
-              {new Date(data.to).toLocaleDateString('fr-FR')}
-            </p>
           </Card>
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
