@@ -15,6 +15,8 @@ import { PrismaService } from './prisma.service';
 import { PlanConfigService } from './plan-config.service';
 import { AuthGuard } from './auth.guard';
 import { CapabilitiesGuard } from './capabilities.guard';
+import { InfraCapabilitiesGuard } from './infra-capabilities.guard';
+import { NonVitalGuard } from './non-vital.guard';
 import { ActivityService } from './activity.service';
 import { ActivityController } from './activity.controller';
 import { ActivityInterceptor } from './activity.interceptor';
@@ -32,6 +34,8 @@ import { ActivityInterceptor } from './activity.interceptor';
     ActivityService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CapabilitiesGuard },
+    { provide: APP_GUARD, useClass: InfraCapabilitiesGuard },
+    { provide: APP_GUARD, useClass: NonVitalGuard },
     { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
   exports: [PrismaService, PlanConfigService, ActivityService],

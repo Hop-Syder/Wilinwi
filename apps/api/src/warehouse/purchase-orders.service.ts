@@ -87,6 +87,22 @@ export class PurchaseOrdersService {
         }
       }
 
+      // Seuls les produits à stock direct s'approvisionnent (SERVICE/MANUFACTURED
+      // exclus : leur réception créerait du stock sur des produits qui n'en portent pas).
+      const nonStock = await tx.product.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          id: { in: input.items.map((i) => i.productId) },
+          type: { notIn: ['STANDARD', 'BATCHED'] },
+        },
+        select: { nom: true },
+      });
+      if (nonStock.length > 0) {
+        throw new BadRequestException(
+          `Produits sans stock direct, non commandables auprès d'un fournisseur : ${nonStock.map((p) => p.nom).join(', ')}.`,
+        );
+      }
+
       // Calculer le montant total
       const montantTotal = input.items.reduce(
         (sum, item) => sum + item.quantiteCommandee * item.prixUnitaire,

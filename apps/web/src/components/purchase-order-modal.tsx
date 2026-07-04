@@ -63,7 +63,7 @@ export function PurchaseOrderModal({
         setSuppliers(sups.filter((s) => s.actif));
         setProducts(prods);
         if (sups.length > 0) setFournisseurId(sups[0].id);
-      } catch (e) {
+      } catch {
         setError('Impossible de charger les données (fournisseurs/produits).');
       }
     }

@@ -12,7 +12,12 @@
 import { Body, Controller, HttpException, Module, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { CreateSaleSchema, type AuthContext } from '@wilinwi/types';
-import { CurrentUser, RequireCapabilities } from '../common/decorators';
+import {
+  ANY_POS_CAPABILITY,
+  CurrentUser,
+  RequireAnyInfraCapability,
+  RequireCapabilities,
+} from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { SalesModule } from '../pos/sales.module';
 import { SalesService } from '../pos/sales.service';
@@ -31,7 +36,9 @@ class SyncController {
    * Vide la file de synchronisation offline. Chaque opération est idempotente
    * (clientGeneratedId) → rejouer le même lot ne crée pas de doublon.
    */
+  // Même barrière que POST /pos/sales : la sync offline n'est pas une porte dérobée.
   @RequireCapabilities('sale:create')
+  @RequireAnyInfraCapability(...ANY_POS_CAPABILITY)
   @Post('sales')
   async syncSales(
     @CurrentUser() user: AuthContext,

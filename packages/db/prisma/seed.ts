@@ -104,14 +104,82 @@ async function main() {
         prixCatalogue: 1200,
         stock: 120,
       },
+      // Typage produit (TDR v2) : un SERVICE (vendable sans stock) et un
+      // MANUFACTURED (plat fabriqué, pas de décrément direct) pour tester le POS.
+      {
+        nom: 'Retouche couture express',
+        sku: 'SRV-RETOUCHE',
+        type: 'SERVICE' as const,
+        stockPolicy: 'NO_STOCK' as const,
+        unitKind: 'TIME' as const,
+        prixAchat: 0,
+        prixPlancher: 1000,
+        prixCatalogue: 2000,
+        stock: 0,
+      },
+      {
+        nom: 'Poulet braisé + accompagnement',
+        sku: 'PLAT-POULET',
+        type: 'MANUFACTURED' as const,
+        stockPolicy: 'RECIPE_BASED' as const,
+        prixAchat: 1500,
+        prixPlancher: 2500,
+        prixCatalogue: 3500,
+        stock: 0,
+      },
     ];
 
     for (const p of produits) {
-      const existing = await tx.product.findFirst({
+      let product = await tx.product.findFirst({
         where: { tenantId: DEMO_TENANT_ID, sku: p.sku },
       });
-      if (!existing) {
-        await tx.product.create({ data: { ...p, tenantId: DEMO_TENANT_ID } });
+      if (!product) {
+        product = await tx.product.create({ data: { ...p, tenantId: DEMO_TENANT_ID } });
+      }
+
+      // Cohérence Hub & Spoke (auto-réparatrice, idempotente) : le stock affiché
+      // doit exister dans le grand livre (mouvement « Stock initial ») ET dans la
+      // projection ProductStock de l'établissement — sinon le POS refuse de vendre
+      // (projection = 0) alors que la fiche affiche du stock.
+      const affectsStock =
+        product.type === 'STANDARD' || product.type === 'BATCHED';
+      if (!affectsStock || product.stock === 0) continue;
+
+      const hasInitial = await tx.stockMovement.findFirst({
+        where: { tenantId: DEMO_TENANT_ID, productId: product.id, motif: 'Stock initial' },
+        select: { id: true },
+      });
+      if (hasInitial) continue;
+
+      await tx.stockMovement.create({
+        data: {
+          tenantId: DEMO_TENANT_ID,
+          etablissementId: DEMO_ETAB_ID,
+          productId: product.id,
+          type: 'IN',
+          quantite: product.stock,
+          motif: 'Stock initial',
+        },
+      });
+      const projection = await tx.productStock.findFirst({
+        where: { etablissementId: DEMO_ETAB_ID, productId: product.id, variantId: null },
+        select: { id: true },
+      });
+      if (projection) {
+        await tx.productStock.update({
+          where: { id: projection.id },
+          data: { quantite: { increment: product.stock } },
+        });
+      } else {
+        await tx.productStock.create({
+          data: {
+            tenantId: DEMO_TENANT_ID,
+            etablissementId: DEMO_ETAB_ID,
+            productId: product.id,
+            quantite: product.stock,
+            quantiteMin: product.seuilAlerte,
+          },
+        });
       }
     }
   });

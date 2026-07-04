@@ -16,11 +16,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  defaultStockPolicy,
   DOWNGRADE_MAX_PRODUCTS,
+  productAffectsStock,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
-  type CreateStockTransferInput,
   type SetStockThresholdInput,
   type StockAlertDto,
   type UpdateProductInput,
@@ -29,7 +30,7 @@ import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
 import { assertConcreteEtablissement } from '../common/scope';
-import { applyStockDelta } from '../common/product-stock';
+import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
 
 @Injectable()
@@ -120,7 +121,18 @@ export class StockService {
     }
     // Gating images : la galerie produit est réservée aux plans Business+ ;
     // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
+    // BATCHED : schema-ready mais pas encore activé (ProductBatch/FEFO = Milestone 4).
+    // Refusé à l'API pour qu'une pharmacie ne croie pas avoir une traçabilité par
+    // lots qui n'existe pas encore (l'UI le propose déjà désactivé).
+    if (input.type === 'BATCHED') {
+      throw new BadRequestException(
+        'Le type BATCHED (lots & péremption) n\'est pas encore disponible — à venir avec le module Santé.',
+      );
+    }
     const photos = input.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
+    // SERVICE/MANUFACTURED : pas de stock direct → stock forcé à 0, aucun mouvement
+    // initial ni projection ProductStock (TDR §9.1).
+    const affectsStock = productAffectsStock(input.type);
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const created = await tx.product.create({
         data: {
@@ -128,18 +140,22 @@ export class StockService {
           nom: input.nom,
           sku: input.sku ?? null,
           categorie: input.categorie ?? null,
+          type: input.type,
+          stockPolicy: input.stockPolicy ?? defaultStockPolicy(input.type),
+          unitKind: input.unitKind,
+          baseUnit: input.baseUnit ?? null,
           photos,
           prixAchat: input.prixAchat,
           prixPlancher: input.prixPlancher,
           prixCatalogue: input.prixCatalogue,
-          stock: input.stock,
+          stock: affectsStock ? input.stock : 0,
           seuilAlerte: input.seuilAlerte,
           variants: {
             create: input.variants.map((v) => ({
               tenantId: ctx.tenantId,
               attributs: v.attributs,
               sku: v.sku ?? null,
-              stock: v.stock,
+              stock: affectsStock ? v.stock : 0,
             })),
           },
         },
@@ -149,7 +165,7 @@ export class StockService {
       // Grand livre : le stock initial devient un mouvement IN rattaché à un
       // établissement (courant, sinon primaire) → le stock scopé reste cohérent.
       const etablissementId = ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
-      if (etablissementId) {
+      if (etablissementId && affectsStock) {
         if (created.stock !== 0) {
           await tx.stockMovement.create({
             data: {
@@ -286,6 +302,30 @@ export class StockService {
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await this.ensureProduct(tx, ctx.tenantId, id);
 
+      // BATCHED : pas encore activé (Milestone 4) — refusé aussi au changement de type.
+      if (scalars.type === 'BATCHED' && existing.type !== 'BATCHED') {
+        throw new BadRequestException(
+          'Le type BATCHED (lots & péremption) n\'est pas encore disponible — à venir avec le module Santé.',
+        );
+      }
+
+      // Changement de type produit : quitter un type à stock direct (STANDARD/BATCHED)
+      // avec du stock non nul créerait des quantités orphelines dans le grand livre —
+      // exiger d'abord la mise à zéro par mouvement (ADJUST/OUT).
+      if (
+        scalars.type !== undefined &&
+        productAffectsStock(existing.type) &&
+        !productAffectsStock(scalars.type)
+      ) {
+        const residual =
+          existing.stock !== 0 || existing.variants.some((v) => v.stock !== 0);
+        if (residual) {
+          throw new BadRequestException(
+            `Impossible de passer "${existing.nom}" en type ${scalars.type} : le stock doit d'abord être ramené à zéro (mouvement de sortie ou d'ajustement).`,
+          );
+        }
+      }
+
       // Invariant des 4 prix vérifié sur les valeurs FINALES (existant ⊕ patch) :
       // une mise à jour partielle ne peut pas casser prixAchat ≤ plancher ≤ catalogue.
       const prixAchat = scalars.prixAchat ?? existing.prixAchat;
@@ -296,6 +336,9 @@ export class StockService {
           `Prix incohérents : il faut prix d'achat (${prixAchat}) ≤ prix plancher (${prixPlancher}) ≤ prix catalogue (${prixCatalogue}).`,
         );
       }
+
+      // Type effectif après patch : pilote le stock des nouvelles variantes.
+      const effectiveAffectsStock = productAffectsStock(scalars.type ?? existing.type);
 
       if (variants) {
         const existingVariants = await tx.productVariant.findMany({ where: { productId: id } });
@@ -323,14 +366,16 @@ export class StockService {
                 productId: id,
                 attributs: v.attributs,
                 sku: v.sku ?? null,
-                stock: v.stock,
+                // SERVICE/MANUFACTURED : pas de stock direct — une nouvelle variante
+                // ne doit pas en réintroduire (miroir de la création produit).
+                stock: effectiveAffectsStock ? v.stock : 0,
               }
             });
             // Stock initial de la NOUVELLE variante = mouvement IN + projection,
             // comme à la création du produit (cohérence grand livre).
             const etablissementId =
               ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
-            if (etablissementId && createdVariant.stock !== 0) {
+            if (etablissementId && effectiveAffectsStock && createdVariant.stock !== 0) {
               await tx.stockMovement.create({
                 data: {
                   tenantId: ctx.tenantId,
@@ -372,24 +417,40 @@ export class StockService {
     assertConcreteEtablissement(ctx);
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const product = await this.ensureProduct(tx, ctx.tenantId, input.productId);
+      if (!productAffectsStock(product.type)) {
+        throw new BadRequestException(
+          `Le produit "${product.nom}" (type ${product.type}) ne gère pas de stock direct : aucun mouvement possible.`,
+        );
+      }
       const delta = this.signedDelta(input.type, input.quantite);
-
-      let newParentStock = product.stock + delta;
 
       if (input.variantId) {
         const variant = product.variants.find(v => v.id === input.variantId);
         if (!variant) throw new NotFoundException('Variante introuvable');
-        if (variant.stock + delta < 0) {
-          throw new BadRequestException('Opération refusée : Le stock de la variante ne peut pas être négatif.');
+      }
+
+      // Contrôle de négativité sur le stock LOCAL de la boutique du mouvement
+      // (le stock global d'une autre boutique ne justifie pas une sortie ici).
+      // ALLOW_NEGATIVE : politique explicite du produit → sortie autorisée.
+      if (product.stockPolicy !== 'ALLOW_NEGATIVE') {
+        const localStock = await readStockAt(
+          tx,
+          ctx.etablissementId!,
+          input.productId,
+          input.variantId ?? null,
+        );
+        if (localStock + delta < 0) {
+          throw new BadRequestException(
+            `Opération refusée : le stock de cet établissement deviendrait négatif (disponible ici : ${localStock}, demandé : ${delta}).`,
+          );
         }
+      }
+
+      if (input.variantId) {
         await tx.productVariant.update({
           where: { id: input.variantId },
           data: { stock: { increment: delta } },
         });
-      } else {
-        if (newParentStock < 0) {
-          throw new BadRequestException('Opération refusée : Le stock global ne peut pas être négatif.');
-        }
       }
 
       const movement = await tx.stockMovement.create({
@@ -432,88 +493,9 @@ export class StockService {
     );
   }
 
-  async transfer(ctx: AuthContext, input: CreateStockTransferInput) {
-    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const source = await tx.etablissement.findFirst({
-        where: { id: input.sourceEtablissementId, tenantId: ctx.tenantId },
-      });
-      if (!source) {
-        throw new NotFoundException("L'établissement source n'existe pas ou ne vous appartient pas.");
-      }
-
-      const destination = await tx.etablissement.findFirst({
-        where: { id: input.destinationEtablissementId, tenantId: ctx.tenantId },
-      });
-      if (!destination) {
-        throw new NotFoundException("L'établissement de destination n'existe pas ou ne vous appartient pas.");
-      }
-
-      if (source.id === destination.id) {
-        throw new BadRequestException("Les établissements source et de destination doivent être différents.");
-      }
-
-      // Vérifier le stock disponible dans la source
-      const movementsSource = await tx.stockMovement.findMany({
-        where: {
-          tenantId: ctx.tenantId,
-          etablissementId: source.id,
-          productId: input.productId,
-          variantId: input.variantId ?? null,
-        },
-        select: { quantite: true },
-      });
-
-      // Grand livre unifié : le stock disponible dans la source = Σ de ses mouvements
-      // (le stock initial y est inclus, étant lui-même un mouvement).
-      const finalSourceStock = movementsSource.reduce((acc, m) => acc + m.quantite, 0);
-
-      if (finalSourceStock < input.quantite) {
-        throw new BadRequestException(
-          `Stock insuffisant dans l'établissement source (${source.nom}). Disponible : ${finalSourceStock}, Demandé : ${input.quantite}`,
-        );
-      }
-
-      await tx.stockMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          etablissementId: source.id,
-          productId: input.productId,
-          variantId: input.variantId ?? null,
-          type: 'OUT',
-          quantite: -input.quantite,
-          motif: `Transfert vers ${destination.nom}`,
-        },
-      });
-      await applyStockDelta(tx, {
-        tenantId: ctx.tenantId,
-        etablissementId: source.id,
-        productId: input.productId,
-        variantId: input.variantId ?? null,
-        delta: -input.quantite,
-      });
-
-      const destMovement = await tx.stockMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          etablissementId: destination.id,
-          productId: input.productId,
-          variantId: input.variantId ?? null,
-          type: 'IN',
-          quantite: input.quantite,
-          motif: `Transfert depuis ${source.nom}`,
-        },
-      });
-      await applyStockDelta(tx, {
-        tenantId: ctx.tenantId,
-        etablissementId: destination.id,
-        productId: input.productId,
-        variantId: input.variantId ?? null,
-        delta: input.quantite,
-      });
-
-      return destMovement;
-    });
-  }
+  // NOTE : transfer() a été SUPPRIMÉ — canal unique = Dispatch (warehouse) :
+  // statuts DRAFT/VALIDATED, référence, audit, lecture de la projection
+  // ProductStock et contrôle d'accès à l'établissement source.
 
   /**
    * Valorisation du stock : valeur au prix d'achat (argent immobilisé) et au
@@ -521,8 +503,10 @@ export class StockService {
    */
   async valuation(ctx: AuthContext) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      // Seuls les produits à stock direct participent à la valorisation
+      // (SERVICE/MANUFACTURED n'immobilisent pas d'argent en stock).
       const products = await tx.product.findMany({
-        where: { tenantId: ctx.tenantId, actif: true },
+        where: { tenantId: ctx.tenantId, actif: true, type: { in: ['STANDARD', 'BATCHED'] } },
       });
 
       // Valorisation scopée à l'établissement courant : projection ProductStock

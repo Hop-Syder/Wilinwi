@@ -31,9 +31,13 @@ function toDto(e: Etablissement): EtablissementDto {
     id: e.id,
     nom: e.nom,
     type: e.type,
+    infrastructure: e.infrastructure,
     ville: e.ville,
     adresse: e.adresse,
     telephone: e.telephone,
+    langue: e.langue,
+    devise: e.devise,
+    timezone: e.timezone,
     actif: e.actif,
   };
 }
@@ -83,9 +87,13 @@ export class EtablissementService {
           tenantId: ctx.tenantId,
           nom: input.nom,
           type: input.type,
+          infrastructure: input.infrastructure,
           ville: input.ville ?? null,
           adresse: input.adresse ?? null,
           telephone: input.telephone ?? null,
+          langue: input.langue ?? undefined,
+          devise: input.devise ?? undefined,
+          timezone: input.timezone ?? null,
         },
       });
       // Le créateur (OWNER/MANAGER) reçoit l'accès au nouvel établissement.
@@ -101,7 +109,7 @@ export class EtablissementService {
       action: 'ETABLISSEMENT_CREATE',
       entity: 'etablissement',
       entityId: etab.id,
-      metadata: { nom: etab.nom, type: etab.type },
+      metadata: { nom: etab.nom, type: etab.type, infrastructure: etab.infrastructure },
     });
     return toDto(etab);
   }
@@ -121,9 +129,13 @@ export class EtablissementService {
         data: {
           nom: input.nom,
           type: input.type,
+          infrastructure: input.infrastructure,
           ville: input.ville === undefined ? undefined : input.ville,
           adresse: input.adresse === undefined ? undefined : input.adresse,
           telephone: input.telephone === undefined ? undefined : input.telephone,
+          langue: input.langue === undefined ? undefined : input.langue,
+          devise: input.devise === undefined ? undefined : input.devise,
+          timezone: input.timezone === undefined ? undefined : input.timezone,
           actif: input.actif,
         },
       });

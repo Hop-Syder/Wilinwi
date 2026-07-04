@@ -19,7 +19,6 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRightLeft,
-  ArrowDownCircle,
   ArrowUpCircle,
   Lock,
   Plus,

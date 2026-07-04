@@ -14,7 +14,10 @@ import Link from 'next/link';
 import {
   ETABLISSEMENT_TYPES,
   ETABLISSEMENT_TYPE_LABELS,
+  INFRASTRUCTURES,
+  INFRASTRUCTURE_LABELS,
   type EtablissementDto,
+  type EtablissementInfrastructure,
   type EtablissementType,
 } from '@wilinwi/types';
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
@@ -27,12 +30,20 @@ type Draft = {
   id?: string;
   nom: string;
   type: EtablissementType;
+  infrastructure: EtablissementInfrastructure;
   ville: string;
   adresse: string;
   telephone: string;
 };
 
-const emptyDraft: Draft = { nom: '', type: 'BOUTIQUE', ville: '', adresse: '', telephone: '' };
+const emptyDraft: Draft = {
+  nom: '',
+  type: 'BOUTIQUE',
+  infrastructure: 'RETAIL',
+  ville: '',
+  adresse: '',
+  telephone: '',
+};
 
 export default function EtablissementsPage() {
   const { refreshUser } = useAuth();
@@ -62,6 +73,7 @@ export default function EtablissementsPage() {
       id: e.id,
       nom: e.nom,
       type: e.type,
+      infrastructure: e.infrastructure ?? 'RETAIL',
       ville: e.ville ?? '',
       adresse: e.adresse ?? '',
       telephone: e.telephone ?? '',
@@ -76,6 +88,7 @@ export default function EtablissementsPage() {
       const payload = {
         nom: draft.nom,
         type: draft.type,
+        infrastructure: draft.infrastructure,
         ville: draft.ville || null,
         adresse: draft.adresse || null,
         telephone: draft.telephone || null,
@@ -180,7 +193,11 @@ export default function EtablissementsPage() {
                   <span className="truncate font-display font-semibold text-slate-800">{e.nom}</span>
                   <Badge tone={e.actif ? 'success' : 'danger'}>{e.actif ? 'Actif' : 'Inactif'}</Badge>
                 </div>
-                <div className="text-xs text-slate-500">{ETABLISSEMENT_TYPE_LABELS[e.type]}</div>
+                <div className="text-xs text-slate-500">
+                  {ETABLISSEMENT_TYPE_LABELS[e.type]}
+                  {' · '}
+                  {INFRASTRUCTURE_LABELS[e.infrastructure ?? 'RETAIL']}
+                </div>
                 {(e.ville || e.telephone) && (
                   <div className="mt-1 truncate text-xs text-slate-400">
                     {[e.ville, e.telephone].filter(Boolean).join(' · ')}
@@ -223,6 +240,24 @@ export default function EtablissementsPage() {
                   ))}
                 </Select>
               </Field>
+              <div className="sm:col-span-2">
+                <Field label="Infrastructure métier">
+                  <Select
+                    value={draft.infrastructure}
+                    onChange={(e) =>
+                      setDraft({ ...draft, infrastructure: e.target.value as EtablissementInfrastructure })
+                    }
+                  >
+                    {INFRASTRUCTURES.map((i) => (
+                      <option key={i} value={i}>{INFRASTRUCTURE_LABELS[i]}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Détermine les modules et règles de vente activés pour cet établissement
+                  (le type ci-dessus reste la nature physique du lieu).
+                </p>
+              </div>
               <Field label="Ville (optionnel)">
                 <Input value={draft.ville} onChange={(e) => setDraft({ ...draft, ville: e.target.value })} placeholder="ex. Cotonou" />
               </Field>

@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { canSeeSensitivePricing, type ProductDto, type Role, type ProductVariantDto } from '@wilinwi/types';
+import { canSeeSensitivePricing, type ProductDto, type Role } from '@wilinwi/types';
 import type { Product, ProductVariant } from '@wilinwi/db';
 
 /**
@@ -27,6 +27,12 @@ export function toProductDto(
     nom: product.nom,
     sku: product.sku,
     categorie: product.categorie,
+    // Typage produit (TDR v2) : non sensible — visible par tous les rôles
+    // (le POS en a besoin pour appliquer la stratégie de stock par type).
+    type: product.type,
+    stockPolicy: product.stockPolicy,
+    unitKind: product.unitKind,
+    baseUnit: product.baseUnit,
     photos: product.photos,
     prixCatalogue: product.prixCatalogue,
     // Le prix plancher (minimum de vente) est visible par TOUS les rôles : le

@@ -17,8 +17,11 @@ import {
   computeDunning,
   effectiveModules,
   MODULES,
+  resolveEffectiveCapabilities,
   RoleSchema,
   type AuthContext,
+  type EtablissementInfrastructure,
+  type InfraCapability,
   type ModuleKey,
   type Plan,
   type SubscriptionStatus,
@@ -94,10 +97,20 @@ export class AuthGuard implements CanActivate {
       // Établissements accessibles à l'utilisateur (uniquement ceux encore actifs).
       const access = await tx.userEtablissement.findMany({
         where: { userId, etablissement: { actif: true } },
-        select: { etablissementId: true },
+        select: {
+          etablissementId: true,
+          etablissement: { select: { infrastructure: true } },
+        },
         orderBy: { createdAt: 'asc' },
       });
       let etablissementIds = access.map((a) => a.etablissementId);
+      // Infrastructure métier par établissement (résolution des capacités TDR v2).
+      const infraByEtab = new Map<string, EtablissementInfrastructure>(
+        access.map((a) => [
+          a.etablissementId,
+          a.etablissement.infrastructure as EtablissementInfrastructure,
+        ]),
+      );
       // Rétrogradation Starter = 1 seul établissement actif (les autres → préservés, masqués).
       if (dunning.downgraded && etablissementIds.length > 1) {
         etablissementIds = etablissementIds.slice(0, 1);
@@ -115,6 +128,7 @@ export class AuthGuard implements CanActivate {
           moduleAddons,
         ),
         etablissementIds,
+        infraByEtab,
       };
     });
 
@@ -131,6 +145,25 @@ export class AuthGuard implements CanActivate {
       : headerEtab && resolved.etablissementIds.includes(headerEtab)
         ? headerEtab
         : (resolved.etablissementIds[0] ?? null);
+
+    // Capacités d'infrastructure effectives (même resolver que le frontend — TDR §2.7).
+    // Vue globale : union en LECTURE des établissements accessibles (les écritures
+    // scopées restent refusées par assertConcreteEtablissement).
+    const infrastructure = etablissementId
+      ? (resolved.infraByEtab.get(etablissementId) ?? 'RETAIL')
+      : null;
+    const resolveFor = (infra: EtablissementInfrastructure): InfraCapability[] =>
+      resolveEffectiveCapabilities({
+        infrastructure: infra,
+        plan: resolved.plan,
+        role: resolved.role,
+        dunning: resolved.dunning,
+      });
+    const infraCapabilities = isGlobalView
+      ? [...new Set([...resolved.infraByEtab.values()].flatMap(resolveFor))]
+      : infrastructure
+        ? resolveFor(infrastructure)
+        : [];
 
     const email = (payload.email as string) ?? '';
     const adminEmails = this.config.get<string>('PLATFORM_ADMIN_EMAILS', '');
@@ -150,6 +183,8 @@ export class AuthGuard implements CanActivate {
       etablissementId,
       isGlobalView,
       etablissementIds: resolved.etablissementIds,
+      infrastructure,
+      infraCapabilities,
       subscriptionStatus: resolved.subscriptionStatus,
       dunning: resolved.dunning,
       isPlatformAdmin,

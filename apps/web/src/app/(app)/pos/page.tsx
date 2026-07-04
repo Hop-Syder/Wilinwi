@@ -12,12 +12,15 @@
 // ──────────────────────────────────
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle, Lock, Star, Command } from 'lucide-react';
+import { Search, Trash2, ShoppingCart, AlertTriangle, Command } from 'lucide-react';
 import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
-import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
+import {
+  productAffectsStock,
+  saleStockBehavior,
+} from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import Link from 'next/link';
-import { apiGet, apiPost, ApiError } from '@/lib/api';
+import { apiGet } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import type { PendingSale as PendingSyncSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
@@ -39,7 +42,6 @@ interface CartLine {
 export default function PosPage() {
   const { refreshPending } = useSync();
   const { user } = useAuth();
-  const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
   // Vue globale « Tous les établissements » : on ne peut pas vendre (la vente doit
   // être rattachée à une boutique précise) → on désactive l'encaissement.
   const isGlobalView = user?.etablissementId === 'ALL';
@@ -47,7 +49,7 @@ export default function PosPage() {
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
+  const [, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
     null,
   );
   const [busy, setBusy] = useState(false);
@@ -238,15 +240,18 @@ export default function PosPage() {
   );
 
   function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
+    // Miroir du serveur (TDR §9.1/§9.2) : pas de contrôle de disponibilité pour
+    // SERVICE/MANUFACTURED ni pour les politiques ALLOW_NEGATIVE/NO_STOCK.
+    const checkStock = saleStockBehavior(product.type, product.stockPolicy).precheck;
     const stockToCheck = variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
-    if (stockToCheck <= 0) {
+    if (checkStock && stockToCheck <= 0) {
       setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
       return;
     }
     setCart((c) => {
       const existing = c.find((l) => l.product.id === product.id && l.variantId === variantId);
       const newQuantite = existing ? existing.quantite + quantite : quantite;
-      if (newQuantite > stockToCheck) {
+      if (checkStock && newQuantite > stockToCheck) {
         setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}.` });
         return c;
       }
@@ -271,10 +276,12 @@ export default function PosPage() {
   }
   function setExactQuantity(line: CartLine, newQ: number) {
     if (newQ <= 0) return;
-    const stockToCheck = line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
-    if (newQ > stockToCheck) {
-      setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
-      newQ = stockToCheck;
+    if (saleStockBehavior(line.product.type, line.product.stockPolicy).precheck) {
+      const stockToCheck = line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
+      if (newQ > stockToCheck) {
+        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
+        newQ = stockToCheck;
+      }
     }
     setCart(c => c.map(l => l === line ? { ...l, quantite: newQ } : l));
   }
@@ -357,7 +364,7 @@ export default function PosPage() {
 
       await refreshPending();
       await syncSale(payload.clientGeneratedId!);
-    } catch (e) {
+    } catch {
       setMessage({ tone: 'err', text: "Erreur lors de l'enregistrement local." });
     } finally {
       setBusy(false);
@@ -486,22 +493,29 @@ export default function PosPage() {
             </div>
 
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {displayProducts.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => handleProductClick(p)}
-                  disabled={p.stock <= 0 && (!p.variants || p.variants.length === 0)}
-                  className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${p.stock <= 0 && (!p.variants || p.variants.length === 0) ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
-                >
-                  <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
-                  <div className="tabular mt-1 text-sm font-bold text-emerald-700">
-                    {formatFCFA(p.prixCatalogue)}
-                  </div>
-                  <Badge tone={p.stock <= 0 ? 'danger' : p.stock <= 5 ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
-                    {p.stock === 0 ? 'Rupture' : `${p.stock} en stock`}
-                  </Badge>
-                </button>
-              ))}
+              {displayProducts.map((p) => {
+                // SERVICE/MANUFACTURED : toujours vendables (pas de stock direct).
+                const noStock = !productAffectsStock(p.type);
+                // ALLOW_NEGATIVE/NO_STOCK : la rupture n'empêche pas la vente.
+                const blocking = saleStockBehavior(p.type, p.stockPolicy).precheck;
+                const outOfStock = blocking && p.stock <= 0 && (!p.variants || p.variants.length === 0);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleProductClick(p)}
+                    disabled={outOfStock}
+                    className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${outOfStock ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
+                  >
+                    <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
+                    <div className="tabular mt-1 text-sm font-bold text-emerald-700">
+                      {formatFCFA(p.prixCatalogue)}
+                    </div>
+                    <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= 5 ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
+                      {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${p.stock} en stock`}
+                    </Badge>
+                  </button>
+                );
+              })}
             </div>
 
             {displayProducts.length === 0 && (
@@ -650,7 +664,7 @@ export default function PosPage() {
             <p className="mb-4 text-sm text-slate-600">{variantSelectionProduct.nom}</p>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
               {variantSelectionProduct.variants?.map(v => {
-                const label = Object.entries(v.attributs).map(([k, val]) => `${val}`).join(', ');
+                const label = Object.entries(v.attributs).map(([, val]) => `${val}`).join(', ');
                 const isOos = v.stock <= 0;
                 return (
                   <button 
@@ -840,7 +854,7 @@ function TodaySalesPanel({ onClose }: { onClose: () => void }) {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="tabular font-semibold text-slate-900">{formatFCFA(s.total)}</span>
-                  <Badge tone={s.status === 'COMPLETED' ? 'success' : s.status === 'PENDING_APPROVAL' ? 'warning' : 'neutral'} className="ml-2">
+                  <Badge tone={s.status === 'COMPLETED' ? 'success' : 'neutral'} className="ml-2">
                     {s.status}
                   </Badge>
                 </div>

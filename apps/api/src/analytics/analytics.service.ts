@@ -55,9 +55,10 @@ export class AnalyticsService {
         0,
       );
 
-      // Valorisation du stock
+      // Valorisation du stock — seuls les produits à stock direct comptent :
+      // SERVICE/MANUFACTURED n'immobilisent rien et fausseraient ruptures/dormants.
       const products = await tx.product.findMany({
-        where: { tenantId: ctx.tenantId, actif: true },
+        where: { tenantId: ctx.tenantId, actif: true, type: { in: ['STANDARD', 'BATCHED'] } },
       });
 
       if (ctx.etablissementId) {

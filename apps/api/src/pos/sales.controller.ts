@@ -17,7 +17,12 @@ import {
   type AuthContext,
   type CreateSaleInput,
 } from '@wilinwi/types';
-import { CurrentUser, RequireCapabilities } from '../common/decorators';
+import {
+  ANY_POS_CAPABILITY,
+  CurrentUser,
+  RequireAnyInfraCapability,
+  RequireCapabilities,
+} from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { SalesService } from './sales.service';
 
@@ -32,7 +37,11 @@ type AssignDeliveryInput = z.infer<typeof AssignDeliverySchema>;
 export class SalesController {
   constructor(private readonly sales: SalesService) {}
 
+  // Défense en profondeur (TDR §2.7) : au-delà du rôle, l'établissement courant
+  // doit avoir UN POS actif — refuse aussi la vente serveur-side au dunning J+30
+  // (posBlocked → aucune capacité d'infrastructure).
   @RequireCapabilities('sale:create')
+  @RequireAnyInfraCapability(...ANY_POS_CAPABILITY)
   @Post('sales')
   create(
     @CurrentUser() user: AuthContext,

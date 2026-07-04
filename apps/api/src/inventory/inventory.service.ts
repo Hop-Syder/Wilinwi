@@ -32,10 +32,26 @@ export class InventoryService {
         where: {
           tenantId: ctx.tenantId,
           actif: true,
+          // Seuls les produits à stock direct se comptent (SERVICE/MANUFACTURED exclus).
+          type: { in: ['STANDARD', 'BATCHED'] },
           ...(input.productIds.length > 0 ? { id: { in: input.productIds } } : {}),
         },
       });
       if (products.length === 0) throw new BadRequestException('Aucun produit à compter');
+
+      // Le comptage se fait dans UNE boutique : le théorique est le stock LOCAL
+      // (projection ProductStock), pas la colonne globale — sinon tous les écarts
+      // sont faux dès que l'entreprise a plusieurs établissements.
+      const localRows = await tx.productStock.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          variantId: null,
+          productId: { in: products.map((p) => p.id) },
+        },
+        select: { productId: true, quantite: true },
+      });
+      const localByProduct = new Map(localRows.map((r) => [r.productId, r.quantite]));
 
       return tx.inventory.create({
         data: {
@@ -47,7 +63,7 @@ export class InventoryService {
             create: products.map((p) => ({
               tenantId: ctx.tenantId,
               productId: p.id,
-              quantiteTheorique: p.stock,
+              quantiteTheorique: localByProduct.get(p.id) ?? 0,
             })),
           },
         },
@@ -110,9 +126,12 @@ export class InventoryService {
             motif: `Inventaire ${inventoryId}: ${input.motif}`,
           },
         });
+        // La colonne globale reçoit l'ÉCART (delta), pas le comptage local :
+        // écraser le stock global avec le réel d'UNE boutique effacerait le stock
+        // des autres établissements.
         await tx.product.update({
           where: { id: item.productId },
-          data: { stock: item.quantiteReelle },
+          data: { stock: { increment: item.ecart } },
         });
         // Projection ProductStock : applique l'écart à l'établissement de l'inventaire.
         const etablissementId = inv.etablissementId ?? ctx.etablissementId;

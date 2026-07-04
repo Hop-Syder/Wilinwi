@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, AlertTriangle, Truck } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Truck } from 'lucide-react';
 import { Button, Card, Input } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import type { PurchaseOrderDto } from '@wilinwi/types';
@@ -59,7 +59,7 @@ export default function ReceptionPage() {
           inputs[item.id] = String(remaining > 0 ? remaining : 0);
         }
         setQtyInputs(inputs);
-      } catch (e) {
+      } catch {
         setError('Impossible de charger le bon de commande.');
       } finally {
         setLoading(false);

@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import {
   accountForPayment,
+  saleStockBehavior,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
@@ -55,7 +56,7 @@ export class SalesService {
         const existing = await this.prisma.forTenant(ctx.tenantId, (tx) =>
           tx.sale.findFirst({
             where: { tenantId: ctx.tenantId, clientGeneratedId: input.clientGeneratedId },
-            include: { items: { include: { priceOverride: true } }, installment: true },
+            include: { items: true, installment: true },
           }),
         );
         if (existing) return toSaleDto(existing, ctx.role);
@@ -70,7 +71,7 @@ export class SalesService {
       if (input.clientGeneratedId) {
         const existing = await tx.sale.findFirst({
           where: { tenantId: ctx.tenantId, clientGeneratedId: input.clientGeneratedId },
-          include: { items: { include: { priceOverride: true } }, installment: true },
+          include: { items: true, installment: true },
         });
         if (existing) return existing;
       }
@@ -105,16 +106,21 @@ export class SalesService {
             'Vente impossible sans établissement courant : sélectionnez une boutique.',
           );
         }
-        const availableStock = await readStockAt(
-          tx,
-          ctx.etablissementId,
-          product.id,
-          item.variantId ?? null,
-        );
-        if (item.quantite > availableStock) {
-          throw new BadRequestException(
-            `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
+        // Stratégie type × politique de stock (TDR §9.1/§9.2) : SERVICE et
+        // MANUFACTURED n'ont pas de stock direct ; ALLOW_NEGATIVE/NO_STOCK ne
+        // bloquent pas (le stock négatif reste visible et alerté par les seuils).
+        if (saleStockBehavior(product.type, product.stockPolicy).precheck) {
+          const availableStock = await readStockAt(
+            tx,
+            ctx.etablissementId,
+            product.id,
+            item.variantId ?? null,
           );
+          if (item.quantite > availableStock) {
+            throw new BadRequestException(
+              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
+            );
+          }
         }
 
         // Anti-fraude absolu : vente sous le prix plancher strictement refusée.
@@ -212,7 +218,7 @@ export class SalesService {
 
       return tx.sale.findUnique({
         where: { id: created.id },
-        include: { items: { include: { priceOverride: true } }, installment: true },
+        include: { items: true, installment: true },
       });
     });
 
@@ -232,6 +238,9 @@ export class SalesService {
     const etablissementId = sale.etablissementId ?? ctx.etablissementId;
 
     for (const item of sale.items) {
+      // Pas de stock direct (SERVICE/MANUFACTURED) ou politique NO_STOCK → aucun
+      // mouvement ni décrément (paiement, trésorerie et reçu restent identiques).
+      if (!saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) continue;
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -417,109 +426,122 @@ export class SalesService {
     const sale = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const target = await tx.sale.findFirst({
         where: { id: saleId, tenantId: ctx.tenantId },
-        include: { items: true },
+        include: { items: { include: { product: { select: { type: true, stockPolicy: true } } } } },
       });
       if (!target) throw new NotFoundException('Vente introuvable');
       if (target.status === 'CANCELLED') throw new BadRequestException('Vente déjà annulée');
       const etablissementId = target.etablissementId ?? ctx.etablissementId;
 
-      // Une vente non finalisée (PENDING_APPROVAL) n'a touché ni stock ni trésorerie.
-      if (target.status !== 'PENDING_APPROVAL') {
-        for (const item of target.items) {
-          await tx.stockMovement.create({
+      // Toute vente non annulée a été finalisée (stock décrémenté, trésorerie
+      // encaissée) : on inverse tout.
+      for (const item of target.items) {
+        // Symétrique de finalize : on ne ré-entre que ce qui a été décrémenté.
+        if (!saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) continue;
+        // Un retour partiel a déjà restocké `quantiteRetournee` : ne ré-entrer
+        // que le restant, sinon l'annulation double la ré-entrée de stock.
+        const restant = item.quantite - (item.quantiteRetournee ?? 0);
+        if (restant <= 0) continue;
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: item.productId,
+            variantId: item.variantId,
+            type: 'IN',
+            quantite: restant,
+            motif: `Annulation vente ${saleId}`,
+            saleId,
+          },
+        });
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: restant } },
+        });
+        if (item.variantId) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: restant } },
+          });
+        }
+        // Projection ProductStock : ré-entrée à la boutique de la vente.
+        if (etablissementId) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: item.productId,
+            variantId: item.variantId,
+            delta: restant,
+          });
+        }
+      }
+
+      // Reversal trésorerie : on ressort la part encaissée (en ventilant le mixte).
+      const compte = accountForPayment(target.paymentMethod);
+      if (target.montantVerse > 0) {
+        const espece =
+          compte === 'CAISSE'
+            ? 0
+            : Math.min(Math.max(target.montantEspeces ?? 0, 0), target.montantVerse);
+        if (espece > 0) {
+          await tx.cashMovement.create({
             data: {
               tenantId: ctx.tenantId,
               etablissementId,
-              productId: item.productId,
-              variantId: item.variantId,
-              type: 'IN',
-              quantite: item.quantite,
-              motif: `Annulation vente ${saleId}`,
+              type: 'OUT',
+              compte: 'CAISSE',
+              montant: espece,
+              source: 'ADJUSTMENT',
+              note: `Annulation vente ${saleId}`,
               saleId,
+              createdBy: ctx.userId,
             },
           });
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantite } },
-          });
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { increment: item.quantite } },
-            });
-          }
-          // Projection ProductStock : ré-entrée à la boutique de la vente.
-          if (etablissementId) {
-            await applyStockDelta(tx, {
+        }
+        const reste = target.montantVerse - espece;
+        if (compte && reste > 0) {
+          await tx.cashMovement.create({
+            data: {
               tenantId: ctx.tenantId,
               etablissementId,
-              productId: item.productId,
-              variantId: item.variantId,
-              delta: item.quantite,
-            });
-          }
-        }
-
-        // Reversal trésorerie : on ressort la part encaissée (en ventilant le mixte).
-        const compte = accountForPayment(target.paymentMethod);
-        if (target.montantVerse > 0) {
-          const espece =
-            compte === 'CAISSE'
-              ? 0
-              : Math.min(Math.max(target.montantEspeces ?? 0, 0), target.montantVerse);
-          if (espece > 0) {
-            await tx.cashMovement.create({
-              data: {
-                tenantId: ctx.tenantId,
-                etablissementId,
-                type: 'OUT',
-                compte: 'CAISSE',
-                montant: espece,
-                source: 'ADJUSTMENT',
-                note: `Annulation vente ${saleId}`,
-                saleId,
-                createdBy: ctx.userId,
-              },
-            });
-          }
-          const reste = target.montantVerse - espece;
-          if (compte && reste > 0) {
-            await tx.cashMovement.create({
-              data: {
-                tenantId: ctx.tenantId,
-                etablissementId,
-                type: 'OUT',
-                compte,
-                montant: reste,
-                source: 'ADJUSTMENT',
-                note: `Annulation vente ${saleId}`,
-                saleId,
-                createdBy: ctx.userId,
-              },
-            });
-          }
-        }
-
-        // Reversal dette client : on retire la part impayée (bornée au solde courant).
-        const impaye = target.total - target.montantVerse;
-        if (target.clientId && impaye > 0) {
-          const client = await tx.client.findFirst({
-            where: { id: target.clientId, tenantId: ctx.tenantId },
+              type: 'OUT',
+              compte,
+              montant: reste,
+              source: 'ADJUSTMENT',
+              note: `Annulation vente ${saleId}`,
+              saleId,
+              createdBy: ctx.userId,
+            },
           });
-          const dec = client ? Math.min(impaye, client.soldeCredit) : 0;
-          if (dec > 0) {
-            await tx.client.update({
-              where: { id: target.clientId },
-              data: { soldeCredit: { decrement: dec } },
-            });
-          }
+        }
+      }
+
+      // Reversal dette client : on retire la part impayée (bornée au solde courant).
+      const impaye = target.total - target.montantVerse;
+      if (target.clientId && impaye > 0) {
+        const client = await tx.client.findFirst({
+          where: { id: target.clientId, tenantId: ctx.tenantId },
+        });
+        const dec = client ? Math.min(impaye, client.soldeCredit) : 0;
+        if (dec > 0) {
+          await tx.client.update({
+            where: { id: target.clientId },
+            data: { soldeCredit: { decrement: dec } },
+          });
         }
       }
 
       await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
+      // Le reçu public ne vaut plus preuve d'achat : marqué annulé (reste
+      // consultable, la page /r/<code> affiche « VENTE ANNULÉE »).
+      if (target.receiptCode) {
+        await tx.publicReceipt.updateMany({
+          where: { code: target.receiptCode },
+          data: { cancelledAt: new Date() },
+        });
+      }
       return tx.sale.findUnique({
         where: { id: saleId },
-        include: { items: { include: { priceOverride: true } }, installment: true },
+        include: { items: true, installment: true },
       });
     });
     return sale ? toSaleDto(sale, ctx.role) : sale;
@@ -538,7 +560,7 @@ export class SalesService {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const sale = await tx.sale.findFirst({
         where: { id: saleId, tenantId: ctx.tenantId },
-        include: { items: true },
+        include: { items: { include: { product: { select: { type: true, stockPolicy: true } } } } },
       });
       if (!sale) throw new NotFoundException('Vente introuvable');
       if (sale.status !== 'COMPLETED') throw new BadRequestException('Seules les ventes finalisées peuvent faire l\'objet d\'un retour partiel');
@@ -565,41 +587,54 @@ export class SalesService {
           data: { quantiteRetournee: { increment: ret.quantiteRetournee } } as any,
         });
 
-        // Remettre en stock
-        await tx.stockMovement.create({
-          data: {
-            tenantId: ctx.tenantId,
-            etablissementId,
-            productId: item.productId,
-            variantId: item.variantId,
-            type: 'IN',
-            quantite: ret.quantiteRetournee,
-            motif: `Retour client (Vente ${sale.id.slice(0, 8)})`,
-            saleId: sale.id,
-          },
-        });
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: ret.quantiteRetournee } },
-        });
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
+        // Remettre en stock — symétrique de finalize : seuls les articles dont le
+        // stock a été décrémenté ré-entrent (le retour d'un service/plat reste
+        // possible : avoir/remboursement sans ré-entrée).
+        if (saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) {
+          await tx.stockMovement.create({
+            data: {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              productId: item.productId,
+              variantId: item.variantId,
+              type: 'IN',
+              quantite: ret.quantiteRetournee,
+              motif: `Retour client (Vente ${sale.id.slice(0, 8)})`,
+              saleId: sale.id,
+            },
+          });
+          await tx.product.update({
+            where: { id: item.productId },
             data: { stock: { increment: ret.quantiteRetournee } },
           });
-        }
-        // Projection ProductStock : ré-entrée à la boutique de la vente.
-        if (etablissementId) {
-          await applyStockDelta(tx, {
-            tenantId: ctx.tenantId,
-            etablissementId,
-            productId: item.productId,
-            variantId: item.variantId,
-            delta: ret.quantiteRetournee,
-          });
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: ret.quantiteRetournee } },
+            });
+          }
+          // Projection ProductStock : ré-entrée à la boutique de la vente.
+          if (etablissementId) {
+            await applyStockDelta(tx, {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              productId: item.productId,
+              variantId: item.variantId,
+              delta: ret.quantiteRetournee,
+            });
+          }
         }
 
         refundAmount += item.prixReel * ret.quantiteRetournee;
+      }
+
+      // Remboursement espèces borné à ce qui a réellement été encaissé : sur une
+      // vente à crédit (montantVerse = 0) on ne décaisse pas d'argent jamais reçu —
+      // l'avoir (CREATE_CREDIT) est le chemin correct.
+      if (action === 'REFUND_CASH' && refundAmount > sale.montantVerse) {
+        throw new BadRequestException(
+          `Remboursement espèces impossible : ${refundAmount} demandé mais seulement ${sale.montantVerse} encaissé sur cette vente. Utilisez l'avoir (crédit client).`,
+        );
       }
 
       if (refundAmount > 0) {
@@ -634,7 +669,7 @@ export class SalesService {
 
       const updatedSale = await tx.sale.findUnique({
         where: { id: saleId },
-        include: { items: { include: { priceOverride: true } }, installment: true },
+        include: { items: true, installment: true },
       });
       return toSaleDto(updatedSale as any, ctx.role);
     });
@@ -776,7 +811,7 @@ export class SalesService {
         orderBy: { createdAt: 'desc' },
         take: 100,
         include: {
-          items: { include: { priceOverride: true, product: true } },
+          items: { include: { product: true } },
           installment: true,
           client: true,
           vendeur: { select: { id: true, nom: true, email: true } },
@@ -800,7 +835,7 @@ export class SalesService {
         },
         orderBy: { createdAt: 'desc' },
         take: 200,
-        include: { items: { include: { priceOverride: true, product: true } }, installment: true, client: true },
+        include: { items: { include: { product: true } }, installment: true, client: true },
       }),
     );
     return toSaleDtoList(sales, ctx.role);
@@ -810,7 +845,7 @@ export class SalesService {
     const sale = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findFirst({
         where: { id, tenantId: ctx.tenantId },
-        include: { items: { include: { priceOverride: true } }, installment: true },
+        include: { items: true, installment: true },
       }),
     );
     if (!sale) throw new NotFoundException('Vente introuvable');

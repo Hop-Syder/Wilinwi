@@ -11,7 +11,7 @@
  */
 // ──────────────────────────────────
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type {
   AuthContext,
@@ -110,6 +110,12 @@ export class DispatchService {
       if (source.id === destination.id) {
         throw new BadRequestException('Source et destination doivent être différentes.');
       }
+      // On ne sort du stock que d'un établissement auquel on a soi-même accès.
+      if (!ctx.etablissementIds.includes(source.id)) {
+        throw new ForbiddenException(
+          `Vous n'avez pas accès à l'établissement source « ${source.nom} ».`,
+        );
+      }
 
       const created = await tx.dispatchOrder.create({
         data: {
@@ -193,6 +199,12 @@ export class DispatchService {
     const d = await this.ensure(tx, ctx.tenantId, id);
     if (d.statut !== 'DRAFT') {
       throw new BadRequestException('Ce dispatch a déjà été traité.');
+    }
+    // Le validateur doit lui-même avoir accès à la source dont le stock sort.
+    if (!ctx.etablissementIds.includes(d.sourceId)) {
+      throw new ForbiddenException(
+        "Vous n'avez pas accès à l'établissement source de ce dispatch.",
+      );
     }
 
     for (const item of d.items) {

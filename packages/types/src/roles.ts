@@ -46,10 +46,10 @@ export const CAPABILITIES = [
   'inventory:validate',
   // Entrepôt — Fournisseurs & achats (MVP2)
   'supplier:manage', // fournisseurs, bons de commande, réception, dettes fournisseurs
-  // Ventes
+  // Ventes — NOTE : sale:override_floor_price a été SUPPRIMÉ (la vente sous le
+  // plancher est strictement refusée, aucun flux d'approbation).
   'sale:create',
   'sale:read',
-  'sale:override_floor_price', // valider une vente sous le prix plancher
   'sale:cancel', // annuler une vente entière (ré-entrée stock + reversal) — responsable
   'sale:return', // retour partiel d'articles (avoir / remboursement) — caissier autorisé
   // Caisse
@@ -89,7 +89,6 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'supplier:manage',
     'sale:create',
     'sale:read',
-    'sale:override_floor_price',
     'sale:cancel',
     'sale:return',
     'cash:collect',
@@ -106,7 +105,10 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'reports:read_full',
   ],
   SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read'],
+  // Le caissier VEND aussi (usage réel des caisses : il encaisse la vente qu'il
+  // crée) — décision TDR v2. Le plancher reste bloquant, les prix sensibles masqués.
   CASHIER: [
+    'sale:create',
     'sale:read',
     'sale:return',
     'cash:collect',
@@ -159,7 +161,6 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'supplier:manage': 'STOCK',
   'sale:create': 'POS',
   'sale:read': 'POS',
-  'sale:override_floor_price': 'POS',
   'sale:cancel': 'POS',
   'sale:return': 'POS',
   'cash:collect': 'POS',

@@ -19,6 +19,7 @@ export class PublicReceiptController {
     montantVerse: number;
     items: unknown;
     date: Date;
+    cancelled: boolean;
   }> {
     const receipt = await this.prisma.client.publicReceipt.findUnique({ where: { code } });
     if (!receipt) throw new NotFoundException('Reçu introuvable');
@@ -29,6 +30,8 @@ export class PublicReceiptController {
       montantVerse: receipt.montantVerse,
       items: receipt.items,
       date: receipt.saleDate,
+      // Vente annulée : le reçu reste consultable mais ne vaut plus preuve d'achat.
+      cancelled: receipt.cancelledAt !== null,
     };
   }
 }

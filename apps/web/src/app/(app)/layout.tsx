@@ -32,8 +32,9 @@ import {
   Warehouse,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
-import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
+import { ROLE_LABELS, type InfraCapability, type ModuleKey } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
+import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { useSync } from '@/lib/use-sync';
 import { apiGet, apiPost, ApiError, getPinToken } from '@/lib/api';
 import { PinSwitchModal, type PinUser } from '@/components/PinSwitchModal';
@@ -43,7 +44,17 @@ import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { NotificationBell } from '@/components/notification-bell';
 
-const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
+// `infraCap` (optionnel) : capacité d'infrastructure requise pour voir l'entrée
+// (TDR v2) — les entrées verticales (Food, Santé…) se brancheront ici.
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutGrid;
+  module?: ModuleKey | 'ADMIN';
+  infraCap?: InfraCapability;
+};
+
+const NAV: NavItem[] = [
   { href: '/', label: 'Hub', icon: LayoutGrid },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3, module: 'ANALYTICS' },
   { href: '/stock', label: 'Stock', icon: Package, module: 'STOCK' },
@@ -90,10 +101,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
+  const { has: hasInfraCap } = useInfraCapabilities();
 
-  const canSee = (m?: ModuleKey | 'ADMIN', href?: string) => {
+  const canSee = ({ module: m, href, infraCap }: NavItem) => {
     // La Caisse est toujours masquée en vue "Tous les établissements".
     if (href === '/pos' && isGlobalView) return false;
+    // Capacité d'infrastructure requise (même résolution que l'API).
+    if (infraCap && !hasInfraCap(infraCap)) return false;
     if (!m) return true;
     if (m === 'ADMIN') return user?.role === 'OWNER' || user?.role === 'MANAGER';
     return user?.modules.includes(m) ?? false;
@@ -254,7 +268,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <nav className="mt-2">
             <ul className="space-y-1">
-              {menuItems.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
+              {menuItems.filter((item) => canSee(item)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -320,7 +334,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="hidden w-52 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
             <ul className="space-y-1">
-              {menuItems.filter((item) => canSee(item.module, item.href)).map(({ href, label, icon: Icon }) => {
+              {menuItems.filter((item) => canSee(item)).map(({ href, label, icon: Icon }) => {
                 const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
                 return (
                   <li key={href}>
@@ -359,7 +373,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {menuItems.filter((item) => canSee(item.module, item.href))
+          {menuItems.filter((item) => canSee(item))
             .slice(0, 4)
             .map(({ href, label, icon: Icon }) => {
               const active = href === '/' ? pathname === '/' : pathname.startsWith(href);

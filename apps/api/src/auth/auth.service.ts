@@ -180,7 +180,15 @@ export class AuthService {
       // de l'AuthContext (déjà bornée à l'accès utilisateur + clamp rétrogradation).
       const etablissements = await tx.etablissement.findMany({
         where: { id: { in: ctx.etablissementIds } },
-        select: { id: true, nom: true, type: true },
+        select: {
+          id: true,
+          nom: true,
+          type: true,
+          infrastructure: true,
+          langue: true,
+          devise: true,
+          timezone: true,
+        },
         orderBy: { createdAt: 'asc' },
       });
       return { user, etablissements };

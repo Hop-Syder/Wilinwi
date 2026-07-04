@@ -19,6 +19,7 @@ import { ensureAuthUser } from './seed-auth.js';
 const TENANT_ID = '00000000-0000-0000-0000-0000000000a2';
 const ETAB_PRET_ID = '00000000-0000-0000-0000-0000000000c2';
 const ETAB_PARFUM_ID = '00000000-0000-0000-0000-0000000000c3';
+const ETAB_MAQUIS_ID = '00000000-0000-0000-0000-0000000000c4';
 
 const OWNER_EMAIL = 'christian@prestige.bj';
 const OWNER_PASSWORD = '12345678';
@@ -35,6 +36,10 @@ interface SeedProduct {
   prixPlancher: number;
   prixCatalogue: number;
   stock: number;
+  /** Typage produit (TDR v2) — défaut STANDARD. SERVICE/MANUFACTURED : stock 0, aucun mouvement. */
+  type?: 'STANDARD' | 'BATCHED' | 'MANUFACTURED' | 'SERVICE';
+  stockPolicy?: 'STRICT' | 'ALLOW_NEGATIVE' | 'NO_STOCK' | 'RECIPE_BASED';
+  unitKind?: 'UNIT' | 'WEIGHT' | 'VOLUME' | 'PACKAGE' | 'TIME';
 }
 
 const PRODUITS_PRET_A_PORTER: SeedProduct[] = [
@@ -61,6 +66,16 @@ const PRODUITS_PARFUMS: SeedProduct[] = [
   { nom: 'Eau de Parfum Rose Nectar', sku: 'PRF-ROS-NEC', categorie: 'Eaux de parfum', prixAchat: 12000, prixPlancher: 18000, prixCatalogue: 25000, stock: 20 },
   { nom: 'Encens Résine Oliban', sku: 'PRF-RES-OLI', categorie: 'Encens', prixAchat: 1000, prixPlancher: 1500, prixCatalogue: 2500, stock: 60 },
   { nom: 'Parfum Solide Ambre Céleste', sku: 'PRF-SOL-AMB', categorie: 'Solides', prixAchat: 2500, prixPlancher: 4000, prixCatalogue: 6000, stock: 40 },
+];
+
+// Maquis (infrastructure FOOD) : boissons STANDARD (stock direct), plats
+// MANUFACTURED (vendables sans stock direct) et une prestation SERVICE.
+const PRODUITS_MAQUIS: SeedProduct[] = [
+  { nom: 'Sodabi artisanal 33cl', sku: 'MAQ-SOD-33', categorie: 'Boissons', prixAchat: 500, prixPlancher: 800, prixCatalogue: 1200, stock: 60 },
+  { nom: 'Béninoise 50cl', sku: 'MAQ-BEN-50', categorie: 'Boissons', prixAchat: 350, prixPlancher: 500, prixCatalogue: 800, stock: 120 },
+  { nom: 'Poulet bicyclette braisé', sku: 'MAQ-POU-BRA', categorie: 'Plats', type: 'MANUFACTURED', stockPolicy: 'RECIPE_BASED', prixAchat: 1800, prixPlancher: 3000, prixCatalogue: 4500, stock: 0 },
+  { nom: 'Pâte rouge + fromage peulh', sku: 'MAQ-PAT-ROU', categorie: 'Plats', type: 'MANUFACTURED', stockPolicy: 'RECIPE_BASED', prixAchat: 800, prixPlancher: 1500, prixCatalogue: 2500, stock: 0 },
+  { nom: 'Location espace privé (heure)', sku: 'MAQ-SRV-LOC', categorie: 'Services', type: 'SERVICE', stockPolicy: 'NO_STOCK', unitKind: 'TIME', prixAchat: 0, prixPlancher: 5000, prixCatalogue: 8000, stock: 0 },
 ];
 
 // ───────────────────────────────── Seed ─────────────────────────────────
@@ -103,19 +118,22 @@ async function main() {
     });
 
     const boutiques = [
-      { id: ETAB_PRET_ID, nom: 'Prestige Prêt-à-Porter', produits: PRODUITS_PRET_A_PORTER },
-      { id: ETAB_PARFUM_ID, nom: 'Prestige Parfums', produits: PRODUITS_PARFUMS },
+      { id: ETAB_PRET_ID, nom: 'Prestige Prêt-à-Porter', type: 'BOUTIQUE', infrastructure: 'RETAIL', produits: PRODUITS_PRET_A_PORTER },
+      { id: ETAB_PARFUM_ID, nom: 'Prestige Parfums', type: 'BOUTIQUE', infrastructure: 'RETAIL', produits: PRODUITS_PARFUMS },
+      // Établissement FOOD : exerce la résolution de capacités par infrastructure.
+      { id: ETAB_MAQUIS_ID, nom: 'Prestige Maquis', type: 'RESTAURANT', infrastructure: 'FOOD', produits: PRODUITS_MAQUIS },
     ] as const;
 
     for (const boutique of boutiques) {
       await tx.etablissement.upsert({
         where: { id: boutique.id },
-        update: { nom: boutique.nom },
+        update: { nom: boutique.nom, infrastructure: boutique.infrastructure },
         create: {
           id: boutique.id,
           tenantId: TENANT_ID,
           nom: boutique.nom,
-          type: 'BOUTIQUE',
+          type: boutique.type,
+          infrastructure: boutique.infrastructure,
         },
       });
       await tx.userEtablissement.upsert({
@@ -131,19 +149,26 @@ async function main() {
         });
         if (existing) continue; // déjà seedé — on ne rejoue ni le stock ni le mouvement
 
+        const affectsStock = p.type === undefined || p.type === 'STANDARD' || p.type === 'BATCHED';
         const created = await tx.product.create({
           data: {
             tenantId: TENANT_ID,
             nom: p.nom,
             sku: p.sku,
             categorie: p.categorie,
+            type: p.type ?? 'STANDARD',
+            stockPolicy: p.stockPolicy ?? 'STRICT',
+            unitKind: p.unitKind ?? 'UNIT',
             prixAchat: p.prixAchat,
             prixPlancher: p.prixPlancher,
             prixCatalogue: p.prixCatalogue,
-            stock: p.stock,
+            stock: affectsStock ? p.stock : 0,
             seuilAlerte: SEUIL_ALERTE,
           },
         });
+
+        // SERVICE/MANUFACTURED : pas de stock direct → ni mouvement ni projection.
+        if (!affectsStock) continue;
 
         // Grand livre : stock initial = mouvement IN rattaché à la boutique.
         await tx.stockMovement.create({

@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { IdSchema, PlanSchema, MODULES } from './common.js';
 import { RoleSchema } from './roles.js';
 import { EtablissementTypeSchema } from './etablissement.js';
+import { EtablissementInfrastructureSchema, InfraCapabilitySchema } from './capabilities.js';
 import { SubscriptionStatusSchema, DunningStateSchema, ACTIVE_DUNNING } from './dunning.js';
 
 /**
@@ -62,6 +63,11 @@ export const AuthContextSchema = z.object({
   isGlobalView: z.boolean().default(false),
   /** Établissements auxquels l'utilisateur a accès. */
   etablissementIds: z.array(IdSchema).default([]),
+  /** Infrastructure métier de l'établissement courant (`null` en vue globale). */
+  infrastructure: EtablissementInfrastructureSchema.nullable().default(null),
+  /** Capacités d'infrastructure effectives (infrastructure → plan → add-ons →
+   *  dunning → rôle). En vue globale : union en lecture des établissements accessibles. */
+  infraCapabilities: z.array(InfraCapabilitySchema).default([]),
   /** Statut d'abonnement de l'entreprise (facturation). */
   subscriptionStatus: SubscriptionStatusSchema.default('ACTIVE'),
   /** État de relance d'impayé (dérivé de pastDueSince) — pilote les restrictions. */

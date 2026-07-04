@@ -13,17 +13,15 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import {
   CreateProductSchema,
   CreateStockMovementSchema,
-  CreateStockTransferSchema,
   SetStockThresholdSchema,
   UpdateProductSchema,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
-  type CreateStockTransferInput,
   type SetStockThresholdInput,
   type UpdateProductInput,
 } from '@wilinwi/types';
-import { CurrentUser, RequireCapabilities } from '../common/decorators';
+import { CurrentUser, NonVital, RequireCapabilities } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { StockService } from './stock.service';
 
@@ -100,17 +98,13 @@ export class StockController {
 
   // Valorisation = données sensibles (prix d'achat) → reports:read_full.
   @RequireCapabilities('reports:read_full')
+  @NonVital() // rapport avancé : suspendu dès l'impayé J+3
   @Get('valuation')
   valuation(@CurrentUser() user: AuthContext) {
     return this.stock.valuation(user);
   }
 
-  @RequireCapabilities('stock:write')
-  @Post('transfers')
-  transfer(
-    @CurrentUser() user: AuthContext,
-    @Body(new ZodValidationPipe(CreateStockTransferSchema)) dto: CreateStockTransferInput,
-  ) {
-    return this.stock.transfer(user, dto);
-  }
+  // NOTE : POST /stock/transfers a été SUPPRIMÉ — les transferts inter-boutiques
+  // passent par le Dispatch (POST /dispatches, warehouse), canal unique avec
+  // statuts, référence, audit et contrôle d'accès à la source.
 }

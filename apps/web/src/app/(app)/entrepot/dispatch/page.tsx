@@ -8,7 +8,7 @@
  *   Réservé OWNER/MANAGER. La validation déplace le stock des deux emplacements.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Truck, X, Trash2, CheckCircle2, Ban, ArrowRight } from 'lucide-react';
 import {
@@ -82,10 +82,6 @@ export default function DispatchPage() {
     void load();
   }, []);
 
-  const productName = useMemo(
-    () => new Map(products.map((p) => [p.id, p.nom])),
-    [products],
-  );
 
   function openCreate() {
     setError(null);

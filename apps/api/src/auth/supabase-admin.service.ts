@@ -27,7 +27,6 @@ export class SupabaseAdminService {
       {
         auth: { autoRefreshToken: false, persistSession: false },
         // Node < 22 n'a pas de WebSocket natif ; on fournit `ws` (realtime non utilisé).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         realtime: { transport: WebSocket as any },
       },
     );

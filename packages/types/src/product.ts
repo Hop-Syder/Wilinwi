@@ -12,6 +12,88 @@
 import { z } from 'zod';
 import { IdSchema, MoneySchema, QuantitySchema } from './common.js';
 
+// ──────────── Typage produit (TDR v2 — ADR-003) ────────────
+
+/** Comportement stock/vente d'un produit. */
+export const PRODUCT_TYPES = ['STANDARD', 'BATCHED', 'MANUFACTURED', 'SERVICE'] as const;
+export type ProductType = (typeof PRODUCT_TYPES)[number];
+export const ProductTypeSchema = z.enum(PRODUCT_TYPES);
+
+/** Libellés FR affichés dans l'interface. */
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  STANDARD: 'Standard (stock direct)',
+  BATCHED: 'Par lots (péremption)',
+  MANUFACTURED: 'Fabriqué (plat, production)',
+  SERVICE: 'Service (prestation)',
+};
+
+/** Politique de stock appliquée à la vente. */
+export const STOCK_POLICIES = ['STRICT', 'ALLOW_NEGATIVE', 'NO_STOCK', 'RECIPE_BASED'] as const;
+export type StockPolicy = (typeof STOCK_POLICIES)[number];
+export const StockPolicySchema = z.enum(STOCK_POLICIES);
+
+/** Nature de l'unité de base d'un produit. */
+export const UNIT_KINDS = ['UNIT', 'WEIGHT', 'VOLUME', 'PACKAGE', 'TIME'] as const;
+export type UnitKind = (typeof UNIT_KINDS)[number];
+export const UnitKindSchema = z.enum(UNIT_KINDS);
+
+/**
+ * Stratégie de vente par type produit (TDR §9.1) : seuls STANDARD et BATCHED
+ * portent un stock direct (pré-contrôle + décrément à la vente). SERVICE et
+ * MANUFACTURED sont vendables à stock nul, sans mouvement de stock direct.
+ * `undefined`/`null` (données antérieures à la migration, caches offline) = STANDARD.
+ */
+export function productAffectsStock(type: ProductType | null | undefined): boolean {
+  return type == null || type === 'STANDARD' || type === 'BATCHED';
+}
+
+/** Politique de stock par défaut cohérente avec le type produit. */
+export function defaultStockPolicy(type: ProductType): StockPolicy {
+  switch (type) {
+    case 'SERVICE':
+      return 'NO_STOCK';
+    case 'MANUFACTURED':
+      return 'RECIPE_BASED';
+    default:
+      return 'STRICT';
+  }
+}
+
+/** Comportement effectif d'une vente vis-à-vis du stock (TDR §9.1 + §9.2). */
+export interface SaleStockBehavior {
+  /** Vérifier la disponibilité AVANT la vente (refus si insuffisant). */
+  precheck: boolean;
+  /** Décrémenter le stock direct À la vente (et le ré-entrer à l'annulation/retour). */
+  decrement: boolean;
+}
+
+/**
+ * Croisement type produit × politique de stock — MÊME logique côté web et API :
+ * - SERVICE/MANUFACTURED : jamais de stock direct, quelle que soit la politique
+ *   (les recettes RECIPE_BASED décrémenteront les composants — Milestone 3) ;
+ * - STANDARD/BATCHED : STRICT bloque et décrémente ; ALLOW_NEGATIVE décrémente
+ *   sans bloquer (stock négatif possible, alerté par les seuils existants) ;
+ *   NO_STOCK ignore totalement le stock ; RECIPE_BASED sur un produit à stock
+ *   direct est une mauvaise configuration → repli STRICT (le plus sûr).
+ * `null`/`undefined` (données pré-migration, caches offline) = STANDARD/STRICT.
+ */
+export function saleStockBehavior(
+  type: ProductType | null | undefined,
+  stockPolicy: StockPolicy | null | undefined,
+): SaleStockBehavior {
+  if (!productAffectsStock(type)) return { precheck: false, decrement: false };
+  switch (stockPolicy ?? 'STRICT') {
+    case 'ALLOW_NEGATIVE':
+      return { precheck: false, decrement: true };
+    case 'NO_STOCK':
+      return { precheck: false, decrement: false };
+    case 'STRICT':
+    case 'RECIPE_BASED':
+    default:
+      return { precheck: true, decrement: true };
+  }
+}
+
 /**
  * Système à 3 prix produit (le 4ᵉ, prix_reel, est porté par chaque vente).
  * Contrainte métier : prix_achat ≤ prix_plancher ≤ prix_catalogue.
@@ -47,6 +129,10 @@ const CreateProductSchemaBase = z.object({
   nom: z.string().min(1),
   sku: z.string().min(1).optional(),
   categorie: z.string().min(1).optional(),
+  type: ProductTypeSchema.default('STANDARD'),
+  stockPolicy: StockPolicySchema.optional(),
+  unitKind: UnitKindSchema.default('UNIT'),
+  baseUnit: z.string().min(1).nullable().optional(),
   photos: z.array(z.string().url()).default([]),
   prixAchat: MoneySchema,
   prixPlancher: MoneySchema,
@@ -100,6 +186,11 @@ export const ProductDtoSchema = z.object({
   nom: z.string(),
   sku: z.string().nullable(),
   categorie: z.string().nullable(),
+  // Défauts : tolère les caches offline antérieurs à la migration (= STANDARD).
+  type: ProductTypeSchema.default('STANDARD'),
+  stockPolicy: StockPolicySchema.default('STRICT'),
+  unitKind: UnitKindSchema.default('UNIT'),
+  baseUnit: z.string().nullable().default(null),
   photos: z.array(z.string()),
   prixCatalogue: MoneySchema,
   // Plancher : toujours présent (visible par tous, sert à négocier).
@@ -148,11 +239,5 @@ export const CreateStockMovementSchema = z.object({
 });
 export type CreateStockMovementInput = z.infer<typeof CreateStockMovementSchema>;
 
-export const CreateStockTransferSchema = z.object({
-  productId: IdSchema,
-  variantId: IdSchema.optional(),
-  sourceEtablissementId: IdSchema,
-  destinationEtablissementId: IdSchema,
-  quantite: QuantitySchema.refine((q) => q > 0, 'La quantité doit être strictement supérieure à 0'),
-});
-export type CreateStockTransferInput = z.infer<typeof CreateStockTransferSchema>;
+// NOTE : CreateStockTransferSchema a été SUPPRIMÉ — les transferts passent par
+// le Dispatch (CreateDispatchSchema dans dispatch.ts), canal unique.

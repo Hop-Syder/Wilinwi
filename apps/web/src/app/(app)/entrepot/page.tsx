@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle, FileDown } from 'lucide-react';
+import { Truck, Plus, CheckCircle, DollarSign, Search, Eye, FileDown } from 'lucide-react';
 import { Button, Card, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -97,7 +97,7 @@ export default function EntrepotPage() {
       setOrders(ords);
       setPayments(pays);
       setEtablissements(etabs);
-    } catch (e) {
+    } catch {
       setError("Impossible de charger les données du module d'approvisionnement.");
     } finally {
       setLoading(false);

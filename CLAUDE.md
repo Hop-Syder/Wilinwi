@@ -36,15 +36,30 @@ packages:
   requêter en dehors de ce contexte.
 - **5 rôles** (`OWNER/MANAGER/SELLER/CASHIER/DELIVERY`) → matrice de capacités dans
   [packages/types/src/roles.ts](packages/types/src/roles.ts). Les routes sont gardées
-  par `@RequireCapabilities(...)` + `CapabilitiesGuard`.
+  par `@RequireCapabilities(...)` + `CapabilitiesGuard`. Le CASHIER **vend aussi**
+  (`sale:create`) — décision TDR v2 (usage réel des caisses).
+- **Infrastructures & typage produit (TDR v2)** : chaque établissement porte une
+  `infrastructure` (`RETAIL/FOOD/HEALTH/SERVICE/WHOLESALE`, distincte du `type` physique)
+  qui active des capacités via [packages/types/src/capabilities.ts](packages/types/src/capabilities.ts)
+  (`resolveEffectiveCapabilities` : infrastructure → plan → add-ons → dunning → rôle,
+  MÊME resolver web + API ; guard `@RequireInfraCapability`/`@RequireAnyInfraCapability`).
+  Chaque produit porte un `type` (`STANDARD/BATCHED/MANUFACTURED/SERVICE`) + `stockPolicy` :
+  la stratégie de vente est `saleStockBehavior(type, policy)` (SERVICE/MANUFACTURED
+  vendables sans stock ; `ALLOW_NEGATIVE` ne bloque pas ; `NO_STOCK` ignore le stock).
+  **Schema-ready mais PAS activé** : `BATCHED` (lots/péremption, refusé par l'API
+  jusqu'au Milestone 4), recettes Food (Milestone 3), multi-conditionnement Wholesale
+  (Milestone 5). Le gating commercial des infrastructures (`planAllowsInfrastructure`)
+  est volontairement permissif en attendant l'arbitrage tarifaire.
 - **Sécurité au niveau champ** : `prix_achat` (coût → marge) n'est JAMAIS renvoyé à
   SELLER/CASHIER/DELIVERY. En revanche `prix_plancher` EST visible par tous (donnée
   de négociation) — la vente sous le plancher reste refusée par le backend. Unique
   point de sortie des produits : [toProductDto()](apps/api/src/stock/product.mapper.ts).
   Idem pour le dashboard (bénéfice/valeur d'achat masqués).
 - **Système à 4 prix** : `prixAchat ≤ prixPlancher ≤ prixCatalogue` (produit) +
-  `prixReel` (par ligne de vente). Vente sous le plancher → **opération strictement refusée** 
-  par le backend et l'UI (anti-fraude absolu, l'état PENDING_APPROVAL n'est plus actif).
+  `prixReel` (par ligne de vente). Vente sous le plancher → **opération strictement refusée**
+  par le backend et l'UI (anti-fraude absolu). Le flux d'approbation a été **entièrement
+  supprimé** (schéma, types, code) : ni `PENDING_APPROVAL`, ni `PriceOverride`,
+  ni `sale:override_floor_price` n'existent plus.
 - **Architecture de Stock Centralisé (Hub & Spoke)** : 
   - Les commandes fournisseurs sont réceptionnées **uniquement** dans un `Magasin` (Entrepôt central).
   - Le stock est tracé par localisation géographique via un modèle dédié (`ProductStock`), et non plus globalement.

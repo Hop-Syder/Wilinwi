@@ -17,23 +17,15 @@ import {
   Ban,
   Eye,
   Search,
-  Calendar,
   FileSpreadsheet,
-  ArrowRight,
   X,
   CheckCircle2,
-  DollarSign,
-  CreditCard,
-  AlertTriangle,
-  ChevronRight,
-  TrendingUp,
-  User,
   ShieldAlert,
   Store,
 } from 'lucide-react';
-import { PAYMENT_METHOD_LABELS, type PaymentMethod, type ClientDto } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
-import { apiGet, apiPost, ApiError } from '@/lib/api';
+import { PAYMENT_METHOD_LABELS, type ClientDto } from '@wilinwi/types';
+import { Button, Card, formatFCFA } from '@wilinwi/ui';
+import { apiGet, apiPost } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
@@ -42,7 +34,7 @@ import type { TourStep } from '@/components/tour-guide';
 import Link from 'next/link';
 
 interface Sale extends ReceiptSale {
-  status: 'COMPLETED' | 'PENDING_PAYMENT' | 'PENDING_APPROVAL' | 'CANCELLED';
+  status: 'COMPLETED' | 'PENDING_PAYMENT' | 'CANCELLED';
   vendeur?: { id: string; nom: string; email: string } | null;
   etablissement?: { id: string; nom: string } | null;
 }
@@ -50,7 +42,6 @@ interface Sale extends ReceiptSale {
 const STATUS: Record<Sale['status'], { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral'; color: string }> = {
   COMPLETED: { label: 'Payée', tone: 'success', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   PENDING_PAYMENT: { label: 'Crédit/Acompte', tone: 'warning', color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  PENDING_APPROVAL: { label: 'À valider', tone: 'warning', color: 'text-blue-700 bg-blue-50 border-blue-200' },
   CANCELLED: { label: 'Annulée', tone: 'danger', color: 'text-rose-700 bg-rose-50 border-rose-200' },
 };
 

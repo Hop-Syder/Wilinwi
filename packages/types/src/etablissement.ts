@@ -10,6 +10,7 @@
 // ──────────────────────────────────
 
 import { z } from 'zod';
+import { EtablissementInfrastructureSchema, type EtablissementInfrastructure } from './capabilities.js';
 
 /** Types d'établissement supportés (lieux physiques). */
 export const ETABLISSEMENT_TYPES = [
@@ -40,18 +41,26 @@ export const ETABLISSEMENT_TYPE_LABELS: Record<EtablissementType, string> = {
 export const CreateEtablissementSchema = z.object({
   nom: z.string().min(1, 'Le nom est requis'),
   type: EtablissementTypeSchema.default('BOUTIQUE'),
+  infrastructure: EtablissementInfrastructureSchema.default('RETAIL'),
   ville: z.string().min(1).nullable().optional(),
   adresse: z.string().min(1).nullable().optional(),
   telephone: z.string().min(1).nullable().optional(),
+  langue: z.string().min(2).nullable().optional(),
+  devise: z.string().min(3).nullable().optional(),
+  timezone: z.string().min(1).nullable().optional(),
 });
 export type CreateEtablissementInput = z.infer<typeof CreateEtablissementSchema>;
 
 export const UpdateEtablissementSchema = z.object({
   nom: z.string().min(1).optional(),
   type: EtablissementTypeSchema.optional(),
+  infrastructure: EtablissementInfrastructureSchema.optional(),
   ville: z.string().min(1).nullable().optional(),
   adresse: z.string().min(1).nullable().optional(),
   telephone: z.string().min(1).nullable().optional(),
+  langue: z.string().min(2).nullable().optional(),
+  devise: z.string().min(3).nullable().optional(),
+  timezone: z.string().min(1).nullable().optional(),
   actif: z.boolean().optional(),
 });
 export type UpdateEtablissementInput = z.infer<typeof UpdateEtablissementSchema>;
@@ -61,8 +70,12 @@ export interface EtablissementDto {
   id: string;
   nom: string;
   type: EtablissementType;
+  infrastructure: EtablissementInfrastructure;
   ville: string | null;
   adresse: string | null;
   telephone: string | null;
+  langue: string | null;
+  devise: string | null;
+  timezone: string | null;
   actif: boolean;
 }

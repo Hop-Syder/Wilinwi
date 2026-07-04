@@ -72,9 +72,5 @@ export const CreateSaleSchema = z
   });
 export type CreateSaleInput = z.infer<typeof CreateSaleSchema>;
 
-/** Validation gérant d'une vente passée sous le prix plancher (§5.5). */
-export const ApprovePriceOverrideSchema = z.object({
-  saleItemId: IdSchema,
-  approuve: z.boolean(),
-});
-export type ApprovePriceOverrideInput = z.infer<typeof ApprovePriceOverrideSchema>;
+// NOTE : ApprovePriceOverrideSchema a été SUPPRIMÉ — la vente sous le plancher
+// est strictement refusée (anti-fraude absolu), aucun flux d'approbation.

@@ -52,7 +52,6 @@ SELECT app.enable_tenant_rls('public.inventory_items');
 SELECT app.enable_tenant_rls('public.sales');
 SELECT app.enable_tenant_rls('public.sale_items');
 SELECT app.enable_tenant_rls('public.sale_installments');
-SELECT app.enable_tenant_rls('public.price_overrides');
 SELECT app.enable_tenant_rls('public.clients');
 SELECT app.enable_tenant_rls('public.client_payments');
 SELECT app.enable_tenant_rls('public.cash_movements');

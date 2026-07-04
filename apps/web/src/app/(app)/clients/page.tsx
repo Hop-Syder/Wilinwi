@@ -16,25 +16,18 @@ import {
   Plus, 
   Users, 
   Phone, 
-  Wallet, 
   Search, 
-  Filter, 
   MessageSquare, 
-  Trash2, 
   Edit3, 
   UserPlus, 
   ArrowRight,
-  Landmark,
   ShieldAlert,
   Archive,
-  BookOpen,
-  Calendar,
-  DollarSign,
   X
 } from 'lucide-react';
 import { canSeeClientCredit, type ClientDto, PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
-import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
+import { apiGet, apiPost, apiPatch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -43,14 +36,13 @@ import Link from 'next/link';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 
 interface Sale extends ReceiptSale {
-  status: 'COMPLETED' | 'PENDING_PAYMENT' | 'PENDING_APPROVAL' | 'CANCELLED';
+  status: 'COMPLETED' | 'PENDING_PAYMENT' | 'CANCELLED';
   vendeur?: { id: string; nom: string; email: string } | null;
 }
 
 const STATUS_MAP: Record<Sale['status'], { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral'; color: string }> = {
   COMPLETED: { label: 'Payée', tone: 'success', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
   PENDING_PAYMENT: { label: 'Crédit/Acompte', tone: 'warning', color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  PENDING_APPROVAL: { label: 'À valider', tone: 'warning', color: 'text-blue-700 bg-blue-50 border-blue-200' },
   CANCELLED: { label: 'Annulée', tone: 'danger', color: 'text-rose-700 bg-rose-50 border-rose-200' },
 };
 
@@ -104,7 +96,7 @@ export default function ClientsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showRepayModal, setShowRepayModal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Repayment form state
@@ -410,7 +402,6 @@ export default function ClientsPage() {
           {/* Liste dense des clients */}
           <Card className="p-0 overflow-hidden max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
             {filteredClients.map((c) => {
-              const hasDebt = (c.soldeCredit ?? 0) > 0;
               const isSelected = selectedId === c.id;
               
               return (

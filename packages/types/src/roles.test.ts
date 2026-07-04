@@ -27,10 +27,10 @@ describe('sécurité au niveau champ (prix sensibles)', () => {
 });
 
 describe('capacités par rôle', () => {
-  it('seuls OWNER/MANAGER peuvent valider sous le prix plancher', () => {
-    expect(hasCapability('MANAGER', 'sale:override_floor_price')).toBe(true);
-    expect(hasCapability('OWNER', 'sale:override_floor_price')).toBe(true);
-    expect(hasCapability('SELLER', 'sale:override_floor_price')).toBe(false);
+  it('seuls OWNER/MANAGER peuvent annuler une vente (le plancher, lui, est bloquant pour tous)', () => {
+    expect(hasCapability('MANAGER', 'sale:cancel')).toBe(true);
+    expect(hasCapability('OWNER', 'sale:cancel')).toBe(true);
+    expect(hasCapability('SELLER', 'sale:cancel')).toBe(false);
   });
 
   it('le vendeur peut créer des ventes mais pas gérer les utilisateurs', () => {

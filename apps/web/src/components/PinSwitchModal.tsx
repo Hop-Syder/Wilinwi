@@ -12,7 +12,7 @@
 // ──────────────────────────────────
 
 import { useState } from 'react';
-import { Lock, Unlock, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { User as ArrowLeft } from 'lucide-react';
 import { Button } from '@wilinwi/ui';
 
 export interface PinUser {

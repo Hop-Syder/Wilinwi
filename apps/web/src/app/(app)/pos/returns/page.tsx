@@ -13,7 +13,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Input, Select, Badge, Card, CardHeader, CardTitle, CardContent } from '@wilinwi/ui';
+import { Button, Input, Badge, Card, CardHeader, CardTitle, CardContent } from '@wilinwi/ui';
 import { ArrowLeft, Search, CheckCircle2, RotateCcw, CreditCard, Banknote } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
 import { ContextualHelp } from '@/components/contextual-help';

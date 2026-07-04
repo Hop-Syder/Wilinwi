@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import {
   ACTIVE_DUNNING,
   type DunningState,
+  type EtablissementInfrastructure,
   type EtablissementType,
   type ModuleKey,
   type Plan,
@@ -30,6 +31,9 @@ export interface SessionEtablissement {
   id: string;
   nom: string;
   type: EtablissementType;
+  /** Infrastructure métier (TDR v2) — pilote les capacités de l'établissement.
+   *  Optionnelle pour tolérer une réponse d'API antérieure (défaut : RETAIL). */
+  infrastructure?: EtablissementInfrastructure;
 }
 
 export interface SessionUser {

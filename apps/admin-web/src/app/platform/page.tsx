@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   Sprout,
   Receipt,
-  RefreshCw,
 } from 'lucide-react';
 import { StatCard, formatFCFA } from '@wilinwi/ui';
 import type { PlatformMetricsDto, PlatformRevenueDto } from '@wilinwi/types';

@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
-import { CheckCircle2, Receipt, Share2, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
+import { CheckCircle2, Receipt, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 export interface CheckoutResult {

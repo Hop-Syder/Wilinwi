@@ -24,6 +24,7 @@ interface PublicReceipt {
   montantVerse: number;
   items: ReceiptItem[];
   date: string;
+  cancelled?: boolean;
 }
 
 const fcfa = (n: number) => `${new Intl.NumberFormat('fr-FR').format(Math.round(n))} FCFA`;
@@ -76,9 +77,16 @@ export default function PublicReceiptPage() {
       <style>{`@media print { .no-print { display:none !important; } body { background:#fff; color:#000; } }`}</style>
 
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-md" id="recu">
+        {receipt.cancelled && (
+          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-center text-sm font-bold uppercase tracking-wide text-red-700">
+            Vente annulée — ce reçu ne vaut plus preuve d'achat
+          </div>
+        )}
         <div className="text-center">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-          <h1 className="mt-2 font-display text-lg font-bold text-text-primary">Merci pour votre achat</h1>
+          <CheckCircle2 className={`mx-auto h-12 w-12 ${receipt.cancelled ? 'text-red-400' : 'text-success'}`} />
+          <h1 className="mt-2 font-display text-lg font-bold text-text-primary">
+            {receipt.cancelled ? 'Vente annulée' : 'Merci pour votre achat'}
+          </h1>
           <p className="text-sm text-text-secondary">{receipt.boutique}</p>
           <p className="mt-3 text-3xl font-extrabold text-primary">
             {fcfa(receipt.total)}

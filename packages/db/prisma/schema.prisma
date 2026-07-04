@@ -83,6 +83,41 @@ enum EtablissementType {
   USINE
 }
 
+// Infrastructure métier d'un établissement : pilote les capacités fonctionnelles
+// (modules, POS, règles de stock) — coexiste avec `type` (nature physique). ADR-001/002.
+enum EtablissementInfrastructure {
+  RETAIL
+  FOOD
+  HEALTH
+  SERVICE
+  WHOLESALE
+}
+
+// Comportement stock/vente d'un produit (ADR-003).
+enum ProductType {
+  STANDARD // stock direct décrémenté à la vente
+  BATCHED // stock par lots (FEFO, péremption) — Milestone 4
+  MANUFACTURED // produit fabriqué : pas de stock direct (recettes — Milestone 3)
+  SERVICE // prestation immatérielle : aucun stock
+}
+
+// Politique de stock appliquée à la vente.
+enum StockPolicy {
+  STRICT // bloque si stock insuffisant
+  ALLOW_NEGATIVE // autorise le stock négatif avec alerte
+  NO_STOCK // ignore le stock
+  RECIPE_BASED // décrémente les composants (recette)
+}
+
+// Nature de l'unité de base d'un produit.
+enum UnitKind {
+  UNIT
+  WEIGHT
+  VOLUME
+  PACKAGE
+  TIME
+}
+
 enum StockMovementType {
   IN
   OUT
@@ -103,10 +138,11 @@ enum PaymentMethod {
   INSTALLMENT
 }
 
+// NOTE : PENDING_APPROVAL a été SUPPRIMÉ — la vente sous le plancher est
+// strictement refusée (anti-fraude absolu), aucun flux d'approbation.
 enum SaleStatus {
   COMPLETED
-  PENDING_PAYMENT  // acompte / crédit en cours
-  PENDING_APPROVAL // vente sous le plancher en attente de validation gérant
+  PENDING_PAYMENT // acompte / crédit en cours
   CANCELLED
 }
 
@@ -115,12 +151,6 @@ enum InstallmentStatus {
   PARTIAL
   SETTLED
   OVERDUE
-}
-
-enum PriceOverrideStatus {
-  PENDING
-  APPROVED
-  REJECTED
 }
 
 // ─────────────────────────────── ADN ─────────────────────────────────
@@ -155,7 +185,6 @@ model Tenant {
   inventories     Inventory[]
   sales           Sale[]
   saleInstallments SaleInstallment[]
-  priceOverrides  PriceOverride[]
   clients         Client[]
   clientPayments  ClientPayment[]
   cashMovements   CashMovement[]
@@ -180,16 +209,21 @@ model Tenant {
 // restent au niveau Entreprise (Phase 1).
 
 model Etablissement {
-  id        String            @id @default(uuid()) @db.Uuid
-  tenantId  String            @map("tenant_id") @db.Uuid
-  nom       String
-  type      EtablissementType @default(BOUTIQUE)
-  ville     String?
-  adresse   String?
-  telephone String?
-  actif     Boolean           @default(true)
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt @map("updated_at")
+  id             String                      @id @default(uuid()) @db.Uuid
+  tenantId       String                      @map("tenant_id") @db.Uuid
+  nom            String
+  type           EtablissementType           @default(BOUTIQUE)
+  infrastructure EtablissementInfrastructure @default(RETAIL)
+  ville          String?
+  adresse        String?
+  telephone      String?
+  // Préférences locales par établissement (champs seuls pour l'instant, logique i18n à venir).
+  langue         String?                     @default("fr")
+  devise         String?                     @default("XOF")
+  timezone       String?
+  actif          Boolean                     @default(true)
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
 
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userAccess     UserEtablissement[]
@@ -205,6 +239,7 @@ model Etablissement {
   dispatchDestinations DispatchOrder[] @relation("DispatchDestination")
 
   @@index([tenantId])
+  @@index([tenantId, infrastructure])
   @@map("etablissements")
 }
 
@@ -253,14 +288,17 @@ model ActivityLog {
 // PAS de RLS (lecture publique volontaire) ; ne contient jamais coût/marge/client.
 
 model PublicReceipt {
-  code         String   @id // code court opaque (= Sale.receiptCode)
-  tenantId     String   @map("tenant_id") @db.Uuid
-  boutiqueNom  String   @map("boutique_nom")
+  code         String    @id // code court opaque (= Sale.receiptCode)
+  tenantId     String    @map("tenant_id") @db.Uuid
+  boutiqueNom  String    @map("boutique_nom")
   total        Int
-  montantVerse Int      @map("montant_verse")
+  montantVerse Int       @map("montant_verse")
   items        Json // [{ nom, quantite, prixReel }]
-  saleDate     DateTime @map("sale_date")
-  createdAt    DateTime @default(now()) @map("created_at")
+  saleDate     DateTime  @map("sale_date")
+  // Posé à l'annulation de la vente : le reçu reste consultable mais affiche
+  // clairement « VENTE ANNULÉE » (il ne vaut plus preuve d'achat).
+  cancelledAt  DateTime? @map("cancelled_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   @@map("public_receipts")
 }
@@ -285,8 +323,6 @@ model User {
   ventesEffectuees  Sale[]          @relation("VendeurVentes")
   livraisons        Sale[]          @relation("LivreurLivraisons")
   inventoriesValid  Inventory[]     @relation("InventoryValidator")
-  overridesDemandes PriceOverride[] @relation("OverrideRequester")
-  overridesValides  PriceOverride[] @relation("OverrideApprover")
   etablissements    UserEtablissement[]
 
   @@unique([tenantId, email])
@@ -297,20 +333,24 @@ model User {
 // ───────────────────────────── Stock ─────────────────────────────────
 
 model Product {
-  id            String   @id @default(uuid()) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
   nom           String
   sku           String?
   categorie     String?
-  photos        String[] @default([])
-  prixAchat     Int      @map("prix_achat") // sensible
-  prixPlancher  Int      @map("prix_plancher") // sensible
-  prixCatalogue Int      @map("prix_catalogue")
-  stock         Int      @default(0)
-  seuilAlerte   Int      @default(5) @map("seuil_alerte")
-  actif         Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  type          ProductType @default(STANDARD)
+  stockPolicy   StockPolicy @default(STRICT) @map("stock_policy")
+  unitKind      UnitKind    @default(UNIT) @map("unit_kind")
+  baseUnit      String?     @map("base_unit")
+  photos        String[]    @default([])
+  prixAchat     Int         @map("prix_achat") // sensible
+  prixPlancher  Int         @map("prix_plancher") // sensible
+  prixCatalogue Int         @map("prix_catalogue")
+  stock         Int         @default(0)
+  seuilAlerte   Int         @default(5) @map("seuil_alerte")
+  actif         Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   variants  ProductVariant[]
@@ -322,6 +362,7 @@ model Product {
 
   @@unique([tenantId, sku])
   @@index([tenantId])
+  @@index([tenantId, type])
   @@map("products")
 }
 
@@ -457,9 +498,8 @@ model SaleItem {
   /// Coût figé au moment de la vente (prix d'achat), pour le calcul de marge.
   coutUnitaire Int  @map("cout_unitaire")
 
-  sale          Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product       Product        @relation(fields: [productId], references: [id])
-  priceOverride PriceOverride?
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([tenantId])
   @@index([saleId])
@@ -486,29 +526,6 @@ model SaleInstallment {
 }
 
 // ──────────────── Traçabilité des prix négociés (§5.5) ────────────────
-
-model PriceOverride {
-  id                String              @id @default(uuid()) @db.Uuid
-  tenantId          String              @map("tenant_id") @db.Uuid
-  saleItemId        String              @unique @map("sale_item_id") @db.Uuid
-  prixPlancher      Int                 @map("prix_plancher") // figé au moment de la vente
-  prixApplique      Int                 @map("prix_applique")
-  motif             String // preuve obligatoire
-  status            PriceOverrideStatus @default(PENDING)
-  requestedBy       String              @map("requested_by") @db.Uuid
-  approvedBy        String?             @map("approved_by") @db.Uuid
-  approvedAt        DateTime?           @map("approved_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  saleItem  SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
-  requester User     @relation("OverrideRequester", fields: [requestedBy], references: [id])
-  approver  User?    @relation("OverrideApprover", fields: [approvedBy], references: [id])
-
-  @@index([tenantId])
-  @@index([tenantId, status])
-  @@map("price_overrides")
-}
 
 // ─────────────────────── CRM — Clients & Dettes (MVP2) ───────────────────────
 

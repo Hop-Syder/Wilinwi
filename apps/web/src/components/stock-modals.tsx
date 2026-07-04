@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { X, Plus, Trash2, Sparkles } from 'lucide-react';
-import { Button, Input, Select } from '@wilinwi/ui';
-import { maxProductPhotos, planAllowsProductImages, type ProductDto } from '@wilinwi/types';
+import { Button } from '@wilinwi/ui';
+import {
+  maxProductPhotos,
+  planAllowsProductImages,
+  productAffectsStock,
+  PRODUCT_TYPE_LABELS,
+  type ProductDto,
+  type ProductType,
+} from '@wilinwi/types';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ProductPhotos } from './product-photos';
@@ -143,6 +150,10 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   const imagesAllowed = user ? planAllowsProductImages(user.plan) : false;
   const maxPhotos = user ? maxProductPhotos(user.plan) : 0;
   const [photos, setPhotos] = useState<string[]>(product?.photos ?? []);
+  // Type de comportement stock/vente (TDR v2). BATCHED (lots/péremption) arrive
+  // avec le Milestone 4 — proposé mais désactivé.
+  const [type, setType] = useState<ProductType>(product?.type ?? 'STANDARD');
+  const hasStock = productAffectsStock(type);
   const [form, setForm] = useState({
     nom: product?.nom || '',
     sku: product?.sku || '',
@@ -179,11 +190,12 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         nom: form.nom,
         sku: form.sku || undefined,
         categorie: form.categorie || undefined,
+        type,
         photos: imagesAllowed ? photos : undefined,
         prixAchat: Number(form.prixAchat),
         prixPlancher: Number(form.prixPlancher),
         prixCatalogue: Number(form.prixCatalogue),
-        stock: isEditing ? undefined : Number(form.stock || 0),
+        stock: isEditing ? undefined : hasStock ? Number(form.stock || 0) : 0,
         seuilAlerte: Number(form.seuilAlerte || 5),
         variants: variants.map(v => ({
           id: v.id,
@@ -229,7 +241,25 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <span className="mb-1 block text-xs font-medium text-slate-600">Catégorie</span>
             <input type="text" value={form.categorie} onChange={(e) => set('categorie')(e.target.value)} placeholder="Ex: Vêtements, Électronique" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
-          
+          <label className="col-span-full">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Type de produit</span>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as ProductType)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            >
+              <option value="STANDARD">{PRODUCT_TYPE_LABELS.STANDARD}</option>
+              <option value="SERVICE">{PRODUCT_TYPE_LABELS.SERVICE}</option>
+              <option value="MANUFACTURED">{PRODUCT_TYPE_LABELS.MANUFACTURED}</option>
+              <option value="BATCHED" disabled>{PRODUCT_TYPE_LABELS.BATCHED} — bientôt</option>
+            </select>
+            {!hasStock && (
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Ce type se vend sans stock direct : aucun décrément à la vente.
+              </span>
+            )}
+          </label>
+
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Prix & Marges</h3>
           </div>
@@ -246,19 +276,23 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <input type="number" value={form.prixCatalogue} onChange={(e) => set('prixCatalogue')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
           </label>
 
-          <div className="col-span-full my-2 border-t border-slate-100 pt-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">Stock</h3>
-          </div>
-          {!isEditing && (
-            <label className="col-span-full sm:col-span-1">
-              <span className="mb-1 block text-xs font-medium text-slate-600">Stock initial</span>
-              <input type="number" value={form.stock} onChange={(e) => set('stock')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
-            </label>
+          {hasStock && (
+            <>
+              <div className="col-span-full my-2 border-t border-slate-100 pt-4">
+                <h3 className="mb-3 text-sm font-semibold text-slate-700">Stock</h3>
+              </div>
+              {!isEditing && (
+                <label className="col-span-full sm:col-span-1">
+                  <span className="mb-1 block text-xs font-medium text-slate-600">Stock initial</span>
+                  <input type="number" value={form.stock} onChange={(e) => set('stock')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+                </label>
+              )}
+              <label className="col-span-full sm:col-span-1">
+                <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
+                <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+              </label>
+            </>
           )}
-          <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
-            <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
-          </label>
 
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Photos du produit</h3>
@@ -369,12 +403,20 @@ export function StockTransferModal({ products, onClose, onSuccess, initialProduc
     setSaving(true);
     setError(null);
     try {
-      await apiPost('/api/stock/transfers', {
-        productId,
-        variantId: variantId || undefined,
-        sourceEtablissementId: sourceId,
-        destinationEtablissementId: destinationId,
-        quantite: Number(quantite),
+      // Canal unique de transfert : Dispatch validé immédiatement (statut,
+      // référence, audit et contrôle d'accès à la source, côté warehouse).
+      await apiPost('/api/dispatches', {
+        sourceId,
+        destinationId,
+        note: 'Transfert rapide (page Stock)',
+        validate: true,
+        items: [
+          {
+            productId,
+            variantId: variantId || undefined,
+            quantite: Number(quantite),
+          },
+        ],
       });
       onSuccess();
     } catch (err) {

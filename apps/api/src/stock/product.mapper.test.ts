@@ -19,6 +19,10 @@ const product: Product = {
   nom: 'Pagne Wax',
   sku: 'WAX-6Y',
   categorie: 'Tissus',
+  type: 'STANDARD',
+  stockPolicy: 'STRICT',
+  unitKind: 'UNIT',
+  baseUnit: null,
   photos: [],
   prixAchat: 8000,
   prixPlancher: 11000,
@@ -49,6 +53,15 @@ describe('toProductDto — sécurité au niveau champ', () => {
       expect(dto.prixPlancher).toBe(11000);
       // Le prix catalogue reste visible pour vendre.
       expect(dto.prixCatalogue).toBe(15000);
+    }
+  });
+
+  it('expose le typage produit (non sensible) pour tous les rôles', () => {
+    for (const role of ['OWNER', 'MANAGER', 'SELLER', 'CASHIER', 'DELIVERY'] as const) {
+      const dto = toProductDto(product, role);
+      expect(dto.type).toBe('STANDARD');
+      expect(dto.stockPolicy).toBe('STRICT');
+      expect(dto.unitKind).toBe('UNIT');
     }
   });
 });
