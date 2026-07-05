@@ -40,6 +40,7 @@ const baseUser: AuthContext = {
   isGlobalView: false,
   etablissementIds: ['00000000-0000-0000-0000-0000000000c1'],
   infrastructure: 'RETAIL',
+  timezone: null,
   infraCapabilities: ['pos.standard', 'stock.simple', 'inventory.basic', 'pricing.floor'],
   subscriptionStatus: 'ACTIVE',
   dunning: ACTIVE_DUNNING,

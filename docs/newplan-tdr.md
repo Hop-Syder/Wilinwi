@@ -1196,3 +1196,40 @@ Les validations humaines de la section 16.2 ont ete tranchees :
   (Visa/Mastercard) sur 5 pays.
 - Perimetre a venir : abonnements + surcouts infrastructure (18.1), webhooks de
   paiement, bascule automatique PAST_DUE (le dunning derive existant s'applique).
+
+---
+
+## 19. Conventions techniques structurantes (2026-07-05)
+
+Posees AVANT le Milestone 3 (les recettes Food et les lots Health en dependent).
+
+### 19.1 Quantites decimales = milli-unites (entiers persistes)
+
+- Toutes les quantites restent des ENTIERS en base (meme philosophie que les FCFA).
+- Produits `WEIGHT`/`VOLUME` : la quantite persistee est en MILLI-unites de
+  `baseUnit` (stock 1500 + baseUnit "kg" = 1,5 kg). `UNIT`/`PACKAGE`/`TIME` : echelle 1.
+- Helpers partages (packages/types) : `quantityScale`, `toStoredQuantity`,
+  `toDisplayQuantity`, `formatQuantity` — l'UI saisit/affiche en decimal,
+  l'API ne voit que des entiers. Les recettes (M3) exprimeront leurs quantites
+  d'ingredients dans cette meme convention.
+
+### 19.2 Frontieres de journee = fuseau de l'ETABLISSEMENT
+
+- « Ventes du jour », cloture de caisse, KPIs et bornes calendaires des rapports
+  basculent au minuit LOCAL de la boutique (`Etablissement.timezone`,
+  defaut `Africa/Porto-Novo`), pas a celui du serveur.
+- `ctx.timezone` est resolu par l'AuthGuard ; helpers purs `startOfDayInTz`,
+  `startOfCalendarDayInTz`, `endOfCalendarDayInTz` (packages/types/src/time.ts).
+- Limitation connue : les buckets JOURNALIERS des graphiques restent en cles UTC
+  (bornes exactes, attribution fine 23h-minuit a affiner si besoin).
+
+### 19.3 Alertes d'audit (socle du 18.2)
+
+- Table `audit_alerts` (RLS, jamais supprimee : resolue) : severite INFO/WARNING/
+  CRITICAL, `type` slug stable, payload JSON, resolution tracee.
+- Levee DANS la transaction de l'operation (`AuditAlertService.raise(tx, ...)`).
+- Producteur actif des aujourd'hui : `stock.negative` (vente ou mouvement
+  ALLOW_NEGATIVE faisant passer le solde local sous zero — le §9.2 "avec alerte"
+  est desormais reel). Le Milestone 4 ajoutera `health.batch_conflict` (CRITICAL).
+- Lecture : tenant `GET /audit-alerts` (OWNER/MANAGER) + console super-admin via
+  `app.platform_audit_alerts()` (`GET /platform/audit-alerts`).

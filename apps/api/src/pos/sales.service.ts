@@ -21,17 +21,23 @@ import {
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
+  endOfCalendarDayInTz,
+  startOfDayInTz,
 } from '@wilinwi/types';
 import { randomBytes } from 'node:crypto';
 import { Prisma, type TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
+import { AuditAlertService } from '../common/audit-alert.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alerts: AuditAlertService,
+  ) {}
 
   /**
    * Crée une vente.
@@ -240,7 +246,8 @@ export class SalesService {
     for (const item of sale.items) {
       // Pas de stock direct (SERVICE/MANUFACTURED) ou politique NO_STOCK → aucun
       // mouvement ni décrément (paiement, trésorerie et reçu restent identiques).
-      if (!saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) continue;
+      const behavior = saleStockBehavior(item.product?.type, item.product?.stockPolicy);
+      if (!behavior.decrement) continue;
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -272,6 +279,33 @@ export class SalesService {
           variantId: item.variantId,
           delta: -item.quantite,
         });
+        // ALLOW_NEGATIVE (§9.2 « autorise le stock négatif AVEC ALERTE ») : la
+        // vente est passée sans pré-contrôle — si le solde local devient négatif,
+        // on lève l'alerte d'audit pour correction (réappro / inventaire).
+        if (!behavior.precheck) {
+          const after = await readStockAt(
+            tx,
+            etablissementId,
+            item.productId,
+            item.variantId ?? null,
+          );
+          if (after < 0) {
+            await this.alerts.raise(tx, {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              severity: 'WARNING',
+              type: 'stock.negative',
+              message: `Stock négatif après vente : « ${item.product?.nom ?? item.productId} » à ${after} (politique ALLOW_NEGATIVE).`,
+              payload: {
+                productId: item.productId,
+                variantId: item.variantId,
+                saleId,
+                stockApres: after,
+                quantiteVendue: item.quantite,
+              },
+            });
+          }
+        }
       }
     }
 
@@ -775,11 +809,9 @@ export class SalesService {
         where.createdAt = {};
         if (from) where.createdAt.gte = new Date(from);
         if (to) {
-          const toDate = new Date(to);
-          if (to.length <= 10) {
-            toDate.setHours(23, 59, 59, 999);
-          }
-          where.createdAt.lte = toDate;
+          // Date calendaire = fin de journée LOCALE de la boutique.
+          where.createdAt.lte =
+            to.length <= 10 ? endOfCalendarDayInTz(to, ctx.timezone) : new Date(to);
         }
       }
       
@@ -823,8 +855,8 @@ export class SalesService {
   }
 
   async todaySales(ctx: AuthContext) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Journée = minuit LOCAL de l'établissement (pas celui du serveur).
+    const startOfDay = startOfDayInTz(ctx.timezone);
 
     const sales = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.sale.findMany({

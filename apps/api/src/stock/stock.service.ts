@@ -29,6 +29,7 @@ import {
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
+import { AuditAlertService } from '../common/audit-alert.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
@@ -38,6 +39,7 @@ export class StockService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
+    private readonly auditAlerts: AuditAlertService,
   ) {}
 
   async list(ctx: AuthContext, globalView = false) {
@@ -431,19 +433,32 @@ export class StockService {
 
       // Contrôle de négativité sur le stock LOCAL de la boutique du mouvement
       // (le stock global d'une autre boutique ne justifie pas une sortie ici).
-      // ALLOW_NEGATIVE : politique explicite du produit → sortie autorisée.
-      if (product.stockPolicy !== 'ALLOW_NEGATIVE') {
-        const localStock = await readStockAt(
-          tx,
-          ctx.etablissementId!,
-          input.productId,
-          input.variantId ?? null,
-        );
-        if (localStock + delta < 0) {
+      // ALLOW_NEGATIVE : politique explicite du produit → sortie autorisée AVEC alerte.
+      const localStock = await readStockAt(
+        tx,
+        ctx.etablissementId!,
+        input.productId,
+        input.variantId ?? null,
+      );
+      if (localStock + delta < 0) {
+        if (product.stockPolicy !== 'ALLOW_NEGATIVE') {
           throw new BadRequestException(
             `Opération refusée : le stock de cet établissement deviendrait négatif (disponible ici : ${localStock}, demandé : ${delta}).`,
           );
         }
+        await this.auditAlerts.raise(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
+          severity: 'WARNING',
+          type: 'stock.negative',
+          message: `Stock négatif après mouvement : « ${product.nom} » à ${localStock + delta} (politique ALLOW_NEGATIVE).`,
+          payload: {
+            productId: input.productId,
+            variantId: input.variantId ?? null,
+            stockApres: localStock + delta,
+            motif: input.motif,
+          },
+        });
       }
 
       if (input.variantId) {

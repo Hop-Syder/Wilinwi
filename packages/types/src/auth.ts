@@ -65,6 +65,9 @@ export const AuthContextSchema = z.object({
   etablissementIds: z.array(IdSchema).default([]),
   /** Infrastructure métier de l'établissement courant (`null` en vue globale). */
   infrastructure: EtablissementInfrastructureSchema.nullable().default(null),
+  /** Fuseau horaire de l'établissement courant (frontières de journée : ventes
+   *  du jour, clôtures). `null` → DEFAULT_TIMEZONE. */
+  timezone: z.string().nullable().default(null),
   /** Capacités d'infrastructure effectives (infrastructure → plan → add-ons →
    *  dunning → rôle). En vue globale : union en lecture des établissements accessibles. */
   infraCapabilities: z.array(InfraCapabilitySchema).default([]),

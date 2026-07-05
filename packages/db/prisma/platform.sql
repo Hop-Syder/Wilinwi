@@ -482,6 +482,32 @@ BEGIN
 END;
 $$;
 
+-- 12. Alertes d'audit cross-tenant (TDR §18.2) : anomalies non bloquantes à
+--     corriger manuellement (stock négatif ALLOW_NEGATIVE, conflits de lots
+--     Health à venir). Non résolues uniquement, les plus graves d'abord.
+CREATE OR REPLACE FUNCTION app.platform_audit_alerts(p_limit int DEFAULT 50)
+RETURNS TABLE (
+  id uuid,
+  tenant_id uuid,
+  tenant_nom text,
+  etablissement_id uuid,
+  severity text,
+  type text,
+  message text,
+  payload jsonb,
+  created_at timestamptz
+)
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT a.id, a.tenant_id, t.nom, a.etablissement_id,
+         a.severity::text, a.type, a.message, a.payload, a.created_at
+  FROM public.audit_alerts a
+  JOIN public.tenants t ON t.id = a.tenant_id
+  WHERE a.resolved_at IS NULL AND NOT t.internal
+  ORDER BY (a.severity = 'CRITICAL') DESC, a.created_at DESC
+  LIMIT LEAST(GREATEST(p_limit, 1), 200);
+$$;
+
 -- ============================================================================
 -- VERROU (idempotent) — réservé au rôle admin, ré-appliqué à CHAQUE déploiement.
 -- Ferme le trou : les fonctions `app.*` (qui contournent la RLS) ne sont exécutables

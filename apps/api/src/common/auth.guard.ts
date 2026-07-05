@@ -99,7 +99,7 @@ export class AuthGuard implements CanActivate {
         where: { userId, etablissement: { actif: true } },
         select: {
           etablissementId: true,
-          etablissement: { select: { infrastructure: true } },
+          etablissement: { select: { infrastructure: true, timezone: true } },
         },
         orderBy: { createdAt: 'asc' },
       });
@@ -110,6 +110,10 @@ export class AuthGuard implements CanActivate {
           a.etablissementId,
           a.etablissement.infrastructure as EtablissementInfrastructure,
         ]),
+      );
+      // Fuseau horaire par établissement (frontières de journée).
+      const tzByEtab = new Map<string, string | null>(
+        access.map((a) => [a.etablissementId, a.etablissement.timezone]),
       );
       // Rétrogradation Starter = 1 seul établissement actif (les autres → préservés, masqués).
       if (dunning.downgraded && etablissementIds.length > 1) {
@@ -129,6 +133,7 @@ export class AuthGuard implements CanActivate {
         ),
         etablissementIds,
         infraByEtab,
+        tzByEtab,
       };
     });
 
@@ -152,6 +157,7 @@ export class AuthGuard implements CanActivate {
     const infrastructure = etablissementId
       ? (resolved.infraByEtab.get(etablissementId) ?? 'RETAIL')
       : null;
+    const timezone = etablissementId ? (resolved.tzByEtab.get(etablissementId) ?? null) : null;
     const resolveFor = (infra: EtablissementInfrastructure): InfraCapability[] =>
       resolveEffectiveCapabilities({
         infrastructure: infra,
@@ -184,6 +190,7 @@ export class AuthGuard implements CanActivate {
       isGlobalView,
       etablissementIds: resolved.etablissementIds,
       infrastructure,
+      timezone,
       infraCapabilities,
       subscriptionStatus: resolved.subscriptionStatus,
       dunning: resolved.dunning,

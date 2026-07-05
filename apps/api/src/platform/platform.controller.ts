@@ -70,6 +70,13 @@ export class PlatformController {
     return this.platformService.getRecentActivity(n);
   }
 
+  /** GET /api/platform/audit-alerts?limit= — Alertes d'audit cross-tenant (TDR §18.2). */
+  @Get('audit-alerts')
+  getAuditAlerts(@Query('limit') limit?: string) {
+    const n = Math.min(200, Math.max(1, Number.parseInt(limit ?? '', 10) || 50));
+    return this.platformService.getAuditAlerts(n);
+  }
+
   /** GET /api/platform/timeseries?days= — Séries d'évolution (inscriptions, ventes, GMV). */
   @Get('timeseries')
   getTimeseries(@Query('days') days?: string): Promise<PlatformTimeseriesPointDto[]> {

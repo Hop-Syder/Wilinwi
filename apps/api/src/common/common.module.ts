@@ -20,6 +20,8 @@ import { NonVitalGuard } from './non-vital.guard';
 import { ActivityService } from './activity.service';
 import { ActivityController } from './activity.controller';
 import { ActivityInterceptor } from './activity.interceptor';
+import { AuditAlertService } from './audit-alert.service';
+import { AuditAlertController } from './audit-alert.controller';
 
 /**
  * Module global : expose PrismaService + ActivityService partout, installe les
@@ -27,17 +29,18 @@ import { ActivityInterceptor } from './activity.interceptor';
  */
 @Global()
 @Module({
-  controllers: [ActivityController],
+  controllers: [ActivityController, AuditAlertController],
   providers: [
     PrismaService,
     PlanConfigService,
     ActivityService,
+    AuditAlertService,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CapabilitiesGuard },
     { provide: APP_GUARD, useClass: InfraCapabilitiesGuard },
     { provide: APP_GUARD, useClass: NonVitalGuard },
     { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
-  exports: [PrismaService, PlanConfigService, ActivityService],
+  exports: [PrismaService, PlanConfigService, ActivityService, AuditAlertService],
 })
 export class CommonModule {}

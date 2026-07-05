@@ -67,6 +67,7 @@ SELECT app.enable_tenant_rls('public.product_stock');
 SELECT app.enable_tenant_rls('public.dispatch_orders');
 SELECT app.enable_tenant_rls('public.dispatch_order_items');
 SELECT app.enable_tenant_rls('public.notifications');
+SELECT app.enable_tenant_rls('public.audit_alerts');
 
 -- Unicité du solde par emplacement : 1 ligne par (établissement, produit) au niveau
 -- produit, et 1 par (établissement, variante) au niveau variante (index partiels,

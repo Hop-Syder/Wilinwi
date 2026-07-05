@@ -7,8 +7,14 @@ import {
   planAllowsProductImages,
   productAffectsStock,
   PRODUCT_TYPE_LABELS,
+  quantityScale,
+  toDisplayQuantity,
+  toStoredQuantity,
+  UNIT_KIND_LABELS,
+  UNIT_KINDS,
   type ProductDto,
   type ProductType,
+  type UnitKind,
 } from '@wilinwi/types';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -161,6 +167,11 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   // avec le Milestone 4 — proposé mais désactivé.
   const [type, setType] = useState<ProductType>(product?.type ?? 'STANDARD');
   const hasStock = productAffectsStock(type);
+  // Milli-unités : les produits au poids/volume se saisissent en décimal
+  // (1,5 kg) et se persistent en entiers (1500) — même philosophie que les FCFA.
+  const [unitKind, setUnitKind] = useState<UnitKind>(product?.unitKind ?? 'UNIT');
+  const [baseUnit, setBaseUnit] = useState(product?.baseUnit ?? '');
+  const scaled = quantityScale(unitKind) !== 1;
   const [form, setForm] = useState({
     nom: product?.nom || '',
     sku: product?.sku || '',
@@ -168,8 +179,10 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
     prixAchat: product?.prixAchat?.toString() || '',
     prixPlancher: product?.prixPlancher?.toString() || '',
     prixCatalogue: product?.prixCatalogue?.toString() || '',
-    stock: product?.stock?.toString() || '',
-    seuilAlerte: product?.seuilAlerte?.toString() || '5',
+    stock: product ? toDisplayQuantity(product.stock, product.unitKind).toString() : '',
+    seuilAlerte: product
+      ? toDisplayQuantity(product.seuilAlerte, product.unitKind).toString()
+      : '5',
   });
   const [variants, setVariants] = useState<Array<{ id?: string, key: string, val: string, sku: string, stock: string }>>(
     (product?.variants || []).map(v => {
@@ -198,12 +211,18 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         sku: form.sku || undefined,
         categorie: form.categorie || undefined,
         type,
+        unitKind,
+        baseUnit: baseUnit.trim() || undefined,
         photos: imagesAllowed ? photos : undefined,
         prixAchat: Number(form.prixAchat),
         prixPlancher: Number(form.prixPlancher),
         prixCatalogue: Number(form.prixCatalogue),
-        stock: isEditing ? undefined : hasStock ? Number(form.stock || 0) : 0,
-        seuilAlerte: Number(form.seuilAlerte || 5),
+        stock: isEditing
+          ? undefined
+          : hasStock
+            ? toStoredQuantity(Number(form.stock || 0), unitKind)
+            : 0,
+        seuilAlerte: toStoredQuantity(Number(form.seuilAlerte || 5), unitKind),
         variants: variants.map(v => ({
           id: v.id,
           attributs: { [v.key || 'Variante']: v.val },
@@ -266,6 +285,33 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               </span>
             )}
           </label>
+          <label className="col-span-full sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Vendu…</span>
+            <select
+              value={unitKind}
+              onChange={(e) => setUnitKind(e.target.value as UnitKind)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            >
+              {UNIT_KINDS.map((k) => (
+                <option key={k} value={k}>{UNIT_KIND_LABELS[k]}</option>
+              ))}
+            </select>
+          </label>
+          {scaled && (
+            <label className="col-span-full sm:col-span-1">
+              <span className="mb-1 block text-xs font-medium text-slate-600">Unité de base</span>
+              <input
+                type="text"
+                value={baseUnit}
+                onChange={(e) => setBaseUnit(e.target.value)}
+                placeholder={unitKind === 'WEIGHT' ? 'kg' : 'L'}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Les quantités se saisissent en décimal (ex. 1,5 {baseUnit || (unitKind === 'WEIGHT' ? 'kg' : 'L')}).
+              </span>
+            </label>
+          )}
 
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Prix & Marges</h3>
@@ -290,13 +336,17 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               </div>
               {!isEditing && (
                 <label className="col-span-full sm:col-span-1">
-                  <span className="mb-1 block text-xs font-medium text-slate-600">Stock initial</span>
-                  <input type="number" value={form.stock} onChange={(e) => set('stock')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+                  <span className="mb-1 block text-xs font-medium text-slate-600">
+                    Stock initial{scaled ? ` (${baseUnit || 'unité de base'})` : ''}
+                  </span>
+                  <input type="number" step={scaled ? 'any' : 1} value={form.stock} onChange={(e) => set('stock')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
                 </label>
               )}
               <label className="col-span-full sm:col-span-1">
-                <span className="mb-1 block text-xs font-medium text-slate-600">Seuil d'alerte</span>
-                <input type="number" value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  Seuil d'alerte{scaled ? ` (${baseUnit || 'unité de base'})` : ''}
+                </span>
+                <input type="number" step={scaled ? 'any' : 1} value={form.seuilAlerte} onChange={(e) => set('seuilAlerte')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
               </label>
             </>
           )}

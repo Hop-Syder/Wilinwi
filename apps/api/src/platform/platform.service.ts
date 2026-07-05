@@ -297,6 +297,38 @@ export class PlatformService {
     `;
   }
 
+  /**
+   * Alertes d'audit cross-tenant (TDR §18.2) : anomalies non bloquantes à
+   * corriger (stock négatif ALLOW_NEGATIVE, conflits de lots Health à venir).
+   */
+  async getAuditAlerts(limit = 50): Promise<
+    {
+      id: string;
+      tenantId: string;
+      tenantNom: string;
+      etablissementId: string | null;
+      severity: string;
+      type: string;
+      message: string;
+      payload: unknown;
+      createdAt: Date;
+    }[]
+  > {
+    return this.adminPrisma.client.$queryRaw`
+      SELECT
+        id,
+        tenant_id        AS "tenantId",
+        tenant_nom       AS "tenantNom",
+        etablissement_id AS "etablissementId",
+        severity,
+        type,
+        message,
+        payload,
+        created_at       AS "createdAt"
+      FROM app.platform_audit_alerts(${limit}::int)
+    `;
+  }
+
   // ───────────────────────────── Cockpit ─────────────────────────────
 
   /** Utilisateurs (cross-tenant) avec recherche + dernière connexion. */

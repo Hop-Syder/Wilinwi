@@ -17,8 +17,11 @@ import {
 import {
   applySaleStockToProducts,
   defaultStockPolicy,
+  formatQuantity,
   productAffectsStock,
   saleStockBehavior,
+  toDisplayQuantity,
+  toStoredQuantity,
 } from './product.js';
 import { ACTIVE_DUNNING, computeDunning } from './dunning.js';
 
@@ -187,6 +190,30 @@ describe('applySaleStockToProducts (anti-oversell offline)', () => {
   it('fonction pure : le tableau source est intact', () => {
     applySaleStockToProducts(products, [{ productId: 'p1', quantite: 3 }], 'debit');
     expect(products[0]!.stock).toBe(10);
+  });
+});
+
+describe('milli-unités (quantités décimales, persistance entière)', () => {
+  it('WEIGHT/VOLUME : ×1000 au stockage, ÷1000 à l’affichage', () => {
+    expect(toStoredQuantity(1.5, 'WEIGHT')).toBe(1500);
+    expect(toStoredQuantity(0.33, 'VOLUME')).toBe(330);
+    expect(toDisplayQuantity(1500, 'WEIGHT')).toBe(1.5);
+  });
+
+  it('UNIT/PACKAGE/TIME et types absents : échelle 1 (rétro-compatible)', () => {
+    expect(toStoredQuantity(24, 'UNIT')).toBe(24);
+    expect(toStoredQuantity(24, undefined)).toBe(24);
+    expect(toDisplayQuantity(24, null)).toBe(24);
+  });
+
+  it('formatQuantity : « 1,5 kg » pour le poids, nombre nu pour l’unité', () => {
+    expect(formatQuantity(1500, 'WEIGHT', 'kg')).toBe('1,5 kg');
+    expect(formatQuantity(330, 'VOLUME', 'L')).toBe('0,33 L');
+    expect(formatQuantity(24, 'UNIT', null)).toBe('24');
+  });
+
+  it('arrondi au milli le plus proche (pas de flottant persisté)', () => {
+    expect(toStoredQuantity(0.1 + 0.2, 'WEIGHT')).toBe(300);
   });
 });
 

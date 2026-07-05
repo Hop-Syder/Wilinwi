@@ -37,6 +37,56 @@ export const UNIT_KINDS = ['UNIT', 'WEIGHT', 'VOLUME', 'PACKAGE', 'TIME'] as con
 export type UnitKind = (typeof UNIT_KINDS)[number];
 export const UnitKindSchema = z.enum(UNIT_KINDS);
 
+/** Libellés FR affichés dans l'interface. */
+export const UNIT_KIND_LABELS: Record<UnitKind, string> = {
+  UNIT: 'À l’unité (pièce)',
+  WEIGHT: 'Au poids',
+  VOLUME: 'Au volume',
+  PACKAGE: 'Au conditionnement',
+  TIME: 'Au temps',
+};
+
+// ─────────── Convention milli-unités (TDR — quantités décimales) ───────────
+
+/**
+ * Toutes les quantités persistées restent des ENTIERS (même philosophie que les
+ * FCFA). Pour vendre au poids/volume (1,5 kg ; 0,33 L), les produits WEIGHT et
+ * VOLUME stockent des MILLI-unités de `baseUnit` : stock 1500 avec baseUnit
+ * « kg » = 1,5 kg. UNIT/PACKAGE/TIME restent à l'échelle 1.
+ */
+export const QUANTITY_SCALE: Record<UnitKind, number> = {
+  UNIT: 1,
+  PACKAGE: 1,
+  TIME: 1,
+  WEIGHT: 1000,
+  VOLUME: 1000,
+};
+
+export function quantityScale(kind: UnitKind | null | undefined): number {
+  return kind ? QUANTITY_SCALE[kind] : 1;
+}
+
+/** Saisie utilisateur (décimale possible) → quantité persistée (entier). */
+export function toStoredQuantity(display: number, kind: UnitKind | null | undefined): number {
+  return Math.round(display * quantityScale(kind));
+}
+
+/** Quantité persistée (entier) → valeur affichable (décimale possible). */
+export function toDisplayQuantity(stored: number, kind: UnitKind | null | undefined): number {
+  return stored / quantityScale(kind);
+}
+
+/** Affichage FR : « 1,5 kg », « 0,33 L », « 24 ». */
+export function formatQuantity(
+  stored: number,
+  kind: UnitKind | null | undefined,
+  baseUnit?: string | null,
+): string {
+  const value = toDisplayQuantity(stored, kind);
+  const text = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(value);
+  return baseUnit && quantityScale(kind) !== 1 ? `${text} ${baseUnit}` : text;
+}
+
 /**
  * Stratégie de vente par type produit (TDR §9.1) : seuls STANDARD et BATCHED
  * portent un stock direct (pré-contrôle + décrément à la vente). SERVICE et

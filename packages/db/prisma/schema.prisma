@@ -83,6 +83,13 @@ enum EtablissementType {
   USINE
 }
 
+// Gravité d'une alerte d'audit (TDR §18.2 — anomalies détectées a posteriori).
+enum AuditAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 // Infrastructure métier d'un établissement : pilote les capacités fonctionnelles
 // (modules, POS, règles de stock) — coexiste avec `type` (nature physique). ADR-001/002.
 enum EtablissementInfrastructure {
@@ -198,6 +205,7 @@ model Tenant {
   productStocks   ProductStock[]
   dispatchOrders  DispatchOrder[]
   notifications   Notification[]
+  auditAlerts     AuditAlert[]
 
   @@map("tenants")
 }
@@ -838,4 +846,29 @@ model Notification {
   @@index([tenantId, readAt])
   @@index([tenantId, type])
   @@map("notifications")
+}
+
+// Alerte d'audit (TDR §18.2) : anomalie détectée A POSTERIORI qui n'a pas bloqué
+// l'opération (ex. stock passé en négatif via ALLOW_NEGATIVE, conflit de lot
+// offline Health à venir). Visible côté tenant (OWNER/MANAGER) ET remontée à la
+// console super-admin pour les gravités élevées. Jamais supprimée : résolue.
+model AuditAlert {
+  id              String             @id @default(uuid()) @db.Uuid
+  tenantId        String             @map("tenant_id") @db.Uuid
+  etablissementId String?            @map("etablissement_id") @db.Uuid
+  severity        AuditAlertSeverity @default(WARNING)
+  /// Slug stable du type d'anomalie (ex: 'stock.negative', 'health.batch_conflict').
+  type            String
+  message         String
+  /// Contexte structuré (produit, quantités, vente…) pour la correction manuelle.
+  payload         Json?
+  resolvedAt      DateTime?          @map("resolved_at")
+  resolvedBy      String?            @map("resolved_by") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, resolvedAt])
+  @@index([tenantId, severity])
+  @@map("audit_alerts")
 }

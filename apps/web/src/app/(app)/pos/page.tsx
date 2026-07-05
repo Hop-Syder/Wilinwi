@@ -16,8 +16,12 @@ import { Search, Trash2, ShoppingCart, AlertTriangle, Command } from 'lucide-rea
 import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
 import {
   applySaleStockToProducts,
+  formatQuantity,
   productAffectsStock,
+  quantityScale,
   saleStockBehavior,
+  toDisplayQuantity,
+  toStoredQuantity,
 } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
 import Link from 'next/link';
@@ -246,7 +250,7 @@ export default function PosPage() {
     (l) => l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher,
   );
 
-  function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
+  function addToCart(product: ProductDto, quantite: number = quantityScale(product.unitKind), prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
     // Miroir du serveur (TDR §9.1/§9.2) : pas de contrôle de disponibilité pour
     // SERVICE/MANUFACTURED ni pour les politiques ALLOW_NEGATIVE/NO_STOCK.
     const checkStock = saleStockBehavior(product.type, product.stockPolicy).precheck;
@@ -520,8 +524,8 @@ export default function PosPage() {
                     <div className="tabular mt-1 text-sm font-bold text-emerald-700">
                       {formatFCFA(p.prixCatalogue)}
                     </div>
-                    <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= 5 ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
-                      {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${p.stock} en stock`}
+                    <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= p.seuilAlerte ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
+                      {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${formatQuantity(p.stock, p.unitKind, p.baseUnit)} en stock`}
                     </Badge>
                   </button>
                 );
@@ -586,20 +590,24 @@ export default function PosPage() {
                   </button>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
+                  {/* Milli-unités : les produits au poids/volume se saisissent en
+                      décimal (1,5 kg) — persistés en entiers (×1000). Les ± font
+                      un pas d'UNE unité de base. */}
                   <div className="flex items-center border rounded-md bg-white">
-                    <button 
+                    <button
                       className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-r"
-                      onClick={() => updateQuantity(l, -1)}
+                      onClick={() => updateQuantity(l, -quantityScale(l.product.unitKind))}
                     >-</button>
-                    <input 
-                      type="number" 
-                      value={l.quantite} 
-                      onChange={(e) => setExactQuantity(l, Number(e.target.value))}
-                      className="w-10 text-center text-xs border-none focus:ring-0 p-1 focus:outline-none tabular"
+                    <input
+                      type="number"
+                      step={quantityScale(l.product.unitKind) !== 1 ? 'any' : 1}
+                      value={toDisplayQuantity(l.quantite, l.product.unitKind)}
+                      onChange={(e) => setExactQuantity(l, toStoredQuantity(Number(e.target.value), l.product.unitKind))}
+                      className="w-12 text-center text-xs border-none focus:ring-0 p-1 focus:outline-none tabular"
                     />
-                    <button 
+                    <button
                       className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-l"
-                      onClick={() => updateQuantity(l, 1)}
+                      onClick={() => updateQuantity(l, quantityScale(l.product.unitKind))}
                     >+</button>
                   </div>
 
@@ -681,7 +689,7 @@ export default function PosPage() {
                     key={v.id} 
                     disabled={isOos}
                     onClick={() => {
-                      addToCart(variantSelectionProduct, 1, variantSelectionProduct.prixCatalogue, v.id, label);
+                      addToCart(variantSelectionProduct, quantityScale(variantSelectionProduct.unitKind), variantSelectionProduct.prixCatalogue, v.id, label);
                       setVariantSelectionProduct(null);
                     }}
                     className={`w-full flex justify-between items-center p-3 rounded-lg border ${isOos ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:border-brand hover:bg-brand/5 transition-colors'} text-left`}

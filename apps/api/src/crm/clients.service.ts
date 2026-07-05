@@ -16,6 +16,7 @@ import {
   type CreateClientInput,
   type RecordClientPaymentInput,
   type UpdateClientInput,
+  startOfDayInTz,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
@@ -218,8 +219,7 @@ export class ClientsService {
   }
 
   async getKpis(ctx: AuthContext) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay = startOfDayInTz(ctx.timezone);
 
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const clients = await tx.client.findMany({

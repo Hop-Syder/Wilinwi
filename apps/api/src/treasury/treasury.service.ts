@@ -20,6 +20,7 @@ import {
   type RecordCashMovementInput,
   type RecordExpenseInput,
   type TransferInput,
+  startOfDayInTz,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
@@ -93,8 +94,8 @@ export class TreasuryService {
       const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
       const totalBalance = Object.values(balances).reduce((s, v) => s + v, 0);
 
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      // Journée = minuit LOCAL de l'établissement (frontière comptable de caisse).
+      const startOfDay = startOfDayInTz(ctx.timezone);
 
       const todayRows = await tx.cashMovement.groupBy({
         by: ['type'],

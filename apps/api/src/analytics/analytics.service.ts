@@ -10,7 +10,14 @@
 // ──────────────────────────────────
 
 import { Injectable } from '@nestjs/common';
-import { canSeeSensitivePricing, type AuthContext } from '@wilinwi/types';
+import {
+  addDays,
+  canSeeSensitivePricing,
+  endOfCalendarDayInTz,
+  startOfCalendarDayInTz,
+  startOfDayInTz,
+  type AuthContext,
+} from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -25,8 +32,8 @@ export class AnalyticsService {
     const seeSensitive = canSeeSensitivePricing(ctx.role);
 
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      // Journée = minuit LOCAL de l'établissement (pas celui du serveur).
+      const startOfDay = startOfDayInTz(ctx.timezone);
 
       // Établissement courant (Phase 1 : KPIs de ventes scopés à l'établissement).
       const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
@@ -111,9 +118,7 @@ export class AnalyticsService {
         .map((p) => ({ id: p.id, nom: p.nom, stock: p.stock }));
 
       // Ventes des 7 derniers jours (pour le graphique hebdomadaire)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-      sevenDaysAgo.setHours(0, 0, 0, 0);
+      const sevenDaysAgo = addDays(startOfDay, -6);
 
       const salesLast7Days = await tx.sale.findMany({
         where: {
@@ -175,17 +180,20 @@ export class AnalyticsService {
     const seeSensitive = canSeeSensitivePricing(ctx.role);
 
     // Bornes de la période — défaut : 30 derniers jours.
-    const to = toStr ? new Date(toStr) : new Date();
-    if (toStr && toStr.length <= 10) to.setHours(23, 59, 59, 999);
-    let from: Date;
-    if (fromStr) {
-      from = new Date(fromStr);
-      if (fromStr.length <= 10) from.setHours(0, 0, 0, 0);
-    } else {
-      from = new Date(to);
-      from.setDate(from.getDate() - 29);
-      from.setHours(0, 0, 0, 0);
-    }
+    // Dates calendaires interprétées dans le fuseau de la BOUTIQUE (une borne
+    // « du 2026-07-01 » = 00:00 chez elle, pas 00:00 UTC ni serveur).
+    const to =
+      toStr && toStr.length <= 10
+        ? endOfCalendarDayInTz(toStr, ctx.timezone)
+        : toStr
+          ? new Date(toStr)
+          : new Date();
+    const from =
+      fromStr && fromStr.length <= 10
+        ? startOfCalendarDayInTz(fromStr, ctx.timezone)
+        : fromStr
+          ? new Date(fromStr)
+          : addDays(startOfDayInTz(ctx.timezone, to), -29);
 
     const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
 
@@ -242,9 +250,11 @@ export class AnalyticsService {
       }
 
       // Série journalière CONTINUE (CA + dépenses), un point par jour de la période.
+      // NOTE : les clés de bucket restent des jours UTC (createdAt.toISOString) —
+      // les bornes sont exactes, l'attribution fine 23h-minuit sera affinée avec
+      // un bucketing local si le besoin remonte.
       const serie: { date: string; ca: number; ventes: number; depenses: number }[] = [];
-      const cursor = new Date(from);
-      cursor.setHours(0, 0, 0, 0);
+      let cursor = startOfDayInTz(ctx.timezone, from);
       for (let guard = 0; cursor <= to && guard < 370; guard++) {
         const day = cursor.toISOString().slice(0, 10);
         const v = byDay.get(day);
@@ -254,7 +264,7 @@ export class AnalyticsService {
           ventes: v?.ventes ?? 0,
           depenses: expByDay.get(day) ?? 0,
         });
-        cursor.setDate(cursor.getDate() + 1);
+        cursor = addDays(cursor, 1);
       }
 
       // Top produits (par quantité vendue).
