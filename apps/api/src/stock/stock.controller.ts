@@ -9,19 +9,26 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import {
   CreateProductSchema,
   CreateStockMovementSchema,
   SetStockThresholdSchema,
   UpdateProductSchema,
+  UpsertRecipeSchema,
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
   type SetStockThresholdInput,
   type UpdateProductInput,
+  type UpsertRecipeInput,
 } from '@wilinwi/types';
-import { CurrentUser, NonVital, RequireCapabilities } from '../common/decorators';
+import {
+  CurrentUser,
+  NonVital,
+  RequireCapabilities,
+  RequireInfraCapability,
+} from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { StockService } from './stock.service';
 
@@ -102,6 +109,26 @@ export class StockController {
   @Get('valuation')
   valuation(@CurrentUser() user: AuthContext) {
     return this.stock.valuation(user);
+  }
+
+  /** Recette d'un plat (Food, Milestone 3) — capacité d'infrastructure recipes.basic. */
+  @RequireCapabilities('stock:read')
+  @RequireInfraCapability('recipes.basic')
+  @Get('products/:id/recipe')
+  getRecipe(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.stock.getRecipe(user, id);
+  }
+
+  /** Remplace la recette d'un plat (upsert intégral). */
+  @RequireCapabilities('stock:write')
+  @RequireInfraCapability('recipes.basic')
+  @Put('products/:id/recipe')
+  upsertRecipe(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpsertRecipeSchema)) dto: UpsertRecipeInput,
+  ) {
+    return this.stock.upsertRecipe(user, id, dto);
   }
 
   // NOTE : POST /stock/transfers a été SUPPRIMÉ — les transferts inter-boutiques

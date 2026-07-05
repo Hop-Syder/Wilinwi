@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Command } from 'lucide-react';
-import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
+import type { CreateSaleInput, FoodTableDto, ProductDto } from '@wilinwi/types';
 import {
   applySaleStockToProducts,
   formatQuantity,
@@ -30,6 +30,7 @@ import { syncEngine } from '@/lib/sync';
 import type { PendingSale as PendingSyncSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
+import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { RotateCcw } from 'lucide-react';
@@ -50,6 +51,11 @@ export default function PosPage() {
   // Vue globale « Tous les établissements » : on ne peut pas vendre (la vente doit
   // être rattachée à une boutique précise) → on désactive l'encaissement.
   const isGlobalView = user?.etablissementId === 'ALL';
+  // Capacités d'infrastructure : FOOD → grille tactile groupée + tables (M3).
+  const { has: hasInfraCap } = useInfraCapabilities();
+  const isFood = hasInfraCap('pos.touch');
+  const [tables, setTables] = useState<FoodTableDto[]>([]);
+  const [tableId, setTableId] = useState('');
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +207,12 @@ export default function PosPage() {
         const cached = await syncEngine.cachedProducts();
         setProducts(cached);
       });
+    // Tables de la boutique FOOD (sélecteur du panier) — best-effort.
+    if (hasInfraCap('food.tables')) {
+      apiGet<FoodTableDto[]>('/api/food/tables')
+        .then(setTables)
+        .catch(() => setTables([]));
+    }
     // Liste des clients (pour les ventes à crédit / acompte).
     apiGet<{ id: string; nom: string }[]>('/api/crm/clients')
       .then(setClients)
@@ -242,6 +254,20 @@ export default function PosPage() {
         (p.sku ?? '').toLowerCase().includes(query.toLowerCase()),
     );
   }, [products, query]);
+
+  // POS tactile FOOD : produits groupés par catégorie (plats, boissons…) —
+  // hors FOOD, un seul groupe sans en-tête (rendu identique à avant).
+  const productGroups = useMemo((): [string | null, ProductDto[]][] => {
+    if (!isFood) return [[null, displayProducts]];
+    const groups = new Map<string, ProductDto[]>();
+    for (const p of displayProducts) {
+      const key = p.categorie ?? 'Autres';
+      const list = groups.get(key) ?? [];
+      list.push(p);
+      groups.set(key, list);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [displayProducts, isFood]);
 
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
   // Le plancher est désormais visible : on bloque l'encaissement si une ligne
@@ -314,6 +340,7 @@ export default function PosPage() {
 
     const payload: CreateSaleInput = {
       clientGeneratedId: crypto.randomUUID(),
+      tableId: tableId || undefined,
       paymentMethod: result.paymentMethod,
       montantVerse: result.montantVerse,
       montantEspeces: result.montantEspeces,
@@ -373,6 +400,7 @@ export default function PosPage() {
 
       setLastSaleTotal(total);
       setCart([]);
+      setTableId(''); // la table se choisit vente par vente
       setSaleSync({ status: 'pending' });
       setShowSuccessModal(true);
 
@@ -506,31 +534,41 @@ export default function PosPage() {
               <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Catalogue des produits</span>
             </div>
 
-            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {displayProducts.map((p) => {
-                // SERVICE/MANUFACTURED : toujours vendables (pas de stock direct).
-                const noStock = !productAffectsStock(p.type);
-                // ALLOW_NEGATIVE/NO_STOCK : la rupture n'empêche pas la vente.
-                const blocking = saleStockBehavior(p.type, p.stockPolicy).precheck;
-                const outOfStock = blocking && p.stock <= 0 && (!p.variants || p.variants.length === 0);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleProductClick(p)}
-                    disabled={outOfStock}
-                    className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${outOfStock ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
-                  >
-                    <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
-                    <div className="tabular mt-1 text-sm font-bold text-emerald-700">
-                      {formatFCFA(p.prixCatalogue)}
-                    </div>
-                    <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= p.seuilAlerte ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
-                      {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${formatQuantity(p.stock, p.unitKind, p.baseUnit)} en stock`}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
+            {/* FOOD (pos.touch) : sections par catégorie ; sinon un seul groupe. */}
+            {productGroups.map(([categorie, prods]) => (
+              <div key={categorie ?? '__all__'}>
+                {categorie !== null && (
+                  <h3 className="mt-4 border-b border-slate-200 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {categorie}
+                  </h3>
+                )}
+                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {prods.map((p) => {
+                    // SERVICE/MANUFACTURED : toujours vendables (pas de stock direct).
+                    const noStock = !productAffectsStock(p.type);
+                    // ALLOW_NEGATIVE/NO_STOCK : la rupture n'empêche pas la vente.
+                    const blocking = saleStockBehavior(p.type, p.stockPolicy).precheck;
+                    const outOfStock = blocking && p.stock <= 0 && (!p.variants || p.variants.length === 0);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => handleProductClick(p)}
+                        disabled={outOfStock}
+                        className={`rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md ${outOfStock ? 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:border-slate-200 hover:shadow-none' : ''}`}
+                      >
+                        <div className="font-medium text-slate-900 line-clamp-2 min-h-[40px]">{p.nom}</div>
+                        <div className="tabular mt-1 text-sm font-bold text-emerald-700">
+                          {formatFCFA(p.prixCatalogue)}
+                        </div>
+                        <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= p.seuilAlerte ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
+                          {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${formatQuantity(p.stock, p.unitKind, p.baseUnit)} en stock`}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
             {displayProducts.length === 0 && (
               <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
@@ -573,6 +611,20 @@ export default function PosPage() {
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-brand">
           <ShoppingCart className="h-5 w-5" /> Panier
         </h2>
+
+        {/* Table FOOD (M3) : rattache la vente à une table de la boutique. */}
+        {tables.length > 0 && (
+          <select
+            value={tableId}
+            onChange={(e) => setTableId(e.target.value)}
+            className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+          >
+            <option value="">— Sans table (comptoir / à emporter) —</option>
+            {tables.map((t) => (
+              <option key={t.id} value={t.id}>{t.nom}</option>
+            ))}
+          </select>
+        )}
 
         {cart.length === 0 ? (
           <p className="mt-4 text-sm text-slate-400">Sélectionnez des produits…</p>

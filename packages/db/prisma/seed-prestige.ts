@@ -40,6 +40,7 @@ interface SeedProduct {
   type?: 'STANDARD' | 'BATCHED' | 'MANUFACTURED' | 'SERVICE';
   stockPolicy?: 'STRICT' | 'ALLOW_NEGATIVE' | 'NO_STOCK' | 'RECIPE_BASED';
   unitKind?: 'UNIT' | 'WEIGHT' | 'VOLUME' | 'PACKAGE' | 'TIME';
+  baseUnit?: string;
 }
 
 const PRODUITS_PRET_A_PORTER: SeedProduct[] = [
@@ -76,6 +77,9 @@ const PRODUITS_MAQUIS: SeedProduct[] = [
   { nom: 'Poulet bicyclette braisé', sku: 'MAQ-POU-BRA', categorie: 'Plats', type: 'MANUFACTURED', stockPolicy: 'RECIPE_BASED', prixAchat: 1800, prixPlancher: 3000, prixCatalogue: 4500, stock: 0 },
   { nom: 'Pâte rouge + fromage peulh', sku: 'MAQ-PAT-ROU', categorie: 'Plats', type: 'MANUFACTURED', stockPolicy: 'RECIPE_BASED', prixAchat: 800, prixPlancher: 1500, prixCatalogue: 2500, stock: 0 },
   { nom: 'Location espace privé (heure)', sku: 'MAQ-SRV-LOC', categorie: 'Services', type: 'SERVICE', stockPolicy: 'NO_STOCK', unitKind: 'TIME', prixAchat: 0, prixPlancher: 5000, prixCatalogue: 8000, stock: 0 },
+  // Ingrédients au POIDS (milli-unités §19.1) : stock 20000 = 20 kg.
+  { nom: 'Poulet entier (kg)', sku: 'MAQ-ING-POU', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', prixAchat: 1500, prixPlancher: 1800, prixCatalogue: 2500, stock: 20000 },
+  { nom: 'Riz parfumé (kg)', sku: 'MAQ-ING-RIZ', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', prixAchat: 500, prixPlancher: 700, prixCatalogue: 1000, stock: 50000 },
 ];
 
 // ───────────────────────────────── Seed ─────────────────────────────────
@@ -159,6 +163,7 @@ async function main() {
             type: p.type ?? 'STANDARD',
             stockPolicy: p.stockPolicy ?? 'STRICT',
             unitKind: p.unitKind ?? 'UNIT',
+            baseUnit: p.baseUnit ?? null,
             prixAchat: p.prixAchat,
             prixPlancher: p.prixPlancher,
             prixCatalogue: p.prixCatalogue,
@@ -194,6 +199,37 @@ async function main() {
       }
       console.log(`   🏪 ${boutique.nom}: ${boutique.produits.length} produits OK`);
     }
+  });
+
+  // ── Milestone 3 : recette du Poulet braisé + tables du maquis (idempotent) ──
+  await withTenant(TENANT_ID, async (tx) => {
+    const plat = await tx.product.findFirst({ where: { tenantId: TENANT_ID, sku: 'MAQ-POU-BRA' } });
+    const poulet = await tx.product.findFirst({ where: { tenantId: TENANT_ID, sku: 'MAQ-ING-POU' } });
+    const riz = await tx.product.findFirst({ where: { tenantId: TENANT_ID, sku: 'MAQ-ING-RIZ' } });
+    if (plat && poulet && riz) {
+      const recipe = await tx.productRecipe.upsert({
+        where: { productId: plat.id },
+        update: { active: true },
+        create: { tenantId: TENANT_ID, productId: plat.id, active: true },
+      });
+      // 1 plat = 0,5 kg de poulet (500 milli-kg) + 0,2 kg de riz (200 milli-kg).
+      for (const [ing, qte] of [[poulet, 500], [riz, 200]] as const) {
+        await tx.recipeItem.upsert({
+          where: { recipeId_ingredientProductId: { recipeId: recipe.id, ingredientProductId: ing.id } },
+          update: { quantite: qte },
+          create: { tenantId: TENANT_ID, recipeId: recipe.id, ingredientProductId: ing.id, quantite: qte },
+        });
+      }
+      console.log('   🍗 Recette Poulet braisé : 0,5 kg poulet + 0,2 kg riz / plat');
+    }
+    for (const nom of ['Table 1', 'Table 2', 'Terrasse']) {
+      await tx.foodTable.upsert({
+        where: { etablissementId_nom: { etablissementId: ETAB_MAQUIS_ID, nom } },
+        update: {},
+        create: { tenantId: TENANT_ID, etablissementId: ETAB_MAQUIS_ID, nom },
+      });
+    }
+    console.log('   🪑 Tables du maquis : Table 1, Table 2, Terrasse');
   });
 
   console.log('✅ Seed Prestige terminé.');

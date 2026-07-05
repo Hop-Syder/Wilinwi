@@ -101,5 +101,7 @@ export const apiPost = <T>(path: string, data: unknown) =>
   api<T>(path, { method: 'POST', body: JSON.stringify(data) });
 export const apiPatch = <T>(path: string, data: unknown) =>
   api<T>(path, { method: 'PATCH', body: JSON.stringify(data) });
+export const apiPut = <T>(path: string, data: unknown) =>
+  api<T>(path, { method: 'PUT', body: JSON.stringify(data) });
 
 export { API_URL };

@@ -31,6 +31,7 @@ import { WarehouseModule } from './warehouse/warehouse.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PlatformModule } from './platform/platform.module';
 import { PlansModule } from './plans/plans.module';
+import { FoodModule } from './food/food.module';
 
 @Controller()
 class HealthController {
@@ -72,6 +73,7 @@ class HealthController {
     NotificationsModule,
     PlatformModule,
     PlansModule,
+    FoodModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

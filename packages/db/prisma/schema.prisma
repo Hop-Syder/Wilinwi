@@ -217,6 +217,9 @@ model Tenant {
   dispatchOrders  DispatchOrder[]
   notifications   Notification[]
   auditAlerts     AuditAlert[]
+  productRecipes  ProductRecipe[]
+  recipeItems     RecipeItem[]
+  foodTables      FoodTable[]
 
   @@map("tenants")
 }
@@ -256,6 +259,7 @@ model Etablissement {
   productStocks  ProductStock[]
   dispatchSources      DispatchOrder[] @relation("DispatchSource")
   dispatchDestinations DispatchOrder[] @relation("DispatchDestination")
+  foodTables           FoodTable[]
 
   @@index([tenantId])
   @@index([tenantId, infrastructure])
@@ -378,11 +382,72 @@ model Product {
   purchaseItems PurchaseOrderItem[]
   stocks    ProductStock[]
   dispatchItems DispatchOrderItem[]
+  recipe        ProductRecipe?
+  recipeUsages  RecipeItem[]        @relation("RecipeIngredient")
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, type])
   @@map("products")
+}
+
+// ─────────────────── Food (Milestone 3) — recettes & tables ───────────────────
+
+// Recette d'un produit MANUFACTURED : à la vente du plat, les ingrédients sont
+// décrémentés (si `active`). Le plat lui-même n'a pas de stock direct (§9.1).
+model ProductRecipe {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  productId String   @unique @map("product_id") @db.Uuid
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items   RecipeItem[]
+
+  @@index([tenantId])
+  @@map("product_recipes")
+}
+
+model RecipeItem {
+  id                  String @id @default(uuid()) @db.Uuid
+  tenantId            String @map("tenant_id") @db.Uuid
+  recipeId            String @map("recipe_id") @db.Uuid
+  ingredientProductId String @map("ingredient_product_id") @db.Uuid
+  /// Quantité consommée PAR PLAT VENDU, dans l'échelle de l'ingrédient (§19.1 :
+  /// milli-unités pour WEIGHT/VOLUME — 200 g de riz = 200 si baseUnit "g",
+  /// ou 0,2 kg = 200 milli-kg). Pas d'unité libre : celle de l'ingrédient fait foi.
+  quantite            Int
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipe     ProductRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Product       @relation("RecipeIngredient", fields: [ingredientProductId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, ingredientProductId])
+  @@index([tenantId])
+  @@index([recipeId])
+  @@map("recipe_items")
+}
+
+// Table d'un établissement FOOD (minimaliste : un nom, un panier de vente s'y rattache).
+model FoodTable {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  etablissementId String   @map("etablissement_id") @db.Uuid
+  nom             String
+  actif           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+  sales         Sale[]
+
+  @@unique([etablissementId, nom])
+  @@index([tenantId])
+  @@index([tenantId, etablissementId])
+  @@map("food_tables")
 }
 
 model ProductVariant {
@@ -479,6 +544,8 @@ model Sale {
   clientGeneratedId String?      @map("client_generated_id")
   /// Code court opaque du reçu public (QR → page wilinwi.com/r/<code>).
   receiptCode      String?       @unique @map("receipt_code")
+  /// Table (établissement FOOD) à laquelle la vente est rattachée — Milestone 3.
+  tableId          String?       @map("table_id") @db.Uuid
   createdAt        DateTime      @default(now()) @map("created_at")
 
   // ── Livraison (MVP minimal) : une vente peut être marquée « à livrer », assignée
@@ -494,6 +561,7 @@ model Sale {
   vendeur     User             @relation("VendeurVentes", fields: [vendeurId], references: [id])
   livreur     User?            @relation("LivreurLivraisons", fields: [livreurId], references: [id])
   client      Client?          @relation(fields: [clientId], references: [id])
+  table       FoodTable?       @relation(fields: [tableId], references: [id])
   items       SaleItem[]
   installment SaleInstallment?
 

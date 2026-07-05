@@ -62,6 +62,8 @@ export const CreateSaleSchema = z
     clientGeneratedId: z.string().min(1).optional(),
     clientNom: z.string().min(1).optional(),
     clientTelephone: z.string().min(1).optional(),
+    /** Table FOOD à laquelle rattacher la vente (Milestone 3, optionnel). */
+    tableId: IdSchema.nullable().optional(),
     aLivrer: z.boolean().optional(),
     livreurId: IdSchema.nullable().optional(),
     adresseLivraison: z.string().max(500).nullable().optional(),

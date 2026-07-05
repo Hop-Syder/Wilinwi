@@ -22,9 +22,11 @@ import {
   type AuthContext,
   type CreateProductInput,
   type CreateStockMovementInput,
+  type RecipeDto,
   type SetStockThresholdInput,
   type StockAlertDto,
   type UpdateProductInput,
+  type UpsertRecipeInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
@@ -615,6 +617,89 @@ export class StockService {
       }
     });
     return { ok: true as const };
+  }
+
+  // ─────────────────── Recettes Food (Milestone 3, §9.5) ───────────────────
+
+  /** Recette d'un produit MANUFACTURED (`null` si aucune). */
+  async getRecipe(ctx: AuthContext, productId: string): Promise<RecipeDto | null> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      await this.ensureProduct(tx, ctx.tenantId, productId);
+      const recipe = await tx.productRecipe.findFirst({
+        where: { productId, tenantId: ctx.tenantId },
+        include: { items: { include: { ingredient: true } } },
+      });
+      if (!recipe) return null;
+      return {
+        id: recipe.id,
+        productId: recipe.productId,
+        active: recipe.active,
+        items: recipe.items.map((ri) => ({
+          id: ri.id,
+          ingredientProductId: ri.ingredientProductId,
+          ingredientNom: ri.ingredient.nom,
+          ingredientType: ri.ingredient.type,
+          ingredientUnitKind: ri.ingredient.unitKind,
+          ingredientBaseUnit: ri.ingredient.baseUnit,
+          quantite: ri.quantite,
+        })),
+      };
+    });
+  }
+
+  /**
+   * Remplace intégralement la recette d'un plat (upsert). Réservé aux produits
+   * MANUFACTURED ; les ingrédients doivent porter un stock direct (STANDARD).
+   */
+  async upsertRecipe(
+    ctx: AuthContext,
+    productId: string,
+    input: UpsertRecipeInput,
+  ): Promise<RecipeDto> {
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const product = await this.ensureProduct(tx, ctx.tenantId, productId);
+      if (product.type !== 'MANUFACTURED') {
+        throw new BadRequestException(
+          `Seul un produit MANUFACTURED (plat, production) porte une recette — « ${product.nom} » est ${product.type}.`,
+        );
+      }
+      const ingredientIds = input.items.map((i) => i.ingredientProductId);
+      if (ingredientIds.includes(productId)) {
+        throw new BadRequestException('Un plat ne peut pas être son propre ingrédient.');
+      }
+      const ingredients = await tx.product.findMany({
+        where: { id: { in: ingredientIds }, tenantId: ctx.tenantId },
+        select: { id: true, nom: true, type: true },
+      });
+      if (ingredients.length !== ingredientIds.length) {
+        throw new NotFoundException('Un ou plusieurs ingrédients sont introuvables.');
+      }
+      const nonStock = ingredients.filter((i) => !productAffectsStock(i.type));
+      if (nonStock.length > 0) {
+        throw new BadRequestException(
+          `Ingrédients sans stock direct (recettes imbriquées non supportées) : ${nonStock.map((i) => i.nom).join(', ')}.`,
+        );
+      }
+
+      const recipe = await tx.productRecipe.upsert({
+        where: { productId },
+        update: { active: input.active },
+        create: { tenantId: ctx.tenantId, productId, active: input.active },
+      });
+      // Remplacement intégral des lignes (simple et idempotent).
+      await tx.recipeItem.deleteMany({ where: { recipeId: recipe.id } });
+      for (const item of input.items) {
+        await tx.recipeItem.create({
+          data: {
+            tenantId: ctx.tenantId,
+            recipeId: recipe.id,
+            ingredientProductId: item.ingredientProductId,
+            quantite: item.quantite,
+          },
+        });
+      }
+    });
+    return (await this.getRecipe(ctx, productId))!;
   }
 
   private signedDelta(type: CreateStockMovementInput['type'], qty: number): number {

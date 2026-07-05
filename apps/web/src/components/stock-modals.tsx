@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { X, Plus, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '@wilinwi/ui';
@@ -14,9 +14,11 @@ import {
   UNIT_KINDS,
   type ProductDto,
   type ProductType,
+  type RecipeDto,
   type UnitKind,
+  type UpsertRecipeInput,
 } from '@wilinwi/types';
-import { apiPost, apiPatch, ApiError } from '@/lib/api';
+import { apiGet, apiPost, apiPatch, apiPut, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ProductPhotos } from './product-photos';
 
@@ -596,3 +598,173 @@ export function StockTransferModal({ products, onClose, onSuccess, initialProduc
     </div>
   );
 }
+
+// ─────────────────── Recette d'un plat (Food — Milestone 3) ───────────────────
+
+interface RecipeModalProps {
+  product: ProductDto;
+  catalog: ProductDto[];
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface RecipeRow {
+  ingredientProductId: string;
+  /** Saisie en unités d'AFFICHAGE de l'ingrédient (décimal si poids/volume). */
+  quantite: string;
+}
+
+/**
+ * Éditeur de recette : à la vente du plat, chaque ingrédient est décrémenté de
+ * sa quantité × nombre de plats. Les quantités se saisissent dans l'unité de
+ * l'ingrédient (1,5 kg → persisté 1500 milli-kg, §19.1).
+ */
+export function RecipeModal({ product, catalog, onClose, onSuccess }: RecipeModalProps) {
+  const [active, setActive] = useState(true);
+  const [rows, setRows] = useState<RecipeRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Ingrédients possibles : produits à stock direct, hors le plat lui-même.
+  const ingredients = catalog.filter((c) => productAffectsStock(c.type) && c.id !== product.id);
+  const byId = new Map(ingredients.map((i) => [i.id, i]));
+
+  useEffect(() => {
+    apiGet<RecipeDto | null>(`/api/stock/products/${product.id}/recipe`)
+      .then((r) => {
+        if (r) {
+          setActive(r.active);
+          setRows(
+            r.items.map((it) => ({
+              ingredientProductId: it.ingredientProductId,
+              quantite: String(toDisplayQuantity(it.quantite, it.ingredientUnitKind)),
+            })),
+          );
+        }
+      })
+      .catch((e) => setError((e as ApiError).message))
+      .finally(() => setLoading(false));
+  }, [product.id]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: UpsertRecipeInput = {
+        active,
+        items: rows
+          .filter((r) => r.ingredientProductId && Number(r.quantite) > 0)
+          .map((r) => ({
+            ingredientProductId: r.ingredientProductId,
+            quantite: toStoredQuantity(
+              Number(r.quantite),
+              byId.get(r.ingredientProductId)?.unitKind,
+            ),
+          })),
+      };
+      await apiPut(`/api/stock/products/${product.id}/recipe`, payload);
+      onSuccess();
+    } catch (err) {
+      setError((err as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Recette — {product.nom}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-slate-500">
+          À chaque vente du plat, les ingrédients ci-dessous sont décrémentés du stock.
+          Un ingrédient insuffisant ne bloque pas la vente : une alerte d'audit est levée.
+        </p>
+
+        {loading ? (
+          <p className="py-8 text-center text-sm text-slate-400">Chargement…</p>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+              Recette active (décrémente les ingrédients à la vente)
+            </label>
+
+            {rows.map((row, idx) => {
+              const ing = byId.get(row.ingredientProductId);
+              const scaled = ing ? quantityScale(ing.unitKind) !== 1 : false;
+              return (
+                <div key={idx} className="flex items-center gap-2">
+                  <select
+                    value={row.ingredientProductId}
+                    onChange={(e) => {
+                      const n = [...rows];
+                      n[idx] = { ...n[idx]!, ingredientProductId: e.target.value };
+                      setRows(n);
+                    }}
+                    required
+                    className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand"
+                  >
+                    <option value="">— Ingrédient —</option>
+                    {ingredients.map((i) => (
+                      <option key={i.id} value={i.id}>{i.nom}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    step={scaled ? 'any' : 1}
+                    min={0}
+                    value={row.quantite}
+                    onChange={(e) => {
+                      const n = [...rows];
+                      n[idx] = { ...n[idx]!, quantite: e.target.value };
+                      setRows(n);
+                    }}
+                    required
+                    placeholder="Qté / plat"
+                    className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                  />
+                  <span className="w-10 text-xs text-slate-500">{scaled ? ing?.baseUnit ?? '' : 'u.'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRows(rows.filter((_, i) => i !== idx))}
+                    className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRows([...rows, { ingredientProductId: '', quantite: '' }])}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Ajouter un ingrédient
+            </Button>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="mt-4 flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+                Annuler
+              </Button>
+              <Button type="submit" variant="emerald" disabled={saving || rows.length === 0}>
+                {saving ? 'Enregistrement…' : 'Enregistrer la recette'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+

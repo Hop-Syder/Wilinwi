@@ -178,6 +178,20 @@ export class SalesService {
         if (!livreur) throw new NotFoundException('Livreur introuvable');
       }
 
+      // Table FOOD (Milestone 3) : doit appartenir à la boutique qui vend.
+      if (input.tableId) {
+        const table = await tx.foodTable.findFirst({
+          where: {
+            id: input.tableId,
+            tenantId: ctx.tenantId,
+            // Non-null : assertConcreteEtablissement l'a garanti en amont.
+            etablissementId: ctx.etablissementId!,
+            actif: true,
+          },
+        });
+        if (!table) throw new NotFoundException('Table introuvable pour cet établissement');
+      }
+
       // Acompte : validé tôt (échoue vite) pour les deux flux.
       const intendedAcompte = this.validateAcompte(input, total);
       // Crédit client : vérifier le plafond avant de créer la vente.
@@ -199,6 +213,7 @@ export class SalesService {
           // Part espèces d'un paiement mixte (ventilée en trésorerie à la finalisation).
           montantEspeces: input.montantEspeces ?? 0,
           clientGeneratedId: input.clientGeneratedId ?? null,
+          tableId: input.tableId ?? null,
           aLivrer: input.aLivrer ?? false,
           livreurId: input.livreurId ?? null,
           adresseLivraison: input.adresseLivraison ?? null,
@@ -302,6 +317,75 @@ export class SalesService {
                 saleId,
                 stockApres: after,
                 quantiteVendue: item.quantite,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // ── Recettes Food (Milestone 3, §9.5) : un plat MANUFACTURED + RECIPE_BASED
+    //    avec recette ACTIVE consomme ses ingrédients (le plat lui-même n'a pas
+    //    de stock direct). Ingrédient insuffisant → la vente N'EST PAS bloquée,
+    //    une alerte d'audit `ingredient.insufficient` est levée (rail §18.2).
+    for (const item of sale.items) {
+      const plat = item.product;
+      if (!plat || plat.type !== 'MANUFACTURED' || plat.stockPolicy !== 'RECIPE_BASED') continue;
+      const recipe = await tx.productRecipe.findFirst({
+        where: { productId: item.productId, active: true },
+        include: {
+          items: {
+            include: {
+              ingredient: { select: { id: true, nom: true, type: true, stockPolicy: true } },
+            },
+          },
+        },
+      });
+      if (!recipe) continue; // recette optionnelle (§13-M3)
+
+      for (const ri of recipe.items) {
+        // Seuls les ingrédients à stock direct se décrémentent (pas de recettes
+        // imbriquées au MVP ; la politique NO_STOCK de l'ingrédient est respectée).
+        if (!saleStockBehavior(ri.ingredient.type, ri.ingredient.stockPolicy).decrement) continue;
+        const consomme = ri.quantite * item.quantite;
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: ri.ingredientProductId,
+            variantId: null,
+            type: 'OUT',
+            quantite: -consomme,
+            motif: `Recette vente ${saleId}`,
+            saleId,
+          },
+        });
+        await tx.product.update({
+          where: { id: ri.ingredientProductId },
+          data: { stock: { decrement: consomme } },
+        });
+        if (etablissementId) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: ri.ingredientProductId,
+            variantId: null,
+            delta: -consomme,
+          });
+          const after = await readStockAt(tx, etablissementId, ri.ingredientProductId, null);
+          if (after < 0) {
+            await this.alerts.raise(tx, {
+              tenantId: ctx.tenantId,
+              etablissementId,
+              severity: 'WARNING',
+              type: 'ingredient.insufficient',
+              message: `Ingrédient insuffisant : « ${ri.ingredient.nom} » à ${after} après la vente du plat « ${plat.nom} ».`,
+              payload: {
+                platId: item.productId,
+                ingredientId: ri.ingredientProductId,
+                saleId,
+                stockApres: after,
+                consomme,
               },
             });
           }
@@ -563,6 +647,43 @@ export class SalesService {
           });
         }
       }
+
+      // Recettes Food : ré-entrée EXACTE des ingrédients consommés, par relecture
+      // des mouvements de CETTE vente (pas de recalcul — la recette a pu changer).
+      const recipeMovements = await tx.stockMovement.findMany({
+        where: { tenantId: ctx.tenantId, saleId, motif: { startsWith: 'Recette vente' } },
+      });
+      for (const m of recipeMovements) {
+        const qty = -m.quantite; // OUT stocké en négatif
+        if (qty <= 0) continue;
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: m.etablissementId,
+            productId: m.productId,
+            variantId: m.variantId,
+            type: 'IN',
+            quantite: qty,
+            motif: `Annulation recette ${saleId}`,
+            saleId,
+          },
+        });
+        await tx.product.update({
+          where: { id: m.productId },
+          data: { stock: { increment: qty } },
+        });
+        if (m.etablissementId) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId: m.etablissementId,
+            productId: m.productId,
+            variantId: m.variantId,
+            delta: qty,
+          });
+        }
+      }
+      // NOTE retour partiel : PAS de ré-entrée d'ingrédients (le plat retourné a
+      // été cuisiné — la matière est consommée ; seul l'argent est restitué).
 
       await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
       // Le reçu public ne vaut plus preuve d'achat : marqué annulé (reste

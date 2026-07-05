@@ -1233,3 +1233,28 @@ Posees AVANT le Milestone 3 (les recettes Food et les lots Health en dependent).
   est desormais reel). Le Milestone 4 ajoutera `health.batch_conflict` (CRITICAL).
 - Lecture : tenant `GET /audit-alerts` (OWNER/MANAGER) + console super-admin via
   `app.platform_audit_alerts()` (`GET /platform/audit-alerts`).
+
+---
+
+## 20. Milestone 3 — Food : LIVRÉ (2026-07-05)
+
+Critères §13-M3 tous atteints, prouvés E2E contre l'API réelle :
+
+- **Recettes** : `ProductRecipe`/`RecipeItem` (quantités en milli-unités de
+  l'ingrédient, §19.1 — pas d'unité libre, celle de l'ingrédient fait foi).
+  Un plat MANUFACTURED + RECIPE_BASED avec recette ACTIVE décrémente ses
+  ingrédients à la vente (mouvement « Recette vente <id> », projection locale).
+  Ingrédient insuffisant → la vente N'EST PAS bloquée, alerte d'audit
+  `ingredient.insufficient` (rail §18.2/§19.3).
+- **Annulation EXACTE** : la ré-entrée des ingrédients relit les mouvements de
+  LA vente (insensible aux modifications de recette entre-temps). Retour
+  partiel : PAS de ré-entrée (le plat est cuisiné, seule la monnaie revient).
+- **Tables minimalistes** : `FoodTable` par établissement + `Sale.tableId?`.
+  CRUD gardé `food.tables` (403 hors FOOD), sélecteur au panier du POS.
+- **POS tactile** : grille groupée par catégorie quand `pos.touch` est actif.
+- **API** : GET/PUT `/stock/products/:id/recipe` (gardé `recipes.basic` — refusé
+  depuis un établissement RETAIL, vérifié E2E), GET/POST/PATCH `/food/tables`.
+- **Éditeur de recette** : bouton « Recette » sur la page Stock (plats
+  MANUFACTURED), saisie en unités d'affichage converties en milli.
+- Recettes AVANCÉES (sous-recettes, coût théorique affiché) et écran cuisine :
+  reportés (premium potentiels §8.6).
