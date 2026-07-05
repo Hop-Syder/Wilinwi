@@ -20,6 +20,9 @@ import {
   DOWNGRADE_MAX_PRODUCTS,
   productAffectsStock,
   type AuthContext,
+  type AdjustBatchInput,
+  type BatchDto,
+  type CreateBatchInput,
   type CreateProductInput,
   type CreateStockMovementInput,
   type RecipeDto,
@@ -52,7 +55,18 @@ export class StockService {
     const { products, breakdownByProduct } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const prods = await tx.product.findMany({
         where: { tenantId: ctx.tenantId, actif: true },
-        include: { variants: true },
+        include: {
+          variants: true,
+          // Lots de la boutique courante (BATCHED) : snapshot POS + péremption.
+          ...(!globalView && ctx.etablissementId
+            ? {
+                batches: {
+                  where: { etablissementId: ctx.etablissementId },
+                  orderBy: { expiresAt: 'asc' as const },
+                },
+              }
+            : {}),
+        },
         orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
         ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
       });
@@ -111,7 +125,14 @@ export class StockService {
           v.stock = stockByVariant[v.id] ?? 0;
         }
       }
-      return p;
+      // Lots de la boutique courante (BATCHED).
+      const batches = ctx.etablissementId
+        ? await tx.productBatch.findMany({
+            where: { productId: p.id, etablissementId: ctx.etablissementId },
+            orderBy: { expiresAt: 'asc' },
+          })
+        : undefined;
+      return { ...p, batches };
     });
     return toProductDto(product, ctx.role);
   }
@@ -125,12 +146,15 @@ export class StockService {
     }
     // Gating images : la galerie produit est réservée aux plans Business+ ;
     // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
-    // BATCHED : schema-ready mais pas encore activé (ProductBatch/FEFO = Milestone 4).
-    // Refusé à l'API pour qu'une pharmacie ne croie pas avoir une traçabilité par
-    // lots qui n'existe pas encore (l'UI le propose déjà désactivé).
-    if (input.type === 'BATCHED') {
+    // BATCHED (Milestone 4) : le stock s'entre EXCLUSIVEMENT via la réception de
+    // lots (numéro + péremption obligatoires) — jamais en stock initial direct,
+    // sinon l'invariant Σ lots = projection serait rompu dès la création.
+    if (
+      input.type === 'BATCHED' &&
+      (input.stock !== 0 || input.variants.some((v) => v.stock !== 0))
+    ) {
       throw new BadRequestException(
-        'Le type BATCHED (lots & péremption) n\'est pas encore disponible — à venir avec le module Santé.',
+        'Produit par lots : créez-le avec un stock à 0 puis réceptionnez des LOTS (numéro + date de péremption).',
       );
     }
     const photos = input.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
@@ -306,11 +330,24 @@ export class StockService {
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await this.ensureProduct(tx, ctx.tenantId, id);
 
-      // BATCHED : pas encore activé (Milestone 4) — refusé aussi au changement de type.
-      if (scalars.type === 'BATCHED' && existing.type !== 'BATCHED') {
+      // Entrer dans le type BATCHED : le stock existant doit être nul (le stock
+      // par lots se reconstruit via des réceptions de lots tracées).
+      if (scalars.type === 'BATCHED' && existing.type !== 'BATCHED' && existing.stock !== 0) {
         throw new BadRequestException(
-          'Le type BATCHED (lots & péremption) n\'est pas encore disponible — à venir avec le module Santé.',
+          `Impossible de passer « ${existing.nom} » en produit par lots : ramenez d'abord son stock à zéro, puis réceptionnez des lots.`,
         );
+      }
+      // Quitter le type BATCHED : tous les lots doivent être soldés (Σ = 0).
+      if (existing.type === 'BATCHED' && scalars.type !== undefined && scalars.type !== 'BATCHED') {
+        const solde = await tx.productBatch.aggregate({
+          where: { productId: id, tenantId: ctx.tenantId },
+          _sum: { quantite: true },
+        });
+        if ((solde._sum.quantite ?? 0) !== 0) {
+          throw new BadRequestException(
+            `Impossible de quitter le type par lots : « ${existing.nom} » a encore des lots non soldés.`,
+          );
+        }
       }
 
       // Changement de type produit : quitter un type à stock direct (STANDARD/BATCHED)
@@ -424,6 +461,11 @@ export class StockService {
       if (!productAffectsStock(product.type)) {
         throw new BadRequestException(
           `Le produit "${product.nom}" (type ${product.type}) ne gère pas de stock direct : aucun mouvement possible.`,
+        );
+      }
+      if (product.type === 'BATCHED') {
+        throw new BadRequestException(
+          `« ${product.nom} » est géré PAR LOTS : réceptionnez ou ajustez un lot (traçabilité péremption), pas un mouvement global.`,
         );
       }
       const delta = this.signedDelta(input.type, input.quantite);
@@ -619,6 +661,129 @@ export class StockService {
     return { ok: true as const };
   }
 
+  // ─────────────── Lots & péremption (Health — Milestone 4, §9.4) ───────────────
+
+  /** Lots d'un produit BATCHED à l'établissement courant (FEFO : péremption asc). */
+  async listBatches(ctx: AuthContext, productId: string): Promise<BatchDto[]> {
+    assertConcreteEtablissement(ctx);
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      await this.ensureProduct(tx, ctx.tenantId, productId);
+      const rows = await tx.productBatch.findMany({
+        where: { tenantId: ctx.tenantId, productId, etablissementId: ctx.etablissementId! },
+        orderBy: { expiresAt: 'asc' },
+      });
+      return rows.map(toBatchDto);
+    });
+  }
+
+  /**
+   * Réception d'un lot (entrée de stock des produits BATCHED) : upsert par
+   * (établissement, produit, numéro de lot) — re-réceptionner le même lot
+   * additionne. Mouvement IN tracé par batchId ; invariant Σ lots = projection.
+   */
+  async receiveBatch(
+    ctx: AuthContext,
+    productId: string,
+    input: CreateBatchInput,
+  ): Promise<BatchDto> {
+    assertConcreteEtablissement(ctx);
+    const row = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const product = await this.ensureProduct(tx, ctx.tenantId, productId);
+      if (product.type !== 'BATCHED') {
+        throw new BadRequestException(
+          `« ${product.nom} » n'est pas géré par lots — utilisez un mouvement de stock classique.`,
+        );
+      }
+      const batch = await tx.productBatch.upsert({
+        where: {
+          etablissementId_productId_batchNumber: {
+            etablissementId: ctx.etablissementId!,
+            productId,
+            batchNumber: input.batchNumber.trim(),
+          },
+        },
+        update: { quantite: { increment: input.quantite }, expiresAt: input.expiresAt },
+        create: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          productId,
+          batchNumber: input.batchNumber.trim(),
+          expiresAt: input.expiresAt,
+          quantite: input.quantite,
+        },
+      });
+      await tx.stockMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          productId,
+          batchId: batch.id,
+          type: 'IN',
+          quantite: input.quantite,
+          motif: `Réception lot ${batch.batchNumber}`,
+        },
+      });
+      await tx.product.update({
+        where: { id: productId },
+        data: { stock: { increment: input.quantite } },
+      });
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: ctx.etablissementId!,
+        productId,
+        variantId: null,
+        delta: input.quantite,
+      });
+      return batch;
+    });
+    return toBatchDto(row);
+  }
+
+  /**
+   * Correction d'un lot (casse, retrait de périmés, recomptage) : delta signé.
+   * Le solde du lot ne peut pas devenir négatif par correction manuelle.
+   */
+  async adjustBatch(ctx: AuthContext, batchId: string, input: AdjustBatchInput): Promise<BatchDto> {
+    const row = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const batch = await tx.productBatch.findFirst({
+        where: { id: batchId, tenantId: ctx.tenantId },
+      });
+      if (!batch) throw new NotFoundException('Lot introuvable');
+      if (batch.quantite + input.delta < 0) {
+        throw new BadRequestException(
+          `Correction refusée : le lot ${batch.batchNumber} passerait à ${batch.quantite + input.delta}.`,
+        );
+      }
+      await tx.stockMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: batch.etablissementId,
+          productId: batch.productId,
+          batchId: batch.id,
+          type: 'ADJUST',
+          quantite: input.delta,
+          motif: input.motif,
+        },
+      });
+      await tx.product.update({
+        where: { id: batch.productId },
+        data: { stock: { increment: input.delta } },
+      });
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: batch.etablissementId,
+        productId: batch.productId,
+        variantId: null,
+        delta: input.delta,
+      });
+      return tx.productBatch.update({
+        where: { id: batch.id },
+        data: { quantite: { increment: input.delta } },
+      });
+    });
+    return toBatchDto(row);
+  }
+
   // ─────────────────── Recettes Food (Milestone 3, §9.5) ───────────────────
 
   /** Recette d'un produit MANUFACTURED (`null` si aucune). */
@@ -716,4 +881,13 @@ export class StockService {
     if (!product) throw new NotFoundException('Produit introuvable');
     return product;
   }
+}
+
+function toBatchDto(b: {
+  id: string;
+  batchNumber: string;
+  expiresAt: Date;
+  quantite: number;
+}): BatchDto {
+  return { id: b.id, batchNumber: b.batchNumber, expiresAt: b.expiresAt, quantite: b.quantite };
 }

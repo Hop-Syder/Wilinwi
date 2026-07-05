@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { X, Plus, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '@wilinwi/ui';
 import {
+  formatQuantity,
   maxProductPhotos,
   planAllowsProductImages,
   productAffectsStock,
@@ -12,6 +13,7 @@ import {
   toStoredQuantity,
   UNIT_KIND_LABELS,
   UNIT_KINDS,
+  type BatchDto,
   type ProductDto,
   type ProductType,
   type RecipeDto,
@@ -169,6 +171,8 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   // avec le Milestone 4 — proposé mais désactivé.
   const [type, setType] = useState<ProductType>(product?.type ?? 'STANDARD');
   const hasStock = productAffectsStock(type);
+  // BATCHED : le stock s'entre exclusivement via la réception de lots (M4).
+  const batched = type === 'BATCHED';
   // Milli-unités : les produits au poids/volume se saisissent en décimal
   // (1,5 kg) et se persistent en entiers (1500) — même philosophie que les FCFA.
   const [unitKind, setUnitKind] = useState<UnitKind>(product?.unitKind ?? 'UNIT');
@@ -221,7 +225,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         prixCatalogue: Number(form.prixCatalogue),
         stock: isEditing
           ? undefined
-          : hasStock
+          : hasStock && !batched
             ? toStoredQuantity(Number(form.stock || 0), unitKind)
             : 0,
         seuilAlerte: toStoredQuantity(Number(form.seuilAlerte || 5), unitKind),
@@ -279,11 +283,17 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               <option value="STANDARD">{PRODUCT_TYPE_LABELS.STANDARD}</option>
               <option value="SERVICE">{PRODUCT_TYPE_LABELS.SERVICE}</option>
               <option value="MANUFACTURED">{PRODUCT_TYPE_LABELS.MANUFACTURED}</option>
-              <option value="BATCHED" disabled>{PRODUCT_TYPE_LABELS.BATCHED} — bientôt</option>
+              <option value="BATCHED">{PRODUCT_TYPE_LABELS.BATCHED}</option>
             </select>
             {!hasStock && (
               <span className="mt-1 block text-[11px] text-slate-500">
                 Ce type se vend sans stock direct : aucun décrément à la vente.
+              </span>
+            )}
+            {batched && (
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Le stock s'entre via la réception de LOTS (numéro + péremption) —
+                la vente sort en FEFO et refuse les lots périmés.
               </span>
             )}
           </label>
@@ -336,7 +346,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               <div className="col-span-full my-2 border-t border-slate-100 pt-4">
                 <h3 className="mb-3 text-sm font-semibold text-slate-700">Stock</h3>
               </div>
-              {!isEditing && (
+              {!isEditing && !batched && (
                 <label className="col-span-full sm:col-span-1">
                   <span className="mb-1 block text-xs font-medium text-slate-600">
                     Stock initial{scaled ? ` (${baseUnit || 'unité de base'})` : ''}
@@ -762,6 +772,181 @@ export function RecipeModal({ product, catalog, onClose, onSuccess }: RecipeModa
               </Button>
             </div>
           </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────── Lots & péremption (Health — Milestone 4) ───────────────
+
+interface BatchModalProps {
+  product: ProductDto;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+/**
+ * Gestion des lots d'un produit BATCHED : réception (seule porte d'entrée du
+ * stock) et correction par delta (casse, retrait de périmés). La vente sort en
+ * FEFO automatiquement — aucun choix de lot à la caisse.
+ */
+export function BatchModal({ product, onClose, onSuccess }: BatchModalProps) {
+  const [batches, setBatches] = useState<BatchDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [numero, setNumero] = useState('');
+  const [peremption, setPeremption] = useState('');
+  const [quantite, setQuantite] = useState('');
+  const scaled = quantityScale(product.unitKind) !== 1;
+
+  async function load() {
+    setLoading(true);
+    try {
+      setBatches(await apiGet<BatchDto[]>(`/api/stock/products/${product.id}/batches`));
+    } catch (e) {
+      setError((e as ApiError).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, [product.id]);
+
+  async function receive(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost(`/api/stock/products/${product.id}/batches`, {
+        batchNumber: numero.trim(),
+        expiresAt: peremption,
+        quantite: toStoredQuantity(Number(quantite), product.unitKind),
+      });
+      setNumero('');
+      setPeremption('');
+      setQuantite('');
+      await load();
+      onSuccess();
+    } catch (err) {
+      setError((err as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function vider(b: BatchDto) {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPatch(`/api/stock/batches/${b.id}`, {
+        delta: -b.quantite,
+        motif: 'Retrait (périmé / casse)',
+      });
+      await load();
+      onSuccess();
+    } catch (err) {
+      setError((err as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const now = Date.now();
+  const J30 = 30 * 86_400_000;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Lots — {product.nom}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+
+        <form onSubmit={receive} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-4">
+          <input
+            type="text"
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            required
+            placeholder="N° de lot"
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand"
+          />
+          <input
+            type="date"
+            value={peremption}
+            onChange={(e) => setPeremption(e.target.value)}
+            required
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand"
+          />
+          <input
+            type="number"
+            step={scaled ? 'any' : 1}
+            min={0}
+            value={quantite}
+            onChange={(e) => setQuantite(e.target.value)}
+            required
+            placeholder={scaled ? `Qté (${product.baseUnit ?? ''})` : 'Qté'}
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+          />
+          <Button type="submit" variant="emerald" size="sm" disabled={saving}>
+            <Plus className="mr-1 h-4 w-4" /> Réceptionner
+          </Button>
+        </form>
+
+        {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+        {loading ? (
+          <p className="py-6 text-center text-sm text-slate-400">Chargement…</p>
+        ) : batches.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-400">
+            Aucun lot — réceptionnez le premier pour entrer du stock.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {batches.map((b) => {
+              const exp = new Date(b.expiresAt).getTime();
+              const perime = exp <= now;
+              const proche = !perime && exp - now < J30;
+              return (
+                <li key={b.id} className="flex items-center justify-between gap-2 py-2">
+                  <div>
+                    <span className="font-mono text-sm font-semibold">{b.batchNumber}</span>
+                    <span
+                      className={`ml-2 rounded px-1.5 py-0.5 text-[11px] font-bold ${
+                        perime
+                          ? 'bg-red-50 text-red-700'
+                          : proche
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {perime ? 'PÉRIMÉ' : `exp. ${new Date(b.expiresAt).toLocaleDateString('fr-FR')}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="tabular text-sm font-semibold">
+                      {formatQuantity(b.quantite, product.unitKind, product.baseUnit)}
+                    </span>
+                    {b.quantite > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void vider(b)}
+                        disabled={saving}
+                        className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                        title="Retirer tout le lot (périmé / casse)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

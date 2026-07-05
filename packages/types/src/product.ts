@@ -159,6 +159,8 @@ interface ProductStockLike {
   stockPolicy?: StockPolicy | null;
   stock: number;
   variants?: { id: string; stock: number }[];
+  /** Lots (BATCHED) : le snapshot local est débité en FEFO comme le serveur. */
+  batches?: { id: string; expiresAt: Date | string; quantite: number }[];
 }
 
 /**
@@ -183,6 +185,7 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
 
     let stock = p.stock;
     let variants = p.variants;
+    let batches = p.batches;
     for (const line of lines) {
       stock += sign * line.quantite;
       if (line.variantId && variants) {
@@ -190,8 +193,40 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
           v.id === line.variantId ? { ...v, stock: v.stock + sign * line.quantite } : v,
         );
       }
+      // BATCHED : miroir FEFO du serveur sur le snapshot — debit sort des lots
+      // non périmés (péremption proche d'abord, le dernier peut passer négatif) ;
+      // credit ré-entre en ordre inverse. Approximation locale : le serveur reste
+      // la vérité, réalignée au rechargement du catalogue.
+      if (batches && batches.length > 0 && p.type === 'BATCHED') {
+        const now = Date.now();
+        const ordered = [...batches].sort(
+          (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
+        );
+        const vendables = ordered.filter(
+          (b) => new Date(b.expiresAt).getTime() > now,
+        );
+        const cibles = mode === 'debit' ? vendables : [...vendables].reverse();
+        let restant = line.quantite;
+        const deltas = new Map<string, number>();
+        for (const b of cibles) {
+          if (restant <= 0) break;
+          const dispo = mode === 'debit' ? Math.max(b.quantite, 0) : restant;
+          const pris = Math.min(dispo, restant);
+          if (pris > 0) {
+            deltas.set(b.id, (deltas.get(b.id) ?? 0) + sign * pris);
+            restant -= pris;
+          }
+        }
+        if (restant > 0) {
+          const dernier = cibles.at(-1) ?? ordered.at(-1);
+          if (dernier) deltas.set(dernier.id, (deltas.get(dernier.id) ?? 0) + sign * restant);
+        }
+        batches = batches.map((b) =>
+          deltas.has(b.id) ? { ...b, quantite: b.quantite + deltas.get(b.id)! } : b,
+        );
+      }
     }
-    return { ...p, stock, variants };
+    return { ...p, stock, variants, batches };
   });
 }
 
@@ -278,6 +313,58 @@ export const UpdateProductSchema = CreateProductSchemaBase.omit({ stock: true })
   });
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 
+// ─────────────── Lots & péremption (Health — Milestone 4, §9.4) ───────────────
+
+export const CreateBatchSchema = z.object({
+  batchNumber: z.string().min(1).max(60),
+  expiresAt: z.coerce.date(),
+  /** Quantité reçue, dans l'échelle du produit (§19.1). */
+  quantite: QuantitySchema.refine((q) => q > 0, 'La quantité doit être positive'),
+});
+export type CreateBatchInput = z.infer<typeof CreateBatchSchema>;
+
+/** Correction d'un lot (casse, péremption retirée, recomptage) : delta signé. */
+export const AdjustBatchSchema = z.object({
+  delta: QuantitySchema.refine((q) => q !== 0, 'Le delta ne peut pas être nul'),
+  motif: z.string().min(1),
+});
+export type AdjustBatchInput = z.infer<typeof AdjustBatchSchema>;
+
+export const BatchDtoSchema = z.object({
+  id: IdSchema,
+  batchNumber: z.string(),
+  expiresAt: z.coerce.date(),
+  quantite: QuantitySchema,
+});
+export type BatchDto = z.infer<typeof BatchDtoSchema>;
+
+/**
+ * Quantité VENDABLE d'un produit BATCHED = Σ des lots NON périmés (qté > 0).
+ * Utilisée par le POS (snapshot local — Option B §18.2 : un lot périmé n'est
+ * jamais sélectionnable localement) et par les affichages de stock vendable.
+ */
+export function sellableBatchQuantity(
+  batches: readonly Pick<BatchDto, 'expiresAt' | 'quantite'>[] | null | undefined,
+  now: Date = new Date(),
+): number {
+  if (!batches) return 0;
+  return batches
+    .filter((b) => new Date(b.expiresAt) > now && b.quantite > 0)
+    .reduce((sum, b) => sum + b.quantite, 0);
+}
+
+/** Péremption la plus proche parmi les lots vendables (`null` si aucun). */
+export function nearestExpiry(
+  batches: readonly Pick<BatchDto, 'expiresAt' | 'quantite'>[] | null | undefined,
+  now: Date = new Date(),
+): Date | null {
+  if (!batches) return null;
+  const dates = batches
+    .filter((b) => new Date(b.expiresAt) > now && b.quantite > 0)
+    .map((b) => new Date(b.expiresAt).getTime());
+  return dates.length > 0 ? new Date(Math.min(...dates)) : null;
+}
+
 /**
  * DTO public d'un produit. Les champs sensibles sont optionnels :
  * ils sont retirés pour les rôles SELLER/CASHIER/DELIVERY (cf. canSeeSensitivePricing).
@@ -304,6 +391,9 @@ export const ProductDtoSchema = z.object({
   // Breakdown du stock par établissement (ex: { "uuid-A": 12, "uuid-B": 8 }).
   // Présent uniquement dans la vue globale stock (OWNER/MANAGER).
   stockParEtablissement: z.record(z.string(), z.number()).optional(),
+  // Lots de l'établissement courant (produits BATCHED — Milestone 4) : snapshot
+  // pour le POS offline (Option B §18.2) et l'affichage péremption.
+  batches: z.array(BatchDtoSchema).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 

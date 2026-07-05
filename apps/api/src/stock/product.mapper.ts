@@ -9,8 +9,8 @@
  */
 // ──────────────────────────────────
 
-import { canSeeSensitivePricing, type ProductDto, type Role } from '@wilinwi/types';
-import type { Product, ProductVariant } from '@wilinwi/db';
+import { canSeeSensitivePricing, type BatchDto, type ProductDto, type Role } from '@wilinwi/types';
+import type { Product, ProductBatch, ProductVariant } from '@wilinwi/db';
 
 /**
  * Transforme un produit en DTO en retirant les champs sensibles
@@ -18,7 +18,7 @@ import type { Product, ProductVariant } from '@wilinwi/db';
  * Cette fonction est l'unique point de sortie des produits vers le client.
  */
 export function toProductDto(
-  product: Product & { variants?: ProductVariant[] },
+  product: Product & { variants?: ProductVariant[]; batches?: ProductBatch[] },
   role: Role,
   stockParEtablissement?: Record<string, number>,
 ): ProductDto {
@@ -58,6 +58,18 @@ export function toProductDto(
   // Breakdown par établissement : réservé au PROPRIÉTAIRE (OWNER) uniquement.
   if (role === 'OWNER' && stockParEtablissement) {
     base.stockParEtablissement = stockParEtablissement;
+  }
+
+  // Lots (produits BATCHED, vue scopée) : snapshot POS offline + péremption.
+  if (product.batches) {
+    base.batches = product.batches.map(
+      (b): BatchDto => ({
+        id: b.id,
+        batchNumber: b.batchNumber,
+        expiresAt: b.expiresAt,
+        quantite: b.quantite,
+      }),
+    );
   }
 
   return base;

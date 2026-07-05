@@ -18,8 +18,10 @@ import {
   applySaleStockToProducts,
   defaultStockPolicy,
   formatQuantity,
+  nearestExpiry,
   productAffectsStock,
   saleStockBehavior,
+  sellableBatchQuantity,
   toDisplayQuantity,
   toStoredQuantity,
 } from './product.js';
@@ -193,6 +195,39 @@ describe('applySaleStockToProducts (anti-oversell offline)', () => {
   });
 });
 
+describe('applySaleStockToProducts — lots BATCHED (snapshot FEFO)', () => {
+  const nowRef = new Date('2026-07-05T12:00:00Z');
+  void nowRef;
+  const produits = [
+    {
+      id: 'b1',
+      type: 'BATCHED' as const,
+      stockPolicy: 'STRICT' as const,
+      stock: 130,
+      batches: [
+        { id: 'lotA', expiresAt: new Date('2026-08-01'), quantite: 30 },
+        { id: 'lotB', expiresAt: new Date('2027-01-01'), quantite: 100 },
+      ],
+    },
+  ];
+
+  it('debit FEFO : le lot le plus proche de péremption sort d’abord', () => {
+    const out = applySaleStockToProducts(produits, [{ productId: 'b1', quantite: 40 }], 'debit');
+    const b = out[0]!;
+    expect(b.stock).toBe(90);
+    expect(b.batches?.find((x) => x.id === 'lotA')?.quantite).toBe(0);
+    expect(b.batches?.find((x) => x.id === 'lotB')?.quantite).toBe(90);
+  });
+
+  it('credit : total restauré (répartition par lot = approximation locale, le serveur fait foi)', () => {
+    const debited = applySaleStockToProducts(produits, [{ productId: 'b1', quantite: 40 }], 'debit');
+    const back = applySaleStockToProducts(debited, [{ productId: 'b1', quantite: 40 }], 'credit');
+    expect(back[0]!.stock).toBe(130);
+    const total = back[0]!.batches!.reduce((sum, b) => sum + b.quantite, 0);
+    expect(total).toBe(130); // Σ lots = stock : l'invariant local tient
+  });
+});
+
 describe('milli-unités (quantités décimales, persistance entière)', () => {
   it('WEIGHT/VOLUME : ×1000 au stockage, ÷1000 à l’affichage', () => {
     expect(toStoredQuantity(1.5, 'WEIGHT')).toBe(1500);
@@ -214,6 +249,27 @@ describe('milli-unités (quantités décimales, persistance entière)', () => {
 
   it('arrondi au milli le plus proche (pas de flottant persisté)', () => {
     expect(toStoredQuantity(0.1 + 0.2, 'WEIGHT')).toBe(300);
+  });
+});
+
+describe('lots & péremption (Health M4)', () => {
+  const now = new Date('2026-07-05T12:00:00Z');
+  const batches = [
+    { expiresAt: new Date('2026-07-01'), quantite: 50 }, // périmé
+    { expiresAt: new Date('2026-08-01'), quantite: 30 }, // proche
+    { expiresAt: new Date('2027-01-01'), quantite: 100 },
+    { expiresAt: new Date('2026-09-01'), quantite: 0 }, // vide
+  ];
+
+  it('sellableBatchQuantity exclut les périmés et les lots vides', () => {
+    expect(sellableBatchQuantity(batches, now)).toBe(130);
+    expect(sellableBatchQuantity([], now)).toBe(0);
+    expect(sellableBatchQuantity(undefined, now)).toBe(0);
+  });
+
+  it('nearestExpiry = péremption la plus proche parmi les vendables', () => {
+    expect(nearestExpiry(batches, now)?.toISOString().slice(0, 10)).toBe('2026-08-01');
+    expect(nearestExpiry([{ expiresAt: new Date('2026-07-01'), quantite: 5 }], now)).toBeNull();
   });
 });
 

@@ -11,12 +11,16 @@
 
 import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import {
+  AdjustBatchSchema,
+  CreateBatchSchema,
   CreateProductSchema,
   CreateStockMovementSchema,
   SetStockThresholdSchema,
   UpdateProductSchema,
   UpsertRecipeSchema,
+  type AdjustBatchInput,
   type AuthContext,
+  type CreateBatchInput,
   type CreateProductInput,
   type CreateStockMovementInput,
   type SetStockThresholdInput,
@@ -129,6 +133,38 @@ export class StockController {
     @Body(new ZodValidationPipe(UpsertRecipeSchema)) dto: UpsertRecipeInput,
   ) {
     return this.stock.upsertRecipe(user, id, dto);
+  }
+
+  /** Lots d'un produit BATCHED à l'établissement courant (Health, M4 — FEFO). */
+  @RequireCapabilities('stock:read')
+  @RequireInfraCapability('stock.batches')
+  @Get('products/:id/batches')
+  listBatches(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.stock.listBatches(user, id);
+  }
+
+  /** Réception d'un lot (seule porte d'entrée du stock des produits BATCHED). */
+  @RequireCapabilities('stock:write')
+  @RequireInfraCapability('stock.batches')
+  @Post('products/:id/batches')
+  receiveBatch(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(CreateBatchSchema)) dto: CreateBatchInput,
+  ) {
+    return this.stock.receiveBatch(user, id, dto);
+  }
+
+  /** Correction d'un lot (casse, retrait de périmés, recomptage) : delta signé. */
+  @RequireCapabilities('stock:write')
+  @RequireInfraCapability('stock.batches')
+  @Patch('batches/:batchId')
+  adjustBatch(
+    @CurrentUser() user: AuthContext,
+    @Param('batchId') batchId: string,
+    @Body(new ZodValidationPipe(AdjustBatchSchema)) dto: AdjustBatchInput,
+  ) {
+    return this.stock.adjustBatch(user, batchId, dto);
   }
 
   // NOTE : POST /stock/transfers a été SUPPRIMÉ — les transferts inter-boutiques

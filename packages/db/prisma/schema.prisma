@@ -220,6 +220,7 @@ model Tenant {
   productRecipes  ProductRecipe[]
   recipeItems     RecipeItem[]
   foodTables      FoodTable[]
+  productBatches  ProductBatch[]
 
   @@map("tenants")
 }
@@ -260,6 +261,7 @@ model Etablissement {
   dispatchSources      DispatchOrder[] @relation("DispatchSource")
   dispatchDestinations DispatchOrder[] @relation("DispatchDestination")
   foodTables           FoodTable[]
+  productBatches       ProductBatch[]
 
   @@index([tenantId])
   @@index([tenantId, infrastructure])
@@ -384,11 +386,41 @@ model Product {
   dispatchItems DispatchOrderItem[]
   recipe        ProductRecipe?
   recipeUsages  RecipeItem[]        @relation("RecipeIngredient")
+  batches       ProductBatch[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, type])
   @@map("products")
+}
+
+// ─────────────────── Health (Milestone 4) — lots & péremption ───────────────────
+
+// Lot d'un produit BATCHED à un emplacement (§7.4/§9.4) : la vente sort en FEFO
+// (péremption la plus proche d'abord), un lot périmé n'est jamais choisi.
+// INVARIANT (F8) : Σ ProductBatch.quantite = ProductStock.quantite par
+// (produit, établissement) — maintenu dans la MÊME transaction que chaque
+// mouvement ; un job de vérification lèvera une alerte d'audit en cas d'écart.
+model ProductBatch {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  etablissementId String   @map("etablissement_id") @db.Uuid
+  productId       String   @map("product_id") @db.Uuid
+  batchNumber     String   @map("batch_number")
+  expiresAt       DateTime @map("expires_at")
+  quantite        Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement   @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements     StockMovement[]
+
+  @@unique([etablissementId, productId, batchNumber])
+  @@index([tenantId])
+  @@index([tenantId, productId, expiresAt])
+  @@map("product_batches")
 }
 
 // ─────────────────── Food (Milestone 3) — recettes & tables ───────────────────
@@ -472,6 +504,9 @@ model StockMovement {
   etablissementId String?     @map("etablissement_id") @db.Uuid
   productId String            @map("product_id") @db.Uuid
   variantId String?           @map("variant_id") @db.Uuid
+  /// Lot concerné (produits BATCHED — Milestone 4) : trace exacte par lot,
+  /// utilisée pour la ré-entrée à l'annulation/retour (même pattern que saleId).
+  batchId   String?           @map("batch_id") @db.Uuid
   type      StockMovementType
   quantite  Int // signé selon le type
   motif     String
@@ -481,6 +516,7 @@ model StockMovement {
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batch   ProductBatch? @relation(fields: [batchId], references: [id])
 
   @@index([tenantId])
   @@index([productId])

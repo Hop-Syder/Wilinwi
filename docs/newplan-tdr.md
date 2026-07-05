@@ -1258,3 +1258,34 @@ Critères §13-M3 tous atteints, prouvés E2E contre l'API réelle :
   MANUFACTURED), saisie en unités d'affichage converties en milli.
 - Recettes AVANCÉES (sous-recettes, coût théorique affiché) et écran cuisine :
   reportés (premium potentiels §8.6).
+
+---
+
+## 21. Milestone 4 — Health : LIVRÉ (2026-07-05)
+
+Critères §13-M4 tous atteints, prouvés E2E contre l'API réelle :
+
+- **Lots** : `ProductBatch` (unique par établissement × produit × numéro) +
+  `StockMovement.batchId` (traçabilité exacte par lot, même pattern que saleId).
+  Invariant F8 : Σ lots = projection = colonne, maintenu dans chaque transaction.
+- **Le stock des BATCHED s'entre EXCLUSIVEMENT par réception de lots** (numéro +
+  péremption obligatoires) : stock initial refusé, mouvements génériques refusés,
+  entrée/sortie du type exige des soldes à zéro.
+- **FEFO** : la vente sort du lot à péremption la plus proche d'abord ; un lot
+  PÉRIMÉ n'est JAMAIS sélectionné (vérifié E2E : lot périmé intact après vente).
+- **Option B (§18.2) appliquée** : la vente BATCHED n'est jamais bloquée
+  serveur-side — un déficit (vente offline concurrente, péremption entre-temps)
+  est imputé au lot pertinent (quantité négative possible) et lève l'alerte
+  **CRITICAL `health.batch_conflict`** pour correction manuelle. Le POS local,
+  lui, refuse strictement (stock vendable = lots non périmés du snapshot).
+- **Annulation/retour EXACTS** : ré-entrée par lot via les NETS de la vente
+  (OUT − IN par batchId) — correct après tout historique de retours partiels.
+- **API** : GET/POST `/stock/products/:id/batches` (réception = upsert par numéro,
+  re-réception additionne) + PATCH `/stock/batches/:id` (correction delta, solde
+  ≥ 0) — gardés `stock.batches` (403 vérifié depuis un établissement FOOD).
+- **UI** : type BATCHED activé au formulaire (stock masqué, note « via les lots »),
+  modal Lots (réception, badges PÉRIMÉ/péremption proche, retrait), POS affiche le
+  stock VENDABLE + la péremption proche, et le snapshot offline débite les lots en
+  FEFO local (anti-oversell — approximation locale, le serveur fait foi).
+- Reportés : lots sur les réceptions fournisseurs (PO) et les dispatchs — les
+  BATCHED s'approvisionnent par réception de lots directe en attendant.

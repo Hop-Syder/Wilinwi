@@ -20,6 +20,7 @@ const TENANT_ID = '00000000-0000-0000-0000-0000000000a2';
 const ETAB_PRET_ID = '00000000-0000-0000-0000-0000000000c2';
 const ETAB_PARFUM_ID = '00000000-0000-0000-0000-0000000000c3';
 const ETAB_MAQUIS_ID = '00000000-0000-0000-0000-0000000000c4';
+const ETAB_PHARMA_ID = '00000000-0000-0000-0000-0000000000c5';
 
 const OWNER_EMAIL = 'christian@prestige.bj';
 const OWNER_PASSWORD = '12345678';
@@ -82,6 +83,13 @@ const PRODUITS_MAQUIS: SeedProduct[] = [
   { nom: 'Riz parfumé (kg)', sku: 'MAQ-ING-RIZ', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', prixAchat: 500, prixPlancher: 700, prixCatalogue: 1000, stock: 50000 },
 ];
 
+// Pharmacie (infrastructure HEALTH) : produits PAR LOTS — le stock s'entre via
+// la réception de lots (seed dédié plus bas), jamais en stock initial.
+const PRODUITS_PHARMA: SeedProduct[] = [
+  { nom: 'Amoxicilline 500mg (boîte 12)', sku: 'PHA-AMOX-500', categorie: 'Antibiotiques', type: 'BATCHED', prixAchat: 800, prixPlancher: 1200, prixCatalogue: 1800, stock: 0 },
+  { nom: 'Paracétamol sirop (L)', sku: 'PHA-PARA-SIR', categorie: 'Antalgiques', type: 'BATCHED', unitKind: 'VOLUME', baseUnit: 'L', prixAchat: 900, prixPlancher: 1300, prixCatalogue: 2000, stock: 0 },
+];
+
 // ───────────────────────────────── Seed ─────────────────────────────────
 
 async function main() {
@@ -126,6 +134,8 @@ async function main() {
       { id: ETAB_PARFUM_ID, nom: 'Prestige Parfums', type: 'BOUTIQUE', infrastructure: 'RETAIL', produits: PRODUITS_PARFUMS },
       // Établissement FOOD : exerce la résolution de capacités par infrastructure.
       { id: ETAB_MAQUIS_ID, nom: 'Prestige Maquis', type: 'RESTAURANT', infrastructure: 'FOOD', produits: PRODUITS_MAQUIS },
+      // Établissement HEALTH : lots, FEFO, péremption (Milestone 4).
+      { id: ETAB_PHARMA_ID, nom: 'Prestige Pharma', type: 'PHARMACIE', infrastructure: 'HEALTH', produits: PRODUITS_PHARMA },
     ] as const;
 
     for (const boutique of boutiques) {
@@ -230,6 +240,68 @@ async function main() {
       });
     }
     console.log('   🪑 Tables du maquis : Table 1, Table 2, Terrasse');
+  });
+
+  // ── Milestone 4 : lots de la pharmacie (idempotent — un lot n'est créé qu'une fois) ──
+  await withTenant(TENANT_ID, async (tx) => {
+    const LOTS: { sku: string; batchNumber: string; expiresAt: string; quantite: number }[] = [
+      // Amoxicilline : un PÉRIMÉ (jamais vendu), un PROCHE (FEFO le sort d'abord), un lointain.
+      { sku: 'PHA-AMOX-500', batchNumber: 'LOT-2024A', expiresAt: '2026-06-01', quantite: 30 },
+      { sku: 'PHA-AMOX-500', batchNumber: 'LOT-2025B', expiresAt: '2026-08-01', quantite: 50 },
+      { sku: 'PHA-AMOX-500', batchNumber: 'LOT-2026C', expiresAt: '2027-06-01', quantite: 200 },
+      // Sirop (VOLUME) : 12 L = 12000 milli-L (§19.1).
+      { sku: 'PHA-PARA-SIR', batchNumber: 'LOT-SIR1', expiresAt: '2027-03-01', quantite: 12000 },
+    ];
+    for (const lot of LOTS) {
+      const product = await tx.product.findFirst({ where: { tenantId: TENANT_ID, sku: lot.sku } });
+      if (!product) continue;
+      const existing = await tx.productBatch.findFirst({
+        where: { etablissementId: ETAB_PHARMA_ID, productId: product.id, batchNumber: lot.batchNumber },
+      });
+      if (existing) continue;
+      const batch = await tx.productBatch.create({
+        data: {
+          tenantId: TENANT_ID,
+          etablissementId: ETAB_PHARMA_ID,
+          productId: product.id,
+          batchNumber: lot.batchNumber,
+          expiresAt: new Date(lot.expiresAt),
+          quantite: lot.quantite,
+        },
+      });
+      await tx.stockMovement.create({
+        data: {
+          tenantId: TENANT_ID,
+          etablissementId: ETAB_PHARMA_ID,
+          productId: product.id,
+          batchId: batch.id,
+          type: 'IN',
+          quantite: lot.quantite,
+          motif: `Réception lot ${lot.batchNumber}`,
+        },
+      });
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: { increment: lot.quantite } },
+      });
+      const proj = await tx.productStock.findFirst({
+        where: { etablissementId: ETAB_PHARMA_ID, productId: product.id, variantId: null },
+      });
+      if (proj) {
+        await tx.productStock.update({ where: { id: proj.id }, data: { quantite: { increment: lot.quantite } } });
+      } else {
+        await tx.productStock.create({
+          data: {
+            tenantId: TENANT_ID,
+            etablissementId: ETAB_PHARMA_ID,
+            productId: product.id,
+            quantite: lot.quantite,
+            quantiteMin: SEUIL_ALERTE,
+          },
+        });
+      }
+    }
+    console.log('   💊 Lots pharmacie : LOT-2024A (périmé), LOT-2025B (proche), LOT-2026C, LOT-SIR1');
   });
 
   console.log('✅ Seed Prestige terminé.');

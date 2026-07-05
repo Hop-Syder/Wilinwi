@@ -115,7 +115,9 @@ export class SalesService {
         // Stratégie type × politique de stock (TDR §9.1/§9.2) : SERVICE et
         // MANUFACTURED n'ont pas de stock direct ; ALLOW_NEGATIVE/NO_STOCK ne
         // bloquent pas (le stock négatif reste visible et alerté par les seuils).
-        if (saleStockBehavior(product.type, product.stockPolicy).precheck) {
+        // BATCHED (Option B §18.2) : jamais bloqué serveur-side — le POS local
+        // refuse déjà périmés/insuffisants ; un conflit devient une alerte CRITICAL.
+        if (product.type !== 'BATCHED' && saleStockBehavior(product.type, product.stockPolicy).precheck) {
           const availableStock = await readStockAt(
             tx,
             ctx.etablissementId,
@@ -263,6 +265,20 @@ export class SalesService {
       // mouvement ni décrément (paiement, trésorerie et reçu restent identiques).
       const behavior = saleStockBehavior(item.product?.type, item.product?.stockPolicy);
       if (!behavior.decrement) continue;
+      // BATCHED : sortie par lots en FEFO (péremption la plus proche d'abord,
+      // périmés exclus) — remplace le décrément générique ci-dessous.
+      if (item.product?.type === 'BATCHED') {
+        if (etablissementId) {
+          await this.consumeBatchesFEFO(tx, ctx, {
+            saleId,
+            etablissementId,
+            productId: item.productId,
+            productNom: item.product.nom,
+            quantite: item.quantite,
+          });
+        }
+        continue;
+      }
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -489,6 +505,185 @@ export class SalesService {
     });
   }
 
+  // ─────────────── Lots & FEFO (Health — Milestone 4, §9.4/§18.2) ───────────────
+
+  /**
+   * Consomme les lots d'un produit BATCHED en FEFO (péremption la plus proche
+   * d'abord), périmés EXCLUS. Si le stock vendable ne suffit pas, la vente est
+   * quand même validée (Option B : la caisse ne ment pas) : le déficit est imputé
+   * au dernier lot pertinent (quantité négative) et une alerte CRITICAL
+   * `health.batch_conflict` est levée pour correction manuelle.
+   * Invariant F8 maintenu : Σ lots et projection bougent du même montant.
+   */
+  private async consumeBatchesFEFO(
+    tx: TenantTx,
+    ctx: AuthContext,
+    args: {
+      saleId: string;
+      etablissementId: string;
+      productId: string;
+      productNom: string;
+      quantite: number;
+    },
+  ): Promise<void> {
+    const now = new Date();
+    const batches = await tx.productBatch.findMany({
+      where: {
+        tenantId: ctx.tenantId,
+        etablissementId: args.etablissementId,
+        productId: args.productId,
+      },
+      orderBy: { expiresAt: 'asc' },
+    });
+    const vendables = batches.filter((b) => b.expiresAt > now && b.quantite > 0);
+
+    let restant = args.quantite;
+    for (const b of vendables) {
+      if (restant <= 0) break;
+      const pris = Math.min(b.quantite, restant);
+      await this.takeFromBatch(tx, ctx, args, b.id, pris);
+      restant -= pris;
+    }
+
+    if (restant > 0) {
+      // Déficit (vente offline concurrente, lots périmés entre-temps…) : imputé
+      // au lot le plus « sûr » disponible — vendable le plus lointain, sinon le
+      // dernier lot connu, sinon un lot CONFLIT créé pour porter la trace.
+      const cible =
+        vendables.at(-1) ??
+        batches.at(-1) ??
+        (await tx.productBatch.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: args.etablissementId,
+            productId: args.productId,
+            batchNumber: `CONFLIT-${args.saleId.slice(0, 8)}`,
+            expiresAt: now,
+            quantite: 0,
+          },
+        }));
+      await this.takeFromBatch(tx, ctx, args, cible.id, restant);
+      await this.alerts.raise(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: args.etablissementId,
+        severity: 'CRITICAL',
+        type: 'health.batch_conflict',
+        message: `Conflit de lots : « ${args.productNom} » vendu au-delà du stock vendable (déficit ${restant}${vendables.length === 0 ? ', aucun lot non périmé' : ''}). Corrigez les lots manuellement.`,
+        payload: {
+          productId: args.productId,
+          saleId: args.saleId,
+          deficit: restant,
+          batchId: cible.id,
+          aucunLotVendable: vendables.length === 0,
+        },
+      });
+    }
+  }
+
+  /** Sortie d'un lot : mouvement tracé par batchId + lot + colonne + projection. */
+  private async takeFromBatch(
+    tx: TenantTx,
+    ctx: AuthContext,
+    args: { saleId: string; etablissementId: string; productId: string },
+    batchId: string,
+    quantite: number,
+  ): Promise<void> {
+    await tx.stockMovement.create({
+      data: {
+        tenantId: ctx.tenantId,
+        etablissementId: args.etablissementId,
+        productId: args.productId,
+        batchId,
+        type: 'OUT',
+        quantite: -quantite,
+        motif: `Vente ${args.saleId}`,
+        saleId: args.saleId,
+      },
+    });
+    await tx.productBatch.update({
+      where: { id: batchId },
+      data: { quantite: { decrement: quantite } },
+    });
+    await tx.product.update({
+      where: { id: args.productId },
+      data: { stock: { decrement: quantite } },
+    });
+    await applyStockDelta(tx, {
+      tenantId: ctx.tenantId,
+      etablissementId: args.etablissementId,
+      productId: args.productId,
+      variantId: null,
+      delta: -quantite,
+    });
+  }
+
+  /**
+   * Net consommé PAR LOT pour une vente = -Σ des mouvements portant un batchId
+   * (les OUT de vente sont négatifs, les IN de retours/annulations positifs) →
+   * exact quel que soit l'historique (retours partiels compris).
+   */
+  private async batchNetConsumed(
+    tx: TenantTx,
+    tenantId: string,
+    saleId: string,
+    productId?: string,
+  ): Promise<Map<string, { net: number; productId: string; etablissementId: string | null }>> {
+    const movements = await tx.stockMovement.findMany({
+      where: {
+        tenantId,
+        saleId,
+        batchId: { not: null },
+        ...(productId ? { productId } : {}),
+      },
+    });
+    const nets = new Map<string, { net: number; productId: string; etablissementId: string | null }>();
+    for (const m of movements) {
+      const cur = nets.get(m.batchId!) ?? { net: 0, productId: m.productId, etablissementId: m.etablissementId };
+      cur.net -= m.quantite; // OUT négatif → net positif consommé
+      nets.set(m.batchId!, cur);
+    }
+    return nets;
+  }
+
+  /** Ré-entrée d'un lot (annulation/retour) : miroir exact de takeFromBatch. */
+  private async returnToBatch(
+    tx: TenantTx,
+    ctx: AuthContext,
+    args: { saleId: string; etablissementId: string | null; productId: string; motif: string },
+    batchId: string,
+    quantite: number,
+  ): Promise<void> {
+    await tx.stockMovement.create({
+      data: {
+        tenantId: ctx.tenantId,
+        etablissementId: args.etablissementId,
+        productId: args.productId,
+        batchId,
+        type: 'IN',
+        quantite,
+        motif: args.motif,
+        saleId: args.saleId,
+      },
+    });
+    await tx.productBatch.update({
+      where: { id: batchId },
+      data: { quantite: { increment: quantite } },
+    });
+    await tx.product.update({
+      where: { id: args.productId },
+      data: { stock: { increment: quantite } },
+    });
+    if (args.etablissementId) {
+      await applyStockDelta(tx, {
+        tenantId: ctx.tenantId,
+        etablissementId: args.etablissementId,
+        productId: args.productId,
+        variantId: null,
+        delta: quantite,
+      });
+    }
+  }
+
   /** Versement supplémentaire sur un acompte. */
   async addPayment(ctx: AuthContext, saleId: string, montant: number) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
@@ -555,6 +750,8 @@ export class SalesService {
       for (const item of target.items) {
         // Symétrique de finalize : on ne ré-entre que ce qui a été décrémenté.
         if (!saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) continue;
+        // BATCHED : ré-entrée PAR LOTS via les nets exacts (pass dédié plus bas).
+        if (item.product?.type === 'BATCHED') continue;
         // Un retour partiel a déjà restocké `quantiteRetournee` : ne ré-entrer
         // que le restant, sinon l'annulation double la ré-entrée de stock.
         const restant = item.quantite - (item.quantiteRetournee ?? 0);
@@ -685,6 +882,26 @@ export class SalesService {
       // NOTE retour partiel : PAS de ré-entrée d'ingrédients (le plat retourné a
       // été cuisiné — la matière est consommée ; seul l'argent est restitué).
 
+      // Lots (BATCHED) : ré-entrée EXACTE par lot via les NETS de la vente
+      // (OUT de vente − IN de retours déjà faits) — correct quel que soit
+      // l'historique, y compris après des retours partiels.
+      const batchNets = await this.batchNetConsumed(tx, ctx.tenantId, saleId);
+      for (const [batchId, info] of batchNets) {
+        if (info.net <= 0) continue;
+        await this.returnToBatch(
+          tx,
+          ctx,
+          {
+            saleId,
+            etablissementId: info.etablissementId ?? etablissementId,
+            productId: info.productId,
+            motif: `Annulation vente ${saleId}`,
+          },
+          batchId,
+          info.net,
+        );
+      }
+
       await tx.sale.update({ where: { id: saleId }, data: { status: 'CANCELLED' } });
       // Le reçu public ne vaut plus preuve d'achat : marqué annulé (reste
       // consultable, la page /r/<code> affiche « VENTE ANNULÉE »).
@@ -745,7 +962,35 @@ export class SalesService {
         // Remettre en stock — symétrique de finalize : seuls les articles dont le
         // stock a été décrémenté ré-entrent (le retour d'un service/plat reste
         // possible : avoir/remboursement sans ré-entrée).
-        if (saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) {
+        if (item.product?.type === 'BATCHED') {
+          // Ré-entrée PAR LOTS, bornée aux nets consommés par CETTE vente —
+          // lots à péremption lointaine d'abord, invariant Σ lots = projection préservé.
+          let restantRetour = ret.quantiteRetournee;
+          const nets = await this.batchNetConsumed(tx, ctx.tenantId, sale.id, item.productId);
+          const lots = await tx.productBatch.findMany({
+            where: { id: { in: [...nets.keys()] } },
+            orderBy: { expiresAt: 'desc' },
+          });
+          for (const lot of lots) {
+            if (restantRetour <= 0) break;
+            const net = nets.get(lot.id)?.net ?? 0;
+            if (net <= 0) continue;
+            const back = Math.min(net, restantRetour);
+            await this.returnToBatch(
+              tx,
+              ctx,
+              {
+                saleId: sale.id,
+                etablissementId,
+                productId: item.productId,
+                motif: `Retour client (Vente ${sale.id.slice(0, 8)})`,
+              },
+              lot.id,
+              back,
+            );
+            restantRetour -= back;
+          }
+        } else if (saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) {
           await tx.stockMovement.create({
             data: {
               tenantId: ctx.tenantId,

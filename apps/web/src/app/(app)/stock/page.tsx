@@ -15,7 +15,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import {
   Plus, Package, Search, AlertTriangle, ArrowRightLeft,
-  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat,
+  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat, Layers,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
@@ -23,7 +23,7 @@ import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
-import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal } from '@/components/stock-modals';
+import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal } from '@/components/stock-modals';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -46,6 +46,7 @@ export default function StockPage() {
   const [editingProduct, setEditingProduct] = useState<ProductDto | undefined>();
   const [movementProduct, setMovementProduct] = useState<ProductDto | undefined>();
   const [recipeProduct, setRecipeProduct] = useState<ProductDto | undefined>();
+  const [batchProduct, setBatchProduct] = useState<ProductDto | undefined>();
   const { has: hasInfraCap } = useInfraCapabilities();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -276,6 +277,15 @@ export default function StockPage() {
                               <ChefHat className="h-4 w-4" />
                             </button>
                           )}
+                          {p.type === 'BATCHED' && hasInfraCap('stock.batches') && (
+                            <button
+                              onClick={() => setBatchProduct(p)}
+                              className="p-1.5 text-slate-400 hover:text-violet-600 rounded-md hover:bg-violet-50 transition-colors"
+                              title="Lots & péremption (réception, FEFO)"
+                            >
+                              <Layers className="h-4 w-4" />
+                            </button>
+                          )}
                         </>
                       )}
                       <Link
@@ -363,6 +373,14 @@ export default function StockPage() {
           catalog={products}
           onClose={() => setRecipeProduct(undefined)}
           onSuccess={() => setRecipeProduct(undefined)}
+        />
+      )}
+
+      {batchProduct && (
+        <BatchModal
+          product={batchProduct}
+          onClose={() => setBatchProduct(undefined)}
+          onSuccess={() => void refetch()}
         />
       )}
 

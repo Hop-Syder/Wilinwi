@@ -17,9 +17,11 @@ import type { CreateSaleInput, FoodTableDto, ProductDto } from '@wilinwi/types';
 import {
   applySaleStockToProducts,
   formatQuantity,
+  nearestExpiry,
   productAffectsStock,
   quantityScale,
   saleStockBehavior,
+  sellableBatchQuantity,
   toDisplayQuantity,
   toStoredQuantity,
 } from '@wilinwi/types';
@@ -280,7 +282,10 @@ export default function PosPage() {
     // Miroir du serveur (TDR §9.1/§9.2) : pas de contrôle de disponibilité pour
     // SERVICE/MANUFACTURED ni pour les politiques ALLOW_NEGATIVE/NO_STOCK.
     const checkStock = saleStockBehavior(product.type, product.stockPolicy).precheck;
-    const stockToCheck = variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
+    // BATCHED : seul le stock VENDABLE compte (lots non périmés — Option B §18.2).
+    const stockToCheck = product.type === 'BATCHED'
+      ? sellableBatchQuantity(product.batches)
+      : variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
     if (checkStock && stockToCheck <= 0) {
       setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
       return;
@@ -314,7 +319,9 @@ export default function PosPage() {
   function setExactQuantity(line: CartLine, newQ: number) {
     if (newQ <= 0) return;
     if (saleStockBehavior(line.product.type, line.product.stockPolicy).precheck) {
-      const stockToCheck = line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
+      const stockToCheck = line.product.type === 'BATCHED'
+        ? sellableBatchQuantity(line.product.batches)
+        : line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
       if (newQ > stockToCheck) {
         setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
         newQ = stockToCheck;
@@ -548,7 +555,11 @@ export default function PosPage() {
                     const noStock = !productAffectsStock(p.type);
                     // ALLOW_NEGATIVE/NO_STOCK : la rupture n'empêche pas la vente.
                     const blocking = saleStockBehavior(p.type, p.stockPolicy).precheck;
-                    const outOfStock = blocking && p.stock <= 0 && (!p.variants || p.variants.length === 0);
+                    // BATCHED : disponibilité = lots vendables (périmés exclus).
+                    const dispo = p.type === 'BATCHED' ? sellableBatchQuantity(p.batches) : p.stock;
+                    const expiry = p.type === 'BATCHED' ? nearestExpiry(p.batches) : null;
+                    const expiryProche = expiry !== null && expiry.getTime() - Date.now() < 30 * 86_400_000;
+                    const outOfStock = blocking && dispo <= 0 && (!p.variants || p.variants.length === 0);
                     return (
                       <button
                         key={p.id}
@@ -560,8 +571,12 @@ export default function PosPage() {
                         <div className="tabular mt-1 text-sm font-bold text-emerald-700">
                           {formatFCFA(p.prixCatalogue)}
                         </div>
-                        <Badge tone={noStock ? 'neutral' : p.stock <= 0 ? 'danger' : p.stock <= p.seuilAlerte ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
-                          {noStock ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué') : p.stock === 0 ? 'Rupture' : `${formatQuantity(p.stock, p.unitKind, p.baseUnit)} en stock`}
+                        <Badge tone={noStock ? 'neutral' : dispo <= 0 ? 'danger' : expiryProche ? 'warning' : dispo <= p.seuilAlerte ? 'warning' : 'neutral'} className="mt-2 text-[10px]">
+                          {noStock
+                            ? (p.type === 'SERVICE' ? 'Service' : 'Fabriqué')
+                            : dispo <= 0
+                              ? 'Rupture'
+                              : `${formatQuantity(dispo, p.unitKind, p.baseUnit)} ${p.type === 'BATCHED' ? 'vendable' : 'en stock'}${expiryProche ? ` · exp. ${expiry!.toLocaleDateString('fr-FR')}` : ''}`}
                         </Badge>
                       </button>
                     );
