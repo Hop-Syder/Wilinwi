@@ -14,12 +14,17 @@ import { PlatformAdmin } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PlatformService } from './platform.service';
 import {
+  EtablissementInfrastructureSchema,
   PlatformChangePlanSchema,
   PlatformSetStatusSchema,
   PlatformSetModulesSchema,
   PlatformSetUserActiveSchema,
+  UpdateInfraPricingSchema,
   UpdatePlanConfigSchema,
   PlanSchema,
+  type EtablissementInfrastructure,
+  type InfraPricingDto,
+  type UpdateInfraPricingInput,
   type PlatformTenantDto,
   type PlatformEtablissementDto,
   type PlatformChangePlanInput,
@@ -231,5 +236,21 @@ export class PlatformController {
     @Body(new ZodValidationPipe(PlatformSetModulesSchema)) dto: PlatformSetModulesInput,
   ) {
     return this.platformService.setTenantModules(id, dto.modules);
+  }
+
+  /** GET /api/platform/infra-pricing — Tarifs des infrastructures (Option C, §18.1). */
+  @Get('infra-pricing')
+  getInfraPricing(): Promise<InfraPricingDto[]> {
+    return this.platformService.getInfraPricing();
+  }
+
+  /** PATCH /api/platform/infra-pricing/:infrastructure — Surcoût mensuel par établissement actif. */
+  @Patch('infra-pricing/:infrastructure')
+  setInfraPricing(
+    @Param('infrastructure', new ZodValidationPipe(EtablissementInfrastructureSchema))
+    infrastructure: EtablissementInfrastructure,
+    @Body(new ZodValidationPipe(UpdateInfraPricingSchema)) dto: UpdateInfraPricingInput,
+  ): Promise<InfraPricingDto> {
+    return this.platformService.setInfraPricing(infrastructure, dto);
   }
 }

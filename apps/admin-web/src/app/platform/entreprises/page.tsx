@@ -372,6 +372,16 @@ export default function EntreprisesPage() {
                               <span className="flex items-center gap-1 font-semibold text-text-primary" title="Établissements">
                                 <Store className="h-3.5 w-3.5 text-text-secondary" /> {t.etablissementsCount}
                               </span>
+                              {t.infraSurcharge > 0 && (
+                                <span
+                                  className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700"
+                                  title={`Surcoût infrastructures (Option C) : ${Object.entries(t.infraCounts)
+                                    .map(([infra, n]) => `${n} ${infra}`)
+                                    .join(', ')}`}
+                                >
+                                  +{new Intl.NumberFormat('fr-FR').format(t.infraSurcharge)} F/mois
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="p-4 text-xs text-text-secondary">

@@ -26,7 +26,9 @@ RETURNS TABLE(
   billing_cycle text,
   module_addons text[],
   owner_name text,
-  owner_email text
+  owner_email text,
+  infra_counts jsonb,
+  infra_surcharge bigint
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -46,7 +48,19 @@ AS $$
     t.module_addons,
     -- Propriétaire principal (OWNER) — nom + e-mail de contact pour le support.
     (SELECT u.nom::text   FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_name,
-    (SELECT u.email::text FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_email
+    (SELECT u.email::text FROM public.users u WHERE u.tenant_id = t.id AND u.role = 'OWNER' ORDER BY u.created_at ASC LIMIT 1) AS owner_email,
+    -- Option C (TDR §18.1) : établissements ACTIFS par infrastructure FACTURÉE
+    -- (tarif > 0 dans infra_pricing) + surcoût mensuel total correspondant.
+    (SELECT COALESCE(jsonb_object_agg(sub.infrastructure, sub.cnt), '{}'::jsonb)
+       FROM (SELECT e.infrastructure::text AS infrastructure, COUNT(*)::int AS cnt
+               FROM public.etablissements e
+               JOIN public.infra_pricing ip ON ip.infrastructure = e.infrastructure
+              WHERE e.tenant_id = t.id AND e.actif AND ip.price_monthly > 0
+              GROUP BY e.infrastructure) sub) AS infra_counts,
+    (SELECT COALESCE(SUM(ip.price_monthly), 0)::bigint
+       FROM public.etablissements e
+       JOIN public.infra_pricing ip ON ip.infrastructure = e.infrastructure
+      WHERE e.tenant_id = t.id AND e.actif) AS infra_surcharge
   FROM public.tenants t
   WHERE NOT t.internal
   ORDER BY t.created_at DESC;
@@ -184,7 +198,14 @@ AS $$
       ), 0)
       FROM public.tenants t
       JOIN public.plan_configs pc ON pc.plan = t.plan
-      WHERE NOT t.internal AND t.subscription_status = 'ACTIVE');
+      WHERE NOT t.internal AND t.subscription_status = 'ACTIVE')
+    -- + surcoûts d'infrastructure Option C (TDR §18.1) : par établissement actif
+    --   des entreprises à jour.
+    + (SELECT COALESCE(sum(ip.price_monthly), 0)
+         FROM public.etablissements e
+         JOIN public.infra_pricing ip ON ip.infrastructure = e.infrastructure
+         JOIN public.tenants t2 ON t2.id = e.tenant_id
+        WHERE e.actif AND NOT t2.internal AND t2.subscription_status = 'ACTIVE');
 $$;
 
 -- 9. Flux d'audit cross-tenant : dernières actions, tout locataire confondu.

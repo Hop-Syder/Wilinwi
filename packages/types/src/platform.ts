@@ -39,8 +39,39 @@ export const PlatformTenantSchema = z.object({
   /** Propriétaire principal (rôle OWNER) — nom + e-mail de contact (support). */
   ownerName: z.string().nullable(),
   ownerEmail: z.string().nullable(),
+  /** Option C (TDR §18.1) : établissements ACTIFS par infrastructure spécialisée
+   *  (ex: { FOOD: 2, WHOLESALE: 1 }) et surcoût mensuel total en FCFA. */
+  infraCounts: z.record(z.string(), z.number().int()).default({}),
+  infraSurcharge: z.number().int().nonnegative().default(0),
 });
 export type PlatformTenantDto = z.infer<typeof PlatformTenantSchema>;
+
+/** Tarif mensuel d'une infrastructure spécialisée par établissement actif (TDR §18.1). */
+export const InfraPricingSchema = z.object({
+  infrastructure: z.enum(['RETAIL', 'FOOD', 'HEALTH', 'SERVICE', 'WHOLESALE']),
+  priceMonthly: z.number().int().nonnegative(),
+  updatedAt: z.coerce.date(),
+});
+export type InfraPricingDto = z.infer<typeof InfraPricingSchema>;
+
+export const UpdateInfraPricingSchema = z.object({
+  priceMonthly: z.number().int().nonnegative(),
+});
+export type UpdateInfraPricingInput = z.infer<typeof UpdateInfraPricingSchema>;
+
+/** Alerte d'audit cross-tenant (TDR §18.2) — anomalie non bloquante à corriger. */
+export const PlatformAuditAlertSchema = z.object({
+  id: IdSchema,
+  tenantId: IdSchema,
+  tenantNom: z.string(),
+  etablissementId: IdSchema.nullable(),
+  severity: z.enum(['INFO', 'WARNING', 'CRITICAL']),
+  type: z.string(),
+  message: z.string(),
+  payload: z.unknown().nullable(),
+  createdAt: z.coerce.date(),
+});
+export type PlatformAuditAlertDto = z.infer<typeof PlatformAuditAlertSchema>;
 
 /** Entrée : modules « à la carte » d'une entreprise (remplace l'ensemble courant). */
 export const PlatformSetModulesSchema = z.object({ modules: z.array(ModuleKeySchema) });

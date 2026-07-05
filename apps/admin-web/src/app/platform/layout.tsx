@@ -37,6 +37,7 @@ const NAV = [
   { href: '/platform/abonnements', label: 'Abonnements', icon: CreditCard },
   { href: '/platform/revenus', label: 'Revenus', icon: TrendingUp },
   { href: '/platform/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/platform/alertes', label: 'Alertes', icon: ShieldAlert },
   { href: '/platform/logs', label: 'Journaux', icon: ScrollText },
 ];
 

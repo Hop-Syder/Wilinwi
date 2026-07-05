@@ -14,6 +14,7 @@ import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import geoip from 'geoip-lite';
 import { AdminPrismaService } from '../common/admin-prisma.service';
+import { PrismaService } from '../common/prisma.service';
 import { PlanConfigService } from '../common/plan-config.service';
 import { SupabaseAdminService } from '../auth/supabase-admin.service';
 import type {
@@ -37,14 +38,18 @@ import type {
   PlanConfigDto,
   UpdatePlanConfigInput,
   Plan,
+  EtablissementInfrastructure,
+  InfraPricingDto,
   ModuleKey,
   SubscriptionStatus,
+  UpdateInfraPricingInput,
 } from '@wilinwi/types';
 
 @Injectable()
 export class PlatformService {
   constructor(
     private readonly adminPrisma: AdminPrismaService,
+    private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly supabaseAdmin: SupabaseAdminService,
   ) {}
@@ -64,9 +69,42 @@ export class PlatformService {
         billing_cycle AS "billingCycle",
         module_addons AS "moduleAddons",
         owner_name AS "ownerName",
-        owner_email AS "ownerEmail"
+        owner_email AS "ownerEmail",
+        infra_counts AS "infraCounts",
+        infra_surcharge::integer AS "infraSurcharge"
       FROM app.platform_tenants_overview()
     `;
+  }
+
+  // ─────────────── Tarification des infrastructures (Option C — TDR §18.1) ───────────────
+
+  /** Tarifs mensuels par infrastructure (table globale, hors RLS — comme plan_configs). */
+  async getInfraPricing(): Promise<InfraPricingDto[]> {
+    const rows = await this.prisma.client.infraPricing.findMany({
+      orderBy: { infrastructure: 'asc' },
+    });
+    return rows.map((r) => ({
+      infrastructure: r.infrastructure,
+      priceMonthly: r.priceMonthly,
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  /** Met à jour le surcoût mensuel d'une infrastructure (par établissement actif). */
+  async setInfraPricing(
+    infrastructure: EtablissementInfrastructure,
+    input: UpdateInfraPricingInput,
+  ): Promise<InfraPricingDto> {
+    const row = await this.prisma.client.infraPricing.upsert({
+      where: { infrastructure },
+      update: { priceMonthly: input.priceMonthly },
+      create: { infrastructure, priceMonthly: input.priceMonthly },
+    });
+    return {
+      infrastructure: row.infrastructure,
+      priceMonthly: row.priceMonthly,
+      updatedAt: row.updatedAt,
+    };
   }
 
   /** Retourne la liste des établissements d'un tenant spécifique en contournant la RLS. */

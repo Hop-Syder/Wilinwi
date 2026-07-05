@@ -9,6 +9,7 @@
 'use client';
 
 import { PlanEditor } from '../plan-editor';
+import { InfraPricingEditor } from '../infra-pricing-editor';
 import { ExpiringSubscriptions } from '../expiring-subscriptions';
 
 export default function AbonnementsPage() {
@@ -17,11 +18,13 @@ export default function AbonnementsPage() {
       <div>
         <h1 className="text-2xl font-black tracking-tight">Abonnements</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Tarifs et limites par plan (éditables, effet immédiat) et abonnements arrivant à échéance.
+          Tarifs et limites par plan, surcoûts d'infrastructure par établissement actif
+          (éditables, effet immédiat) et abonnements arrivant à échéance.
         </p>
       </div>
       <ExpiringSubscriptions days={30} />
       <PlanEditor />
+      <InfraPricingEditor />
     </div>
   );
 }

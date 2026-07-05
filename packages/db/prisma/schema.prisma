@@ -64,6 +64,17 @@ model PlanConfig {
   @@map("plan_configs")
 }
 
+// Tarif mensuel d'une infrastructure par établissement ACTIF (Option C — TDR §18.1).
+// Table GLOBALE (pas de tenant_id, PAS de RLS — comme plan_configs), éditée par la
+// console super-admin. RETAIL/SERVICE = 0 (inclus) ; FOOD/HEALTH/WHOLESALE = surcoût.
+model InfraPricing {
+  infrastructure EtablissementInfrastructure @id
+  priceMonthly   Int                         @default(0) @map("price_monthly")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+
+  @@map("infra_pricing")
+}
+
 enum SubscriptionStatus {
   ACTIVE
   TRIALING
