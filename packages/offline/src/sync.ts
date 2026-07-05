@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import type { CreateSaleInput } from '@wilinwi/types';
+import { applySaleStockToProducts, type CreateSaleInput } from '@wilinwi/types';
 import { getDB, type CachedProduct, type PendingSale } from './db.js';
 
 export interface SyncResult {
@@ -38,7 +38,33 @@ export class SyncEngine {
       status: 'pending',
     };
     await getDB().pendingSales.put(sale);
+    // Anti-oversell : le snapshot local est débité immédiatement — deux ventes
+    // hors-ligne successives ne peuvent pas vendre deux fois le même stock.
+    await this.adjustCachedStock(sale.payload, 'debit');
     return sale;
+  }
+
+  /**
+   * Ajuste le stock du catalogue en cache après une vente locale (debit) ou
+   * l'abandon d'une vente refusée (credit). Best-effort : une indisponibilité
+   * d'IndexedDB ne doit jamais faire échouer l'encaissement.
+   */
+  private async adjustCachedStock(
+    payload: CreateSaleInput,
+    mode: 'debit' | 'credit',
+  ): Promise<void> {
+    try {
+      const db = getDB();
+      const ids = [...new Set(payload.items.map((it) => it.productId))];
+      const cached = (await db.products.bulkGet(ids)).filter(
+        (p): p is CachedProduct => p !== undefined,
+      );
+      if (cached.length === 0) return;
+      const updated = applySaleStockToProducts(cached, payload.items, mode);
+      await db.products.bulkPut(updated);
+    } catch {
+      /* cache indisponible : le serveur reste la source de vérité. */
+    }
   }
 
   /** Nombre d'opérations en attente (pour l'indicateur d'UI). */
@@ -73,7 +99,13 @@ export class SyncEngine {
 
   /** Écarte définitivement une vente locale (supprime de la file). */
   async discard(id: string): Promise<void> {
+    const sale = await getDB().pendingSales.get(id);
     await getDB().pendingSales.delete(id);
+    // Vente jamais acceptée par le serveur → la marchandise n'est pas sortie :
+    // on re-crédite le snapshot local. (Une vente 'synced' appartient au serveur.)
+    if (sale && sale.status !== 'synced') {
+      await this.adjustCachedStock(sale.payload, 'credit');
+    }
   }
 
   /** Ventes déjà synchronisées : purge possible pour ne pas faire grossir IndexedDB. */

@@ -1163,3 +1163,36 @@ Acceptation :
 ## Prochaine action recommandee
 
 Valider les arbitrages commerciaux suivants avant implementation : facturation des infrastructures par tenant ou par etablissement, ordre de priorite des verticales, et niveau offline autorise pour Health. Ensuite, executer OT-1 et OT-2 pour poser la fondation technique sans perturber le produit existant.
+
+---
+
+## 18. Arbitrages valides (2026-07-05)
+
+Les validations humaines de la section 16.2 ont ete tranchees :
+
+### 18.1 Facturation des infrastructures — Option C : par etablissement actif
+
+- `RETAIL` et `SERVICE` (simple) : inclus dans tous les plans.
+- `FOOD`, `HEALTH`, `WHOLESALE` : surcout mensuel fixe **par etablissement actif**
+  qui utilise l'infrastructure (reference initiale : +5 000 FCFA/mois/point de vente).
+- Consequence technique : `planAllowsInfrastructure` reste PERMISSIF (le gating est
+  tarifaire, pas fonctionnel) ; le calcul de la facture mensuelle doit compter les
+  etablissements actifs par infrastructure specialisee (module platform/billing).
+- Modele de reference : Shopify / Lightspeed (le revenu suit la croissance physique du client).
+
+### 18.2 Offline Health — Option B : snapshot local + validation a posteriori
+
+- Snapshot local des stocks ET des lots dans IndexedDB.
+- Le POS local interdit strictement tout lot dont la peremption locale est depassee.
+- Vente offline autorisee, journalisee localement ; au retour reseau le serveur integre.
+- Conflit de lot (ex. double vente offline sur deux caisses) : la vente est validee
+  FINANCIEREMENT (la caisse ne ment pas) mais une **alerte d'audit critique** est levee
+  dans la console super-admin pour correction manuelle des stocks de lots.
+- Prerequis : anti-oversell du cache offline (decrement local a l'encaissement).
+
+### 18.3 Passerelle de paiement — FedaPay (agregateur)
+
+- Une seule integration API couvre MTN MoMo, Orange Money, Moov Flooz, Wave et CB
+  (Visa/Mastercard) sur 5 pays.
+- Perimetre a venir : abonnements + surcouts infrastructure (18.1), webhooks de
+  paiement, bascule automatique PAST_DUE (le dunning derive existant s'applique).

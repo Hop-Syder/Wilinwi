@@ -98,16 +98,23 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
 
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-600">
-              Quantité ({type === 'OUT' ? 'Sera soustraite' : type === 'IN' ? 'Sera ajoutée' : 'Stock exact après ajustement'})
+              {/* ADJUST = écart SIGNÉ appliqué au stock (sémantique API), pas un stock cible. */}
+              Quantité ({type === 'OUT' ? 'Sera soustraite' : type === 'IN' ? 'Sera ajoutée' : 'Écart appliqué au stock : + ajout, − retrait'})
             </span>
             <input
               type="number"
               value={quantite}
               onChange={(e) => setQuantite(e.target.value)}
               required
-              min={type === 'ADJUST' ? 0 : 1}
+              min={type === 'ADJUST' ? undefined : 1}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
+            {type === 'ADJUST' && (
+              <span className="mt-1 block text-[11px] text-slate-500">
+                Ex. stock affiché 10, comptage réel 8 → saisir −2. Pour figer un comptage
+                complet, préférez un inventaire.
+              </span>
+            )}
           </label>
 
           <label className="block">

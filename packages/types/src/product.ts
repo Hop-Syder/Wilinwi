@@ -94,6 +94,57 @@ export function saleStockBehavior(
   }
 }
 
+// ─────────── Anti-oversell offline (snapshot local — TDR §10 / §18.2) ───────────
+
+/** Ligne de vente minimale pour l'ajustement du stock local. */
+export interface SaleLineLike {
+  productId: string;
+  variantId?: string | null;
+  quantite: number;
+}
+
+interface ProductStockLike {
+  id: string;
+  type?: ProductType | null;
+  stockPolicy?: StockPolicy | null;
+  stock: number;
+  variants?: { id: string; stock: number }[];
+}
+
+/**
+ * Applique (ou annule) l'effet stock d'une vente sur un snapshot local de
+ * produits — fonction PURE, partagée par le cache offline (Dexie) et l'état du
+ * POS : deux ventes hors-ligne successives voient un stock déjà débité (anti-
+ * oversell). `debit` = vente encaissée localement ; `credit` = vente locale
+ * écartée après refus serveur. Respecte `saleStockBehavior` (SERVICE/
+ * MANUFACTURED/NO_STOCK inchangés). Le serveur reste la source de vérité :
+ * le snapshot est réaligné à chaque rechargement du catalogue.
+ */
+export function applySaleStockToProducts<T extends ProductStockLike>(
+  products: readonly T[],
+  items: readonly SaleLineLike[],
+  mode: 'debit' | 'credit',
+): T[] {
+  const sign = mode === 'debit' ? -1 : 1;
+  return products.map((p) => {
+    const lines = items.filter((it) => it.productId === p.id);
+    if (lines.length === 0) return p;
+    if (!saleStockBehavior(p.type, p.stockPolicy).decrement) return p;
+
+    let stock = p.stock;
+    let variants = p.variants;
+    for (const line of lines) {
+      stock += sign * line.quantite;
+      if (line.variantId && variants) {
+        variants = variants.map((v) =>
+          v.id === line.variantId ? { ...v, stock: v.stock + sign * line.quantite } : v,
+        );
+      }
+    }
+    return { ...p, stock, variants };
+  });
+}
+
 /**
  * Système à 3 prix produit (le 4ᵉ, prix_reel, est porté par chaque vente).
  * Contrainte métier : prix_achat ≤ prix_plancher ≤ prix_catalogue.

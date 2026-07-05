@@ -14,7 +14,12 @@ import {
   resolveEffectiveCapabilities,
   planAllowsInfrastructure,
 } from './capabilities.js';
-import { productAffectsStock, defaultStockPolicy, saleStockBehavior } from './product.js';
+import {
+  applySaleStockToProducts,
+  defaultStockPolicy,
+  productAffectsStock,
+  saleStockBehavior,
+} from './product.js';
 import { ACTIVE_DUNNING, computeDunning } from './dunning.js';
 
 const DAY_MS = 86_400_000;
@@ -129,6 +134,59 @@ describe('productAffectsStock (stratégie de vente TDR §9.1)', () => {
   it('undefined/null (caches offline pré-migration) = STANDARD', () => {
     expect(productAffectsStock(undefined)).toBe(true);
     expect(productAffectsStock(null)).toBe(true);
+  });
+});
+
+describe('applySaleStockToProducts (anti-oversell offline)', () => {
+  const products = [
+    { id: 'p1', type: 'STANDARD' as const, stockPolicy: 'STRICT' as const, stock: 10 },
+    { id: 'p2', type: 'SERVICE' as const, stockPolicy: 'NO_STOCK' as const, stock: 0 },
+    {
+      id: 'p3',
+      type: 'STANDARD' as const,
+      stockPolicy: 'STRICT' as const,
+      stock: 8,
+      variants: [{ id: 'v1', stock: 5 }],
+    },
+  ];
+
+  it('debit : décrémente le STANDARD, ignore le SERVICE', () => {
+    const out = applySaleStockToProducts(
+      products,
+      [
+        { productId: 'p1', quantite: 3 },
+        { productId: 'p2', quantite: 2 },
+      ],
+      'debit',
+    );
+    expect(out.find((p) => p.id === 'p1')?.stock).toBe(7);
+    expect(out.find((p) => p.id === 'p2')?.stock).toBe(0);
+  });
+
+  it('debit avec variante : décrémente le parent ET la variante', () => {
+    const out = applySaleStockToProducts(
+      products,
+      [{ productId: 'p3', variantId: 'v1', quantite: 2 }],
+      'debit',
+    );
+    const p3 = out.find((p) => p.id === 'p3')!;
+    expect(p3.stock).toBe(6);
+    expect(p3.variants?.[0]?.stock).toBe(3);
+  });
+
+  it('credit annule exactement un debit (vente écartée)', () => {
+    const items = [{ productId: 'p1', quantite: 4 }];
+    const roundTrip = applySaleStockToProducts(
+      applySaleStockToProducts(products, items, 'debit'),
+      items,
+      'credit',
+    );
+    expect(roundTrip.find((p) => p.id === 'p1')?.stock).toBe(10);
+  });
+
+  it('fonction pure : le tableau source est intact', () => {
+    applySaleStockToProducts(products, [{ productId: 'p1', quantite: 3 }], 'debit');
+    expect(products[0]!.stock).toBe(10);
   });
 });
 

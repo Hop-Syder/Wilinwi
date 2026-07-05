@@ -155,6 +155,11 @@ plans/tarifs/limites éditables (`plan_configs`), modules à la carte, métrique
 
 ## Hors périmètre (à venir)
 
-**Passerelle de paiement** réelle pour les abonnements (FedaPay/Wave/CB + webhooks + cron
-`PAST_DUE`) — différée, en attente de l'arbitrage prestataire. Market WhatsApp, fidélité,
-app Flutter, IA. Le découpage modulaire les anticipe sans réécriture.
+**Passerelle de paiement** : prestataire arbitré = **FedaPay** (agrégateur MoMo/Orange/
+Moov/Wave/CB, 5 pays) — intégration webhooks + abonnements à venir. **Facturation des
+infrastructures** arbitrée (TDR §18.1) : RETAIL + SERVICE inclus partout ; FOOD/HEALTH/
+WHOLESALE = surcoût mensuel **par établissement actif** (réf. +5 000 FCFA/mois) → le
+gating `planAllowsInfrastructure` reste permissif (tarifaire, pas fonctionnel). **Offline
+Health** arbitré (TDR §18.2) : snapshot local des lots + validation a posteriori + alertes
+d'audit critiques. Market WhatsApp, fidélité, app Flutter, IA. Le découpage modulaire les
+anticipe sans réécriture.

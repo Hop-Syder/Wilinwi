@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Command } from 'lucide-react';
 import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
 import {
+  applySaleStockToProducts,
   productAffectsStock,
   saleStockBehavior,
 } from '@wilinwi/types';
@@ -125,7 +126,13 @@ export default function PosPage() {
 
   /** Écarte définitivement une vente locale refusée. */
   async function discardById(id: string) {
+    // Lue AVANT suppression : sert à re-créditer l'état local (miroir du cache,
+    // que syncEngine.discard re-crédite de son côté).
+    const sale = await syncEngine.getSale(id);
     await syncEngine.discard(id);
+    if (sale && sale.status !== 'synced') {
+      setProducts((prev) => applySaleStockToProducts(prev, sale.payload.items, 'credit'));
+    }
     await refreshPending();
     await refreshRejected();
   }
@@ -322,6 +329,9 @@ export default function PosPage() {
 
     try {
       await syncEngine.enqueueSale(payload);
+      // Anti-oversell : l'état local reflète immédiatement la vente (le cache
+      // Dexie est débité par enqueueSale) — la vente suivante voit le stock réduit.
+      setProducts((prev) => applySaleStockToProducts(prev, payload.items, 'debit'));
 
       // Capture l'instantané de la vente pour le ticket (fonctionne hors-ligne).
       const montantVerse =
