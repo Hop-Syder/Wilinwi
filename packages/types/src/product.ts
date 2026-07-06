@@ -270,6 +270,8 @@ const CreateProductSchemaBase = z.object({
   categorie: z.string().min(1).optional(),
   type: ProductTypeSchema.default('STANDARD'),
   stockPolicy: StockPolicySchema.optional(),
+  /** false = matière première/ingrédient : géré en stock, jamais vendu au POS. */
+  vendablePos: z.boolean().default(true),
   unitKind: UnitKindSchema.default('UNIT'),
   baseUnit: z.string().min(1).nullable().optional(),
   photos: z.array(z.string().url()).default([]),
@@ -419,6 +421,7 @@ export const ProductDtoSchema = z.object({
   // Défauts : tolère les caches offline antérieurs à la migration (= STANDARD).
   type: ProductTypeSchema.default('STANDARD'),
   stockPolicy: StockPolicySchema.default('STRICT'),
+  vendablePos: z.boolean().default(true),
   unitKind: UnitKindSchema.default('UNIT'),
   baseUnit: z.string().nullable().default(null),
   photos: z.array(z.string()),
@@ -440,6 +443,18 @@ export const ProductDtoSchema = z.object({
   units: z.array(ProductUnitDtoSchema).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
+
+// ────── Visibilité par établissement (Opt-Out — exclusion ciblée) ──────
+
+/**
+ * Remplace intégralement la liste des établissements où le produit est EXCLU
+ * (masqué + invendable). Défaut = visible partout ; poser une exclusion exige
+ * un stock local nul dans l'établissement concerné.
+ */
+export const SetProductExclusionsSchema = z.object({
+  etablissementIds: z.array(IdSchema).max(100),
+});
+export type SetProductExclusionsInput = z.infer<typeof SetProductExclusionsSchema>;
 
 /** Seuil de réappro d'un produit à un emplacement précis (alerte stock bas). */
 export const SetStockThresholdSchema = z.object({

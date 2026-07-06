@@ -101,6 +101,26 @@ export class SalesService {
         });
         if (!product) throw new NotFoundException(`Produit ${item.productId} introuvable`);
 
+        // Opt-Out : produit exclu de la boutique → 404 volontairement non
+        // révélateur (couvre aussi la sync offline, même chemin).
+        const exclusion = await tx.productExclusion.findFirst({
+          where: {
+            tenantId: ctx.tenantId,
+            productId: product.id,
+            etablissementId: ctx.etablissementId ?? undefined,
+          },
+          select: { id: true },
+        });
+        if (exclusion) {
+          throw new NotFoundException(`Produit « ${product.nom} » non disponible dans cet établissement.`);
+        }
+        // Matière première / ingrédient : géré en stock mais JAMAIS vendu au POS.
+        if (product.vendablePos === false) {
+          throw new BadRequestException(
+            `« ${product.nom} » n'est pas vendable à la caisse (matière première / ingrédient).`,
+          );
+        }
+
         const variant = item.variantId ? product.variants.find(v => v.id === item.variantId) : null;
         if (item.variantId && !variant) {
           throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);

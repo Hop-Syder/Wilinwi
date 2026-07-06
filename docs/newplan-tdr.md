@@ -1317,3 +1317,31 @@ régression complète M1→M5 : 38/38) :
 - **UI** : éditeur de conditionnements (page Stock, produits STANDARD).
 - Reportés : bons de livraison avancés et plafond de crédit renforcé (le CRM
   crédit existant couvre déjà l'ardoise grossiste de base).
+
+---
+
+## 23. Visibilité par établissement — Opt-Out ciblé + vendablePos : LIVRÉ (2026-07-06)
+
+Constat d'architecture : la « visibilité globale + stock virtuel 0 » proposée
+existait DÉJÀ (catalogue tenant + projection ProductStock avec repli 0). Le
+delta implémenté est double :
+
+- **`ProductExclusion` (Opt-Out)** : par défaut visible partout ; une exclusion
+  retire TOTALEMENT le produit d'un établissement — masqué des listes scopées,
+  et surtout **barrière API** (le péché « menu-only » est proscrit) : vente
+  refusée (404 volontairement NON révélateur), mouvements et réceptions de lots
+  refusés, dispatch vers l'établissement refusé. La vue globale « Tous » n'est
+  pas affectée. Poser une exclusion exige un **stock local NUL** (pas de stock
+  fantôme) — même doctrine que les changements de type produit.
+- **`Product.vendablePos`** (flag global) : `false` = matière première /
+  ingrédient — géré en stock (réceptions, recettes, inventaire) mais JAMAIS
+  proposé ni vendable au POS (filtré à l'affichage ET refusé serveur-side).
+  Cas d'usage immédiat : les ingrédients du maquis (seedés `false`).
+- **Non retenu du document initial** : « le produit à stock 0 virtuel peut être
+  vendu » — contraire aux politiques de stock (STRICT bloque à 0, par choix
+  anti-oversell) ; vendre à 0 reste un opt-in explicite (ALLOW_NEGATIVE,
+  NO_STOCK, SERVICE/MANUFACTURED).
+- **API** : GET/PUT `/stock/products/:id/exclusions` (stock:write, remplacement
+  intégral). **UI** : modal « Disponibilité par boutique » (cases cochées =
+  disponible) + case « Vendable à la caisse » au formulaire produit.
+- Régression complète : `scripts/e2e-tdr.mjs` → 48/48.

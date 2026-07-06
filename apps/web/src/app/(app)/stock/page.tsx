@@ -15,7 +15,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import {
   Plus, Package, Search, AlertTriangle, ArrowRightLeft,
-  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat, Layers, Boxes,
+  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat, Layers, Boxes, EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
@@ -23,7 +23,7 @@ import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
-import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal, UnitsModal } from '@/components/stock-modals';
+import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal, UnitsModal, ExclusionsModal } from '@/components/stock-modals';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -48,6 +48,7 @@ export default function StockPage() {
   const [recipeProduct, setRecipeProduct] = useState<ProductDto | undefined>();
   const [batchProduct, setBatchProduct] = useState<ProductDto | undefined>();
   const [unitsProduct, setUnitsProduct] = useState<ProductDto | undefined>();
+  const [exclusionsProduct, setExclusionsProduct] = useState<ProductDto | undefined>();
   const { has: hasInfraCap } = useInfraCapabilities();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -287,6 +288,13 @@ export default function StockPage() {
                               <Layers className="h-4 w-4" />
                             </button>
                           )}
+                          <button
+                            onClick={() => setExclusionsProduct(p)}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
+                            title="Disponibilité par boutique (exclusions)"
+                          >
+                            <EyeOff className="h-4 w-4" />
+                          </button>
                           {p.type === 'STANDARD' && hasInfraCap('stock.unitConversions') && (
                             <button
                               onClick={() => setUnitsProduct(p)}
@@ -399,6 +407,14 @@ export default function StockPage() {
           product={unitsProduct}
           onClose={() => setUnitsProduct(undefined)}
           onSuccess={() => { setUnitsProduct(undefined); void refetch(); }}
+        />
+      )}
+
+      {exclusionsProduct && (
+        <ExclusionsModal
+          product={exclusionsProduct}
+          onClose={() => setExclusionsProduct(undefined)}
+          onSuccess={() => { setExclusionsProduct(undefined); void refetch(); }}
         />
       )}
 

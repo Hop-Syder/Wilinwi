@@ -207,6 +207,23 @@ export class DispatchService {
       );
     }
 
+    // Opt-Out : on ne livre pas un produit EXCLU de l'établissement de destination.
+    const exclusions = await tx.productExclusion.findMany({
+      where: {
+        tenantId: ctx.tenantId,
+        etablissementId: d.destinationId,
+        productId: { in: d.items.map((i) => i.productId) },
+      },
+      include: { product: { select: { nom: true } } },
+    });
+    if (exclusions.length > 0) {
+      throw new BadRequestException(
+        `Dispatch refusé : produit(s) non disponible(s) à destination — ${exclusions
+          .map((e) => e.product.nom)
+          .join(', ')}.`,
+      );
+    }
+
     for (const item of d.items) {
       // 1. Vérifier le stock disponible à la source.
       const dispo = await readStockAt(tx, d.sourceId, item.productId, item.variantId);

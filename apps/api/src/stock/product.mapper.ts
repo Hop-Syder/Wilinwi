@@ -51,6 +51,7 @@ export function toProductDto(
     prixPlancher: product.prixPlancher,
     stock: product.stock,
     seuilAlerte: product.seuilAlerte,
+    vendablePos: product.vendablePos,
     variants: (product.variants || []).map(v => ({
       id: v.id,
       productId: v.productId,

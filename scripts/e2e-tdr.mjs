@@ -375,6 +375,64 @@ check('F7 config : tarif casier sous plancher × facteur refusé (400)', unitsBr
 check('Conditionnements depuis FOOD → 403',
   (await call('GET', `/stock/products/${beninoise.id}/units`)).status === 403);
 
+// ═══════════ Opt-Out — exclusions par établissement + vendablePos ═══════════
+
+// vendablePos : les ingrédients sont gérés en stock mais invendables au POS.
+const ingPos = (await call('GET', '/stock/products')).json?.find((p) => p.sku === 'MAQ-ING-POU');
+check('Ingrédient exposé en stock avec vendablePos=false', ingPos?.vendablePos === false,
+  `vendablePos=${ingPos?.vendablePos}`);
+const venteIng = await call('POST', '/pos/sales', {
+  clientGeneratedId: crypto.randomUUID(),
+  paymentMethod: 'CASH',
+  items: [{ productId: ingPos.id, quantite: 1000, prixReel: ingPos.prixCatalogue }],
+});
+check('Vente directe d’un ingrédient refusée (400)', venteIng.status === 400, `status=${venteIng.status}`);
+
+// Exclusion : refusée tant que le stock local n'est pas nul.
+const exclusionStock = await call('PUT', `/stock/products/${biere.id}/exclusions`, {
+  etablissementIds: [MAQUIS],
+});
+check('Exclure un produit avec stock local ≠ 0 refusé (400)', exclusionStock.status === 400,
+  `status=${exclusionStock.status}`);
+
+// Exclusion effective : la Béninoise du dépôt (stock local 0 au maquis) exclue du maquis.
+const cible = (await callDepot('GET', '/stock/products')).json?.find((p) => p.sku === 'DEP-BEN-33');
+const poseExclusion = await call('PUT', `/stock/products/${cible.id}/exclusions`, {
+  etablissementIds: [MAQUIS],
+});
+check('Pose d’une exclusion acceptée', poseExclusion.status === 200 && poseExclusion.json?.includes(MAQUIS),
+  `status=${poseExclusion.status}`);
+
+const listeMaquis = (await call('GET', '/stock/products')).json ?? [];
+check('Produit exclu ABSENT des listes de la boutique', !listeMaquis.some((p) => p.id === cible.id));
+const listeDepot = (await callDepot('GET', '/stock/products')).json ?? [];
+check('…mais toujours présent dans les autres boutiques', listeDepot.some((p) => p.id === cible.id));
+
+const venteExclu = await call('POST', '/pos/sales', {
+  clientGeneratedId: crypto.randomUUID(),
+  paymentMethod: 'CASH',
+  items: [{ productId: cible.id, quantite: 1, prixReel: cible.prixCatalogue }],
+});
+check('Vente d’un produit exclu refusée (404 non révélateur)', venteExclu.status === 404, `status=${venteExclu.status}`);
+
+const mvtExclu = await call('POST', '/stock/movements', {
+  productId: cible.id, type: 'IN', quantite: 5, motif: 'test exclu',
+});
+check('Mouvement sur un produit exclu refusé (404)', mvtExclu.status === 404, `status=${mvtExclu.status}`);
+
+const dspExclu = await callDepot('POST', '/dispatches', {
+  sourceId: DEPOT,
+  destinationId: MAQUIS,
+  validate: true,
+  items: [{ productId: cible.id, quantite: 24 }],
+});
+check('Dispatch vers un établissement d’exclusion refusé (400)', dspExclu.status === 400, `status=${dspExclu.status}`);
+
+// Restauration : levée de l'exclusion → tout redevient normal.
+await call('PUT', `/stock/products/${cible.id}/exclusions`, { etablissementIds: [] });
+const listeMaquisApres = (await call('GET', '/stock/products')).json ?? [];
+check('Levée de l’exclusion : produit de nouveau visible', listeMaquisApres.some((p) => p.id === cible.id));
+
 // ═══════════ Bilan ═══════════
 
 console.log(results.join('\n'));

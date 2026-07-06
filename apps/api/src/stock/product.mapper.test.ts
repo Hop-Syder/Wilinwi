@@ -21,6 +21,7 @@ const product: Product = {
   categorie: 'Tissus',
   type: 'STANDARD',
   stockPolicy: 'STRICT',
+  vendablePos: true,
   unitKind: 'UNIT',
   baseUnit: null,
   photos: [],

@@ -27,6 +27,7 @@ import {
   type CreateStockMovementInput,
   type ProductUnitDto,
   type RecipeDto,
+  type SetProductExclusionsInput,
   type SetStockThresholdInput,
   type StockAlertDto,
   type UpdateProductInput,
@@ -56,7 +57,15 @@ export class StockService {
 
     const { products, breakdownByProduct } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const prods = await tx.product.findMany({
-        where: { tenantId: ctx.tenantId, actif: true },
+        where: {
+          tenantId: ctx.tenantId,
+          actif: true,
+          // Opt-Out : un produit exclu de la boutique courante disparaît de ses
+          // listes (la vue globale « Tous » n'est pas affectée).
+          ...(!globalView && ctx.etablissementId
+            ? { exclusions: { none: { etablissementId: ctx.etablissementId } } }
+            : {}),
+        },
         include: {
           variants: true,
           units: true,
@@ -177,6 +186,7 @@ export class StockService {
           categorie: input.categorie ?? null,
           type: input.type,
           stockPolicy: input.stockPolicy ?? defaultStockPolicy(input.type),
+          vendablePos: input.vendablePos,
           unitKind: input.unitKind,
           baseUnit: input.baseUnit ?? null,
           photos,
@@ -475,6 +485,7 @@ export class StockService {
           `« ${product.nom} » est géré PAR LOTS : réceptionnez ou ajustez un lot (traçabilité péremption), pas un mouvement global.`,
         );
       }
+      await this.assertNotExcluded(tx, ctx.tenantId, product.id, ctx.etablissementId!, product.nom);
       const delta = this.signedDelta(input.type, input.quantite);
 
       if (input.variantId) {
@@ -668,6 +679,82 @@ export class StockService {
     return { ok: true as const };
   }
 
+  // ────── Visibilité par établissement (Opt-Out — exclusion ciblée) ──────
+
+  /** 404 volontairement non révélateur : un vendeur n'a pas à savoir qu'une exclusion existe. */
+  private async assertNotExcluded(
+    tx: TenantTx,
+    tenantId: string,
+    productId: string,
+    etablissementId: string,
+    nom: string,
+  ): Promise<void> {
+    const exclusion = await tx.productExclusion.findFirst({
+      where: { tenantId, productId, etablissementId },
+      select: { id: true },
+    });
+    if (exclusion) {
+      throw new NotFoundException(`Produit « ${nom} » non disponible dans cet établissement.`);
+    }
+  }
+
+  /** Établissements où le produit est exclu (gestion OWNER/MANAGER). */
+  async getExclusions(ctx: AuthContext, productId: string): Promise<string[]> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      await this.ensureProduct(tx, ctx.tenantId, productId);
+      const rows = await tx.productExclusion.findMany({
+        where: { productId, tenantId: ctx.tenantId },
+        select: { etablissementId: true },
+      });
+      return rows.map((r) => r.etablissementId);
+    });
+  }
+
+  /**
+   * Remplace la liste des établissements exclus. Refusé si le produit a encore
+   * du stock LOCAL (≠ 0) dans un établissement à exclure — pas de stock fantôme
+   * (l'invariant Σ lots = projection couvre aussi les produits par lots).
+   */
+  async setExclusions(
+    ctx: AuthContext,
+    productId: string,
+    input: SetProductExclusionsInput,
+  ): Promise<string[]> {
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const product = await this.ensureProduct(tx, ctx.tenantId, productId);
+      const ids = [...new Set(input.etablissementIds)];
+      if (ids.length > 0) {
+        const etabs = await tx.etablissement.findMany({
+          where: { id: { in: ids }, tenantId: ctx.tenantId },
+          select: { id: true, nom: true },
+        });
+        if (etabs.length !== ids.length) {
+          throw new NotFoundException('Un ou plusieurs établissements sont introuvables.');
+        }
+        const stocks = await tx.productStock.groupBy({
+          by: ['etablissementId'],
+          where: { productId, etablissementId: { in: ids } },
+          _sum: { quantite: true },
+        });
+        const nonVide = stocks.find((r) => (r._sum.quantite ?? 0) !== 0);
+        if (nonVide) {
+          const etab = etabs.find((e) => e.id === nonVide.etablissementId);
+          throw new BadRequestException(
+            `Impossible d'exclure « ${product.nom} » de « ${etab?.nom ?? nonVide.etablissementId} » : le stock local doit d'abord être ramené à zéro.`,
+          );
+        }
+      }
+      // Remplacement intégral (idempotent).
+      await tx.productExclusion.deleteMany({ where: { productId, tenantId: ctx.tenantId } });
+      for (const etablissementId of ids) {
+        await tx.productExclusion.create({
+          data: { tenantId: ctx.tenantId, productId, etablissementId },
+        });
+      }
+    });
+    return this.getExclusions(ctx, productId);
+  }
+
   // ────────── Multi-conditionnement (Wholesale — Milestone 5, §9.6) ──────────
 
   /** Conditionnements d'un produit (casier, palette…), facteur croissant. */
@@ -762,6 +849,7 @@ export class StockService {
           `« ${product.nom} » n'est pas géré par lots — utilisez un mouvement de stock classique.`,
         );
       }
+      await this.assertNotExcluded(tx, ctx.tenantId, product.id, ctx.etablissementId!, product.nom);
       const batch = await tx.productBatch.upsert({
         where: {
           etablissementId_productId_batchNumber: {

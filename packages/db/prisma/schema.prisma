@@ -222,6 +222,7 @@ model Tenant {
   foodTables      FoodTable[]
   productBatches  ProductBatch[]
   productUnits    ProductUnit[]
+  productExclusions ProductExclusion[]
 
   @@map("tenants")
 }
@@ -263,6 +264,7 @@ model Etablissement {
   dispatchDestinations DispatchOrder[] @relation("DispatchDestination")
   foodTables           FoodTable[]
   productBatches       ProductBatch[]
+  productExclusions    ProductExclusion[]
 
   @@index([tenantId])
   @@index([tenantId, infrastructure])
@@ -374,6 +376,9 @@ model Product {
   prixCatalogue Int         @map("prix_catalogue")
   stock         Int         @default(0)
   seuilAlerte   Int         @default(5) @map("seuil_alerte")
+  /// Vendable à la caisse (POS). `false` = matière première / ingrédient : reste
+  /// visible et gérable en stock, mais jamais proposé ni vendable au POS.
+  vendablePos   Boolean     @default(true) @map("vendable_pos")
   actif         Boolean     @default(true)
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
@@ -389,11 +394,36 @@ model Product {
   recipeUsages  RecipeItem[]        @relation("RecipeIngredient")
   batches       ProductBatch[]
   units         ProductUnit[]
+  exclusions    ProductExclusion[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, type])
   @@map("products")
+}
+
+// ─────────── Visibilité par établissement (Opt-Out — exclusion ciblée) ───────────
+
+// Par DÉFAUT, tout produit du catalogue tenant est visible et vendable dans tous
+// les établissements (stock virtuel 0 sans ligne). Une exclusion le retire
+// TOTALEMENT d'un établissement : masqué des listes scopées, vente/mouvements/
+// réceptions/dispatch refusés (barrière API, pas un simple filtre d'affichage).
+// Poser une exclusion exige un stock local NUL (pas de stock fantôme).
+model ProductExclusion {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  productId       String   @map("product_id") @db.Uuid
+  etablissementId String   @map("etablissement_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, etablissementId])
+  @@index([tenantId])
+  @@index([etablissementId])
+  @@map("product_exclusions")
 }
 
 // ────────────── Wholesale (Milestone 5) — multi-conditionnement ──────────────

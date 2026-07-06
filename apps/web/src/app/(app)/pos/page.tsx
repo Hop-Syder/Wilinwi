@@ -258,8 +258,10 @@ export default function PosPage() {
   const displayProducts = useMemo(() => {
     return products.filter(
       (p) =>
-        p.nom.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase()),
+        // Matière première / ingrédient : géré en stock, jamais proposé au POS.
+        p.vendablePos !== false &&
+        (p.nom.toLowerCase().includes(query.toLowerCase()) ||
+          (p.sku ?? '').toLowerCase().includes(query.toLowerCase())),
     );
   }, [products, query]);
 

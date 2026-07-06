@@ -23,6 +23,7 @@ import {
 } from '@wilinwi/types';
 import { apiGet, apiPost, apiPatch, apiPut, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import type { EtablissementDto } from '@wilinwi/types';
 import { ProductPhotos } from './product-photos';
 
 interface StockMovementModalProps {
@@ -177,6 +178,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   // Milli-unités : les produits au poids/volume se saisissent en décimal
   // (1,5 kg) et se persistent en entiers (1500) — même philosophie que les FCFA.
   const [unitKind, setUnitKind] = useState<UnitKind>(product?.unitKind ?? 'UNIT');
+  const [vendablePos, setVendablePos] = useState(product?.vendablePos ?? true);
   const [baseUnit, setBaseUnit] = useState(product?.baseUnit ?? '');
   const scaled = quantityScale(unitKind) !== 1;
   const [form, setForm] = useState({
@@ -218,6 +220,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         sku: form.sku || undefined,
         categorie: form.categorie || undefined,
         type,
+        vendablePos,
         unitKind,
         baseUnit: baseUnit.trim() || undefined,
         photos: imagesAllowed ? photos : undefined,
@@ -297,6 +300,15 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
                 la vente sort en FEFO et refuse les lots périmés.
               </span>
             )}
+          </label>
+          <label className="col-span-full flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={vendablePos}
+              onChange={(e) => setVendablePos(e.target.checked)}
+            />
+            Vendable à la caisse (décocher pour une matière première / un ingrédient :
+            géré en stock, jamais proposé au POS)
           </label>
           <label className="col-span-full sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-slate-600">Vendu…</span>
@@ -1104,6 +1116,117 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ────── Disponibilité par boutique (Opt-Out — exclusion ciblée) ──────
+
+interface ExclusionsModalProps {
+  product: ProductDto;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+/**
+ * Par défaut un produit est visible et vendable dans TOUTES les boutiques.
+ * Décocher une boutique l'en exclut totalement (masqué des listes, vente,
+ * mouvements, réceptions et dispatch refusés par l'API). Exclure exige un
+ * stock local nul — le serveur refuse sinon.
+ */
+export function ExclusionsModal({ product, onClose, onSuccess }: ExclusionsModalProps) {
+  const [etabs, setEtabs] = useState<EtablissementDto[]>([]);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<EtablissementDto[]>('/api/etablissements/manage'),
+      apiGet<string[]>(`/api/stock/products/${product.id}/exclusions`),
+    ])
+      .then(([list, ids]) => {
+        setEtabs(list.filter((e) => e.actif));
+        setExcluded(new Set(ids));
+      })
+      .catch((e) => setError((e as ApiError).message))
+      .finally(() => setLoading(false));
+  }, [product.id]);
+
+  function toggle(id: string) {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPut(`/api/stock/products/${product.id}/exclusions`, {
+        etablissementIds: [...excluded],
+      });
+      onSuccess();
+    } catch (e) {
+      setError((e as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Disponibilité — {product.nom}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-slate-500">
+          Coché = disponible dans la boutique (par défaut). Décocher exclut totalement
+          le produit de la boutique — le stock local doit être à zéro.
+        </p>
+
+        {loading ? (
+          <p className="py-6 text-center text-sm text-slate-400">Chargement…</p>
+        ) : (
+          <ul className="space-y-2">
+            {etabs.map((e) => (
+              <li key={e.id}>
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!excluded.has(e.id)}
+                    onChange={() => toggle(e.id)}
+                  />
+                  <span className="font-medium text-slate-800">{e.nom}</span>
+                  {excluded.has(e.id) && (
+                    <span className="ml-auto rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">
+                      EXCLU
+                    </span>
+                  )}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-4 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+            Annuler
+          </Button>
+          <Button type="button" variant="emerald" onClick={() => void save()} disabled={saving || loading}>
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </Button>
+        </div>
       </div>
     </div>
   );

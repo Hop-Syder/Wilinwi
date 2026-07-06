@@ -15,6 +15,7 @@ import {
   CreateBatchSchema,
   CreateProductSchema,
   CreateStockMovementSchema,
+  SetProductExclusionsSchema,
   SetStockThresholdSchema,
   UpdateProductSchema,
   UpsertProductUnitsSchema,
@@ -24,6 +25,7 @@ import {
   type CreateBatchInput,
   type CreateProductInput,
   type CreateStockMovementInput,
+  type SetProductExclusionsInput,
   type SetStockThresholdInput,
   type UpdateProductInput,
   type UpsertProductUnitsInput,
@@ -187,6 +189,24 @@ export class StockController {
     @Body(new ZodValidationPipe(UpsertProductUnitsSchema)) dto: UpsertProductUnitsInput,
   ) {
     return this.stock.upsertUnits(user, id, dto);
+  }
+
+  /** Établissements où le produit est EXCLU (Opt-Out — défaut : visible partout). */
+  @RequireCapabilities('stock:write')
+  @Get('products/:id/exclusions')
+  getExclusions(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.stock.getExclusions(user, id);
+  }
+
+  /** Remplace la liste des exclusions (refusé si stock local ≠ 0). */
+  @RequireCapabilities('stock:write')
+  @Put('products/:id/exclusions')
+  setExclusions(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(SetProductExclusionsSchema)) dto: SetProductExclusionsInput,
+  ) {
+    return this.stock.setExclusions(user, id, dto);
   }
 
   // NOTE : POST /stock/transfers a été SUPPRIMÉ — les transferts inter-boutiques

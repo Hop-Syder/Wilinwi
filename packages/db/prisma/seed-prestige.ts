@@ -43,6 +43,8 @@ interface SeedProduct {
   stockPolicy?: 'STRICT' | 'ALLOW_NEGATIVE' | 'NO_STOCK' | 'RECIPE_BASED';
   unitKind?: 'UNIT' | 'WEIGHT' | 'VOLUME' | 'PACKAGE' | 'TIME';
   baseUnit?: string;
+  /** false = matière première/ingrédient : géré en stock, jamais vendu au POS. */
+  vendablePos?: boolean;
 }
 
 const PRODUITS_PRET_A_PORTER: SeedProduct[] = [
@@ -80,8 +82,9 @@ const PRODUITS_MAQUIS: SeedProduct[] = [
   { nom: 'Pâte rouge + fromage peulh', sku: 'MAQ-PAT-ROU', categorie: 'Plats', type: 'MANUFACTURED', stockPolicy: 'RECIPE_BASED', prixAchat: 800, prixPlancher: 1500, prixCatalogue: 2500, stock: 0 },
   { nom: 'Location espace privé (heure)', sku: 'MAQ-SRV-LOC', categorie: 'Services', type: 'SERVICE', stockPolicy: 'NO_STOCK', unitKind: 'TIME', prixAchat: 0, prixPlancher: 5000, prixCatalogue: 8000, stock: 0 },
   // Ingrédients au POIDS (milli-unités §19.1) : stock 20000 = 20 kg.
-  { nom: 'Poulet entier (kg)', sku: 'MAQ-ING-POU', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', prixAchat: 1500, prixPlancher: 1800, prixCatalogue: 2500, stock: 20000 },
-  { nom: 'Riz parfumé (kg)', sku: 'MAQ-ING-RIZ', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', prixAchat: 500, prixPlancher: 700, prixCatalogue: 1000, stock: 50000 },
+  // vendablePos=false : gérés en stock (réceptions, recettes) mais absents du POS.
+  { nom: 'Poulet entier (kg)', sku: 'MAQ-ING-POU', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', vendablePos: false, prixAchat: 1500, prixPlancher: 1800, prixCatalogue: 2500, stock: 20000 },
+  { nom: 'Riz parfumé (kg)', sku: 'MAQ-ING-RIZ', categorie: 'Ingrédients', unitKind: 'WEIGHT', baseUnit: 'kg', vendablePos: false, prixAchat: 500, prixPlancher: 700, prixCatalogue: 1000, stock: 50000 },
 ];
 
 // Pharmacie (infrastructure HEALTH) : produits PAR LOTS — le stock s'entre via
@@ -169,9 +172,16 @@ async function main() {
       for (const p of boutique.produits) {
         const existing = await tx.product.findFirst({
           where: { tenantId: TENANT_ID, sku: p.sku },
-          select: { id: true },
+          select: { id: true, vendablePos: true },
         });
-        if (existing) continue; // déjà seedé — on ne rejoue ni le stock ni le mouvement
+        if (existing) {
+          // Auto-réparation idempotente : aligne le flag POS des produits existants.
+          const cibleVendable = p.vendablePos ?? true;
+          if (existing.vendablePos !== cibleVendable) {
+            await tx.product.update({ where: { id: existing.id }, data: { vendablePos: cibleVendable } });
+          }
+          continue; // déjà seedé — on ne rejoue ni le stock ni le mouvement
+        }
 
         const affectsStock = p.type === undefined || p.type === 'STANDARD' || p.type === 'BATCHED';
         const created = await tx.product.create({
@@ -184,6 +194,7 @@ async function main() {
             stockPolicy: p.stockPolicy ?? 'STRICT',
             unitKind: p.unitKind ?? 'UNIT',
             baseUnit: p.baseUnit ?? null,
+            vendablePos: p.vendablePos ?? true,
             prixAchat: p.prixAchat,
             prixPlancher: p.prixPlancher,
             prixCatalogue: p.prixCatalogue,
