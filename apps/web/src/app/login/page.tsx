@@ -26,6 +26,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Motif d'un blocage d'appareil (403 sur /me) mémorisé par le contexte auth.
+  useEffect(() => {
+    const bloc = localStorage.getItem('wilinwi_auth_block');
+    if (bloc) {
+      setError(bloc);
+      localStorage.removeItem('wilinwi_auth_block');
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
 
   // Simulation dynamique

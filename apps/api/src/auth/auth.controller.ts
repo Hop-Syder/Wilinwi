@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
 import {
   InviteUserSchema,
   PinLoginSchema,
@@ -18,6 +18,8 @@ import {
   type InviteUserInput,
   type PinLoginInput,
   type SignUpInput,
+  UpdateDeviceSchema,
+  type UpdateDeviceInput,
 } from '@wilinwi/types';
 import { CurrentUser, Public, RequireCapabilities } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -35,8 +37,12 @@ export class AuthController {
   }
 
   @Get('me')
-  me(@CurrentUser() user: AuthContext) {
-    return this.auth.me(user);
+  me(
+    @CurrentUser() user: AuthContext,
+    @Headers('x-device-id') deviceId?: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.auth.me(user, deviceId, userAgent);
   }
 
   /**
@@ -59,5 +65,25 @@ export class AuthController {
     @Body(new ZodValidationPipe(InviteUserSchema)) dto: InviteUserInput,
   ) {
     return this.auth.inviteUser(user, dto);
+  }
+
+  // ───────────── Appareils (limite maxDevices des plans) ─────────────
+
+  /** Appareils connus de l'entreprise (dernier vu, utilisateur, révocation). */
+  @RequireCapabilities('users:manage')
+  @Get('devices')
+  listDevices(@CurrentUser() user: AuthContext) {
+    return this.auth.listDevices(user);
+  }
+
+  /** Renomme / révoque / réactive un appareil. */
+  @RequireCapabilities('users:manage')
+  @Patch('devices/:id')
+  updateDevice(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateDeviceSchema)) dto: UpdateDeviceInput,
+  ) {
+    return this.auth.updateDevice(user, id, dto);
   }
 }

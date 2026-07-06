@@ -471,7 +471,8 @@ BEGIN
   SELECT COALESCE(array_agg(id), '{}') INTO v_user_ids
   FROM public.users WHERE tenant_id = p_tenant;
 
-  DELETE FROM public.price_overrides      WHERE tenant_id = p_tenant;
+  DELETE FROM public.audit_alerts         WHERE tenant_id = p_tenant;
+  DELETE FROM public.devices              WHERE tenant_id = p_tenant;
   DELETE FROM public.sale_installments    WHERE tenant_id = p_tenant;
   DELETE FROM public.sale_items           WHERE tenant_id = p_tenant;
   DELETE FROM public.client_payments      WHERE tenant_id = p_tenant;
@@ -488,10 +489,16 @@ BEGIN
   DELETE FROM public.inventories          WHERE tenant_id = p_tenant;
   DELETE FROM public.product_stock        WHERE tenant_id = p_tenant;
   DELETE FROM public.stock_movements      WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_batches      WHERE tenant_id = p_tenant;
   DELETE FROM public.product_variants     WHERE tenant_id = p_tenant;
   DELETE FROM public.notifications        WHERE tenant_id = p_tenant;
   DELETE FROM public.sales                WHERE tenant_id = p_tenant;
+  DELETE FROM public.food_tables          WHERE tenant_id = p_tenant;
   DELETE FROM public.clients              WHERE tenant_id = p_tenant;
+  DELETE FROM public.recipe_items         WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_recipes      WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_units        WHERE tenant_id = p_tenant;
+  DELETE FROM public.product_exclusions   WHERE tenant_id = p_tenant;
   DELETE FROM public.products             WHERE tenant_id = p_tenant;
   DELETE FROM public.activity_logs        WHERE tenant_id = p_tenant;
   DELETE FROM public.user_etablissements  WHERE tenant_id = p_tenant;

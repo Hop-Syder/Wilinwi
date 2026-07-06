@@ -223,6 +223,7 @@ model Tenant {
   productBatches  ProductBatch[]
   productUnits    ProductUnit[]
   productExclusions ProductExclusion[]
+  devices         Device[]
 
   @@map("tenants")
 }
@@ -400,6 +401,34 @@ model Product {
   @@index([tenantId])
   @@index([tenantId, type])
   @@map("products")
+}
+
+// ───────────────── Appareils (limite maxDevices des plans) ─────────────────
+
+// Un « appareil » = un navigateur/poste identifié par un deviceId généré côté
+// client (localStorage) et transmis en en-tête X-Device-Id. Enregistré et
+// contrôlé au chargement de session (/auth/me) : appareil révoqué → 403 ;
+// nouvel appareil au-delà de la limite du plan → 403 (l'OWNER n'est jamais
+// bloqué, sinon il ne pourrait pas libérer de place). Un appareil inactif
+// depuis 30 jours libère son emplacement automatiquement.
+model Device {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  /// Identifiant persistant généré par le client (UUID localStorage).
+  deviceId   String    @map("device_id")
+  label      String?
+  userAgent  String?   @map("user_agent")
+  /// Dernier utilisateur vu sur cet appareil (information, pas une restriction).
+  lastUserId String?   @map("last_user_id") @db.Uuid
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, deviceId])
+  @@index([tenantId])
+  @@map("devices")
 }
 
 // ─────────── Visibilité par établissement (Opt-Out — exclusion ciblée) ───────────

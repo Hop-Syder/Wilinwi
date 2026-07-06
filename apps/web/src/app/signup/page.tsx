@@ -16,7 +16,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Input } from '@wilinwi/ui';
-import { ETABLISSEMENT_TYPES, ETABLISSEMENT_TYPE_LABELS, type EtablissementType } from '@wilinwi/types';
+import {
+  ETABLISSEMENT_TYPES,
+  ETABLISSEMENT_TYPE_LABELS,
+  INFRASTRUCTURES,
+  INFRASTRUCTURE_LABELS,
+  type EtablissementInfrastructure,
+  type EtablissementType,
+} from '@wilinwi/types';
 import { apiPost } from '@/lib/api';
 import { getSupabase } from '@/lib/supabase';
 import { Mail, Lock, Store, User, ArrowRight, ShieldCheck, Box, Zap, Building2 } from 'lucide-react';
@@ -29,7 +36,15 @@ export default function SignupPage() {
     email: string;
     password: string;
     typeEtablissement: EtablissementType;
-  }>({ nomBoutique: '', nomComplet: '', email: '', password: '', typeEtablissement: 'BOUTIQUE' });
+    infrastructure: EtablissementInfrastructure;
+  }>({
+    nomBoutique: '',
+    nomComplet: '',
+    email: '',
+    password: '',
+    typeEtablissement: 'BOUTIQUE',
+    infrastructure: 'RETAIL',
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -188,23 +203,44 @@ export default function SignupPage() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400" /> Type de votre 1ᵉʳ établissement
-                  </label>
-                  <select
-                    value={form.typeEtablissement}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, typeEtablissement: e.target.value as EtablissementType }))
-                    }
-                    className="w-full h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  >
-                    {ETABLISSEMENT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {ETABLISSEMENT_TYPE_LABELS[t]}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" /> Type du 1ᵉʳ établissement
+                    </label>
+                    <select
+                      value={form.typeEtablissement}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, typeEtablissement: e.target.value as EtablissementType }))
+                      }
+                      className="w-full h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    >
+                      {ETABLISSEMENT_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {ETABLISSEMENT_TYPE_LABELS[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* §5.5 — l'infrastructure métier active les bons modules (POS food, lots…). */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-slate-400" /> Votre activité
+                    </label>
+                    <select
+                      value={form.infrastructure}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, infrastructure: e.target.value as EtablissementInfrastructure }))
+                      }
+                      className="w-full h-9 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    >
+                      {INFRASTRUCTURES.map((i) => (
+                        <option key={i} value={i}>
+                          {INFRASTRUCTURE_LABELS[i]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">

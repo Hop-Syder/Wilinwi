@@ -64,6 +64,19 @@ export class ApiError extends Error {
   }
 }
 
+const DEVICE_ID_KEY = 'wilinwi_device_id';
+
+/** UUID persistant identifiant CE navigateur (limite d'appareils du plan). */
+export function getDeviceId(): string {
+  if (typeof window === 'undefined') return 'ssr';
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 /** Appel à l'API Wilinwi avec le JWT Supabase courant en Authorization. */
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   // Priorité au jeton PIN (poste partagé) ; sinon session Supabase.
@@ -86,6 +99,8 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   if (etablissementId) {
     headers.set('X-Etablissement-Id', etablissementId);
   }
+  // Identité d'appareil (limite maxDevices) : UUID persistant du navigateur.
+  headers.set('X-Device-Id', getDeviceId());
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
   const body = res.status === 204 ? null : await res.json().catch(() => null);

@@ -146,7 +146,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         dunning: me.dunning ?? ACTIVE_DUNNING,
         isPlatformAdmin: me.isPlatformAdmin ?? false,
       });
-    } catch {
+    } catch (e) {
+      // Appareil révoqué / limite d'appareils : mémorise le motif pour le login.
+      const err = e as { status?: number; message?: string };
+      if (err?.status === 403 && err.message) {
+        try {
+          localStorage.setItem('wilinwi_auth_block', err.message);
+        } catch {
+          /* stockage indisponible : le motif est simplement perdu */
+        }
+      }
       clearPinToken();
       setUser(null);
     } finally {

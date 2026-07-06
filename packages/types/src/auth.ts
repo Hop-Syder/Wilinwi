@@ -29,6 +29,8 @@ export const SignUpSchema = z.object({
   nomBoutique: z.string().min(1),
   nomEtablissement: z.string().min(1).optional(),
   typeEtablissement: EtablissementTypeSchema.default('BOUTIQUE'),
+  /** Infrastructure métier du premier établissement (§5.5 — onboarding). */
+  infrastructure: EtablissementInfrastructureSchema.default('RETAIL'),
 });
 export type SignUpInput = z.infer<typeof SignUpSchema>;
 
@@ -45,6 +47,29 @@ export const InviteUserSchema = z.object({
   role: RoleSchema,
 });
 export type InviteUserInput = z.infer<typeof InviteUserSchema>;
+
+// ───────────── Appareils (limite maxDevices des plans) ─────────────
+
+export interface DeviceDto {
+  id: string;
+  deviceId: string;
+  label: string | null;
+  userAgent: string | null;
+  lastUserNom: string | null;
+  lastSeenAt: Date | string;
+  revokedAt: Date | string | null;
+  createdAt: Date | string;
+}
+
+export const UpdateDeviceSchema = z.object({
+  label: z.string().min(1).max(60).nullable().optional(),
+  /** true = révoquer (l'appareil est bloqué au prochain chargement) ; false = réactiver. */
+  revoked: z.boolean().optional(),
+});
+export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
+
+/** Fenêtre d'activité : un appareil muet depuis 30 jours libère son emplacement. */
+export const DEVICE_ACTIVE_DAYS = 30;
 
 /** Contexte utilisateur résolu depuis le JWT à chaque requête. */
 export const AuthContextSchema = z.object({

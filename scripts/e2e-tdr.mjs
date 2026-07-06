@@ -433,6 +433,31 @@ await call('PUT', `/stock/products/${cible.id}/exclusions`, { etablissementIds: 
 const listeMaquisApres = (await call('GET', '/stock/products')).json ?? [];
 check('Levée de l’exclusion : produit de nouveau visible', listeMaquisApres.some((p) => p.id === cible.id));
 
+// ═══════════ Appareils — limite maxDevices (registre + révocation) ═══════════
+
+const DEVICE = 'E2E-DEVICE-FIXE'; // réutilisé à chaque run (pas de prolifération)
+async function meAvecAppareil() {
+  const res = await fetch(`${API}/auth/me`, {
+    headers: { ...baseHeaders, 'X-Etablissement-Id': MAQUIS, 'X-Device-Id': DEVICE },
+  });
+  return { status: res.status, json: await res.json().catch(() => null) };
+}
+
+check('Session avec X-Device-Id acceptée (enregistrement)', (await meAvecAppareil()).status === 200);
+const appareils = (await call('GET', '/auth/devices')).json ?? [];
+const monAppareil = appareils.find((d) => d.deviceId === DEVICE);
+check('Appareil présent au registre', !!monAppareil, `n=${appareils.length}`);
+
+const renomme = await call('PATCH', `/auth/devices/${monAppareil?.id}`, { label: 'Poste E2E' });
+check('Renommage de l’appareil', renomme.status === 200 && renomme.json?.label === 'Poste E2E');
+
+await call('PATCH', `/auth/devices/${monAppareil?.id}`, { revoked: true });
+const meRevoque = await meAvecAppareil();
+check('Appareil révoqué → session refusée (403)', meRevoque.status === 403, `status=${meRevoque.status}`);
+
+await call('PATCH', `/auth/devices/${monAppareil?.id}`, { revoked: false });
+check('Réactivation → session de nouveau acceptée', (await meAvecAppareil()).status === 200);
+
 // ═══════════ Bilan ═══════════
 
 console.log(results.join('\n'));

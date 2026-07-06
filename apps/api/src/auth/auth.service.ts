@@ -14,14 +14,24 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
-import type { AuthContext, InviteUserInput, PinLoginInput, SignUpInput } from '@wilinwi/types';
+import {
+  DEVICE_ACTIVE_DAYS,
+  type AuthContext,
+  type DeviceDto,
+  type InviteUserInput,
+  type PinLoginInput,
+  type SignUpInput,
+  type UpdateDeviceInput,
+} from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
+import { PlanConfigService } from '../common/plan-config.service';
 import { ActivityService } from '../common/activity.service';
 import { SupabaseAdminService } from './supabase-admin.service';
 
@@ -40,6 +50,7 @@ export class AuthService {
     private readonly supabase: SupabaseAdminService,
     private readonly config: ConfigService,
     private readonly activity: ActivityService,
+    private readonly planConfig: PlanConfigService,
   ) {
     this.jwtSecret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
   }
@@ -64,6 +75,8 @@ export class AuthService {
             tenantId,
             nom: input.nomEtablissement?.trim() || input.nomBoutique,
             type: input.typeEtablissement ?? 'BOUTIQUE',
+            // §5.5 : l'infrastructure métier est choisie dès l'inscription.
+            infrastructure: input.infrastructure ?? 'RETAIL',
           },
         });
         await tx.user.create({
@@ -154,7 +167,12 @@ export class AuthService {
   }
 
   /** Profil + contexte de l'utilisateur courant (sans le hash du PIN). */
-  async me(ctx: AuthContext) {
+  async me(ctx: AuthContext, deviceId?: string, userAgent?: string) {
+    // Limite d'appareils du plan : enregistrement/contrôle au chargement de
+    // session. Barrière COMMERCIALE (pas de sécurité) : un appareil révoqué ou
+    // au-delà de la limite ne peut pas ouvrir de session applicative.
+    if (deviceId) await this.touchDevice(ctx, deviceId.slice(0, 80), userAgent);
+
     const { user, etablissements } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const user = await tx.user.findFirst({
         where: { id: ctx.userId, tenantId: ctx.tenantId },
@@ -194,6 +212,118 @@ export class AuthService {
       return { user, etablissements };
     });
     return { ...ctx, profile: user, etablissements };
+  }
+
+  // ───────────── Appareils (limite maxDevices des plans) ─────────────
+
+  /**
+   * Enregistre/rafraîchit l'appareil et applique la limite du plan :
+   * - appareil révoqué → 403 (quel que soit le rôle) ;
+   * - NOUVEL appareil au-delà de la limite → 403, SAUF pour l'OWNER (sinon il
+   *   ne pourrait plus entrer pour libérer un emplacement) ;
+   * - un appareil inactif depuis DEVICE_ACTIVE_DAYS libère sa place.
+   */
+  private async touchDevice(ctx: AuthContext, deviceId: string, userAgent?: string): Promise<void> {
+    const limite = (await this.planConfig.getLimits(ctx.plan)).maxDevices;
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const device = await tx.device.findUnique({
+        where: { tenantId_deviceId: { tenantId: ctx.tenantId, deviceId } },
+      });
+      if (device?.revokedAt) {
+        throw new ForbiddenException(
+          'Cet appareil a été révoqué par le propriétaire. Contactez-le pour le réactiver (Paramètres → Appareils).',
+        );
+      }
+      if (!device) {
+        const depuis = new Date(Date.now() - DEVICE_ACTIVE_DAYS * 86_400_000);
+        const actifs = await tx.device.count({
+          where: { tenantId: ctx.tenantId, revokedAt: null, lastSeenAt: { gte: depuis } },
+        });
+        if (actifs >= limite && ctx.role !== 'OWNER') {
+          throw new ForbiddenException(
+            `Limite d'appareils du plan ${ctx.plan} atteinte (${limite}). Demandez au propriétaire de libérer un appareil (Paramètres → Appareils).`,
+          );
+        }
+        await tx.device.create({
+          data: {
+            tenantId: ctx.tenantId,
+            deviceId,
+            userAgent: userAgent?.slice(0, 200) ?? null,
+            lastUserId: ctx.userId,
+          },
+        });
+        return;
+      }
+      // Rafraîchissement throttlé (évite une écriture par chargement rapproché).
+      if (Date.now() - device.lastSeenAt.getTime() > 10 * 60_000 || device.lastUserId !== ctx.userId) {
+        await tx.device.update({
+          where: { id: device.id },
+          data: { lastSeenAt: new Date(), lastUserId: ctx.userId },
+        });
+      }
+    });
+  }
+
+  /** Appareils de l'entreprise (gestion OWNER/MANAGER — users:manage). */
+  async listDevices(ctx: AuthContext): Promise<DeviceDto[]> {
+    const rows = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.device.findMany({
+        where: { tenantId: ctx.tenantId },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 200,
+      }),
+    );
+    // Nom du dernier utilisateur (information d'identification de l'appareil).
+    const userIds = [...new Set(rows.map((d) => d.lastUserId).filter((v): v is string => !!v))];
+    const users = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nom: true } }),
+    );
+    const nomById = new Map(users.map((u) => [u.id, u.nom]));
+    return rows.map((d) => ({
+      id: d.id,
+      deviceId: d.deviceId,
+      label: d.label,
+      userAgent: d.userAgent,
+      lastUserNom: d.lastUserId ? (nomById.get(d.lastUserId) ?? null) : null,
+      lastSeenAt: d.lastSeenAt,
+      revokedAt: d.revokedAt,
+      createdAt: d.createdAt,
+    }));
+  }
+
+  /** Renomme / révoque / réactive un appareil (users:manage). */
+  async updateDevice(ctx: AuthContext, id: string, input: UpdateDeviceInput): Promise<DeviceDto> {
+    const row = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const device = await tx.device.findFirst({ where: { id, tenantId: ctx.tenantId } });
+      if (!device) throw new NotFoundException('Appareil introuvable');
+      return tx.device.update({
+        where: { id },
+        data: {
+          ...(input.label !== undefined ? { label: input.label } : {}),
+          ...(input.revoked !== undefined
+            ? { revokedAt: input.revoked ? new Date() : null }
+            : {}),
+        },
+      });
+    });
+    await this.activity.log({
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      action: input.revoked === true ? 'DEVICE_REVOKE' : 'DEVICE_UPDATE',
+      entity: 'device',
+      entityId: id,
+      metadata: { label: row.label, revoked: !!row.revokedAt },
+    });
+    return {
+      id: row.id,
+      deviceId: row.deviceId,
+      label: row.label,
+      userAgent: row.userAgent,
+      lastUserNom: null,
+      lastSeenAt: row.lastSeenAt,
+      revokedAt: row.revokedAt,
+      createdAt: row.createdAt,
+    };
   }
 
   /**

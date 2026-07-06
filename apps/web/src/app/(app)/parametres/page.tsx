@@ -13,7 +13,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, Users2, History, ChevronRight, Store } from 'lucide-react';
+import { Sparkles, CheckCircle2, Crown, Zap, Package2, AlertTriangle, Users2, History, ChevronRight, Store, MonitorSmartphone,
+} from 'lucide-react';
 import { PLAN_MODULES, MODULES, COUNTRY_NAMES, citiesOf, type Plan, type PlanConfigDto } from '@wilinwi/types';
 import { Card, formatFCFA } from '@wilinwi/ui';
 
@@ -172,6 +173,16 @@ export default function ParametresPage() {
             <span>
               <span className="block font-display font-semibold text-slate-800">Utilisateurs</span>
               <span className="text-sm text-slate-500">Collaborateurs, rôles, permissions, PIN</span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </Link>
+        <Link href="/parametres/appareils" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-md">
+          <span className="flex items-center gap-3">
+            <span className="rounded-xl bg-brand/10 p-2.5 text-brand"><MonitorSmartphone className="h-5 w-5" /></span>
+            <span>
+              <span className="block font-display font-semibold text-slate-800">Appareils</span>
+              <span className="text-sm text-slate-500">Postes connectés, limite du plan, révocation</span>
             </span>
           </span>
           <ChevronRight className="h-5 w-5 text-slate-400" />
