@@ -151,6 +151,8 @@ export interface SaleLineLike {
   productId: string;
   variantId?: string | null;
   quantite: number;
+  /** Conditionnement (Wholesale) : le stock local bouge de quantite × unitFactor. */
+  unitFactor?: number;
 }
 
 interface ProductStockLike {
@@ -187,10 +189,11 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
     let variants = p.variants;
     let batches = p.batches;
     for (const line of lines) {
-      stock += sign * line.quantite;
+      const facteur = line.unitFactor ?? 1;
+      stock += sign * line.quantite * facteur;
       if (line.variantId && variants) {
         variants = variants.map((v) =>
-          v.id === line.variantId ? { ...v, stock: v.stock + sign * line.quantite } : v,
+          v.id === line.variantId ? { ...v, stock: v.stock + sign * line.quantite * facteur } : v,
         );
       }
       // BATCHED : miroir FEFO du serveur sur le snapshot — debit sort des lots
@@ -206,7 +209,7 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
           (b) => new Date(b.expiresAt).getTime() > now,
         );
         const cibles = mode === 'debit' ? vendables : [...vendables].reverse();
-        let restant = line.quantite;
+        let restant = line.quantite * facteur;
         const deltas = new Map<string, number>();
         for (const b of cibles) {
           if (restant <= 0) break;
@@ -313,6 +316,45 @@ export const UpdateProductSchema = CreateProductSchemaBase.omit({ stock: true })
   });
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 
+// ────────── Multi-conditionnement (Wholesale — Milestone 5, §9.6) ──────────
+
+export const ProductUnitInputSchema = z.object({
+  label: z.string().min(1).max(40),
+  /** Nombre d'unités de BASE contenues (casier de 24 → 24). ≥ 2 : « 1 » est l'unité. */
+  factorToBase: z.number().int().min(2),
+  /** Prix du conditionnement (FCFA). Null → prixCatalogue × facteur. */
+  salePrice: MoneySchema.nullable().optional(),
+});
+export type ProductUnitInput = z.infer<typeof ProductUnitInputSchema>;
+
+/** Remplace intégralement les conditionnements d'un produit. */
+export const UpsertProductUnitsSchema = z.object({
+  units: z
+    .array(ProductUnitInputSchema)
+    .max(10)
+    .refine(
+      (units) => new Set(units.map((u) => u.label.trim().toLowerCase())).size === units.length,
+      'Les libellés de conditionnement doivent être uniques',
+    ),
+});
+export type UpsertProductUnitsInput = z.infer<typeof UpsertProductUnitsSchema>;
+
+export const ProductUnitDtoSchema = z.object({
+  id: IdSchema,
+  label: z.string(),
+  factorToBase: z.number().int().min(1),
+  salePrice: MoneySchema.nullable(),
+});
+export type ProductUnitDto = z.infer<typeof ProductUnitDtoSchema>;
+
+/** Prix par défaut d'un conditionnement : tarif dédié, sinon catalogue × facteur. */
+export function unitDefaultPrice(
+  unit: Pick<ProductUnitDto, 'factorToBase' | 'salePrice'>,
+  prixCatalogue: number,
+): number {
+  return unit.salePrice ?? prixCatalogue * unit.factorToBase;
+}
+
 // ─────────────── Lots & péremption (Health — Milestone 4, §9.4) ───────────────
 
 export const CreateBatchSchema = z.object({
@@ -394,6 +436,8 @@ export const ProductDtoSchema = z.object({
   // Lots de l'établissement courant (produits BATCHED — Milestone 4) : snapshot
   // pour le POS offline (Option B §18.2) et l'affichage péremption.
   batches: z.array(BatchDtoSchema).optional(),
+  // Conditionnements commerciaux (Wholesale — Milestone 5).
+  units: z.array(ProductUnitDtoSchema).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 

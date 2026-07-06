@@ -15,7 +15,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import {
   Plus, Package, Search, AlertTriangle, ArrowRightLeft,
-  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat, Layers,
+  Edit, Clock, Warehouse, ChevronDown, ChevronUp, Store, ChefHat, Layers, Boxes,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
@@ -23,7 +23,7 @@ import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
-import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal } from '@/components/stock-modals';
+import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal, UnitsModal } from '@/components/stock-modals';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -47,6 +47,7 @@ export default function StockPage() {
   const [movementProduct, setMovementProduct] = useState<ProductDto | undefined>();
   const [recipeProduct, setRecipeProduct] = useState<ProductDto | undefined>();
   const [batchProduct, setBatchProduct] = useState<ProductDto | undefined>();
+  const [unitsProduct, setUnitsProduct] = useState<ProductDto | undefined>();
   const { has: hasInfraCap } = useInfraCapabilities();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -286,6 +287,15 @@ export default function StockPage() {
                               <Layers className="h-4 w-4" />
                             </button>
                           )}
+                          {p.type === 'STANDARD' && hasInfraCap('stock.unitConversions') && (
+                            <button
+                              onClick={() => setUnitsProduct(p)}
+                              className="p-1.5 text-slate-400 hover:text-sky-600 rounded-md hover:bg-sky-50 transition-colors"
+                              title="Conditionnements (casier, palette…)"
+                            >
+                              <Boxes className="h-4 w-4" />
+                            </button>
+                          )}
                         </>
                       )}
                       <Link
@@ -381,6 +391,14 @@ export default function StockPage() {
           product={batchProduct}
           onClose={() => setBatchProduct(undefined)}
           onSuccess={() => void refetch()}
+        />
+      )}
+
+      {unitsProduct && (
+        <UnitsModal
+          product={unitsProduct}
+          onClose={() => setUnitsProduct(undefined)}
+          onSuccess={() => { setUnitsProduct(undefined); void refetch(); }}
         />
       )}
 

@@ -15,6 +15,7 @@ import {
   UNIT_KINDS,
   type BatchDto,
   type ProductDto,
+  type ProductUnitDto,
   type ProductType,
   type RecipeDto,
   type UnitKind,
@@ -947,6 +948,161 @@ export function BatchModal({ product, onClose, onSuccess }: BatchModalProps) {
               );
             })}
           </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ────────── Conditionnements (Wholesale — Milestone 5) ──────────
+
+interface UnitsModalProps {
+  product: ProductDto;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface UnitRow {
+  label: string;
+  factorToBase: string;
+  salePrice: string; // '' = prixCatalogue × facteur
+}
+
+/**
+ * Éditeur des conditionnements commerciaux (casier, palette…). Règle F7 : un
+ * tarif de conditionnement ne peut pas passer sous prixPlancher × facteur —
+ * le serveur refuse, l'UI prévient.
+ */
+export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
+  const [rows, setRows] = useState<UnitRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiGet<ProductUnitDto[]>(`/api/stock/products/${product.id}/units`)
+      .then((units) =>
+        setRows(
+          units.map((u) => ({
+            label: u.label,
+            factorToBase: String(u.factorToBase),
+            salePrice: u.salePrice === null ? '' : String(u.salePrice),
+          })),
+        ),
+      )
+      .catch((e) => setError((e as ApiError).message))
+      .finally(() => setLoading(false));
+  }, [product.id]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPut(`/api/stock/products/${product.id}/units`, {
+        units: rows
+          .filter((r) => r.label.trim() && Number(r.factorToBase) >= 2)
+          .map((r) => ({
+            label: r.label.trim(),
+            factorToBase: Math.trunc(Number(r.factorToBase)),
+            salePrice: r.salePrice.trim() === '' ? null : Math.trunc(Number(r.salePrice)),
+          })),
+      });
+      onSuccess();
+    } catch (err) {
+      setError((err as ApiError).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Conditionnements — {product.nom}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-slate-500">
+          Vendre 1 « Casier 24 » décrémente 24 unités de base. Prix vide = catalogue × facteur.
+          Le tarif ne peut pas passer sous le plancher × facteur.
+        </p>
+
+        {loading ? (
+          <p className="py-8 text-center text-sm text-slate-400">Chargement…</p>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            {rows.map((row, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={row.label}
+                  onChange={(e) => {
+                    const n = [...rows];
+                    n[idx] = { ...n[idx]!, label: e.target.value };
+                    setRows(n);
+                  }}
+                  required
+                  placeholder="Casier 24"
+                  className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand"
+                />
+                <input
+                  type="number"
+                  min={2}
+                  value={row.factorToBase}
+                  onChange={(e) => {
+                    const n = [...rows];
+                    n[idx] = { ...n[idx]!, factorToBase: e.target.value };
+                    setRows(n);
+                  }}
+                  required
+                  placeholder="× base"
+                  className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  value={row.salePrice}
+                  onChange={(e) => {
+                    const n = [...rows];
+                    n[idx] = { ...n[idx]!, salePrice: e.target.value };
+                    setRows(n);
+                  }}
+                  placeholder="Prix (auto)"
+                  className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                />
+                <button
+                  type="button"
+                  onClick={() => setRows(rows.filter((_, i) => i !== idx))}
+                  className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRows([...rows, { label: '', factorToBase: '', salePrice: '' }])}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Ajouter un conditionnement
+            </Button>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="mt-4 flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+                Annuler
+              </Button>
+              <Button type="submit" variant="emerald" disabled={saving}>
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </div>
+          </form>
         )}
       </div>
     </div>

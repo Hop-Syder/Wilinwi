@@ -221,6 +221,7 @@ model Tenant {
   recipeItems     RecipeItem[]
   foodTables      FoodTable[]
   productBatches  ProductBatch[]
+  productUnits    ProductUnit[]
 
   @@map("tenants")
 }
@@ -387,11 +388,38 @@ model Product {
   recipe        ProductRecipe?
   recipeUsages  RecipeItem[]        @relation("RecipeIngredient")
   batches       ProductBatch[]
+  units         ProductUnit[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, type])
   @@map("products")
+}
+
+// ────────────── Wholesale (Milestone 5) — multi-conditionnement ──────────────
+
+// Conditionnement commercial d'un produit (§7.6/§9.6) : « Casier 24 » = 24 unités
+// de base. Le stock reste tenu en unités de base ; la vente d'un conditionnement
+// décrémente quantite × factorToBase. Le prix plancher se contrôle RAMENÉ à la
+// base : prixReel(conditionnement) ≥ prixPlancher × factorToBase (revue F7).
+model ProductUnit {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  productId    String   @map("product_id") @db.Uuid
+  label        String
+  factorToBase Int      @map("factor_to_base")
+  /// Prix de vente du conditionnement (FCFA). Null → prixCatalogue × facteur.
+  salePrice    Int?     @map("sale_price")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  saleItems SaleItem[]
+
+  @@unique([productId, label])
+  @@index([tenantId])
+  @@index([productId])
+  @@map("product_units")
 }
 
 // ─────────────────── Health (Milestone 4) — lots & péremption ───────────────────
@@ -617,12 +645,19 @@ model SaleItem {
   variantId String? @map("variant_id") @db.Uuid
   quantite  Int
   quantiteRetournee Int @default(0) @map("quantite_retournee")
-  prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié
-  /// Coût figé au moment de la vente (prix d'achat), pour le calcul de marge.
+  prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié (PAR conditionnement si unitId)
+  /// Coût figé au moment de la vente (prix d'achat × facteur), pour la marge.
   coutUnitaire Int  @map("cout_unitaire")
+  /// Conditionnement vendu (Wholesale M5) — SNAPSHOT figé à la vente : le stock
+  /// bouge de quantite × unitFactor unités de base, réversible exactement même
+  /// si le conditionnement est modifié/supprimé ensuite.
+  unitId     String? @map("unit_id") @db.Uuid
+  unitLabel  String? @map("unit_label")
+  unitFactor Int     @default(1) @map("unit_factor")
 
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
+  unit    ProductUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([saleId])

@@ -17,6 +17,7 @@ import {
   CreateStockMovementSchema,
   SetStockThresholdSchema,
   UpdateProductSchema,
+  UpsertProductUnitsSchema,
   UpsertRecipeSchema,
   type AdjustBatchInput,
   type AuthContext,
@@ -25,6 +26,7 @@ import {
   type CreateStockMovementInput,
   type SetStockThresholdInput,
   type UpdateProductInput,
+  type UpsertProductUnitsInput,
   type UpsertRecipeInput,
 } from '@wilinwi/types';
 import {
@@ -165,6 +167,26 @@ export class StockController {
     @Body(new ZodValidationPipe(AdjustBatchSchema)) dto: AdjustBatchInput,
   ) {
     return this.stock.adjustBatch(user, batchId, dto);
+  }
+
+  /** Conditionnements d'un produit (Wholesale, M5) — stock.unitConversions. */
+  @RequireCapabilities('stock:read')
+  @RequireInfraCapability('stock.unitConversions')
+  @Get('products/:id/units')
+  getUnits(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.stock.getUnits(user, id);
+  }
+
+  /** Remplace les conditionnements d'un produit (tarif ≥ plancher × facteur — F7). */
+  @RequireCapabilities('stock:write')
+  @RequireInfraCapability('stock.unitConversions')
+  @Put('products/:id/units')
+  upsertUnits(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpsertProductUnitsSchema)) dto: UpsertProductUnitsInput,
+  ) {
+    return this.stock.upsertUnits(user, id, dto);
   }
 
   // NOTE : POST /stock/transfers a été SUPPRIMÉ — les transferts inter-boutiques

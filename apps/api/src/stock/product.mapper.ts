@@ -9,8 +9,14 @@
  */
 // ──────────────────────────────────
 
-import { canSeeSensitivePricing, type BatchDto, type ProductDto, type Role } from '@wilinwi/types';
-import type { Product, ProductBatch, ProductVariant } from '@wilinwi/db';
+import {
+  canSeeSensitivePricing,
+  type BatchDto,
+  type ProductDto,
+  type ProductUnitDto,
+  type Role,
+} from '@wilinwi/types';
+import type { Product, ProductBatch, ProductUnit, ProductVariant } from '@wilinwi/db';
 
 /**
  * Transforme un produit en DTO en retirant les champs sensibles
@@ -18,7 +24,11 @@ import type { Product, ProductBatch, ProductVariant } from '@wilinwi/db';
  * Cette fonction est l'unique point de sortie des produits vers le client.
  */
 export function toProductDto(
-  product: Product & { variants?: ProductVariant[]; batches?: ProductBatch[] },
+  product: Product & {
+    variants?: ProductVariant[];
+    batches?: ProductBatch[];
+    units?: ProductUnit[];
+  },
   role: Role,
   stockParEtablissement?: Record<string, number>,
 ): ProductDto {
@@ -58,6 +68,19 @@ export function toProductDto(
   // Breakdown par établissement : réservé au PROPRIÉTAIRE (OWNER) uniquement.
   if (role === 'OWNER' && stockParEtablissement) {
     base.stockParEtablissement = stockParEtablissement;
+  }
+
+  // Conditionnements commerciaux (Wholesale M5) : visibles par tous les rôles
+  // (le vendeur en a besoin pour vendre au casier).
+  if (product.units && product.units.length > 0) {
+    base.units = product.units.map(
+      (u): ProductUnitDto => ({
+        id: u.id,
+        label: u.label,
+        factorToBase: u.factorToBase,
+        salePrice: u.salePrice,
+      }),
+    );
   }
 
   // Lots (produits BATCHED, vue scopée) : snapshot POS offline + péremption.

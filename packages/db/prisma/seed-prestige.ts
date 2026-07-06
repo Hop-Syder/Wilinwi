@@ -21,6 +21,7 @@ const ETAB_PRET_ID = '00000000-0000-0000-0000-0000000000c2';
 const ETAB_PARFUM_ID = '00000000-0000-0000-0000-0000000000c3';
 const ETAB_MAQUIS_ID = '00000000-0000-0000-0000-0000000000c4';
 const ETAB_PHARMA_ID = '00000000-0000-0000-0000-0000000000c5';
+const ETAB_DEPOT_ID = '00000000-0000-0000-0000-0000000000c6';
 
 const OWNER_EMAIL = 'christian@prestige.bj';
 const OWNER_PASSWORD = '12345678';
@@ -90,6 +91,13 @@ const PRODUITS_PHARMA: SeedProduct[] = [
   { nom: 'Paracétamol sirop (L)', sku: 'PHA-PARA-SIR', categorie: 'Antalgiques', type: 'BATCHED', unitKind: 'VOLUME', baseUnit: 'L', prixAchat: 900, prixPlancher: 1300, prixCatalogue: 2000, stock: 0 },
 ];
 
+// Dépôt (infrastructure WHOLESALE) : vente en gros au conditionnement — le stock
+// reste tenu en unités de base, les casiers sont seedés plus bas.
+const PRODUITS_DEPOT: SeedProduct[] = [
+  { nom: 'Béninoise 33cl (dépôt)', sku: 'DEP-BEN-33', categorie: 'Boissons', prixAchat: 300, prixPlancher: 450, prixCatalogue: 700, stock: 2400 },
+  { nom: 'Coca 30cl (dépôt)', sku: 'DEP-COC-30', categorie: 'Boissons', prixAchat: 200, prixPlancher: 300, prixCatalogue: 500, stock: 4800 },
+];
+
 // ───────────────────────────────── Seed ─────────────────────────────────
 
 async function main() {
@@ -136,6 +144,8 @@ async function main() {
       { id: ETAB_MAQUIS_ID, nom: 'Prestige Maquis', type: 'RESTAURANT', infrastructure: 'FOOD', produits: PRODUITS_MAQUIS },
       // Établissement HEALTH : lots, FEFO, péremption (Milestone 4).
       { id: ETAB_PHARMA_ID, nom: 'Prestige Pharma', type: 'PHARMACIE', infrastructure: 'HEALTH', produits: PRODUITS_PHARMA },
+      // Établissement WHOLESALE : multi-conditionnement (Milestone 5).
+      { id: ETAB_DEPOT_ID, nom: 'Prestige Dépôt', type: 'ENTREPOT', infrastructure: 'WHOLESALE', produits: PRODUITS_DEPOT },
     ] as const;
 
     for (const boutique of boutiques) {
@@ -302,6 +312,32 @@ async function main() {
       }
     }
     console.log('   💊 Lots pharmacie : LOT-2024A (périmé), LOT-2025B (proche), LOT-2026C, LOT-SIR1');
+  });
+
+  // ── Milestone 5 : conditionnements du dépôt (idempotent — upsert par libellé) ──
+  await withTenant(TENANT_ID, async (tx) => {
+    const UNITS: { sku: string; label: string; factorToBase: number; salePrice: number | null }[] = [
+      // Béninoise : casier 24 à 15 600 (≥ plancher 450 × 24 = 10 800 — règle F7).
+      { sku: 'DEP-BEN-33', label: 'Casier 24', factorToBase: 24, salePrice: 15600 },
+      { sku: 'DEP-COC-30', label: 'Casier 24', factorToBase: 24, salePrice: 11000 },
+      { sku: 'DEP-COC-30', label: 'Demi-casier 12', factorToBase: 12, salePrice: null },
+    ];
+    for (const u of UNITS) {
+      const product = await tx.product.findFirst({ where: { tenantId: TENANT_ID, sku: u.sku } });
+      if (!product) continue;
+      await tx.productUnit.upsert({
+        where: { productId_label: { productId: product.id, label: u.label } },
+        update: { factorToBase: u.factorToBase, salePrice: u.salePrice },
+        create: {
+          tenantId: TENANT_ID,
+          productId: product.id,
+          label: u.label,
+          factorToBase: u.factorToBase,
+          salePrice: u.salePrice,
+        },
+      });
+    }
+    console.log('   📦 Conditionnements dépôt : Casier 24 (Béninoise, Coca) + Demi-casier 12');
   });
 
   console.log('✅ Seed Prestige terminé.');

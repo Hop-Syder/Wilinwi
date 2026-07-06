@@ -89,12 +89,15 @@ export class SalesService {
         quantite: number;
         prixReel: number;
         coutUnitaire: number;
+        unitId: string | null;
+        unitLabel: string | null;
+        unitFactor: number;
       }[] = [];
 
       for (const item of input.items) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, tenantId: ctx.tenantId },
-          include: { variants: true },
+          include: { variants: true, units: true },
         });
         if (!product) throw new NotFoundException(`Produit ${item.productId} introuvable`);
 
@@ -102,6 +105,23 @@ export class SalesService {
         if (item.variantId && !variant) {
           throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);
         }
+
+        // Conditionnement (Wholesale M5) : quantite = nombre de CONDITIONNEMENTS ;
+        // le stock bouge de quantite × facteur (unités de base). Snapshot figé sur
+        // la ligne (label + facteur) pour une réversibilité exacte.
+        const unit = item.unitId ? product.units.find((u) => u.id === item.unitId) : null;
+        if (item.unitId && !unit) {
+          throw new BadRequestException(`Conditionnement introuvable pour le produit "${product.nom}"`);
+        }
+        if (unit && product.type !== 'STANDARD') {
+          throw new BadRequestException(
+            `Les conditionnements ne s'appliquent qu'aux produits STANDARD — "${product.nom}" est ${product.type}.`,
+          );
+        }
+        if (unit && item.variantId) {
+          throw new BadRequestException('Conditionnement et variante ne se combinent pas.');
+        }
+        const facteur = unit?.factorToBase ?? 1;
 
         // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock).
         // Pas de repli sur le stock global : sans établissement courant la vente
@@ -124,17 +144,19 @@ export class SalesService {
             product.id,
             item.variantId ?? null,
           );
-          if (item.quantite > availableStock) {
+          if (item.quantite * facteur > availableStock) {
             throw new BadRequestException(
-              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
+              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite * facteur}, Disponible : ${availableStock}`
             );
           }
         }
 
         // Anti-fraude absolu : vente sous le prix plancher strictement refusée.
-        if (item.prixReel < product.prixPlancher) {
+        // Conditionnement : le plancher se contrôle × facteur (un casier de 24 ne
+        // peut pas passer sous 24 × plancher — revue F7).
+        if (item.prixReel < product.prixPlancher * facteur) {
           throw new BadRequestException(
-            `Opération refusée : le prix de vente de "${product.nom}" (${item.prixReel}) est inférieur au prix plancher fixe (${product.prixPlancher}).`,
+            `Opération refusée : le prix de vente de "${product.nom}"${unit ? ` (${unit.label})` : ''} (${item.prixReel}) est inférieur au prix plancher (${product.prixPlancher * facteur}).`,
           );
         }
 
@@ -144,7 +166,10 @@ export class SalesService {
           variantId: item.variantId ?? null,
           quantite: item.quantite,
           prixReel: item.prixReel,
-          coutUnitaire: product.prixAchat,
+          coutUnitaire: product.prixAchat * facteur,
+          unitId: unit?.id ?? null,
+          unitLabel: unit?.label ?? null,
+          unitFactor: facteur,
         });
       }
 
@@ -232,6 +257,9 @@ export class SalesService {
             quantite: line.quantite,
             prixReel: line.prixReel,
             coutUnitaire: line.coutUnitaire,
+            unitId: line.unitId,
+            unitLabel: line.unitLabel,
+            unitFactor: line.unitFactor,
           },
         });
       }
@@ -279,6 +307,8 @@ export class SalesService {
         }
         continue;
       }
+      // Conditionnement (Wholesale M5) : le stock bouge en UNITÉS DE BASE.
+      const baseQty = item.quantite * item.unitFactor;
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -286,19 +316,19 @@ export class SalesService {
           productId: item.productId,
           variantId: item.variantId,
           type: 'OUT',
-          quantite: -item.quantite,
-          motif: `Vente ${saleId}`,
+          quantite: -baseQty,
+          motif: `Vente ${saleId}${item.unitLabel ? ` (${item.quantite} × ${item.unitLabel})` : ''}`,
           saleId,
         },
       });
       await tx.product.update({
         where: { id: item.productId },
-        data: { stock: { decrement: item.quantite } },
+        data: { stock: { decrement: baseQty } },
       });
       if (item.variantId) {
         await tx.productVariant.update({
           where: { id: item.variantId },
-          data: { stock: { decrement: item.quantite } },
+          data: { stock: { decrement: baseQty } },
         });
       }
       // Projection ProductStock : décrément à la boutique vendeuse.
@@ -308,7 +338,7 @@ export class SalesService {
           etablissementId,
           productId: item.productId,
           variantId: item.variantId,
-          delta: -item.quantite,
+          delta: -baseQty,
         });
         // ALLOW_NEGATIVE (§9.2 « autorise le stock négatif AVEC ALERTE ») : la
         // vente est passée sans pré-contrôle — si le solde local devient négatif,
@@ -496,7 +526,9 @@ export class SalesService {
         total: sale.total,
         montantVerse,
         items: sale.items.map((it) => ({
-          nom: it.product?.nom ?? 'Article',
+          nom: it.unitLabel
+            ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
+            : (it.product?.nom ?? 'Article'),
           quantite: it.quantite,
           prixReel: it.prixReel,
         })),
@@ -754,7 +786,7 @@ export class SalesService {
         if (item.product?.type === 'BATCHED') continue;
         // Un retour partiel a déjà restocké `quantiteRetournee` : ne ré-entrer
         // que le restant, sinon l'annulation double la ré-entrée de stock.
-        const restant = item.quantite - (item.quantiteRetournee ?? 0);
+        const restant = (item.quantite - (item.quantiteRetournee ?? 0)) * item.unitFactor;
         if (restant <= 0) continue;
         await tx.stockMovement.create({
           data: {
@@ -991,6 +1023,8 @@ export class SalesService {
             restantRetour -= back;
           }
         } else if (saleStockBehavior(item.product?.type, item.product?.stockPolicy).decrement) {
+          // Conditionnement : quantiteRetournee compte des CONDITIONNEMENTS.
+          const baseBack = ret.quantiteRetournee * item.unitFactor;
           await tx.stockMovement.create({
             data: {
               tenantId: ctx.tenantId,
@@ -998,19 +1032,19 @@ export class SalesService {
               productId: item.productId,
               variantId: item.variantId,
               type: 'IN',
-              quantite: ret.quantiteRetournee,
+              quantite: baseBack,
               motif: `Retour client (Vente ${sale.id.slice(0, 8)})`,
               saleId: sale.id,
             },
           });
           await tx.product.update({
             where: { id: item.productId },
-            data: { stock: { increment: ret.quantiteRetournee } },
+            data: { stock: { increment: baseBack } },
           });
           if (item.variantId) {
             await tx.productVariant.update({
               where: { id: item.variantId },
-              data: { stock: { increment: ret.quantiteRetournee } },
+              data: { stock: { increment: baseBack } },
             });
           }
           // Projection ProductStock : ré-entrée à la boutique de la vente.
@@ -1020,7 +1054,7 @@ export class SalesService {
               etablissementId,
               productId: item.productId,
               variantId: item.variantId,
-              delta: ret.quantiteRetournee,
+              delta: baseBack,
             });
           }
         }

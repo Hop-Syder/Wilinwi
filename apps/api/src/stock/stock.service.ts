@@ -25,10 +25,12 @@ import {
   type CreateBatchInput,
   type CreateProductInput,
   type CreateStockMovementInput,
+  type ProductUnitDto,
   type RecipeDto,
   type SetStockThresholdInput,
   type StockAlertDto,
   type UpdateProductInput,
+  type UpsertProductUnitsInput,
   type UpsertRecipeInput,
 } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
@@ -57,6 +59,7 @@ export class StockService {
         where: { tenantId: ctx.tenantId, actif: true },
         include: {
           variants: true,
+          units: true,
           // Lots de la boutique courante (BATCHED) : snapshot POS + péremption.
           ...(!globalView && ctx.etablissementId
             ? {
@@ -125,6 +128,10 @@ export class StockService {
           v.stock = stockByVariant[v.id] ?? 0;
         }
       }
+      const units = await tx.productUnit.findMany({
+        where: { productId: p.id, tenantId: ctx.tenantId },
+        orderBy: { factorToBase: 'asc' },
+      });
       // Lots de la boutique courante (BATCHED).
       const batches = ctx.etablissementId
         ? await tx.productBatch.findMany({
@@ -132,7 +139,7 @@ export class StockService {
             orderBy: { expiresAt: 'asc' },
           })
         : undefined;
-      return { ...p, batches };
+      return { ...p, batches, units };
     });
     return toProductDto(product, ctx.role);
   }
@@ -659,6 +666,67 @@ export class StockService {
       }
     });
     return { ok: true as const };
+  }
+
+  // ────────── Multi-conditionnement (Wholesale — Milestone 5, §9.6) ──────────
+
+  /** Conditionnements d'un produit (casier, palette…), facteur croissant. */
+  async getUnits(ctx: AuthContext, productId: string): Promise<ProductUnitDto[]> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      await this.ensureProduct(tx, ctx.tenantId, productId);
+      const rows = await tx.productUnit.findMany({
+        where: { productId, tenantId: ctx.tenantId },
+        orderBy: { factorToBase: 'asc' },
+      });
+      return rows.map((u) => ({
+        id: u.id,
+        label: u.label,
+        factorToBase: u.factorToBase,
+        salePrice: u.salePrice,
+      }));
+    });
+  }
+
+  /**
+   * Remplace intégralement les conditionnements d'un produit STANDARD.
+   * Règle F7 : un tarif de conditionnement ne peut pas passer sous
+   * prixPlancher × facteur (sinon le casier serait une braderie déguisée).
+   */
+  async upsertUnits(
+    ctx: AuthContext,
+    productId: string,
+    input: UpsertProductUnitsInput,
+  ): Promise<ProductUnitDto[]> {
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const product = await this.ensureProduct(tx, ctx.tenantId, productId);
+      if (product.type !== 'STANDARD') {
+        throw new BadRequestException(
+          `Les conditionnements ne s'appliquent qu'aux produits STANDARD — « ${product.nom} » est ${product.type}.`,
+        );
+      }
+      for (const u of input.units) {
+        if (u.salePrice != null && u.salePrice < product.prixPlancher * u.factorToBase) {
+          throw new BadRequestException(
+            `Tarif du conditionnement « ${u.label} » (${u.salePrice}) sous le plancher ramené à la base (${product.prixPlancher * u.factorToBase} = ${product.prixPlancher} × ${u.factorToBase}).`,
+          );
+        }
+      }
+      // Remplacement intégral : les lignes de vente passées gardent leur SNAPSHOT
+      // (unitLabel/unitFactor) — la suppression d'un conditionnement est sans risque.
+      await tx.productUnit.deleteMany({ where: { productId, tenantId: ctx.tenantId } });
+      for (const u of input.units) {
+        await tx.productUnit.create({
+          data: {
+            tenantId: ctx.tenantId,
+            productId,
+            label: u.label.trim(),
+            factorToBase: u.factorToBase,
+            salePrice: u.salePrice ?? null,
+          },
+        });
+      }
+    });
+    return this.getUnits(ctx, productId);
   }
 
   // ─────────────── Lots & péremption (Health — Milestone 4, §9.4) ───────────────

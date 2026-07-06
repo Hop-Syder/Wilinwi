@@ -1289,3 +1289,31 @@ Critères §13-M4 tous atteints, prouvés E2E contre l'API réelle :
   FEFO local (anti-oversell — approximation locale, le serveur fait foi).
 - Reportés : lots sur les réceptions fournisseurs (PO) et les dispatchs — les
   BATCHED s'approvisionnent par réception de lots directe en attendant.
+
+---
+
+## 22. Milestone 5 — Wholesale : LIVRÉ (2026-07-06)
+
+Criteres §13-M5 tous atteints, prouvés E2E (script durable `scripts/e2e-tdr.mjs`,
+régression complète M1→M5 : 38/38) :
+
+- **Conditionnements** : `ProductUnit` (label unique par produit, `factorToBase`,
+  `salePrice` nullable → catalogue × facteur). Le stock reste tenu en UNITÉS DE
+  BASE : vendre 1 « Casier 24 » décrémente 24.
+- **Snapshot sur la ligne de vente** : `SaleItem.unitId/unitLabel/unitFactor`
+  figés à la vente → annulation et retour partiel EXACTS (× facteur) même si le
+  conditionnement est modifié/supprimé ensuite. Coût de marge = prixAchat × facteur.
+- **Règle F7 appliquée aux DEUX bouts** : à la vente, `prixReel ≥ prixPlancher ×
+  facteur` (un casier ne peut pas être une braderie déguisée) ; à la configuration,
+  un tarif de conditionnement sous plancher × facteur est refusé.
+- **Restrictions** : conditionnements réservés aux produits STANDARD ; pas de
+  combinaison conditionnement + variante.
+- **API** : GET/PUT `/stock/products/:id/units` gardés `stock.unitConversions`
+  (403 vérifié depuis un établissement FOOD).
+- **POS** : sélecteur de conditionnement au clic (unité + casiers avec prix),
+  ligne panier libellée, plancher du panier contrôlé × facteur, snapshot offline
+  débité en unités de base (`unitFactor` transmis pour le cache local uniquement —
+  le serveur résout le facteur réel depuis la base).
+- **UI** : éditeur de conditionnements (page Stock, produits STANDARD).
+- Reportés : bons de livraison avancés et plafond de crédit renforcé (le CRM
+  crédit existant couvre déjà l'ardoise grossiste de base).

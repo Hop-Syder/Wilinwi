@@ -13,11 +13,12 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Command } from 'lucide-react';
-import type { CreateSaleInput, FoodTableDto, ProductDto } from '@wilinwi/types';
+import type { CreateSaleInput, FoodTableDto, ProductDto, ProductUnitDto } from '@wilinwi/types';
 import {
   applySaleStockToProducts,
   formatQuantity,
   nearestExpiry,
+  unitDefaultPrice,
   productAffectsStock,
   quantityScale,
   saleStockBehavior,
@@ -43,6 +44,10 @@ interface CartLine {
   product: ProductDto;
   variantId?: string;
   variantLabel?: string;
+  /** Conditionnement (Wholesale M5) : quantite compte des CONDITIONNEMENTS. */
+  unitId?: string;
+  unitLabel?: string;
+  unitFactor?: number;
   quantite: number;
   prixReel: number;
 }
@@ -69,6 +74,7 @@ export default function PosPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [livreurs, setLivreurs] = useState<{ id: string; nom: string }[]>([]);
   const [variantSelectionProduct, setVariantSelectionProduct] = useState<ProductDto | null>(null);
+  const [unitSelectionProduct, setUnitSelectionProduct] = useState<ProductDto | null>(null);
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -274,37 +280,66 @@ export default function PosPage() {
   const total = cart.reduce((s, l) => s + l.prixReel * l.quantite, 0);
   // Le plancher est désormais visible : on bloque l'encaissement si une ligne
   // est négociée sous son prix plancher (cohérent avec le refus serveur).
+  // Conditionnement : le plancher se contrôle × facteur (revue F7).
   const hasBelowFloor = cart.some(
-    (l) => l.product.prixPlancher !== undefined && l.prixReel < l.product.prixPlancher,
+    (l) =>
+      l.product.prixPlancher !== undefined &&
+      l.prixReel < l.product.prixPlancher * (l.unitFactor ?? 1),
   );
 
-  function addToCart(product: ProductDto, quantite: number = quantityScale(product.unitKind), prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
+  function addToCart(
+    product: ProductDto,
+    quantite: number = quantityScale(product.unitKind),
+    prixReel: number = product.prixCatalogue,
+    variantId?: string,
+    variantLabel?: string,
+    unit?: ProductUnitDto,
+  ) {
     // Miroir du serveur (TDR §9.1/§9.2) : pas de contrôle de disponibilité pour
     // SERVICE/MANUFACTURED ni pour les politiques ALLOW_NEGATIVE/NO_STOCK.
     const checkStock = saleStockBehavior(product.type, product.stockPolicy).precheck;
+    const facteur = unit?.factorToBase ?? 1;
     // BATCHED : seul le stock VENDABLE compte (lots non périmés — Option B §18.2).
     const stockToCheck = product.type === 'BATCHED'
       ? sellableBatchQuantity(product.batches)
       : variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
-    if (checkStock && stockToCheck <= 0) {
-      setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
+    if (checkStock && stockToCheck < facteur) {
+      setMessage({ tone: 'err', text: 'Opération refusée : stock insuffisant.' });
       return;
     }
     setCart((c) => {
-      const existing = c.find((l) => l.product.id === product.id && l.variantId === variantId);
+      const existing = c.find(
+        (l) => l.product.id === product.id && l.variantId === variantId && l.unitId === unit?.id,
+      );
       const newQuantite = existing ? existing.quantite + quantite : quantite;
-      if (checkStock && newQuantite > stockToCheck) {
-        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}.` });
+      // Contrôle en UNITÉS DE BASE (un casier de 24 consomme 24).
+      if (checkStock && newQuantite * facteur > stockToCheck) {
+        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}${unit ? ' ('+unit.label+')' : ''}.` });
         return c;
       }
       if (existing)
-        return c.map((l) => (l.product.id === product.id && l.variantId === variantId ? { ...l, quantite: newQuantite, prixReel } : l));
-      return [...c, { product, quantite, prixReel, variantId, variantLabel }];
+        return c.map((l) =>
+          l.product.id === product.id && l.variantId === variantId && l.unitId === unit?.id
+            ? { ...l, quantite: newQuantite, prixReel }
+            : l,
+        );
+      return [...c, {
+        product,
+        quantite,
+        prixReel,
+        variantId,
+        variantLabel,
+        unitId: unit?.id,
+        unitLabel: unit?.label,
+        unitFactor: unit?.factorToBase,
+      }];
     });
   }
 
   function handleProductClick(product: ProductDto) {
-    if (product.variants && product.variants.length > 0) {
+    if (product.units && product.units.length > 0) {
+      setUnitSelectionProduct(product);
+    } else if (product.variants && product.variants.length > 0) {
       setVariantSelectionProduct(product);
     } else {
       addToCart(product);
@@ -319,12 +354,13 @@ export default function PosPage() {
   function setExactQuantity(line: CartLine, newQ: number) {
     if (newQ <= 0) return;
     if (saleStockBehavior(line.product.type, line.product.stockPolicy).precheck) {
+      const facteur = line.unitFactor ?? 1;
       const stockToCheck = line.product.type === 'BATCHED'
         ? sellableBatchQuantity(line.product.batches)
         : line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
-      if (newQ > stockToCheck) {
+      if (newQ * facteur > stockToCheck) {
         setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
-        newQ = stockToCheck;
+        newQ = Math.floor(stockToCheck / facteur);
       }
     }
     setCart(c => c.map(l => l === line ? { ...l, quantite: newQ } : l));
@@ -360,6 +396,8 @@ export default function PosPage() {
       items: cart.map((l) => ({
         productId: l.product.id,
         variantId: l.variantId,
+        unitId: l.unitId,
+        unitFactor: l.unitFactor,
         quantite: l.quantite,
         prixReel: l.prixReel,
       })),
@@ -651,6 +689,7 @@ export default function PosPage() {
                   <span className="text-sm font-medium">
                     {l.product.nom}
                     {l.variantLabel && <span className="ml-1 text-slate-500 font-normal">({l.variantLabel})</span>}
+                    {l.unitLabel && <span className="ml-1 font-semibold text-brand">· {l.unitLabel}</span>}
                   </span>
                   <button onClick={() => removeLine(l.product.id, l.variantId)} aria-label="Retirer">
                     <Trash2 className="h-4 w-4 text-slate-400 hover:text-red-500" />
@@ -663,18 +702,18 @@ export default function PosPage() {
                   <div className="flex items-center border rounded-md bg-white">
                     <button
                       className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-r"
-                      onClick={() => updateQuantity(l, -quantityScale(l.product.unitKind))}
+                      onClick={() => updateQuantity(l, l.unitId ? -1 : -quantityScale(l.product.unitKind))}
                     >-</button>
                     <input
                       type="number"
                       step={quantityScale(l.product.unitKind) !== 1 ? 'any' : 1}
-                      value={toDisplayQuantity(l.quantite, l.product.unitKind)}
-                      onChange={(e) => setExactQuantity(l, toStoredQuantity(Number(e.target.value), l.product.unitKind))}
+                      value={l.unitId ? l.quantite : toDisplayQuantity(l.quantite, l.product.unitKind)}
+                      onChange={(e) => setExactQuantity(l, l.unitId ? Math.round(Number(e.target.value)) : toStoredQuantity(Number(e.target.value), l.product.unitKind))}
                       className="w-12 text-center text-xs border-none focus:ring-0 p-1 focus:outline-none tabular"
                     />
                     <button
                       className="px-2 py-0.5 hover:bg-slate-50 text-slate-500 font-bold border-l"
-                      onClick={() => updateQuantity(l, quantityScale(l.product.unitKind))}
+                      onClick={() => updateQuantity(l, l.unitId ? 1 : quantityScale(l.product.unitKind))}
                     >+</button>
                   </div>
 
@@ -742,6 +781,59 @@ export default function PosPage() {
 
       {/* ContextualHelp gère le composant TourGuide en interne */}
       {/* Modale de sélection de variante */}
+      {unitSelectionProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Choisir un conditionnement</h3>
+            <p className="mb-4 text-sm text-slate-600">{unitSelectionProduct.nom}</p>
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+              {/* Unité de base */}
+              <button
+                onClick={() => { addToCart(unitSelectionProduct); setUnitSelectionProduct(null); }}
+                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-brand hover:shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900">À l'unité</span>
+                  <span className="tabular text-sm font-bold text-emerald-700">
+                    {formatFCFA(unitSelectionProduct.prixCatalogue)}
+                  </span>
+                </div>
+              </button>
+              {unitSelectionProduct.units?.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    addToCart(
+                      unitSelectionProduct,
+                      1,
+                      unitDefaultPrice(u, unitSelectionProduct.prixCatalogue),
+                      undefined,
+                      undefined,
+                      u,
+                    );
+                    setUnitSelectionProduct(null);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-brand hover:shadow-md"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-900">
+                      {u.label}
+                      <span className="ml-1 text-xs text-slate-500">(× {u.factorToBase})</span>
+                    </span>
+                    <span className="tabular text-sm font-bold text-emerald-700">
+                      {formatFCFA(unitDefaultPrice(u, unitSelectionProduct.prixCatalogue))}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" className="mt-4 w-full" onClick={() => setUnitSelectionProduct(null)}>
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+
       {variantSelectionProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">

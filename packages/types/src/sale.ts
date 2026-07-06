@@ -42,6 +42,12 @@ export type InstallmentStatus = (typeof INSTALLMENT_STATUSES)[number];
 export const SaleItemInputSchema = z.object({
   productId: IdSchema,
   variantId: IdSchema.optional(),
+  /** Conditionnement vendu (Wholesale M5) : quantite = nombre de CONDITIONNEMENTS,
+   *  le stock bouge de quantite × facteur, le plancher se contrôle × facteur. */
+  unitId: IdSchema.optional(),
+  /** Facteur du conditionnement, FOURNI PAR LE CLIENT pour le débit du snapshot
+   *  offline uniquement — le serveur résout le facteur réel depuis la base. */
+  unitFactor: z.number().int().min(1).optional(),
   quantite: z.number().int().positive(),
   prixReel: MoneySchema,
   /** Justification obligatoire quand on passe sous le prix plancher. */
