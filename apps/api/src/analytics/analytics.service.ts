@@ -42,16 +42,16 @@ export class AnalyticsService {
         include: { items: true },
       });
 
-      const ventesDuJour = salesToday.reduce((sum, s) => sum + s.total, 0);
+      const ventesDuJour = salesToday.reduce((sum: number, s) => sum + s.total, 0);
       const articlesVendus = salesToday.reduce(
-        (sum, s) => sum + s.items.reduce((q, it) => q + it.quantite, 0),
+        (sum: number, s) => sum + s.items.reduce((q: number, it) => q + it.quantite, 0),
         0,
       );
 
       // Bénéfice du jour (marge réelle) — donnée sensible
       const beneficeDuJour = salesToday.reduce(
-        (sum, s) =>
-          sum + s.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+        (sum: number, s) =>
+          sum + s.items.reduce((m: number, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
         0,
       );
 
@@ -65,7 +65,7 @@ export class AnalyticsService {
           where: { tenantId: ctx.tenantId },
           select: { productId: true },
         });
-        const productsWithAnyMovements = new Set(allMovements.map((m) => m.productId));
+        const productsWithAnyMovements = new Set(allMovements.map((m: { productId: string }) => m.productId));
 
         const activeMovements = await tx.stockMovement.findMany({
           where: { tenantId: ctx.tenantId, etablissementId: ctx.etablissementId },
@@ -83,8 +83,8 @@ export class AnalyticsService {
         }
       }
 
-      const valeurStockCatalogue = products.reduce((s, p) => s + p.prixCatalogue * p.stock, 0);
-      const valeurStockAchat = products.reduce((s, p) => s + p.prixAchat * p.stock, 0);
+      const valeurStockCatalogue = products.reduce((s: number, p) => s + p.prixCatalogue * p.stock, 0);
+      const valeurStockAchat = products.reduce((s: number, p) => s + p.prixAchat * p.stock, 0);
 
       // Alertes stock : ruptures proches
       const ruptures = products
@@ -200,15 +200,15 @@ export class AnalyticsService {
         orderBy: { createdAt: 'asc' },
       });
 
-      const chiffreAffaires = sales.reduce((s, v) => s + v.total, 0);
+      const chiffreAffaires = sales.reduce((s: number, v) => s + v.total, 0);
       const nombreVentes = sales.length;
       const articlesVendus = sales.reduce(
-        (s, v) => s + v.items.reduce((q, it) => q + it.quantite, 0),
+        (s: number, v) => s + v.items.reduce((q: number, it) => q + it.quantite, 0),
         0,
       );
       const panierMoyen = nombreVentes ? Math.round(chiffreAffaires / nombreVentes) : 0;
       const benefice = sales.reduce(
-        (s, v) => s + v.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+        (s: number, v) => s + v.items.reduce((m: number, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
         0,
       );
 
@@ -223,7 +223,7 @@ export class AnalyticsService {
         },
         select: { montant: true, createdAt: true },
       });
-      const totalDepenses = expenses.reduce((s, e) => s + e.montant, 0);
+      const totalDepenses = expenses.reduce((s: number, e) => s + e.montant, 0);
       const expByDay = new Map<string, number>();
       for (const e of expenses) {
         const day = e.createdAt.toISOString().slice(0, 10);
