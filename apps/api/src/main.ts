@@ -28,7 +28,8 @@ async function bootstrap() {
   // CORS restreint : allowlist via CORS_ORIGINS (séparés par des virgules).
   // À défaut on reste permissif (origin: true) pour ne pas casser un déploiement
   // non configuré — mais on alerte en production.
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
+  const corsOrigins = process.env.CORS_ORIGINS?.replace(/^['"]|['"]$/g, '')
+    ?.split(',')
     .map((s) => s.trim())
     .filter(Boolean);
   const hasAllowlist = !!corsOrigins && corsOrigins.length > 0;
