@@ -1,0 +1,48 @@
+# ==============================================================================
+# railway.toml — Wilinwi API (NestJS 11 · Turborepo monorepo)
+# @author @hopsyder | Nexus Partners
+# @description Configuration de déploiement Railway pour apps/api
+# ==============================================================================
+
+[build]
+# Railway détecte Node.js automatiquement via package.json.
+# On construit depuis la RACINE du monorepo pour que Turborepo
+# puisse résoudre les packages internes (@wilinwi/db, @wilinwi/types).
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @wilinwi/db generate && pnpm --filter api build"
+
+[deploy]
+# Script de démarrage : node pointe directement sur le dist compilé.
+# PORT est injecté automatiquement par Railway → main.ts lit `process.env.PORT`.
+startCommand = "node apps/api/dist/main.js"
+
+# Railway redémarre l'app si elle plante (comportement par défaut).
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Health-check : Railway sonde la route /api/health toutes les 10 s.
+# Si elle ne répond pas sous 30 s, le déploiement est considéré en échec.
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+
+[[deploy.environmentGroups]]
+# Nom du groupe de variables d'environnement créé dans le dashboard Railway.
+# Crée ce groupe et ajoute toutes les vars listées dans .env.example (section API).
+name = "wilinwi-api-prod"
+
+# ==============================================================================
+# VARIABLES D'ENVIRONNEMENT À CONFIGURER dans le Dashboard Railway
+# (Settings → Variables ou un Environment Group)
+# ------------------------------------------------------------------------------
+# NODE_ENV=production
+# PORT=4000                          ← Railway override automatiquement avec le port public
+# DATABASE_URL=postgresql://...      ← pooler Supabase mode session (port 5432)
+# DIRECT_URL=postgresql://...        ← connexion directe (migrations) — role postgres
+# SUPABASE_URL=https://xxx.supabase.co
+# SUPABASE_ANON_KEY=...
+# SUPABASE_SERVICE_ROLE_KEY=...
+# SUPABASE_JWT_SECRET=...
+# CORS_ORIGINS=https://app.wilinwi.com,https://wilinwi.vercel.app
+# WEB_BASE_URL=https://app.wilinwi.com
+# PLATFORM_ADMIN_EMAILS=daoudaabassichristian@gmail.com,admin@wilinwi.com
+# ==============================================================================
