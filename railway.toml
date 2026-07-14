@@ -1,0 +1,21 @@
+# ==============================================================================
+# railway.toml — Configuration racine pour Wilinwi API (NestJS 11 · Turborepo)
+# @author @hopsyder | Nexus Partners
+# @description Déploiement du backend API depuis la racine du monorepo
+# Schéma de référence : https://docs.railway.com/reference/config-as-code
+# ==============================================================================
+
+[build]
+# Build depuis la racine (Nixpacks a besoin du contexte global pour pnpm workspaces)
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @wilinwi/db generate && pnpm --filter @wilinwi/types build && pnpm --filter api build"
+
+[deploy]
+# Démarrage du dist compilé du backend
+startCommand = "node apps/api/dist/main.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Sonde de santé sur le point d'accès GET /api/health
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
