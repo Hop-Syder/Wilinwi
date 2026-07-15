@@ -11,6 +11,22 @@
 
 import { z } from 'zod';
 
+function decodeJwtRole(value: string): string | null {
+  const [, payload] = value.split('.');
+  if (!payload) return null;
+  try {
+    const json = Buffer.from(payload, 'base64url').toString('utf8');
+    const decoded = JSON.parse(json) as { role?: unknown };
+    return typeof decoded.role === 'string' ? decoded.role : null;
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeJwt(value: string): boolean {
+  return value.split('.').length === 3;
+}
+
 /** Validation de l'environnement au démarrage (fail-fast). */
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -22,8 +38,15 @@ export const EnvSchema = z.object({
    *  applicatif public. Si absent, les routes /platform échouent (fail-closed). */
   ADMIN_DATABASE_URL: z.string().optional(),
   SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SUPABASE_JWT_SECRET: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .min(1)
+    .refine((value) => decodeJwtRole(value) === 'service_role', {
+      message: 'doit être la clé Supabase service_role, pas la clé anon',
+    }),
+  SUPABASE_JWT_SECRET: z.string().min(1).refine((value) => !looksLikeJwt(value), {
+    message: 'doit être le JWT Secret brut Supabase, pas une clé anon/service_role',
+  }),
   /** Origines autorisées par CORS (séparées par des virgules). Vide = permissif. */
   CORS_ORIGINS: z.string().optional(),
   /** URL de base du frontend (lien d'invitation → /set-password). Déf. localhost:3000. */

@@ -12,7 +12,7 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { validateEnv } from './config/env';
 import { CommonModule } from './common/common.module';
 import { Public } from './common/decorators';
@@ -36,6 +36,7 @@ import { FoodModule } from './food/food.module';
 @Controller()
 class HealthController {
   @Public()
+  @SkipThrottle()
   @Get()
   root() {
     return {
@@ -46,6 +47,7 @@ class HealthController {
   }
 
   @Public()
+  @SkipThrottle()
   @Get('health')
   health() {
     return { status: 'ok', service: 'wilinwi-api', ts: new Date().toISOString() };
