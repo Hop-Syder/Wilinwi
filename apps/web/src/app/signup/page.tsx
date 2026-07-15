@@ -167,7 +167,7 @@ export default function SignupPage() {
 
         {/* Footer Branding */}
         <div className="flex justify-between items-center text-[10px] text-slate-500 relative z-10 border-t border-white/[0.05] pt-4">
-          <span>© {new Date().getFullYear()} Wilinwi by Nexus Partners.</span>
+          <span>© 2026 Wilinwi by Nexus Partners.</span>
           <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#F59E0B]" /> MVP1</span>
         </div>
       </div>

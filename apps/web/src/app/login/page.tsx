@@ -27,15 +27,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
   // Motif d'un blocage d'appareil (403 sur /me) mémorisé par le contexte auth.
   useEffect(() => {
+    setMounted(true);
     const bloc = localStorage.getItem('wilinwi_auth_block');
     if (bloc) {
       setError(bloc);
       localStorage.removeItem('wilinwi_auth_block');
     }
   }, []);
-  const [loading, setLoading] = useState(false);
 
   // Simulation dynamique
   const [sales, setSales] = useState(148500);
@@ -104,7 +107,7 @@ export default function LoginPage() {
               <p className="text-[10px] text-slate-400">Ventes du jour</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold font-mono tracking-tight text-white transition-all duration-300">
-                  {sales.toLocaleString()} FCFA
+                  {mounted ? sales.toLocaleString() : '148500'} FCFA
                 </span>
                 <span className="text-[10px] font-semibold text-[#00A86B] bg-[#00A86B]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <TrendingUp className="w-2.5 h-2.5" /> +14.2%
@@ -138,7 +141,7 @@ export default function LoginPage() {
 
         {/* Footer Branding */}
         <div className="flex justify-between items-center text-[10px] text-slate-500 relative z-10 border-t border-white/[0.05] pt-4">
-          <span>© {new Date().getFullYear()} Wilinwi by Nexus Partners.</span>
+          <span>© 2026 Wilinwi by Nexus Partners.</span>
           <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-[#F59E0B]" /> MVP1</span>
         </div>
       </div>

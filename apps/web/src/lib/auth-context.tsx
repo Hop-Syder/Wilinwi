@@ -157,6 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       clearPinToken();
+      if (err?.status === 401 || err?.status === 403) {
+        void getSupabase().auth.signOut();
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -165,8 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void resolve();
-    const { data: sub } = getSupabase().auth.onAuthStateChange(() => {
-      void resolve();
+    const { data: sub } = getSupabase().auth.onAuthStateChange((event) => {
+      // Évite les boucles de requêtes infinies sur les événements passifs (ex: TOKEN_REFRESHED
+      // déclenché par Supabase lors du changement de visibilité de l'onglet/fenêtre).
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        void resolve();
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, [resolve]);
