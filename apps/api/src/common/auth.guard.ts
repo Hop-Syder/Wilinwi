@@ -3,16 +3,16 @@
  * @organization Nexus Partners
  * @description Utilitaire de sécurité/validation API : auth.guard.ts
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-07-15
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger, OnModuleInit } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { jwtVerify } from 'jose';
+import { jwtVerify, createRemoteJWKSet, decodeProtectedHeader } from 'jose';
 import {
   computeDunning,
   effectiveModules,
@@ -30,13 +30,15 @@ import { IS_PUBLIC_KEY } from './decorators';
 import { PrismaService } from './prisma.service';
 
 /**
- * Vérifie le JWT Supabase (HS256, signé avec SUPABASE_JWT_SECRET) et résout
+ * Vérifie le JWT Supabase (ES256 via JWKS ou HS256 via secret local) et résout
  * le contexte tenant. Le tenant_id et le rôle sont lus depuis app_metadata,
  * posés à la création de l'utilisateur — c'est le socle du SSO du Hub.
  */
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate, OnModuleInit {
   private readonly secret: Uint8Array;
+  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
+  private readonly logger = new Logger(AuthGuard.name);
 
   constructor(
     private readonly reflector: Reflector,
@@ -44,6 +46,34 @@ export class AuthGuard implements CanActivate {
     private readonly prisma: PrismaService,
   ) {
     this.secret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
+    const serviceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    this.jwks = createRemoteJWKSet(
+      new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
+      {
+        cacheMaxAge: 10 * 60 * 1000, // 10 min — couvre les rotations de clé rares de Supabase
+        headers: { apikey: serviceRoleKey },
+      },
+    );
+  }
+
+  /** Pré-charge les clés JWKS au démarrage pour que la 1ʳᵉ requête ne subisse pas de latence. */
+  async onModuleInit(): Promise<void> {
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL');
+    const serviceRoleKey = this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    try {
+      const res = await fetch(`${supabaseUrl}/auth/v1/.well-known/jwks.json`, {
+        headers: { apikey: serviceRoleKey },
+      });
+      if (res.ok) {
+        this.logger.log('✅ JWKS Supabase pré-chargées avec succès');
+      } else {
+        this.logger.warn(`⚠️  Warm-up JWKS : réponse inattendue HTTP ${res.status}`);
+      }
+    } catch (err) {
+      // Non-bloquant : l'API démarre normalement, les clés seront chargées à la 1ʳᵉ requête.
+      this.logger.warn(`⚠️  Warm-up JWKS échoué (non-bloquant) : ${(err as Error).message}`);
+    }
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -61,8 +91,14 @@ export class AuthGuard implements CanActivate {
 
     let payload: Record<string, unknown>;
     try {
-      const verified = await jwtVerify(token, this.secret);
-      payload = verified.payload as Record<string, unknown>;
+      const header = decodeProtectedHeader(token);
+      if (header.alg === 'ES256') {
+        const verified = await jwtVerify(token, this.jwks);
+        payload = verified.payload as Record<string, unknown>;
+      } else {
+        const verified = await jwtVerify(token, this.secret);
+        payload = verified.payload as Record<string, unknown>;
+      }
     } catch {
       throw new UnauthorizedException('Token invalide');
     }
