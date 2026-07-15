@@ -40,6 +40,7 @@ async function bootstrap() {
   app.enableCors({
     origin: hasAllowlist ? corsOrigins : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Authorization,X-Etablissement-Id,X-Device-Id',
     credentials: true,
   });
   if (!hasAllowlist && process.env.NODE_ENV === 'production') {
