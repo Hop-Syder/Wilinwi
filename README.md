@@ -190,6 +190,17 @@ L'API NestJS est conçue pour tourner sur **Railway**, offrant un environnement 
   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`
   - `PORT` (injecté automatiquement par Railway)
 
+> [!TIP]
+> **Diagnostic & Résolution de problèmes Railway :**
+> - **Connexion bloquée dans le terminal :** Si `railway login` se bloque, c'est généralement dû à l'attente de l'ouverture du navigateur. Utilisez le mode sans navigateur :
+>   ```bash
+>   railway login --browserless
+>   ```
+> - **Crash de Build (Erreurs de typage TypeScript / Dépendances @wilinwi/db) :** Si le build échoue sur Railway en raison d'erreurs TypeScript, assurez-vous de toujours compiler et générer le client localement avant le commit pour valider le typage :
+>   ```bash
+>   pnpm db:generate && pnpm build
+>   ```
+
 ---
 
 > © 2026 - Conçu par **Nexus Partners** | Architecte : **@hopsyder**
