@@ -16,7 +16,7 @@ export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   API_PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1).optional(),
+  DIRECT_URL: z.string().min(1),
   /** Connexion du module plateforme via le rôle `wilinwi_admin` (seul habilité à
    *  appeler les fonctions cross-tenant `app.*`). Sépare le privilège admin du rôle
    *  applicatif public. Si absent, les routes /platform échouent (fail-closed). */

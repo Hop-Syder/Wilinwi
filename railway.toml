@@ -1,0 +1,19 @@
+# @author @hopsyder
+# @organization Nexus Partners
+# @description Configuration Railway/Nixpacks pour l'API Wilinwi
+# @created 2026-07-15
+# @updated 2026-07-15
+# 🌐 ceo.nexuspartners.xyz
+# 📧 daoudaabassichristian@gmail.com
+# ──────────────────────────────────
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm db:generate && pnpm --filter @wilinwi/types build && pnpm --filter @wilinwi/db build && pnpm --filter api build"
+
+[deploy]
+startCommand = "pnpm --filter api start:prod"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

@@ -15,6 +15,13 @@ import { Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
+function parseCorsOrigins(value?: string): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/^['"]+|['"]+$/g, '').trim())
+    .filter(Boolean);
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -28,10 +35,8 @@ async function bootstrap() {
   // CORS restreint : allowlist via CORS_ORIGINS (séparés par des virgules).
   // À défaut on reste permissif (origin: true) pour ne pas casser un déploiement
   // non configuré — mais on alerte en production.
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const hasAllowlist = !!corsOrigins && corsOrigins.length > 0;
+  const corsOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
+  const hasAllowlist = corsOrigins.length > 0;
   app.enableCors({
     origin: hasAllowlist ? corsOrigins : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
