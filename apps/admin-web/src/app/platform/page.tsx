@@ -104,20 +104,20 @@ export default function DashboardPage() {
 
       {/* Primary Financial KPIs */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          label="Revenu Mensuel (MRR)" 
-          value={renderValue(revenue?.mrr, formatFCFA)} 
-          hint="Revenu récurrent" 
-          icon={<Wallet className="h-5 w-5" />} 
-          accent="brand" 
+        <StatCard
+          label="Revenu Mensuel (MRR)"
+          value={renderValue(revenue?.mrr, formatFCFA)}
+          hint="Revenu récurrent"
+          icon={<Wallet className="h-5 w-5" />}
+          accent="brand"
           className="lg:col-span-2"
         />
-        <StatCard 
-          label="Croissance GMV 30 j" 
-          value={renderValue(metrics?.sales30dRevenue, formatFCFA)} 
-          hint={`${metrics?.sales30dCount ?? 0} ventes`} 
-          icon={<Receipt className="h-5 w-5" />} 
-          accent="emerald" 
+        <StatCard
+          label="Croissance GMV 30 j"
+          value={renderValue(metrics?.sales30dRevenue, formatFCFA)}
+          hint={`${metrics?.sales30dCount ?? 0} ventes`}
+          icon={<Receipt className="h-5 w-5" />}
+          accent="emerald"
           className="lg:col-span-2"
         />
       </div>
@@ -135,15 +135,16 @@ export default function DashboardPage() {
       {/* Historical Chart */}
       <HistoricalChart />
 
-      {/* Échéances + géo */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
+      {/* Échéances + géo (Bento Grid) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1 rounded-2xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
           <ExpiringSubscriptions days={14} max={8} />
         </div>
-        <div className="rounded-xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
+        <div className="lg:col-span-2 rounded-2xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
           <EtabGeo />
         </div>
       </div>
+
     </div>
   );
 }

@@ -23,3 +23,5 @@ export {
   type SyncState,
 } from './components/offline-indicator.js';
 export { NumberTicker } from './components/number-ticker.js';
+export * from './components/animated-list.js';
+export * from './components/globe.js';
