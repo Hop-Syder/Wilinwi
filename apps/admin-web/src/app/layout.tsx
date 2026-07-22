@@ -7,15 +7,14 @@
 // ──────────────────────────────────
 
 import type { Metadata } from 'next';
-import { Inter, Poppins, DM_Mono } from 'next/font/google';
+import { Plus_Jakarta_Sans, DM_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-display',
+const plusJakartaSans = Plus_Jakarta_Sans({ 
+  subsets: ['latin'], 
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans' 
 });
 const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-mono' });
 
@@ -26,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${inter.variable} ${poppins.variable} ${dmMono.variable}`}>
+    <html lang="fr" className={`${plusJakartaSans.variable} ${dmMono.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

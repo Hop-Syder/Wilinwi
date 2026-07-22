@@ -22,3 +22,4 @@ export {
   type OfflineIndicatorProps,
   type SyncState,
 } from './components/offline-indicator.js';
+export { NumberTicker } from './components/number-ticker.js';

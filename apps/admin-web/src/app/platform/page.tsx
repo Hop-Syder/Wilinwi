@@ -19,11 +19,12 @@ import {
   Sprout,
   Receipt,
 } from 'lucide-react';
-import { StatCard, formatFCFA } from '@wilinwi/ui';
+import { StatCard, formatFCFA, NumberTicker } from '@wilinwi/ui';
 import type { PlatformMetricsDto, PlatformRevenueDto } from '@wilinwi/types';
 import { apiGet, ApiError } from '@/lib/api';
 import { ExpiringSubscriptions } from './expiring-subscriptions';
 import { EtabGeo } from './etab-geo';
+import { HistoricalChart } from './historical-chart';
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<PlatformMetricsDto | null>(null);
@@ -34,17 +35,43 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [m, r] = await Promise.all([
+        const [metricsResult, revenueResult] = await Promise.allSettled([
           apiGet<PlatformMetricsDto>('/api/platform/metrics'),
           apiGet<PlatformRevenueDto>('/api/platform/revenue'),
         ]);
+
         if (!cancelled) {
-          setMetrics(m);
-          setRevenue(r);
+          let hasErrors = false;
+          let lastErrorMessage = '';
+
+          if (metricsResult.status === 'fulfilled') {
+            setMetrics(metricsResult.value);
+          } else {
+            hasErrors = true;
+            lastErrorMessage = (metricsResult.reason as ApiError)?.message || 'Erreur métriques';
+            console.error('Failed to fetch metrics:', metricsResult.reason);
+          }
+
+          if (revenueResult.status === 'fulfilled') {
+            setRevenue(revenueResult.value);
+          } else {
+            hasErrors = true;
+            lastErrorMessage = (revenueResult.reason as ApiError)?.message || 'Erreur revenus';
+            console.error('Failed to fetch revenue:', revenueResult.reason);
+          }
+
+          if (metricsResult.status === 'rejected' && revenueResult.status === 'rejected') {
+            setError(lastErrorMessage || 'Tableau de bord indisponible.');
+          } else if (hasErrors) {
+            // Optional: You could set a warning state here if one succeeded and one failed
+            // But we will let the successful one render, and the failed one will show '…'
+          }
         }
       } catch (e) {
-        if (!cancelled) setError((e as ApiError).message || 'Tableau de bord indisponible.');
+        if (!cancelled) setError((e as ApiError).message || 'Une erreur inattendue est survenue.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -54,35 +81,68 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const v = (n?: number) => (loading ? '…' : (n ?? 0).toString());
+  const renderValue = (val: number | undefined, formatter?: (n: number) => string) => {
+    if (loading || val === undefined) return '…';
+    return <NumberTicker value={val} format={formatter} />;
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black tracking-tight">Tableau de bord</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Vue d&apos;ensemble de la plateforme Wilinwi — opérée par Nexus Partners.
+    <div className="mx-auto max-w-7xl space-y-10">
+      {/* Hero Section */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-black tracking-tight text-text-primary">Cockpit Wilinwi</h1>
+        <p className="text-base text-text-secondary">
+          Vue d'ensemble de la plateforme et performance globale.
         </p>
       </div>
 
-      {error && <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{error}</div>}
+      {error && (
+        <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger backdrop-blur-md">
+          {error}
+        </div>
+      )}
 
-      {/* KPI activité */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <StatCard label="Entreprises" value={v(metrics?.tenantsTotal)} hint="Inscrites" icon={<Building2 className="h-4.5 w-4.5" />} accent="brand" />
-        <StatCard label="Collaborateurs" value={v(metrics?.usersActive)} hint="Utilisateurs actifs" icon={<Users className="h-4.5 w-4.5" />} accent="brand" />
-        <StatCard label="Points de vente" value={v(metrics?.etablissementsTotal)} hint="Établissements" icon={<Store className="h-4.5 w-4.5" />} accent="emerald" />
-        <StatCard label="Nouvelles (30 j)" value={loading ? '…' : `+${metrics?.newTenants30d ?? 0}`} hint="Croissance" icon={<Sprout className="h-4.5 w-4.5" />} accent="brand" />
-        <StatCard label="MRR" value={loading ? '…' : formatFCFA(revenue?.mrr ?? 0)} hint="Revenu mensuel récurrent" icon={<Wallet className="h-4.5 w-4.5" />} accent="emerald" />
-        <StatCard label="ARR" value={loading ? '…' : formatFCFA(revenue?.arr ?? 0)} hint="Revenu annuel" icon={<TrendingUp className="h-4.5 w-4.5" />} accent="emerald" />
-        <StatCard label="GMV 30 j" value={loading ? '…' : formatFCFA(metrics?.sales30dRevenue ?? 0)} hint={`${metrics?.sales30dCount ?? 0} ventes`} icon={<Receipt className="h-4.5 w-4.5" />} accent="gold" />
-        <StatCard label="Impayés" value={v(metrics?.tenantsPastDue)} hint="À relancer" icon={<AlertTriangle className="h-4.5 w-4.5" />} accent={metrics && metrics.tenantsPastDue > 0 ? 'gold' : 'brand'} />
+      {/* Primary Financial KPIs */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard 
+          label="Revenu Mensuel (MRR)" 
+          value={renderValue(revenue?.mrr, formatFCFA)} 
+          hint="Revenu récurrent" 
+          icon={<Wallet className="h-5 w-5" />} 
+          accent="brand" 
+          className="lg:col-span-2"
+        />
+        <StatCard 
+          label="Croissance GMV 30 j" 
+          value={renderValue(metrics?.sales30dRevenue, formatFCFA)} 
+          hint={`${metrics?.sales30dCount ?? 0} ventes`} 
+          icon={<Receipt className="h-5 w-5" />} 
+          accent="emerald" 
+          className="lg:col-span-2"
+        />
       </div>
+
+      {/* Operational KPIs */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Entreprises" value={renderValue(metrics?.tenantsTotal)} icon={<Building2 className="h-4.5 w-4.5" />} accent="brand" />
+        <StatCard label="Nouvelles (30 j)" value={renderValue(metrics?.newTenants30d, (v) => `+${v}`)} icon={<Sprout className="h-4.5 w-4.5" />} accent="emerald" />
+        <StatCard label="Utilisateurs" value={renderValue(metrics?.usersActive)} icon={<Users className="h-4.5 w-4.5" />} accent="brand" />
+        <StatCard label="Points de vente" value={renderValue(metrics?.etablissementsTotal)} icon={<Store className="h-4.5 w-4.5" />} accent="brand" />
+        <StatCard label="Revenu Annuel" value={renderValue(revenue?.arr, formatFCFA)} icon={<TrendingUp className="h-4.5 w-4.5" />} accent="emerald" />
+        <StatCard label="Impayés" value={renderValue(metrics?.tenantsPastDue)} icon={<AlertTriangle className="h-4.5 w-4.5" />} accent={metrics && metrics.tenantsPastDue > 0 ? 'red' : 'brand'} />
+      </div>
+
+      {/* Historical Chart */}
+      <HistoricalChart />
 
       {/* Échéances + géo */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ExpiringSubscriptions days={14} max={8} />
-        <EtabGeo />
+        <div className="rounded-xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
+          <ExpiringSubscriptions days={14} max={8} />
+        </div>
+        <div className="rounded-xl border border-border/50 bg-white/60 shadow-sm backdrop-blur-md dark:bg-slate-900/60 p-1">
+          <EtabGeo />
+        </div>
       </div>
     </div>
   );
