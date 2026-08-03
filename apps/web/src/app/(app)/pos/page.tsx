@@ -35,9 +35,11 @@ import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
+import { SyncStatusDrawer } from '@/components/sync-status-drawer';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Lock } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
+import { PosCloseSessionModal } from '@/components/pos-close-session-modal';
 import type { TourStep } from '@/components/tour-guide';
 
 interface CartLine {
@@ -86,6 +88,7 @@ export default function PosPage() {
   });
   // Ventes refusées par le serveur (échec permanent) en attente d'une décision.
   const [rejected, setRejected] = useState<PendingSyncSale[]>([]);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   async function refreshRejected() {
     setRejected(await syncEngine.rejectedSales());
@@ -522,7 +525,15 @@ export default function PosPage() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <SyncStatusDrawer
+              onRefreshProducts={() => {
+                apiGet<ProductDto[]>('/api/stock/products')
+                  .then(setProducts)
+                  .catch(async () => setProducts(await syncEngine.cachedProducts()));
+              }}
+              onFixSale={(sale) => void fixFromSale(sale)}
+            />
             <Link href="/pos/returns">
               <Button variant="outline" size="sm">
                 <RotateCcw className="mr-1 h-4 w-4" />
@@ -531,6 +542,10 @@ export default function PosPage() {
             </Link>
             <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
               Historique
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowCloseModal(true)}>
+              <Lock className="mr-1 h-4 w-4 text-emerald-600" />
+              Clôture
             </Button>
             <ContextualHelp 
               storageKey="wilinwi_pos_tour_done"
@@ -941,6 +956,11 @@ export default function PosPage() {
           </div>
         </div>
       )}
+
+      <PosCloseSessionModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+      />
     </div>
   );
 }

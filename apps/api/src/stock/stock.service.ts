@@ -41,6 +41,7 @@ import { AuditAlertService } from '../common/audit-alert.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
+import type { ImportCatalogueItemInput, ImportCataloguePayloadInput } from './dto/import-catalogue.dto';
 
 @Injectable()
 export class StockService {
@@ -1027,6 +1028,152 @@ export class StockService {
     if (type === 'IN') return Math.abs(qty);
     if (type === 'OUT') return -Math.abs(qty);
     return qty; // ADJUST : signe conservé
+  }
+
+  async importCatalogue(ctx: AuthContext, dto: ImportCataloguePayloadInput) {
+    assertConcreteEtablissement(ctx);
+    const etablissementId = ctx.etablissementId!;
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      for (const item of dto.items) {
+        // Recherche du produit existant par (tenantId, sku)
+        const existing = await tx.product.findFirst({
+          where: { tenantId: ctx.tenantId, sku: item.sku, actif: true },
+        });
+
+        if (existing) {
+          // UPDATE : uniquement les champs définis
+          const updateData: Partial<
+            Pick<
+              ImportCatalogueItemInput,
+              | 'nom'
+              | 'categorie'
+              | 'prixAchat'
+              | 'prixPlancher'
+              | 'prixCatalogue'
+              | 'seuilAlerte'
+            >
+          > = {};
+          if (item.nom !== undefined) updateData.nom = item.nom;
+          if (item.categorie !== undefined) updateData.categorie = item.categorie;
+          if (item.prixAchat !== undefined) updateData.prixAchat = item.prixAchat;
+          if (item.prixPlancher !== undefined) updateData.prixPlancher = item.prixPlancher;
+          if (item.prixCatalogue !== undefined) updateData.prixCatalogue = item.prixCatalogue;
+          if (item.seuilAlerte !== undefined) updateData.seuilAlerte = item.seuilAlerte;
+
+          // Valider les invariants de prix finaux si des prix ont été modifiés
+          const finalPrixAchat = updateData.prixAchat ?? existing.prixAchat;
+          const finalPrixPlancher = updateData.prixPlancher ?? existing.prixPlancher;
+          const finalPrixCatalogue = updateData.prixCatalogue ?? existing.prixCatalogue;
+          if (finalPrixAchat > finalPrixPlancher || finalPrixPlancher > finalPrixCatalogue) {
+            throw new BadRequestException(
+              `Invariant prix invalide pour le SKU ${item.sku} : prixAchat (${finalPrixAchat}) <= prixPlancher (${finalPrixPlancher}) <= prixCatalogue (${finalPrixCatalogue})`,
+            );
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await tx.product.update({
+              where: { id: existing.id },
+              data: updateData,
+            });
+          }
+
+          // Mise à jour du stock si stockInitial fourni
+          if (item.stockInitial !== undefined && productAffectsStock(existing.type)) {
+            const currentStock = await readStockAt(tx, etablissementId, existing.id);
+            const delta = item.stockInitial - currentStock;
+            if (delta !== 0) {
+              await tx.stockMovement.create({
+                data: {
+                  tenantId: ctx.tenantId,
+                  etablissementId,
+                  productId: existing.id,
+                  variantId: null,
+                  type: delta > 0 ? 'IN' : 'ADJUST',
+                  quantite: delta,
+                  motif: 'Importation catalogue (mise à jour)',
+                },
+              });
+              await applyStockDelta(tx, {
+                tenantId: ctx.tenantId,
+                etablissementId,
+                productId: existing.id,
+                variantId: null,
+                delta,
+                quantiteMin: item.seuilAlerte ?? existing.seuilAlerte,
+              });
+            }
+          }
+
+          updatedCount++;
+        } else {
+          // CREATE : nouveau produit
+          const prixAchat = item.prixAchat ?? 0;
+          const prixPlancher = item.prixPlancher ?? prixAchat;
+          const prixCatalogue = item.prixCatalogue ?? prixPlancher;
+
+          if (prixAchat > prixPlancher || prixPlancher > prixCatalogue) {
+            throw new BadRequestException(
+              `Invariant prix invalide pour le nouveau produit SKU ${item.sku} : prixAchat (${prixAchat}) <= prixPlancher (${prixPlancher}) <= prixCatalogue (${prixCatalogue})`,
+            );
+          }
+
+          const stockInitial = item.stockInitial ?? 0;
+
+          const created = await tx.product.create({
+            data: {
+              tenantId: ctx.tenantId,
+              nom: item.nom,
+              sku: item.sku,
+              categorie: item.categorie ?? null,
+              prixAchat,
+              prixPlancher,
+              prixCatalogue,
+              stock: stockInitial,
+              seuilAlerte: item.seuilAlerte ?? 5,
+              type: 'STANDARD',
+              stockPolicy: 'STRICT',
+              unitKind: 'UNIT',
+            },
+          });
+
+          if (stockInitial !== 0) {
+            await tx.stockMovement.create({
+              data: {
+                tenantId: ctx.tenantId,
+                etablissementId,
+                productId: created.id,
+                variantId: null,
+                type: 'IN',
+                quantite: stockInitial,
+                motif: 'Importation catalogue (initialisation)',
+              },
+            });
+          }
+
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId,
+            productId: created.id,
+            variantId: null,
+            delta: stockInitial,
+            quantiteMin: created.seuilAlerte,
+          });
+
+          createdCount++;
+        }
+      }
+    });
+
+    return {
+      success: true,
+      created: createdCount,
+      updated: updatedCount,
+      total: dto.items.length,
+    };
   }
 
   private async ensureProduct(tx: TenantTx, tenantId: string, id: string) {

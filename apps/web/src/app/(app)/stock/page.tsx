@@ -24,6 +24,8 @@ import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
 import { StockMovementModal, ProductFormModal, StockTransferModal, RecipeModal, BatchModal, UnitsModal, ExclusionsModal } from '@/components/stock-modals';
+import { StockImportModal } from '@/components/stock-import-modal';
+import { FileSpreadsheet } from 'lucide-react';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -43,6 +45,7 @@ export default function StockPage() {
 
   // UI State
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDto | undefined>();
   const [movementProduct, setMovementProduct] = useState<ProductDto | undefined>();
   const [recipeProduct, setRecipeProduct] = useState<ProductDto | undefined>();
@@ -136,9 +139,14 @@ export default function StockPage() {
             </Button>
           )}
           {canWrite && (
-            <Button onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}>
-              <Plus className="h-4 w-4" /> Nouveau produit
-            </Button>
+            <>
+              <Button onClick={() => setShowImportModal(true)} variant="outline">
+                <FileSpreadsheet className="h-4 w-4" /> Importer un catalogue
+              </Button>
+              <Button onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}>
+                <Plus className="h-4 w-4" /> Nouveau produit
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -425,6 +433,12 @@ export default function StockPage() {
           onSuccess={() => { setShowTransferModal(false); void refetch(); }}
         />
       )}
+
+      <StockImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => { void refetch(); }}
+      />
     </div>
   );
 }

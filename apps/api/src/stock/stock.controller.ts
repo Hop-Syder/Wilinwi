@@ -37,12 +37,24 @@ import {
   RequireCapabilities,
   RequireInfraCapability,
 } from '../common/decorators';
+import { importCataloguePayloadSchema, type ImportCataloguePayloadInput } from './dto/import-catalogue.dto';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { StockService } from './stock.service';
 
 @Controller('stock')
 export class StockController {
   constructor(private readonly stock: StockService) {}
+
+  /** Importation de catalogue en masse via fichier Excel/CSV avec upsert par SKU. */
+  @RequireCapabilities('stock:write')
+  @Post('import')
+  importCatalogue(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(importCataloguePayloadSchema)) dto: ImportCataloguePayloadInput,
+  ) {
+    return this.stock.importCatalogue(user, dto);
+  }
+
 
   @RequireCapabilities('stock:read')
   @Get('products')
