@@ -74,6 +74,7 @@ SELECT app.enable_tenant_rls('public.food_tables');
 SELECT app.enable_tenant_rls('public.product_batches');
 SELECT app.enable_tenant_rls('public.product_units');
 SELECT app.enable_tenant_rls('public.product_exclusions');
+SELECT app.enable_tenant_rls('public.pos_sessions');
 SELECT app.enable_tenant_rls('public.devices');
 
 -- Unicité du solde par emplacement : 1 ligne par (établissement, produit) au niveau
