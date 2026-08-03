@@ -58,7 +58,7 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
 
   if (!hasData) {
     return (
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm h-full flex flex-col justify-between">
         <h3 className="text-base font-bold text-slate-900 mb-4">Évolution Ventes & Rentabilité</h3>
         <DashboardEmptyState title="Aucune donnée sur la période" description="Enregistrez votre première vente pour visualiser les tendances." />
       </div>
@@ -66,7 +66,7 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm h-full flex flex-col justify-between">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-base font-bold text-slate-900">Évolution Ventes vs Rentabilité</h3>

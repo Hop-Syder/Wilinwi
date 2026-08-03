@@ -240,30 +240,34 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Section Graphiques & Top Produits */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3" id="tour-dashboard-charts">
-            <div className="lg:col-span-2">
+          {/* Section 1 : Graphiques Côte à Côte (Hauteurs Égales Exactes) */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-stretch" id="tour-dashboard-charts">
+            <div className="lg:col-span-2 flex flex-col">
               <HybridSalesChart data={report?.serie ?? []} canSeeProfit={canSeeProfit} />
             </div>
 
-            <div className="space-y-6">
+            <div className="lg:col-span-1 flex flex-col">
               <PaymentDonutChart data={report?.parPaiement ?? []} />
-              <TopProductsList products={report?.topProduits ?? []} />
             </div>
           </div>
 
-          {/* Widgets Trésorerie & Actions Rapides */}
+          {/* Section 2 : Top Produits & Trésorerie */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+              <TopProductsList products={report?.topProduits ?? []} />
+            </div>
+
             <div className="lg:col-span-2">
               <TreasuryWidget balances={report?.soldesTresorerie} />
             </div>
+          </div>
 
-            <div>
-              <QuickActionsBar
-                onOpenExpenseModal={() => setExpenseModalOpen(true)}
-                onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
-              />
-            </div>
+          {/* Section 3 : Actions Rapides */}
+          <div>
+            <QuickActionsBar
+              onOpenExpenseModal={() => setExpenseModalOpen(true)}
+              onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
+            />
           </div>
         </>
       )}

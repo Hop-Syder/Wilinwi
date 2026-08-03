@@ -43,7 +43,7 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
 
   if (!hasData) {
     return (
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-[386px]">
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-full">
         <div>
           <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
           <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
@@ -54,7 +54,7 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-[386px]">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-full space-y-3">
       <div>
         <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
         <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
