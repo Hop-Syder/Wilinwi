@@ -88,6 +88,8 @@ export const CreateSaleSchema = z
     clientTelephone: z.string().min(1).optional(),
     /** Table FOOD à laquelle rattacher la vente (Milestone 3, optionnel). */
     tableId: IdSchema.nullable().optional(),
+    /** Session POS explicite à laquelle rattacher la vente (optionnel). */
+    posSessionId: IdSchema.nullable().optional(),
     aLivrer: z.boolean().optional(),
     livreurId: IdSchema.nullable().optional(),
     adresseLivraison: z.string().max(500).nullable().optional(),
@@ -105,6 +107,42 @@ export const CreateSaleSchema = z
     path: ['momoOperator'],
   });
 export type CreateSaleInput = z.infer<typeof CreateSaleSchema>;
+
+export const OpenPosSessionSchema = z.object({
+  fondInitial: MoneySchema.default(0),
+  note: z.string().max(500).optional(),
+});
+export type OpenPosSessionInput = z.infer<typeof OpenPosSessionSchema>;
+
+export const ClosePosSessionSchema = z.object({
+  soldeReel: MoneySchema,
+  note: z.string().max(500).optional(),
+});
+export type ClosePosSessionInput = z.infer<typeof ClosePosSessionSchema>;
+
+export interface PosSessionDto {
+  id: string;
+  tenantId: string;
+  etablissementId: string;
+  openedById: string;
+  closedById?: string | null;
+  status: 'OPEN' | 'CLOSED';
+  openedAt: Date | string;
+  closedAt?: Date | string | null;
+  fondInitial: number;
+  totalEspeces: number;
+  totalMoMo: number;
+  totalBanque: number;
+  totalCredit: number;
+  totalVentes: number;
+  nombreVentes: number;
+  soldeTheorique: number;
+  soldeReel?: number | null;
+  ecart?: number | null;
+  note?: string | null;
+  openedBy?: { id: string; nom: string; email: string };
+  closedBy?: { id: string; nom: string; email: string } | null;
+}
 
 // NOTE : ApprovePriceOverrideSchema a été SUPPRIMÉ — la vente sous le plancher
 // est strictement refusée (anti-fraude absolu), aucun flux d'approbation.

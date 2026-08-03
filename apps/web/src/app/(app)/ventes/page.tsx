@@ -23,12 +23,13 @@ import {
   ShieldAlert,
   Store,
 } from 'lucide-react';
-import { PAYMENT_METHOD_LABELS, type ClientDto } from '@wilinwi/types';
+import { PAYMENT_METHOD_LABELS, type ClientDto, type PosSessionDto } from '@wilinwi/types';
 import { Button, Card, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
+import { ReportZPrintModal } from '@/components/report-z-print-modal';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import Link from 'next/link';
@@ -52,7 +53,9 @@ export default function VentesPage() {
   const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
 
   // State
+  const [activeTab, setActiveTab] = useState<'SALES' | 'SESSIONS'>('SALES');
   const [sales, setSales] = useState<Sale[]>([]);
+  const [sessions, setSessions] = useState<PosSessionDto[]>([]);
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,6 +65,7 @@ export default function VentesPage() {
   const [detail, setDetail] = useState<Sale | null>(null);
   const [paymentSale, setPaymentSale] = useState<Sale | null>(null);
   const [cancelSale, setCancelSale] = useState<Sale | null>(null);
+  const [reportZSession, setReportZSession] = useState<PosSessionDto | null>(null);
 
   // Filters
   const [filterPeriod, setFilterPeriod] = useState<'TODAY' | '7DAYS' | 'MONTH' | 'CUSTOM'>('TODAY');
@@ -70,6 +74,7 @@ export default function VentesPage() {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterClientId, setFilterClientId] = useState('');
   const [filterEtablissementId, setFilterEtablissementId] = useState('');
+  const [posSessionIdFilter, setPosSessionIdFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Payments & Cancellation Input
@@ -129,6 +134,7 @@ export default function VentesPage() {
       if (from) params.append('from', from);
       if (to) params.append('to', to);
       if (filterStatus !== 'ALL') params.append('status', filterStatus);
+      if (posSessionIdFilter) params.append('posSessionId', posSessionIdFilter);
       // Vue boutique : filtre client / Vue globale : filtre établissement
       if (!isGlobalView && filterClientId) params.append('clientId', filterClientId);
       if (isGlobalView && filterEtablissementId) params.append('etablissementId', filterEtablissementId);
@@ -151,6 +157,18 @@ export default function VentesPage() {
     }
   };
 
+  const fetchSessions = async () => {
+    setBusy(true);
+    try {
+      const data = await apiGet<PosSessionDto[]>('/api/pos/sessions');
+      setSessions(data);
+    } catch (e: any) {
+      console.error('Erreur chargement des sessions POS', e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Chargement initial des clients (vue boutique uniquement)
   useEffect(() => {
     if (isGlobalView) return;
@@ -166,8 +184,12 @@ export default function VentesPage() {
   }, [isGlobalView]);
 
   useEffect(() => {
-    fetchSales();
-  }, [filterPeriod, customFrom, customTo, filterStatus, filterClientId, filterEtablissementId]);
+    if (activeTab === 'SALES') {
+      fetchSales();
+    } else {
+      fetchSessions();
+    }
+  }, [activeTab, filterPeriod, customFrom, customTo, filterStatus, filterClientId, filterEtablissementId, posSessionIdFilter]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -267,16 +289,36 @@ export default function VentesPage() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* En-tête avec onglets */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 via-blue-900 to-brand bg-clip-text text-transparent">
-            Registre des ventes
-          </h1>
-          <p className="mt-1 text-slate-500 text-sm">
-            {isGlobalView
-              ? 'Vue consolidée — toutes les boutiques confondues.'
-              : 'Consultez, recherchez, encaissez les soldes et annulez des transactions.'}
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Historique & Rapports</h1>
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveTab('SALES')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === 'SALES' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Ventes Individuelles
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('SESSIONS')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === 'SESSIONS' ? 'bg-white text-brand shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Clôtures de Caisse (Rapports Z)
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">
+            {activeTab === 'SALES'
+              ? 'Consultez, filtrez et gérez les ventes de votre entreprise'
+              : 'Historique des clôtures de caisse et réimpression des Rapports Z'}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -285,21 +327,38 @@ export default function VentesPage() {
             tourSteps={tourSteps}
             useCases={[
               { title: 'Vue globale multi-boutiques', description: 'Sans boutique sélectionnée, retrouvez les ventes de toutes vos boutiques et filtrez-les par établissement.' },
+              { title: 'Clôtures de Caisse (Rapports Z)', description: 'Chaque fermeture de caisse produit un Rapport Z avec le solde théorique, le solde réel et les écarts.' },
               { title: 'Encaisser un reste dû', description: 'Une vente à crédit ou avec acompte reste "En attente" jusqu\'au règlement complet du solde.' },
               { title: 'Annuler une vente', description: 'L\'annulation ré-injecte automatiquement le stock vendu et ajuste la caisse à la baisse.' },
-              { title: 'Export CSV', description: 'Exportez la liste filtrée des ventes pour votre comptabilité ou votre suivi externe.' },
             ]}
           />
-          <Button
-            variant="outline"
-            onClick={exportCSV}
-            disabled={sales.length === 0}
-            className="flex items-center gap-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-700"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exporter en CSV
-          </Button>
+          {activeTab === 'SALES' && (
+            <Button
+              variant="outline"
+              onClick={exportCSV}
+              disabled={sales.length === 0}
+              className="flex items-center gap-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-700"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exporter en CSV
+            </Button>
+          )}
         </div>
       </div>
+
+      {posSessionIdFilter && (
+        <div className="flex items-center justify-between p-3 bg-brand/5 border border-brand/20 rounded-xl text-xs text-brand">
+          <span className="font-semibold">
+            Ventes filtrées pour la Clôture de Caisse Session <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-brand/20">{posSessionIdFilter.substring(0, 8)}...</code>
+          </span>
+          <button
+            type="button"
+            onClick={() => setPosSessionIdFilter(null)}
+            className="font-bold underline hover:text-brand-dark"
+          >
+            Afficher toutes les ventes
+          </button>
+        </div>
+      )}
 
       {/* Bandeau vue globale */}
       {isGlobalView && (
@@ -625,8 +684,126 @@ export default function VentesPage() {
         </div>
       </Card>
 
+      {/* Render Onglet 1: Ventes Individuelles vs Onglet 2: Clôtures POS (Rapports Z) */}
+      {activeTab === 'SESSIONS' ? (
+        <Card className="p-4 border-slate-200/80 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-base text-slate-900">Historique des Clôtures Z</h3>
+            <span className="text-xs text-slate-500">{sessions.length} session(s) enregistrée(s)</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider text-xs font-bold">
+                <tr>
+                  <th className="px-5 py-3.5">Date / Heure</th>
+                  <th className="px-5 py-3.5">Caissier</th>
+                  <th className="px-5 py-3.5">Statut</th>
+                  <th className="px-5 py-3.5 text-right">Fond Initial</th>
+                  <th className="px-5 py-3.5 text-right">Total Ventes</th>
+                  <th className="px-5 py-3.5 text-right">Théorique</th>
+                  <th className="px-5 py-3.5 text-right">Compté Réel</th>
+                  <th className="px-5 py-3.5 text-right">Écart</th>
+                  <th className="px-5 py-3.5 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sessions.map((sess) => {
+                  const openedDate = new Date(sess.openedAt);
+                  return (
+                    <tr key={sess.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-3.5 tabular text-slate-500">
+                        <div className="font-semibold text-slate-800">
+                          {openedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-[11px]">{openedDate.toLocaleDateString('fr-FR')}</div>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-700 font-medium">
+                        {sess.openedBy?.nom ?? 'Caissier'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`px-2.5 py-1 text-xs font-bold rounded-full border ${
+                            sess.status === 'CLOSED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {sess.status === 'CLOSED' ? 'Fermée (Rapport Z)' : 'En Cours'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-slate-600 font-medium">
+                        {formatFCFA(sess.fondInitial)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-bold text-slate-900">
+                        {formatFCFA(sess.totalVentes)} ({sess.nombreVentes})
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-slate-600">
+                        {formatFCFA(sess.soldeTheorique)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-bold text-slate-900">
+                        {sess.soldeReel !== null && sess.soldeReel !== undefined ? formatFCFA(sess.soldeReel) : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-bold">
+                        {sess.ecart !== null && sess.ecart !== undefined ? (
+                          <span className={sess.ecart === 0 ? 'text-emerald-700' : sess.ecart > 0 ? 'text-blue-700' : 'text-rose-600'}>
+                            {sess.ecart === 0 ? '0 FCFA' : sess.ecart > 0 ? `+${formatFCFA(sess.ecart)}` : formatFCFA(sess.ecart)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPosSessionIdFilter(sess.id);
+                              setActiveTab('SALES');
+                            }}
+                            className="px-2.5 py-1 text-xs font-bold text-brand bg-brand/10 hover:bg-brand/20 rounded-lg transition-colors"
+                            title="Filtrer les ventes de cette session"
+                          >
+                            Voir Ventes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReportZSession(sess)}
+                            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Imprimer le Ticket Z"
+                          >
+                            <ReceiptIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {sessions.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="px-5 py-16 text-center text-slate-400">
+                      <CheckCircle2 className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                      Aucune clôture de caisse enregistrée.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
+
       {/* MODALE REÇU */}
       {receipt && <ReceiptModal sale={receipt} onClose={() => setReceipt(null)} />}
+
+      {/* MODALE TICKET Z */}
+      {reportZSession && (
+        <ReportZPrintModal
+          isOpen={!!reportZSession}
+          onClose={() => setReportZSession(null)}
+          session={reportZSession}
+        />
+      )}
 
       {/* MODALE ENCAISSER RESTE DÛ */}
       {paymentSale && (

@@ -244,6 +244,37 @@ export class SalesService {
       // Crédit client : vérifier le plafond avant de créer la vente.
       await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
       
+      // Rattachement de la vente à la session POS active du caissier/établissement.
+      let session = null;
+      if (input.posSessionId) {
+        session = await tx.posSession.findFirst({
+          where: { id: input.posSessionId, tenantId: ctx.tenantId },
+        });
+      }
+      if (!session && ctx.etablissementId) {
+        session = await tx.posSession.findFirst({
+          where: {
+            tenantId: ctx.tenantId,
+            etablissementId: ctx.etablissementId,
+            openedById: ctx.userId,
+            status: 'OPEN',
+          },
+        });
+        if (!session) {
+          session = await tx.posSession.create({
+            data: {
+              tenantId: ctx.tenantId,
+              etablissementId: ctx.etablissementId,
+              openedById: ctx.userId,
+              status: 'OPEN',
+              fondInitial: 0,
+              soldeTheorique: 0,
+            },
+          });
+        }
+      }
+      const activePosSessionId = session?.id ?? null;
+
       // Création de la vente + lignes. Le prix plancher est un blocage strict en
       // amont : aucune vente n'atteint ce point sous le plancher (pas d'approbation).
       const created = await tx.sale.create({
@@ -252,6 +283,7 @@ export class SalesService {
           etablissementId: ctx.etablissementId,
           vendeurId: ctx.userId,
           clientId: input.clientId ?? null,
+          posSessionId: activePosSessionId,
           status: 'COMPLETED',
           paymentMethod: input.paymentMethod,
           total,
@@ -268,6 +300,31 @@ export class SalesService {
           adresseLivraison: input.adresseLivraison ?? null,
         },
       });
+
+      if (activePosSessionId) {
+        const isCash = input.paymentMethod === 'CASH';
+        const isMoMo = input.paymentMethod === 'MOBILE_MONEY';
+        const isBanque = input.paymentMethod === 'BANK_TRANSFER';
+        const isCredit = input.paymentMethod === 'CREDIT' || input.paymentMethod === 'INSTALLMENT';
+
+        const especesAdd = isCash ? total : (input.montantEspeces ?? 0);
+        const momoAdd = isMoMo ? total : 0;
+        const banqueAdd = isBanque ? total : 0;
+        const creditAdd = isCredit ? (total - (input.montantVerse ?? 0)) : 0;
+
+        await tx.posSession.update({
+          where: { id: activePosSessionId },
+          data: {
+            nombreVentes: { increment: 1 },
+            totalVentes: { increment: total },
+            totalEspeces: { increment: especesAdd },
+            totalMoMo: { increment: momoAdd },
+            totalBanque: { increment: banqueAdd },
+            totalCredit: { increment: creditAdd },
+            soldeTheorique: { increment: especesAdd },
+          },
+        });
+      }
 
       for (const line of lines) {
         await tx.saleItem.create({
@@ -1221,13 +1278,13 @@ export class SalesService {
     });
   }
 
-  async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; q?: string }) {
+  async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; posSessionId?: string; q?: string }) {
     const where: any = { tenantId: ctx.tenantId };
     // Phase 1 : on ne montre que l'établissement courant.
     if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
 
     if (filters) {
-      const { from, to, status, clientId, q } = filters;
+      const { from, to, status, clientId, posSessionId, q } = filters;
       
       if (from || to) {
         where.createdAt = {};
@@ -1245,6 +1302,10 @@ export class SalesService {
       
       if (clientId) {
         where.clientId = clientId;
+      }
+
+      if (posSessionId) {
+        where.posSessionId = posSessionId;
       }
       
       if (q) {
@@ -1306,6 +1367,207 @@ export class SalesService {
     );
     if (!sale) throw new NotFoundException('Vente introuvable');
     return toSaleDto(sale, ctx.role);
+  }
+
+  // ───────────────────────── POS Sessions (Clôtures & Rapport Z) ─────────────────────────
+
+  async getActivePosSession(ctx: AuthContext) {
+    if (!ctx.etablissementId) {
+      throw new BadRequestException('Aucun établissement sélectionné');
+    }
+    const session = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.posSession.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          openedById: ctx.userId,
+          status: 'OPEN',
+        },
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+        },
+      }),
+    );
+    return session;
+  }
+
+  async openPosSession(ctx: AuthContext, fondInitial: number = 0, note?: string) {
+    if (!ctx.etablissementId) {
+      throw new BadRequestException('Aucun établissement sélectionné');
+    }
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const active = await tx.posSession.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          openedById: ctx.userId,
+          status: 'OPEN',
+        },
+      });
+      if (active) {
+        return active;
+      }
+      return tx.posSession.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          openedById: ctx.userId,
+          status: 'OPEN',
+          fondInitial,
+          soldeTheorique: fondInitial,
+          note,
+        },
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+        },
+      });
+    });
+  }
+
+  async closePosSession(ctx: AuthContext, soldeReel: number, note?: string) {
+    if (!ctx.etablissementId) {
+      throw new BadRequestException('Aucun établissement sélectionné');
+    }
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const active = await tx.posSession.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          status: 'OPEN',
+        },
+      });
+
+      if (!active) {
+        throw new NotFoundException('Aucune session POS ouverte à clôturer');
+      }
+
+      // Re-calcul direct des totaux depuis toutes les ventes réellement rattachées en base.
+      const sales = await tx.sale.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          posSessionId: active.id,
+          status: 'COMPLETED',
+        },
+        select: {
+          total: true,
+          paymentMethod: true,
+          montantVerse: true,
+          montantEspeces: true,
+        },
+      });
+
+      let totalVentes = 0;
+      let totalEspeces = 0;
+      let totalMoMo = 0;
+      let totalBanque = 0;
+      let totalCredit = 0;
+
+      for (const s of sales) {
+        totalVentes += s.total;
+        if (s.paymentMethod === 'CASH') {
+          totalEspeces += s.total;
+        } else if (s.paymentMethod === 'MOBILE_MONEY') {
+          totalMoMo += s.total;
+        } else if (s.paymentMethod === 'BANK_TRANSFER') {
+          totalBanque += s.total;
+        } else if (s.paymentMethod === 'CREDIT' || s.paymentMethod === 'INSTALLMENT') {
+          totalCredit += (s.total - s.montantVerse);
+          totalEspeces += s.montantEspeces;
+        }
+      }
+
+      const soldeTheorique = active.fondInitial + totalEspeces;
+      const ecart = soldeReel - soldeTheorique;
+
+      const closed = await tx.posSession.update({
+        where: { id: active.id },
+        data: {
+          status: 'CLOSED',
+          closedAt: new Date(),
+          closedById: ctx.userId,
+          totalVentes,
+          totalEspeces,
+          totalMoMo,
+          totalBanque,
+          totalCredit,
+          nombreVentes: sales.length,
+          soldeTheorique,
+          soldeReel,
+          ecart,
+          note: note ?? active.note,
+        },
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+          closedBy: { select: { id: true, nom: true, email: true } },
+        },
+      });
+
+      // Traçabilité Trésorerie : créer une entrée CashClose correspondante pour l'historique général
+      await tx.cashClose.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId,
+          compte: 'CAISSE',
+          soldeTheorique,
+          soldeReel,
+          ecart,
+          note: note ? `Clôture Session POS ${active.id} - ${note}` : `Clôture Session POS ${active.id}`,
+          closedBy: ctx.userId,
+        },
+      });
+
+      return closed;
+    });
+  }
+
+  async listPosSessions(ctx: AuthContext, options?: { from?: string; to?: string; status?: string }) {
+    const where: any = { tenantId: ctx.tenantId };
+    if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
+
+    if (options?.status) {
+      where.status = options.status;
+    }
+    if (options?.from || options?.to) {
+      where.openedAt = {};
+      if (options.from) where.openedAt.gte = new Date(options.from);
+      if (options.to) {
+        where.openedAt.lte = options.to.length <= 10 ? endOfCalendarDayInTz(options.to, ctx.timezone) : new Date(options.to);
+      }
+    }
+
+    return this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.posSession.findMany({
+        where,
+        orderBy: { openedAt: 'desc' },
+        take: 100,
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+          closedBy: { select: { id: true, nom: true, email: true } },
+        },
+      }),
+    );
+  }
+
+  async getPosSession(ctx: AuthContext, id: string) {
+    const session = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.posSession.findFirst({
+        where: { id, tenantId: ctx.tenantId },
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+          closedBy: { select: { id: true, nom: true, email: true } },
+          sales: {
+            take: 200,
+            include: {
+              items: { include: { product: true } },
+              client: true,
+              vendeur: { select: { id: true, nom: true } },
+            },
+          },
+        },
+      }),
+    );
+    if (!session) throw new NotFoundException('Session POS introuvable');
+    return session;
   }
 
   /**

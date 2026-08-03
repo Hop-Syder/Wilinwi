@@ -236,13 +236,22 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
     setErrorMsg(null);
 
     try {
+      // 1. Purge préalable forcée des ventes hors-ligne dans IndexedDB
+      try {
+        const { syncEngine } = await import('@/lib/sync');
+        await syncEngine.flush();
+      } catch (e) {
+        console.warn('Avertissement : échec ou absence du moteur de synchronisation offline', e);
+      }
+
+      // 2. Clôture officielle de la Session POS sur le serveur
       const res = await apiPost<{
-        cashClose: { id: string };
+        id: string;
         soldeTheorique: number;
         soldeReel: number;
         ecart: number;
-      }>('/api/treasury/close', {
-        compte: 'CAISSE',
+        closedAt: string;
+      }>('/api/pos/sessions/close', {
         soldeReel: soldeReelFinal,
         note: note.trim() || undefined,
       });
@@ -252,7 +261,7 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
         soldeReel: res.soldeReel,
         ecart: res.ecart,
         note,
-        closedAt: new Date(),
+        closedAt: new Date(res.closedAt ?? Date.now()),
       });
 
       setStep(3); // Passer à l'affichage du Rapport Z

@@ -223,7 +223,8 @@ model Tenant {
   productBatches  ProductBatch[]
   productUnits    ProductUnit[]
   productExclusions ProductExclusion[]
-  devices         Device[]
+  posSessions       PosSession[]
+  devices           Device[]
 
   @@map("tenants")
 }
@@ -266,6 +267,7 @@ model Etablissement {
   foodTables           FoodTable[]
   productBatches       ProductBatch[]
   productExclusions    ProductExclusion[]
+  posSessions          PosSession[]
 
   @@index([tenantId])
   @@index([tenantId, infrastructure])
@@ -351,6 +353,8 @@ model User {
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ventesEffectuees  Sale[]          @relation("VendeurVentes")
   livraisons        Sale[]          @relation("LivreurLivraisons")
+  openedPosSessions PosSession[]    @relation("OpenedPosSessions")
+  closedPosSessions PosSession[]    @relation("ClosedPosSessions")
   inventoriesValid  Inventory[]     @relation("InventoryValidator")
   etablissements    UserEtablissement[]
 
@@ -673,6 +677,8 @@ model Sale {
   receiptCode      String?       @unique @map("receipt_code")
   /// Table (établissement FOOD) à laquelle la vente est rattachée — Milestone 3.
   tableId          String?       @map("table_id") @db.Uuid
+  /// Session POS à laquelle la vente est rattachée
+  posSessionId     String?       @map("pos_session_id") @db.Uuid
   createdAt        DateTime      @default(now()) @map("created_at")
 
   // ── Livraison (MVP minimal) : une vente peut être marquée « à livrer », assignée
@@ -689,6 +695,7 @@ model Sale {
   livreur     User?            @relation("LivreurLivraisons", fields: [livreurId], references: [id])
   client      Client?          @relation(fields: [clientId], references: [id])
   table       FoodTable?       @relation(fields: [tableId], references: [id])
+  posSession  PosSession?      @relation(fields: [posSessionId], references: [id])
   items       SaleItem[]
   installment SaleInstallment?
 
@@ -697,6 +704,7 @@ model Sale {
   @@index([tenantId, createdAt])
   @@index([tenantId, livreurId])
   @@index([tenantId, etablissementId])
+  @@index([tenantId, posSessionId])
   @@map("sales")
 }
 
@@ -856,6 +864,44 @@ model CashClose {
 
   @@index([tenantId])
   @@map("cash_closes")
+}
+
+enum PosSessionStatus {
+  OPEN
+  CLOSED
+}
+
+model PosSession {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  etablissementId String           @map("etablissement_id") @db.Uuid
+  openedById      String           @map("opened_by_id") @db.Uuid
+  closedById      String?          @map("closed_by_id") @db.Uuid
+  status          PosSessionStatus @default(OPEN)
+  openedAt        DateTime         @default(now()) @map("opened_at")
+  closedAt        DateTime?        @map("closed_at")
+  fondInitial     Int              @default(0) @map("fond_initial")
+  totalEspeces    Int              @default(0) @map("total_especes")
+  totalMoMo       Int              @default(0) @map("total_momo")
+  totalBanque     Int              @default(0) @map("total_banque")
+  totalCredit     Int              @default(0) @map("total_credit")
+  totalVentes     Int              @default(0) @map("total_ventes")
+  nombreVentes    Int              @default(0) @map("nombre_ventes")
+  soldeTheorique  Int              @default(0) @map("solde_theorique")
+  soldeReel       Int?             @map("solde_reel")
+  ecart           Int?             @map("ecart")
+  note            String?
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  etablissement Etablissement @relation(fields: [etablissementId], references: [id], onDelete: Cascade)
+  openedBy      User          @relation("OpenedPosSessions", fields: [openedById], references: [id])
+  closedBy      User?         @relation("ClosedPosSessions", fields: [closedById], references: [id])
+  sales         Sale[]
+
+  @@index([tenantId])
+  @@index([tenantId, etablissementId])
+  @@index([tenantId, status])
+  @@map("pos_sessions")
 }
 
 // ─────────────────── Entrepôt — Fournisseurs & Achats (MVP2) ───────────────────
