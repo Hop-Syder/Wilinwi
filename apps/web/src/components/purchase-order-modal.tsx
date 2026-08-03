@@ -5,7 +5,7 @@ import { apiGet, apiPost, ApiError } from '@/lib/api';
 import type { SupplierDto, ProductDto, EtablissementDto } from '@wilinwi/types';
 
 interface PurchaseOrderModalProps {
-  etablissements: EtablissementDto[];
+  etablissements: { id: string; nom: string; type?: string }[];
   currentEtablissementId: string | null;
   onClose: () => void;
   onSuccess: () => void;

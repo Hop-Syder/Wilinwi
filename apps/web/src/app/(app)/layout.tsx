@@ -3,9 +3,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Layout de l'application (Route: (app))
+ * @description Layout de l'application (Route: (app) — Conteneur élargi max-w-[1536px])
  * @created 2026-06-20
- * @updated 2026-06-25
+ * @updated 2026-08-03
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -159,7 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Header / Navbar */}
         <header className="w-full border-b border-border bg-surface/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-[1536px] items-center justify-between px-3 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Navigation mobile */}
             <Link href="/" className="font-display text-xl font-black tracking-tight text-primary flex items-center gap-2 shrink-0" title="Wilinwi">
@@ -329,9 +329,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Layout Container */}
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 pt-6 pb-24 sm:pb-6">
+      <div className="mx-auto flex max-w-[1536px] gap-4 px-3 sm:px-6 pt-6 pb-24 sm:pb-6">
         {/* Floating Sidebar (Desktop) */}
-        <nav className="hidden w-52 shrink-0 sm:block">
+        <nav className="hidden w-44 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
             <ul className="space-y-1">
               {menuItems.filter((item) => canSee(item)).map(({ href, label, icon: Icon }) => {
