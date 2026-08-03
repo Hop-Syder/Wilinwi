@@ -35,6 +35,17 @@ class AnalyticsController {
   ) {
     return this.analytics.report(user, from, to, compare !== 'false');
   }
+
+  @RequireCapabilities('reports:read')
+  @Get('reports/dashboard')
+  reportsDashboard(
+    @CurrentUser() user: AuthContext,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('compare') compare?: string,
+  ) {
+    return this.analytics.report(user, from, to, compare !== 'false');
+  }
 }
 
 @Module({
