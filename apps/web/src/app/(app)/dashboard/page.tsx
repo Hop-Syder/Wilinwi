@@ -251,23 +251,23 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Section 2 : Top Produits & Trésorerie */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
+          {/* Section 2 : Trésorerie & Solde des Caisses */}
+          <div>
+            <TreasuryWidget balances={report?.soldesTresorerie} />
+          </div>
+
+          {/* Section 3 : Top 5 Meilleures Ventes & Actions Rapides (Même Ligne sur Desktop) */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-stretch">
+            <div className="flex flex-col">
               <TopProductsList products={report?.topProduits ?? []} />
             </div>
 
-            <div className="lg:col-span-2">
-              <TreasuryWidget balances={report?.soldesTresorerie} />
+            <div className="flex flex-col">
+              <QuickActionsBar
+                onOpenExpenseModal={() => setExpenseModalOpen(true)}
+                onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
+              />
             </div>
-          </div>
-
-          {/* Section 3 : Actions Rapides */}
-          <div>
-            <QuickActionsBar
-              onOpenExpenseModal={() => setExpenseModalOpen(true)}
-              onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
-            />
           </div>
         </>
       )}
