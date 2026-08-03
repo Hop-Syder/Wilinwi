@@ -12,7 +12,7 @@
 'use client';
 
 import { useMemo, useState, forwardRef } from 'react';
-import { Search, Tag, Camera, AlertTriangle, PackageX } from 'lucide-react';
+import { Search, Tag, Camera, PackageX } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { ProductGridCard } from './product-grid-card';
 

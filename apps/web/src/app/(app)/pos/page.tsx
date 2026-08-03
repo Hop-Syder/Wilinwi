@@ -11,16 +11,14 @@
 
 'use client';
 
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { Lock, RotateCcw, AlertTriangle } from 'lucide-react';
-import type { CreateSaleInput, FoodTableDto, ProductDto, ClientDto } from '@wilinwi/types';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Lock } from 'lucide-react';
+import type { CreateSaleInput, ProductDto, ClientDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
-import type { PendingSale as PendingSyncSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
-import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -34,9 +32,6 @@ export default function PosPage() {
   const { refreshPending, state } = useSync();
   const { user } = useAuth();
   const isGlobalView = user?.etablissementId === 'ALL';
-
-  const { has: hasInfraCap } = useInfraCapabilities();
-  const isFood = hasInfraCap('pos.touch');
 
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [clients, setClients] = useState<ClientDto[]>([]);
@@ -62,7 +57,6 @@ export default function PosPage() {
   const [saleSync, setSaleSync] = useState<{ status: SaleSyncStatus; error?: string }>({
     status: 'pending',
   });
-  const [rejected, setRejected] = useState<PendingSyncSale[]>([]);
 
   // Chargement Initial des Produits, Clients & Livreurs
   const loadInitialData = useCallback(async () => {

@@ -14,7 +14,7 @@
 import { useMemo, useState } from 'react';
 import {
   ShoppingCart, Trash2, Plus, Minus, UserCheck, AlertTriangle,
-  CreditCard, ChevronRight, UserPlus, X, Store, ShoppingBag, Truck
+  ChevronRight, X, Store, ShoppingBag, Truck
 } from 'lucide-react';
 import type { ProductDto, ClientDto } from '@wilinwi/types';
 import { Button, formatFCFA, formatQty } from '@wilinwi/ui';
