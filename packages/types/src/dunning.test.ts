@@ -20,10 +20,11 @@ describe('computeDunning', () => {
     expect(s.downgraded).toBe(false);
   });
 
-  it('J+3 → RESTRICTED (non-vital suspendu, pas de rétrogradation)', () => {
+  it('J+3 → READ_ONLY (non-vital suspendu, mode lecture seule actif)', () => {
     const s = computeDunning('PAST_DUE', daysAgo(3), base);
-    expect(s.stage).toBe('RESTRICTED');
+    expect(s.stage).toBe('READ_ONLY');
     expect(s.suspendNonVital).toBe(true);
+    expect(s.isReadOnly).toBe(true);
     expect(s.downgraded).toBe(false);
     expect(s.posBlocked).toBe(false);
   });

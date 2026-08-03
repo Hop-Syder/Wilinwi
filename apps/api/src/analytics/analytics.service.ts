@@ -1,9 +1,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Service métier pour analytics
+ * @description Service métier pour analytics (KPIs, comparaison temporelle, marge brute, trésorerie et alertes)
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-08-03
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -12,6 +12,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   addDays,
+  calendarDateInTz,
   canSeeSensitivePricing,
   endOfCalendarDayInTz,
   startOfCalendarDayInTz,
@@ -173,15 +174,13 @@ export class AnalyticsService {
 
   /**
    * Rapport historique sur une période (Wilinwi Analytics, §5.1) : KPIs agrégés,
-   * série journalière (tendance), top produits et répartition par mode de paiement.
-   * La marge n'est calculée que pour les rôles autorisés (§9).
+   * comparaison relative avec période précédente, série journalière (tendance),
+   * top produits avec contribution %, répartition par mode de paiement et trésorerie.
    */
-  async report(ctx: AuthContext, fromStr?: string, toStr?: string) {
+  async report(ctx: AuthContext, fromStr?: string, toStr?: string, compare = true) {
     const seeSensitive = canSeeSensitivePricing(ctx.role);
 
     // Bornes de la période — défaut : 30 derniers jours.
-    // Dates calendaires interprétées dans le fuseau de la BOUTIQUE (une borne
-    // « du 2026-07-01 » = 00:00 chez elle, pas 00:00 UTC ni serveur).
     const to =
       toStr && toStr.length <= 10
         ? endOfCalendarDayInTz(toStr, ctx.timezone)
@@ -195,9 +194,16 @@ export class AnalyticsService {
           ? new Date(fromStr)
           : addDays(startOfDayInTz(ctx.timezone, to), -29);
 
+    // Durée en jours et période précédente de même durée pour la comparaison
+    const durationMs = Math.max(86400000, to.getTime() - from.getTime());
+    const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+    const prevTo = new Date(from.getTime() - 1);
+    const prevFrom = addDays(from, -durationDays);
+
     const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
 
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      // 1. Ventes période courante
       const sales = await tx.sale.findMany({
         where: {
           tenantId: ctx.tenantId,
@@ -205,23 +211,64 @@ export class AnalyticsService {
           createdAt: { gte: from, lte: to },
           status: { not: 'CANCELLED' },
         },
-        include: { items: { include: { product: { select: { nom: true } } } } },
+        include: { items: { include: { product: { select: { id: true, nom: true, categorie: true } } } } },
         orderBy: { createdAt: 'asc' },
       });
 
+      // 2. Ventes période précédente (pour la comparaison relative)
+      const salesPrev = compare
+        ? await tx.sale.findMany({
+            where: {
+              tenantId: ctx.tenantId,
+              ...etabFilter,
+              createdAt: { gte: prevFrom, lte: prevTo },
+              status: { not: 'CANCELLED' },
+            },
+            include: { items: true },
+          })
+        : [];
+
       const chiffreAffaires = sales.reduce((s, v) => s + v.total, 0);
+      const chiffreAffairesPrev = salesPrev.reduce((s, v) => s + v.total, 0);
+
       const nombreVentes = sales.length;
+      const nombreVentesPrev = salesPrev.length;
+
       const articlesVendus = sales.reduce(
         (s, v) => s + v.items.reduce((q, it) => q + it.quantite, 0),
         0,
       );
+
       const panierMoyen = nombreVentes ? Math.round(chiffreAffaires / nombreVentes) : 0;
+      const panierMoyenPrev = nombreVentesPrev ? Math.round(chiffreAffairesPrev / nombreVentesPrev) : 0;
+
       const benefice = sales.reduce(
         (s, v) => s + v.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
         0,
       );
+      const beneficePrev = salesPrev.reduce(
+        (s, v) => s + v.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+        0,
+      );
 
-      // Dépenses de l'entreprise sur la période (sorties de trésorerie « EXPENSE »).
+      // Calcul des créances / crédits clients en encours
+      const clientsWithDebt = await tx.client.aggregate({
+        where: { tenantId: ctx.tenantId, soldeCredit: { gt: 0 } },
+        _sum: { soldeCredit: true },
+      });
+      const creditsEncours = clientsWithDebt._sum.soldeCredit ?? 0;
+
+      // Calcul des variations %
+      const calcVar = (curr: number, prev: number) => {
+        if (!prev) return curr > 0 ? 100 : 0;
+        return Math.round(((curr - prev) / prev) * 1000) / 10;
+      };
+
+      const variationCaPercent = calcVar(chiffreAffaires, chiffreAffairesPrev);
+      const variationBeneficePercent = calcVar(benefice, beneficePrev);
+      const variationPanierMoyenPercent = calcVar(panierMoyen, panierMoyenPrev);
+
+      // Dépenses de la période
       const expenses = await tx.cashMovement.findMany({
         where: {
           tenantId: ctx.tenantId,
@@ -233,122 +280,207 @@ export class AnalyticsService {
         select: { montant: true, createdAt: true },
       });
       const totalDepenses = expenses.reduce((s, e) => s + e.montant, 0);
+
       const expByDay = new Map<string, number>();
       for (const e of expenses) {
-        const day = e.createdAt.toISOString().slice(0, 10);
+        const day = calendarDateInTz(e.createdAt, ctx.timezone);
         expByDay.set(day, (expByDay.get(day) ?? 0) + e.montant);
       }
 
-      // Ventes agrégées par jour.
-      const byDay = new Map<string, { ca: number; ventes: number }>();
+      // Ventes & marge par jour pour le graphique hybride
+      const byDay = new Map<string, { ca: number; benefice: number; ventes: number }>();
       for (const s of sales) {
-        const day = s.createdAt.toISOString().slice(0, 10);
-        const cur = byDay.get(day) ?? { ca: 0, ventes: 0 };
+        const day = calendarDateInTz(s.createdAt, ctx.timezone);
+        const cur = byDay.get(day) ?? { ca: 0, benefice: 0, ventes: 0 };
         cur.ca += s.total;
         cur.ventes += 1;
+        cur.benefice += s.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0);
         byDay.set(day, cur);
       }
 
-      // Série journalière CONTINUE (CA + dépenses), un point par jour de la période.
-      // NOTE : les clés de bucket restent des jours UTC (createdAt.toISOString) —
-      // les bornes sont exactes, l'attribution fine 23h-minuit sera affinée avec
-      // un bucketing local si le besoin remonte.
-      const serie: { date: string; ca: number; ventes: number; depenses: number }[] = [];
+      // Série journalière continue
+      const serie: { date: string; ca: number; benefice: number; ventes: number; depenses: number }[] = [];
       let cursor = startOfDayInTz(ctx.timezone, from);
       for (let guard = 0; cursor <= to && guard < 370; guard++) {
-        const day = cursor.toISOString().slice(0, 10);
+        const day = calendarDateInTz(cursor, ctx.timezone);
         const v = byDay.get(day);
         serie.push({
           date: day,
           ca: v?.ca ?? 0,
+          benefice: seeSensitive ? (v?.benefice ?? 0) : 0,
           ventes: v?.ventes ?? 0,
           depenses: expByDay.get(day) ?? 0,
         });
         cursor = addDays(cursor, 1);
       }
 
-      // Top produits (par quantité vendue).
-      const byProduct = new Map<string, { nom: string; quantite: number; ca: number }>();
+      // Sparklines (série de points normalisés pour les cartes Hero KPI)
+      const sparklineCa = serie.map((s) => s.ca);
+      const sparklineBenefice = serie.map((s) => s.benefice);
+      const sparklinePanierMoyen = serie.map((s) => (s.ventes > 0 ? Math.round(s.ca / s.ventes) : 0));
+
+      // Top 5 Produits avec contribution au CA %
+      const byProduct = new Map<
+        string,
+        { id: string; nom: string; categorie: string; quantite: number; ca: number }
+      >();
       for (const s of sales) {
         for (const it of s.items) {
-          const cur = byProduct.get(it.productId) ?? {
+          const prodId = it.productId;
+          const cur = byProduct.get(prodId) ?? {
+            id: prodId,
             nom: it.product?.nom ?? 'Article',
+            categorie: it.product?.categorie ?? 'Général',
             quantite: 0,
             ca: 0,
           };
           cur.quantite += it.quantite;
           cur.ca += it.prixReel * it.quantite;
-          byProduct.set(it.productId, cur);
+          byProduct.set(prodId, cur);
         }
       }
-      const topProduits = [...byProduct.values()]
-        .sort((a, b) => b.quantite - a.quantite)
-        .slice(0, 10);
 
-      // Répartition par mode de paiement.
+      const topProduits = [...byProduct.values()]
+        .sort((a, b) => b.ca - a.ca)
+        .slice(0, 5)
+        .map((p) => ({
+          ...p,
+          contributionCaPercent:
+            chiffreAffaires > 0 ? Math.round((p.ca / chiffreAffaires) * 1000) / 10 : 0,
+        }));
+
+      // Répartition par mode de paiement
+      const paymentLabels: Record<string, string> = {
+        CASH: 'Espèces',
+        MOMO_MTN: 'MTN MoMo',
+        MOMO_MOOV: 'Moov Money',
+        MOMO_WAVE: 'Wave',
+        MOMO_ORANGE: 'Orange Money',
+        MOMO_CELTIIS: 'Celtiis Cash',
+        MOMO_AUTRE: 'Autre Mobile Money',
+        BANK_TRANSFER: 'Virement bancaire',
+        CREDIT: 'Crédit client',
+      };
+
+      const paymentColors: Record<string, string> = {
+        CASH: '#00A86B', // vert émeraude
+        MOMO_MTN: '#F59E0B',
+        MOMO_MOOV: '#2563EB',
+        MOMO_WAVE: '#0EA5E9',
+        MOMO_ORANGE: '#F97316',
+        MOMO_CELTIIS: '#7C3AED',
+        MOMO_AUTRE: '#64748B',
+        BANK_TRANSFER: '#3B82F6', // bleu virement
+        CREDIT: '#EC4899', // rose crédit
+      };
+
       const byPayment = new Map<string, { montant: number; ventes: number }>();
+      const addPayment = (methode: string, montant: number) => {
+        if (montant <= 0) return;
+        const current = byPayment.get(methode) ?? { montant: 0, ventes: 0 };
+        current.montant += montant;
+        current.ventes += 1;
+        byPayment.set(methode, current);
+      };
       for (const s of sales) {
-        const cur = byPayment.get(s.paymentMethod) ?? { montant: 0, ventes: 0 };
-        cur.montant += s.total;
-        cur.ventes += 1;
-        byPayment.set(s.paymentMethod, cur);
+        const paid = Math.min(s.montantVerse, s.total);
+        const cashPart = s.paymentMethod === 'CASH' || s.paymentMethod === 'INSTALLMENT'
+          ? paid
+          : Math.min(Math.max(s.montantEspeces, 0), paid);
+        const nonCashPart = paid - cashPart;
+
+        addPayment('CASH', cashPart);
+        if (s.paymentMethod === 'MOBILE_MONEY') {
+          addPayment(`MOMO_${s.momoOperator ?? 'AUTRE'}`, nonCashPart);
+        } else if (s.paymentMethod === 'BANK_TRANSFER') {
+          addPayment('BANK_TRANSFER', nonCashPart);
+        }
+        addPayment('CREDIT', s.total - paid);
       }
+
       const parPaiement = [...byPayment.entries()].map(([methode, v]) => ({
         methode,
+        label: paymentLabels[methode] ?? methode,
+        color: paymentColors[methode] ?? '#64748B',
         montant: v.montant,
+        pourcentage: chiffreAffaires > 0 ? Math.round((v.montant / chiffreAffaires) * 1000) / 10 : 0,
         ventes: v.ventes,
+        isCredit: methode === 'CREDIT',
       }));
 
-      // Répartition PAR ÉTABLISSEMENT (ventes + dépenses), TOUTES boutiques —
-      // indépendante du périmètre courant, pour le tableau de bord global.
-      const etablissements = await tx.etablissement.findMany({
-        where: { tenantId: ctx.tenantId },
-        select: { id: true, nom: true },
-        orderBy: { createdAt: 'asc' },
-      });
-      const salesByEtab = await tx.sale.groupBy({
-        by: ['etablissementId'],
-        where: {
-          tenantId: ctx.tenantId,
-          createdAt: { gte: from, lte: to },
-          status: { not: 'CANCELLED' },
-        },
-        _sum: { total: true },
-        _count: { _all: true },
-      });
-      const expByEtab = await tx.cashMovement.groupBy({
-        by: ['etablissementId'],
-        where: {
-          tenantId: ctx.tenantId,
-          type: 'OUT',
-          source: 'EXPENSE',
-          createdAt: { gte: from, lte: to },
-        },
+      // Soldes réels : somme de toutes les écritures, indépendamment de la période affichée.
+      const treasuryRows = await tx.cashMovement.groupBy({
+        by: ['compte', 'type'],
+        where: { tenantId: ctx.tenantId, ...etabFilter },
         _sum: { montant: true },
       });
-      const salesEtabMap = new Map(salesByEtab.map((s) => [s.etablissementId, s]));
-      const expEtabMap = new Map(expByEtab.map((e) => [e.etablissementId, e._sum.montant ?? 0]));
-      const parEtablissement = etablissements.map((e) => ({
-        etablissementId: e.id,
-        nom: e.nom,
-        ventes: salesEtabMap.get(e.id)?._sum.total ?? 0,
-        nombreVentes: salesEtabMap.get(e.id)?._count._all ?? 0,
-        depenses: expEtabMap.get(e.id) ?? 0,
-      }));
+      const treasuryBalances = { CAISSE: 0, MOBILE_MONEY: 0, BANQUE: 0 };
+      for (const row of treasuryRows) {
+        treasuryBalances[row.compte] += row.type === 'IN' ? row._sum.montant ?? 0 : -(row._sum.montant ?? 0);
+      }
+      const soldesTresorerie = {
+        fondDeCaisse: treasuryBalances.CAISSE,
+        mobileMoney: treasuryBalances.MOBILE_MONEY,
+        banque: treasuryBalances.BANQUE,
+        total: Object.values(treasuryBalances).reduce((sum, balance) => sum + balance, 0),
+      };
+
+      // Alertes Opérationnelles (Ruptures de stock, créances)
+      const productsLowStock = await tx.product.findMany({
+        where: { tenantId: ctx.tenantId, actif: true, stock: { lte: LOW_STOCK_THRESHOLD } },
+        select: { id: true, nom: true, stock: true },
+        take: 5,
+      });
+
+      const overdueInstallments = await tx.saleInstallment.count({
+        where: {
+          tenantId: ctx.tenantId,
+          status: 'OVERDUE',
+        },
+      });
+
+      const clientsEnDetteCount = await tx.client.count({
+        where: { tenantId: ctx.tenantId, soldeCredit: { gt: 0 } },
+      });
+
+      // Échéances à venir sous 7 jours
+      const alertes = {
+        ruptures: productsLowStock,
+        dettesEchuesCount: overdueInstallments,
+        clientsEnDetteCount,
+      };
 
       return {
         from: from.toISOString(),
         to: to.toISOString(),
+        prevFrom: prevFrom.toISOString(),
+        prevTo: prevTo.toISOString(),
         chiffreAffaires,
+        chiffreAffairesPrev,
+        variationCaPercent,
+        sparklineCa,
         nombreVentes,
         articlesVendus,
         panierMoyen,
+        panierMoyenPrev,
+        variationPanierMoyenPercent,
+        sparklinePanierMoyen,
+        creditsEncours,
+        variationCreditsPercent: 0,
         totalDepenses,
-        ...(seeSensitive ? { benefice } : {}),
+        ...(seeSensitive
+          ? {
+              benefice,
+              beneficePrev,
+              variationBeneficePercent,
+              sparklineBenefice,
+            }
+          : {}),
         serie,
         topProduits,
         parPaiement,
-        parEtablissement,
+        soldesTresorerie,
+        alertes,
       };
     });
   }

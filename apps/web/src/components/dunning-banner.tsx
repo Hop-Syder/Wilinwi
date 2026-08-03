@@ -16,9 +16,10 @@ import { dunningMessage } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
 
 const TONE: Record<string, string> = {
-  WARNING: 'bg-gold/10 border-gold/30 text-amber-800',
-  RESTRICTED: 'bg-warning/10 border-warning/40 text-amber-900',
-  DOWNGRADED: 'bg-danger/10 border-danger/30 text-danger',
+  WARNING: 'bg-amber-50 border-amber-200 text-amber-900',
+  RESTRICTED: 'bg-orange-50 border-orange-200 text-orange-900',
+  READ_ONLY: 'bg-red-50 border-red-200 text-red-900',
+  DOWNGRADED: 'bg-red-50 border-red-300 text-red-950',
 };
 
 /** Bannière persistante non bloquante, réservée OWNER/MANAGER. */

@@ -1,476 +1,466 @@
-'use client';
-
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Tableau de bord — KPIs du jour + graphe combiné (progression CA vs dépenses)
- *   connecté à la base via /api/analytics/report. (Recharts)
+ * @description Tableau de bord principal Wilinwi (Architecture 5 Axes : TopBar, Hero KPIs, DataViz, Trésorerie & Ergonomie)
+ * @created 2026-06-20
+ * @updated 2026-08-03
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
  */
+// ──────────────────────────────────
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
-import { TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle } from 'lucide-react';
+'use client';
+
+import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  BarChart,
-  Area,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import { Store } from 'lucide-react';
+  TrendingUp,
+  DollarSign,
+  CreditCard,
+  Store,
+  Wifi,
+  WifiOff,
+  ShoppingBag,
+  X,
+} from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { apiGet, apiPost } from '@/lib/api';
+import { useCachedQuery } from '@/lib/use-cached-query';
+import { useSync } from '@/lib/use-sync';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
-import { StatCard, Card, CardTitle, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
-import { apiGet } from '@/lib/api';
-import { useCachedQuery } from '@/lib/use-cached-query';
-import { useAuth } from '@/lib/auth-context';
+import { PeriodSelector, PeriodPreset } from '@/components/dashboard/period-selector';
+import { HeadsUpBanner } from '@/components/dashboard/heads-up-banner';
+import { KpiCard } from '@/components/dashboard/kpi-card';
+import { HybridSalesChart } from '@/components/dashboard/hybrid-sales-chart';
+import { PaymentDonutChart } from '@/components/dashboard/payment-donut-chart';
+import { TopProductsList } from '@/components/dashboard/top-products-list';
+import { TreasuryWidget } from '@/components/dashboard/treasury-widget';
+import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
+import { DashboardSkeletonGrid } from '@/components/dashboard/dashboard-skeletons';
 
-interface Dashboard {
-  ventesDuJour: number;
+interface ReportResponse {
+  from: string;
+  to: string;
+  prevFrom?: string;
+  prevTo?: string;
+  chiffreAffaires: number;
+  chiffreAffairesPrev?: number;
+  variationCaPercent?: number;
+  sparklineCa?: number[];
+
+  nombreVentes: number;
   articlesVendus: number;
-  valeurStockCatalogue: number;
-  beneficeDuJour?: number;
-  valeurStockAchat?: number;
-  alertes: {
-    ruptures: { id: string; nom: string; stock: number }[];
-    dormants: { id: string; nom: string; stock: number }[];
+  panierMoyen: number;
+  panierMoyenPrev?: number;
+  variationPanierMoyenPercent?: number;
+  sparklinePanierMoyen?: number[];
+
+  creditsEncours?: number;
+  variationCreditsPercent?: number;
+  totalDepenses: number;
+
+  benefice?: number;
+  beneficePrev?: number;
+  variationBeneficePercent?: number;
+  sparklineBenefice?: number[];
+
+  serie: {
+    date: string;
+    ca: number;
+    benefice?: number;
+    ventes: number;
+    depenses: number;
+  }[];
+
+  topProduits: {
+    id: string;
+    nom: string;
+    categorie?: string;
+    quantite: number;
+    ca: number;
+    contributionCaPercent?: number;
+  }[];
+
+  parPaiement: {
+    methode: string;
+    label: string;
+    color?: string;
+    montant: number;
+    pourcentage: number;
+    ventes: number;
+    isCredit?: boolean;
+  }[];
+
+  soldesTresorerie?: {
+    fondDeCaisse: number;
+    mobileMoney: number;
+    banque: number;
+    total: number;
+  };
+
+  alertes?: {
+    ruptures?: { id: string; nom: string; stock: number }[];
+    dettesEchuesCount?: number;
+    clientsEnDetteCount?: number;
   };
 }
 
-interface EtabBreakdown {
-  etablissementId: string;
-  nom: string;
-  ventes: number;
-  nombreVentes: number;
-  depenses: number;
-}
-
-interface Report {
-  chiffreAffaires: number;
-  totalDepenses: number;
-  benefice?: number;
-  serie: { date: string; ca: number; ventes: number; depenses: number }[];
-  parEtablissement?: EtabBreakdown[];
-}
-
-const CA_COLOR = '#00A86B'; // vert émeraude (charte) — progression / chiffre d'affaires
-const DEP_COLOR = '#E53935'; // rouge danger (charte) — dépenses
-
-const ymd = (d: Date) => d.toISOString().slice(0, 10);
-const fmtDay = (d: string) =>
-  new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-const fmtK = (n: number) =>
-  Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+const ymd = (d: Date) => {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const isGlobalView = user?.etablissementId === 'ALL';
-  const { data, loading, error } = useCachedQuery<Dashboard>('dashboard', () =>
-    apiGet<Dashboard>('/api/analytics/dashboard'),
-  );
+  const activeEtablissementName = isGlobalView
+    ? 'Tous les établissements'
+    : user?.etablissements.find((etablissement) => etablissement.id === user?.etablissementId)?.nom ?? 'Établissement actif';
+  const canSeeProfit = user?.role === 'OWNER' || user?.role === 'MANAGER';
 
-  // Période du graphe (jours glissants).
-  const [days, setDays] = useState(30);
-  const range = useMemo(() => {
+  // Hook Réseau & Synchronisation Hors-ligne
+  const { state: syncState, pending: pendingCount } = useSync();
+
+  // Axe 1 : Contrôle du contexte temporel & comparaison
+  const [preset, setPreset] = useState<PeriodPreset>('last7');
+  const [compare, setCompare] = useState<boolean>(true);
+  const [customFrom, setCustomFrom] = useState<string>(ymd(new Date(Date.now() - 7 * 86400000)));
+  const [customTo, setCustomTo] = useState<string>(ymd(new Date()));
+
+  // Modale Dépense Rapide
+  const [expenseModalOpen, setExpenseModalOpen] = useState<boolean>(false);
+  const [expenseMontant, setExpenseMontant] = useState<string>('');
+  const [expenseMotif, setExpenseMotif] = useState<string>('');
+  const [expenseSubmitting, setExpenseSubmitting] = useState<boolean>(false);
+
+  // Calcul dynamique des bornes temporelles
+  const dateRange = useMemo(() => {
     const today = new Date();
-    const from = new Date(today);
-    from.setDate(from.getDate() - (days - 1));
-    return { from: ymd(from), to: ymd(today) };
-  }, [days]);
+    let from = new Date(today);
 
-  const { data: report } = useCachedQuery<Report>(
-    `analytics/report?from=${range.from}&to=${range.to}`,
-    () => apiGet<Report>(`/api/analytics/report?from=${range.from}&to=${range.to}`),
+    if (preset === 'today') {
+      from = new Date(today);
+    } else if (preset === 'yesterday') {
+      from.setDate(today.getDate() - 1);
+      return { from: ymd(from), to: ymd(from) };
+    } else if (preset === 'last7') {
+      from.setDate(today.getDate() - 6);
+    } else if (preset === 'thisMonth') {
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (preset === 'custom') {
+      return { from: customFrom || ymd(from), to: customTo || ymd(today) };
+    }
+
+    return { from: ymd(from), to: ymd(today) };
+  }, [preset, customFrom, customTo]);
+
+  // Requête réactive des métriques analytics
+  const queryKey = `analytics/report?from=${dateRange.from}&to=${dateRange.to}&compare=${compare}`;
+  const { data: report, loading, error, refetch } = useCachedQuery<ReportResponse>(
+    queryKey,
+    () => apiGet<ReportResponse>(`/api/analytics/report?from=${dateRange.from}&to=${dateRange.to}&compare=${compare}`),
   );
+
+  // Soumission de la dépense rapide
+  const handleSaveExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const montant = parseInt(expenseMontant, 10);
+    if (isNaN(montant) || montant <= 0 || !expenseMotif.trim()) return;
+
+    setExpenseSubmitting(true);
+    try {
+      await apiPost('/api/treasury/expenses', {
+        compte: 'CAISSE',
+        montant,
+        categorie: 'AUTRE',
+        note: expenseMotif.trim(),
+      });
+      setExpenseModalOpen(false);
+      setExpenseMontant('');
+      setExpenseMotif('');
+      void refetch();
+    } catch (err) {
+      console.error('Erreur enregistrement dépense:', err);
+    } finally {
+      setExpenseSubmitting(false);
+    }
+  };
 
   const tourSteps: TourStep[] = [
     {
       targetId: 'tour-dashboard-stats',
-      title: 'Performance du jour',
+      title: 'Hero KPIs & Variations',
       content:
-        "Analysez rapidement le chiffre d'affaires, le nombre de ventes et votre marge générée sur la journée.",
+        'Suivez en temps réel le chiffre d\'affaires brut, la marge brute estimée, le panier moyen et les crédits en encours.',
       position: 'bottom',
     },
     {
       targetId: 'tour-dashboard-charts',
-      title: 'Progression & dépenses',
+      title: 'Visualisation de données (DataViz)',
       content:
-        "Comparez l'évolution de votre chiffre d'affaires et de vos dépenses sur la période pour suivre votre rentabilité.",
+        'Analysez le volume de vente et la rentabilité sur le graphique hybride, la répartition des règlements et le Top 5 produits.',
       position: 'top',
     },
   ];
 
-  if (error && !data) return <ErrorState message={error.message} />;
-  if (loading || !data) return <p className="text-text-secondary">Chargement du tableau de bord…</p>;
+  const dashboardUseCases = [
+    {
+      title: 'Analyser les tendances de vente',
+      description: 'Choisissez la période souhaitée et cochez "vs période précédente" pour mesurer votre croissance relative.',
+    },
+    {
+      title: 'Suivre la rentabilité et les crédits',
+      description: 'Consultez la marge brute estimée et surveillez le montant global des crédits clients en encours.',
+    },
+    {
+      title: 'Actionner les opérations courantes',
+      description: 'Utilisez la barre d\'actions rapides pour passer au POS, saisir une dépense ou clôturer la caisse.',
+    },
+  ];
 
-  const serie = report?.serie ?? [];
-  const totalCa = report?.chiffreAffaires ?? 0;
-  const totalDep = report?.totalDepenses ?? 0;
-  const net = totalCa - totalDep;
+  const isOnline = syncState !== 'offline';
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-12">
+      {/* ── AXE 1 : Top Bar & Contexte Temporel / Réseau ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
         <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary">Tableau de bord</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Aperçu de l'activité du{' '}
-            <strong className="font-medium">{new Date().toLocaleDateString()}</strong>.
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl font-extrabold text-slate-900 tracking-tight">
+              Tableau de bord
+            </h1>
+
+            {/* Badge de boutique active */}
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 border border-slate-200">
+              <Store className="h-3.5 w-3.5 text-slate-500" />
+              <span>{activeEtablissementName}</span>
+            </span>
+
+            {/* Statut Réseau / Synchro Hors-ligne */}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold border ${
+                isOnline
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                  : 'bg-amber-50 text-amber-800 border-amber-200/60'
+              }`}
+            >
+              {isOnline ? (
+                <Wifi className="h-3.5 w-3.5 text-emerald-600" />
+              ) : (
+                <WifiOff className="h-3.5 w-3.5 text-amber-600" />
+              )}
+              <span>
+                {isOnline
+                  ? `En ligne — ${pendingCount} vente${pendingCount > 1 ? 's' : ''} en attente`
+                  : `Hors-ligne — ${pendingCount} vente${pendingCount > 1 ? 's' : ''} locale${pendingCount > 1 ? 's' : ''}`}
+              </span>
+            </span>
+          </div>
+
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            Période : <strong className="text-slate-800">{dateRange.from}</strong> au{' '}
+            <strong className="text-slate-800">{dateRange.to}</strong>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/rapports"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover"
-          >
-            <TrendingUp className="h-4 w-4" /> Rapports
-          </Link>
+
+        {/* Contrôles dynamiques de la période */}
+        <div className="flex items-center gap-3">
+          <PeriodSelector
+            preset={preset}
+            compare={compare}
+            onPresetChange={setPreset}
+            onCompareToggle={setCompare}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomDateChange={(f, t) => {
+              setCustomFrom(f);
+              setCustomTo(t);
+            }}
+            isRefreshing={loading}
+            onRefresh={() => void refetch()}
+          />
           <ContextualHelp
             storageKey="wilinwi_dashboard_tour_done"
             tourSteps={tourSteps}
-            useCases={[
-              {
-                title: 'Suivre la rentabilité',
-                description:
-                  'Le graphe compare votre chiffre d\'affaires (en vert) à vos dépenses (en rouge). L\'écart, c\'est votre résultat.',
-              },
-              {
-                title: 'Une boutique ou toutes',
-                description:
-                  'Le sélecteur en haut bascule entre une boutique précise et « Tous les établissements ». En vue globale, le tableau de bord ajoute un graphe des ventes et dépenses par boutique.',
-              },
-              {
-                title: 'Optimiser le réassort',
-                description:
-                  'Les panneaux "Ruptures" et "Produits dormants" vous aident à savoir quoi racheter et quoi écouler.',
-              },
-            ]}
+            useCases={dashboardUseCases}
           />
         </div>
       </div>
 
-      {/* KPIs du jour */}
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" id="tour-dashboard-stats">
-        <StatCard
-          label="Ventes du jour"
-          value={formatFCFA(data.ventesDuJour)}
-          hint={`${formatQty(data.articlesVendus)} article(s) vendu(s)`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          accent="emerald"
-        />
-        {data.beneficeDuJour !== undefined && (
-          <StatCard
-            label="Bénéfice du jour"
-            value={formatFCFA(data.beneficeDuJour)}
-            hint="Marge réelle"
-            icon={<DollarSign className="h-5 w-5" />}
-            accent="brand"
-          />
-        )}
-        <StatCard
-          label="Valeur du stock (catalogue)"
-          value={formatFCFA(data.valeurStockCatalogue)}
-          hint="Potentiel de vente"
-          icon={<Package className="h-5 w-5" />}
-          accent="gold"
-        />
-        {data.valeurStockAchat !== undefined && (
-          <StatCard
-            label="Stock (prix d'achat)"
-            value={formatFCFA(data.valeurStockAchat)}
-            hint="Argent immobilisé"
-            icon={<Package className="h-5 w-5" />}
-            accent="brand"
-          />
-        )}
-      </div>
+      {/* ── AXE 1 (Suite) : Heads-Up Operational Alert Banner ── */}
+      {report?.alertes && <HeadsUpBanner alerts={report.alertes} />}
 
-      {/* Graphe combiné : progression (CA) vs dépenses — connecté à la BDD */}
-      <div className="mt-8" id="tour-dashboard-charts">
-        <Card className="p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
-                Activité
-              </span>
-              <CardTitle className="text-xl">Progression & dépenses</CardTitle>
-            </div>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
-              {[7, 30, 90].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDays(d)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    days === d
-                      ? 'bg-primary text-white'
-                      : 'text-text-secondary hover:bg-surface-hover'
-                  }`}
-                >
-                  {d}j
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Chargement Skeleton progressif */}
+      {loading && !report ? (
+        <DashboardSkeletonGrid />
+      ) : error && !report ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-800 space-y-2">
+          <p className="font-bold text-sm">Erreur lors de la récupération des données analytics.</p>
+          <p className="text-xs">{error.message}</p>
+        </div>
+      ) : (
+        <>
+          {/* ── AXE 2 : Section Hero KPIs (4 Cartes prioritaires) ── */}
+          <div id="tour-dashboard-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Chiffre d'Affaires Brut */}
+            <KpiCard
+              title="Chiffre d'Affaires Brut"
+              value={report?.chiffreAffaires ?? 0}
+              isCurrency={true}
+              variationPercent={report?.variationCaPercent ?? 0}
+              compareActive={compare}
+              sparklineData={report?.sparklineCa}
+              subtext={`${report?.nombreVentes ?? 0} vente${(report?.nombreVentes ?? 0) > 1 ? 's' : ''} enregistrée${(report?.nombreVentes ?? 0) > 1 ? 's' : ''}`}
+              icon={<DollarSign className="h-5 w-5 text-emerald-600" />}
+              variant="emerald"
+            />
 
-          {/* Résumé de la période */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <SummaryStat label="Chiffre d'affaires" value={formatFCFA(totalCa)} color={CA_COLOR} />
-            <SummaryStat label="Dépenses" value={formatFCFA(totalDep)} color={DEP_COLOR} />
-            <SummaryStat
-              label="Résultat net"
-              value={formatFCFA(net)}
-              color={net >= 0 ? CA_COLOR : DEP_COLOR}
+            {/* 2. Marge Brute Estimée */}
+            <KpiCard
+              title="Marge Brute Estimée"
+              value={report?.benefice ?? 0}
+              isCurrency={true}
+              variationPercent={report?.variationBeneficePercent ?? 0}
+              compareActive={compare}
+              sparklineData={report?.sparklineBenefice}
+              subtext="Marge réelle nette calculée"
+              icon={<TrendingUp className="h-5 w-5 text-amber-600" />}
+              variant="amber"
+              sensitive={!canSeeProfit}
+            />
+
+            {/* 3. Panier Moyen */}
+            <KpiCard
+              title="Panier Moyen"
+              value={report?.panierMoyen ?? 0}
+              isCurrency={true}
+              variationPercent={report?.variationPanierMoyenPercent ?? 0}
+              compareActive={compare}
+              sparklineData={report?.sparklinePanierMoyen}
+              subtext={`${report?.articlesVendus ?? 0} article${(report?.articlesVendus ?? 0) > 1 ? 's' : ''} écoulé${(report?.articlesVendus ?? 0) > 1 ? 's' : ''}`}
+              icon={<ShoppingBag className="h-5 w-5 text-blue-600" />}
+              variant="indigo"
+            />
+
+            {/* 4. Crédits Clients en Encours */}
+            <KpiCard
+              title="Crédits Clients Encours"
+              value={report?.creditsEncours ?? 0}
+              isCurrency={true}
+              variationPercent={report?.variationCreditsPercent ?? 0}
+              compareActive={compare}
+              subtext={`${report?.alertes?.clientsEnDetteCount ?? 0} client${(report?.alertes?.clientsEnDetteCount ?? 0) > 1 ? 's' : ''} avec créances`}
+              icon={<CreditCard className="h-5 w-5 text-rose-600" />}
+              variant="rose"
             />
           </div>
 
-          <div className="mt-6 h-72 w-full">
-            {serie.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-text-secondary">
-                Pas encore de données sur cette période.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={serie} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="caGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={CA_COLOR} stopOpacity={0.35} />
-                      <stop offset="95%" stopColor={CA_COLOR} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={fmtDay}
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-                    interval="preserveStartEnd"
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    tickFormatter={fmtK}
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-                    width={44}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="ca"
-                    name="Chiffre d'affaires"
-                    stroke={CA_COLOR}
-                    strokeWidth={2.5}
-                    fill="url(#caGrad)"
-                  />
-                  <Bar dataKey="depenses" name="Dépenses" fill={DEP_COLOR} radius={[3, 3, 0, 0]} maxBarSize={22} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          {/* ── AXE 4 : Actions Rapides ── */}
+          <QuickActionsBar
+            onOpenExpenseModal={() => setExpenseModalOpen(true)}
+            onOpenCloseSessionModal={() => router.push('/pos')}
+            onPrintZReport={() => router.push('/tresorerie')}
+          />
 
-          {/* Légende */}
-          <div className="mt-4 flex items-center justify-center gap-6 border-t border-border pt-4 text-xs font-medium text-text-secondary">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: CA_COLOR }} /> Chiffre
-              d'affaires
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: DEP_COLOR }} /> Dépenses
-            </span>
-          </div>
-        </Card>
-      </div>
+          {/* ── AXE 3 : Visualisation de Données (Data Viz) ── */}
+          <div id="tour-dashboard-charts" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Graphique Hybride Ventes vs Marge (2 colonnes) */}
+            <div className="lg:col-span-2">
+              <HybridSalesChart data={report?.serie ?? []} canSeeProfit={canSeeProfit} />
+            </div>
 
-      {/* Vue consolidée : ventes & dépenses par établissement (vue « Tous ») */}
-      {isGlobalView && (report?.parEtablissement?.length ?? 0) > 0 && (
-        <div className="mt-8">
-          <Card className="p-6">
+            {/* Répartition des Règlements (Donut Chart - 1 colonne) */}
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary/70">
-                Vue consolidée
-              </span>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Store className="h-5 w-5 text-primary" /> Ventes &amp; dépenses par établissement
-              </CardTitle>
+              <PaymentDonutChart data={report?.parPaiement ?? []} />
+            </div>
+          </div>
+
+          {/* Deuxième rangée DataViz & Ergonomie */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Classement Top 5 Produits (1 colonne) */}
+            <div>
+              <TopProductsList products={report?.topProduits ?? []} />
             </div>
 
-            <div className="mt-6 h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={report!.parEtablissement}
-                  margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis
-                    dataKey="nom"
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-                    interval={0}
-                  />
-                  <YAxis
-                    tickFormatter={fmtK}
-                    tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-                    width={44}
-                  />
-                  <Tooltip content={<EtabTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="ventes" name="Ventes" fill={CA_COLOR} radius={[3, 3, 0, 0]} maxBarSize={44} />
-                  <Bar dataKey="depenses" name="Dépenses" fill={DEP_COLOR} radius={[3, 3, 0, 0]} maxBarSize={44} />
-                </BarChart>
-              </ResponsiveContainer>
+            {/* Trésorerie & Soldes des caisses (2 colonnes) */}
+            <div className="lg:col-span-2">
+              <TreasuryWidget balances={report?.soldesTresorerie} />
             </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border text-left text-text-secondary">
-                  <tr>
-                    <th className="py-2 pr-4 font-medium">Établissement</th>
-                    <th className="px-4 py-2 text-right font-medium">Ventes</th>
-                    <th className="px-4 py-2 text-right font-medium">Dépenses</th>
-                    <th className="py-2 pl-4 text-right font-medium">Net</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report!.parEtablissement!.map((e) => (
-                    <tr key={e.etablissementId} className="border-b border-border/50 last:border-0">
-                      <td className="py-2 pr-4 font-medium text-text-primary">{e.nom}</td>
-                      <td className="tabular px-4 py-2 text-right" style={{ color: CA_COLOR }}>
-                        {formatFCFA(e.ventes)}
-                      </td>
-                      <td className="tabular px-4 py-2 text-right" style={{ color: DEP_COLOR }}>
-                        {formatFCFA(e.depenses)}
-                      </td>
-                      <td className="tabular py-2 pl-4 text-right font-semibold text-text-primary">
-                        {formatFCFA(e.ventes - e.depenses)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
+          </div>
+        </>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardTitle>
-            <span className="inline-flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning" /> Ruptures proches
-            </span>
-          </CardTitle>
-          <AlertList items={data.alertes.ruptures} emptyLabel="Aucune rupture imminente." />
-        </Card>
-        <Card>
-          <CardTitle>Produits dormants</CardTitle>
-          <AlertList items={data.alertes.dormants} emptyLabel="Aucun produit dormant." />
-        </Card>
-      </div>
+      {/* Modal d'enregistrement Rapide de Dépense */}
+      {expenseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-rose-600" />
+                <span>Enregistrer une Dépense</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setExpenseModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveExpense} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Montant de la dépense (FCFA)
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  placeholder="Ex: 5000"
+                  value={expenseMontant}
+                  onChange={(e) => setExpenseMontant(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Motif / Description de la dépense
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="Ex: Achat de fourniture de caisse, transport..."
+                  value={expenseMotif}
+                  onChange={(e) => setExpenseMotif(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setExpenseModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={expenseSubmitting}
+                  className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {expenseSubmitting ? 'Enregistrement...' : 'Valider la Dépense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}
-
-function SummaryStat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
-      <p className="text-[11px] font-medium text-text-secondary">{label}</p>
-      <p className="tabular mt-0.5 text-base font-bold" style={{ color }}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-interface TooltipLike {
-  active?: boolean;
-  label?: string | number;
-  payload?: { dataKey?: string | number; value?: number }[];
-}
-
-function ChartTooltip({ active, payload, label }: TooltipLike) {
-  if (!active || !payload || payload.length === 0) return null;
-  const ca = Number(payload.find((p) => p.dataKey === 'ca')?.value ?? 0);
-  const dep = Number(payload.find((p) => p.dataKey === 'depenses')?.value ?? 0);
-  return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg">
-      <p className="mb-1 font-semibold text-text-primary">
-        {new Date(String(label)).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
-      </p>
-      <p className="flex items-center justify-between gap-4" style={{ color: CA_COLOR }}>
-        <span>Chiffre d'affaires</span>
-        <span className="tabular font-semibold">{formatFCFA(ca)}</span>
-      </p>
-      <p className="flex items-center justify-between gap-4" style={{ color: DEP_COLOR }}>
-        <span>Dépenses</span>
-        <span className="tabular font-semibold">{formatFCFA(dep)}</span>
-      </p>
-      <p className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-1 text-text-primary">
-        <span className="inline-flex items-center gap-1">
-          {ca - dep >= 0 ? (
-            <TrendingUp className="h-3 w-3 text-emerald-500" />
-          ) : (
-            <TrendingDown className="h-3 w-3 text-red-500" />
-          )}
-          Net
-        </span>
-        <span className="tabular font-bold">{formatFCFA(ca - dep)}</span>
-      </p>
-    </div>
-  );
-}
-
-interface EtabTooltipProps {
-  active?: boolean;
-  label?: string | number;
-  payload?: { name?: string; dataKey?: string | number; value?: number }[];
-}
-
-function EtabTooltip({ active, payload, label }: EtabTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
-  const ventes = Number(payload.find((p) => p.dataKey === 'ventes')?.value ?? 0);
-  const dep = Number(payload.find((p) => p.dataKey === 'depenses')?.value ?? 0);
-  return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-lg">
-      <p className="mb-1 font-semibold text-text-primary">{String(label)}</p>
-      <p className="flex items-center justify-between gap-4" style={{ color: CA_COLOR }}>
-        <span>Ventes</span>
-        <span className="tabular font-semibold">{formatFCFA(ventes)}</span>
-      </p>
-      <p className="flex items-center justify-between gap-4" style={{ color: DEP_COLOR }}>
-        <span>Dépenses</span>
-        <span className="tabular font-semibold">{formatFCFA(dep)}</span>
-      </p>
-      <p className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-1 text-text-primary">
-        <span>Net</span>
-        <span className="tabular font-bold">{formatFCFA(ventes - dep)}</span>
-      </p>
-    </div>
-  );
-}
-
-function AlertList({
-  items,
-  emptyLabel,
-}: {
-  items: { id: string; nom: string; stock: number }[];
-  emptyLabel: string;
-}) {
-  if (items.length === 0) return <p className="mt-3 text-sm text-text-secondary">{emptyLabel}</p>;
-  return (
-    <ul className="mt-3 space-y-2">
-      {items.map((it) => (
-        <li key={it.id} className="flex items-center justify-between text-sm">
-          <span className="text-text-primary">{it.nom}</span>
-          <Badge tone={it.stock <= 0 ? 'danger' : 'warning'}>{formatQty(it.stock)} en stock</Badge>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{message}</div>
   );
 }

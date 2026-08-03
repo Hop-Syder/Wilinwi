@@ -40,7 +40,7 @@ export function StatCard({ label, value, hint, icon, accent = 'brand', className
   return (
     <div 
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border/50 bg-white/60 p-6 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900/60",
+        "group relative overflow-hidden rounded-xl border border-border/50 bg-white/60 p-5 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900/60",
         className
       )}
     >
@@ -52,17 +52,17 @@ export function StatCard({ label, value, hint, icon, accent = 'brand', className
         )} 
       />
       
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold tracking-wide text-text-secondary">{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs sm:text-sm font-semibold tracking-wide text-text-secondary truncate">{label}</p>
         {icon && (
-          <div className={cn('flex h-10 w-10 items-center justify-center rounded-full', iconColors[accent])} aria-hidden>
+          <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', iconColors[accent])} aria-hidden>
             {icon}
           </div>
         )}
       </div>
       
-      <div className="mt-4 flex items-baseline gap-2">
-        <p className="tabular text-3xl font-bold tracking-tight text-text-primary">{value}</p>
+      <div className="mt-3 flex items-baseline gap-2 overflow-hidden">
+        <p className="tabular text-lg sm:text-xl xl:text-2xl font-bold tracking-tight text-text-primary whitespace-nowrap">{value}</p>
       </div>
       
       {hint && (

@@ -87,6 +87,28 @@ export function endOfCalendarDayInTz(dateStr: string, timezone?: string | null):
   return new Date(start.getTime() + 86_400_000 - 1);
 }
 
+/** Date calendaire locale d'un instant, au format stable YYYY-MM-DD. */
+export function calendarDateInTz(date: Date, timezone?: string | null): string {
+  const format = (tz: string) => {
+    const parts: Record<string, string> = {};
+    for (const part of new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date)) {
+      parts[part.type] = part.value;
+    }
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+
+  try {
+    return format(timezone || DEFAULT_TIMEZONE);
+  } catch {
+    return format(DEFAULT_TIMEZONE);
+  }
+}
+
 /** Décale une date de `n` jours (pas exacts de 24 h — les fuseaux FCFA n'ont pas d'heure d'été). */
 export function addDays(date: Date, n: number): Date {
   return new Date(date.getTime() + n * 86_400_000);

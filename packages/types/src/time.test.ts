@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  calendarDateInTz,
   endOfCalendarDayInTz,
   startOfCalendarDayInTz,
   startOfDayInTz,
@@ -61,6 +62,14 @@ describe('startOfCalendarDayInTz / endOfCalendarDayInTz', () => {
     expect(endOfCalendarDayInTz('2026-07-01', 'Africa/Porto-Novo').toISOString()).toBe(
       '2026-07-01T22:59:59.999Z',
     );
+  });
+});
+
+describe('calendarDateInTz', () => {
+  it('attribue une vente à la journée locale de la boutique, pas à la date UTC', () => {
+    const instant = new Date('2026-07-04T23:30:00Z');
+    expect(calendarDateInTz(instant, 'Africa/Porto-Novo')).toBe('2026-07-05');
+    expect(calendarDateInTz(instant, 'UTC')).toBe('2026-07-04');
   });
 });
 

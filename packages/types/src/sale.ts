@@ -31,6 +31,20 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   INSTALLMENT: 'Acompte',
 };
 
+/** Opérateurs Mobile Money régionaux (§Module 4). */
+export const MOMO_OPERATORS = ['MTN', 'MOOV', 'WAVE', 'ORANGE', 'CELTIIS', 'AUTRE'] as const;
+export type MomoOperator = (typeof MOMO_OPERATORS)[number];
+export const MomoOperatorSchema = z.enum(MOMO_OPERATORS);
+
+export const MOMO_OPERATOR_LABELS: Record<MomoOperator, string> = {
+  MTN: 'MTN Mobile Money',
+  MOOV: 'Moov Money',
+  WAVE: 'Wave',
+  ORANGE: 'Orange Money',
+  CELTIIS: 'Celtiis Cash',
+  AUTRE: 'Autre opérateur',
+};
+
 /** Statut d'un acompte / d'une vente à crédit (§5.3). */
 export const INSTALLMENT_STATUSES = ['PENDING', 'PARTIAL', 'SETTLED', 'OVERDUE'] as const;
 export type InstallmentStatus = (typeof INSTALLMENT_STATUSES)[number];
@@ -63,6 +77,10 @@ export const CreateSaleSchema = z
     montantVerse: MoneySchema.optional(),
     /** Paiement mixte : part payée en ESPÈCES (le reste via paymentMethod). */
     montantEspeces: MoneySchema.optional(),
+    /** Opérateur Mobile Money sélectionné (Module 4). */
+    momoOperator: MomoOperatorSchema.optional(),
+    /** Identifiant / Référence de transaction déclarée par le caissier. */
+    momoReference: z.string().max(100).optional(),
     clientId: IdSchema.optional(),
     /** Identifiant local pour l'idempotence de la synchronisation offline. */
     clientGeneratedId: z.string().min(1).optional(),
@@ -77,6 +95,14 @@ export const CreateSaleSchema = z
   .refine((s) => s.paymentMethod !== 'INSTALLMENT' || s.montantVerse !== undefined, {
     message: 'montantVerse est requis pour un paiement par acompte',
     path: ['montantVerse'],
+  })
+  .refine((s) => s.paymentMethod !== 'MOBILE_MONEY' || s.momoOperator !== undefined, {
+    message: 'momoOperator est requis pour un paiement Mobile Money',
+    path: ['momoOperator'],
+  })
+  .refine((s) => s.paymentMethod === 'MOBILE_MONEY' || (s.momoOperator === undefined && s.momoReference === undefined), {
+    message: 'Les métadonnées Mobile Money ne sont autorisées que pour un paiement Mobile Money',
+    path: ['momoOperator'],
   });
 export type CreateSaleInput = z.infer<typeof CreateSaleSchema>;
 

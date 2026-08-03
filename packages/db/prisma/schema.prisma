@@ -663,6 +663,10 @@ model Sale {
   montantVerse     Int           @default(0) @map("montant_verse")
   /// Part payée en ESPÈCES dans un paiement mixte (le reste via paymentMethod).
   montantEspeces   Int           @default(0) @map("montant_especes")
+  /// Opérateur Mobile Money déclaré (MTN, Moov, Wave, Orange, Celtiis, Autre).
+  momoOperator     String?       @map("momo_operator")
+  /// Référence de transaction déclarée par le caissier.
+  momoReference    String?       @map("momo_reference")
   /// Identifiant généré côté client pour l'idempotence de la sync offline.
   clientGeneratedId String?      @map("client_generated_id")
   /// Code court opaque du reçu public (QR → page wilinwi.com/r/<code>).
@@ -819,6 +823,8 @@ model CashMovement {
   source    CashMovementSource
   categorie String? // pour EXPENSE : loyer/électricité/salaire/réappro/autre
   note      String?
+  momoOperator String?         @map("momo_operator")
+  momoReference String?        @map("momo_reference")
   saleId    String?            @map("sale_id") @db.Uuid
   createdBy String             @map("created_by") @db.Uuid
   createdAt DateTime           @default(now()) @map("created_at")

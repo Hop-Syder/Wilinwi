@@ -10,6 +10,11 @@
 
 import { Module } from '@nestjs/common';
 import { PlansController } from './plans.controller';
+import { SubscriptionCronService } from './subscription-cron.service';
 
-@Module({ controllers: [PlansController] })
+@Module({
+  controllers: [PlansController],
+  providers: [SubscriptionCronService],
+  exports: [SubscriptionCronService],
+})
 export class PlansModule {}

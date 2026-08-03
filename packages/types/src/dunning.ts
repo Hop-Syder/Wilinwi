@@ -18,8 +18,8 @@ export const SUBSCRIPTION_STATUSES = ['ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELL
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 export const SubscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
 
-/** Seuils (en jours) de la relance progressive. */
-export const DUNNING_DAYS = { restricted: 3, downgraded: 7, blocked: 30 } as const;
+/** Seuils (en jours) de la relance progressive (Module 3). */
+export const DUNNING_DAYS = { warning: 0, grace: 3, restricted: 3, readOnly: 3, downgraded: 7, blocked: 30 } as const;
 
 /**
  * Catalogue bridé aux N articles les plus anciens lors de la rétrogradation
@@ -31,12 +31,13 @@ export const DOWNGRADE_MAX_PRODUCTS = 50;
 /**
  * Étapes du cycle d'impayé :
  * - `ACTIVE`      : à jour (aucun impayé).
- * - `WARNING`     : J+0 → bannière non bloquante (admin uniquement).
- * - `RESTRICTED`  : J+3 → suspension du non-vital (rapports avancés, exports).
+ * - `WARNING`     : J+0 → alerte système & notification in-app.
+ * - `RESTRICTED`  : J+1 à J+3 → période de grâce bridée aux quotas du plan gratuit.
+ * - `READ_ONLY`   : J+3+ → basculement en Lecture Seule (mutations bloquées).
  * - `DOWNGRADED`  : J+7 → rétrogradation Starter (non bloquante).
  * - `BLOCKED`     : J+30 → écran de régularisation bloquant (dernier recours).
  */
-export const DUNNING_STAGES = ['ACTIVE', 'WARNING', 'RESTRICTED', 'DOWNGRADED', 'BLOCKED'] as const;
+export const DUNNING_STAGES = ['ACTIVE', 'WARNING', 'RESTRICTED', 'READ_ONLY', 'DOWNGRADED', 'BLOCKED'] as const;
 export type DunningStage = (typeof DUNNING_STAGES)[number];
 
 export const DunningStateSchema = z.object({
@@ -45,6 +46,8 @@ export const DunningStateSchema = z.object({
   daysOverdue: z.number().int().nullable(),
   /** Suspendre le non-vital (rapports avancés, exports) — à partir de J+3. */
   suspendNonVital: z.boolean(),
+  /** Mode Lecture Seule (bloque toute création/modification) — à partir de J+3. */
+  isReadOnly: z.boolean(),
   /** Rétrograder l'accès au niveau Starter — à partir de J+7. */
   downgraded: z.boolean(),
   /** Bloquer l'accès (écran de régularisation) — à partir de J+30. */
@@ -56,6 +59,7 @@ export const ACTIVE_DUNNING: DunningState = {
   stage: 'ACTIVE',
   daysOverdue: null,
   suspendNonVital: false,
+  isReadOnly: false,
   downgraded: false,
   posBlocked: false,
 };
@@ -77,26 +81,28 @@ export function computeDunning(
   const daysOverdue = Math.max(0, Math.floor((now.getTime() - since.getTime()) / DAY_MS));
 
   if (daysOverdue >= DUNNING_DAYS.blocked) {
-    return { stage: 'BLOCKED', daysOverdue, suspendNonVital: true, downgraded: true, posBlocked: true };
+    return { stage: 'BLOCKED', daysOverdue, suspendNonVital: true, isReadOnly: true, downgraded: true, posBlocked: true };
   }
   if (daysOverdue >= DUNNING_DAYS.downgraded) {
-    return { stage: 'DOWNGRADED', daysOverdue, suspendNonVital: true, downgraded: true, posBlocked: false };
+    return { stage: 'DOWNGRADED', daysOverdue, suspendNonVital: true, isReadOnly: true, downgraded: true, posBlocked: false };
   }
-  if (daysOverdue >= DUNNING_DAYS.restricted) {
-    return { stage: 'RESTRICTED', daysOverdue, suspendNonVital: true, downgraded: false, posBlocked: false };
+  if (daysOverdue >= DUNNING_DAYS.readOnly) {
+    return { stage: 'READ_ONLY', daysOverdue, suspendNonVital: true, isReadOnly: true, downgraded: false, posBlocked: false };
   }
-  return { stage: 'WARNING', daysOverdue, suspendNonVital: false, downgraded: false, posBlocked: false };
+  return { stage: 'WARNING', daysOverdue, suspendNonVital: false, isReadOnly: false, downgraded: false, posBlocked: false };
 }
 
 /** Message court (FR) destiné à la bannière d'avertissement (admin). */
 export function dunningMessage(state: DunningState): string {
   switch (state.stage) {
     case 'WARNING':
-      return 'Votre abonnement est impayé. Régularisez pour éviter toute restriction.';
+      return 'Votre abonnement est arrivé à échéance. Régularisez pour éviter l\'interruption des services.';
     case 'RESTRICTED':
-      return `Impayé depuis ${state.daysOverdue} jours : rapports avancés et exports suspendus. La caisse reste active.`;
+      return `Période de grâce (${state.daysOverdue}/3 jours) : votre compte basculera en lecture seule sous peu.`;
+    case 'READ_ONLY':
+      return `Période de grâce expirée (${state.daysOverdue} jours) : votre boutique est en Lecture Seule. Régularisez pour réactiver l'encaissement et l'édition.`;
     case 'DOWNGRADED':
-      return `Impayé depuis ${state.daysOverdue} jours : compte rétrogradé au plan Starter. Régularisez pour tout restaurer.`;
+      return `Impayé depuis ${state.daysOverdue} jours : compte rétrogradé au plan Starter en Lecture Seule.`;
     case 'BLOCKED':
       return `Impayé depuis ${state.daysOverdue} jours : accès suspendu. Régularisez votre abonnement pour réactiver Wilinwi.`;
     default:

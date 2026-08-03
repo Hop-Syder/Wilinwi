@@ -259,6 +259,8 @@ export class SalesService {
           montantVerse: input.paymentMethod === 'INSTALLMENT' ? intendedAcompte : 0,
           // Part espèces d'un paiement mixte (ventilée en trésorerie à la finalisation).
           montantEspeces: input.montantEspeces ?? 0,
+          momoOperator: input.momoOperator ?? null,
+          momoReference: input.momoReference ?? null,
           clientGeneratedId: input.clientGeneratedId ?? null,
           tableId: input.tableId ?? null,
           aLivrer: input.aLivrer ?? false,
@@ -523,6 +525,8 @@ export class SalesService {
             compte,
             montant: reste,
             source: 'SALE',
+            momoOperator: sale.momoOperator,
+            momoReference: sale.momoReference,
             saleId,
             createdBy: ctx.userId,
           },

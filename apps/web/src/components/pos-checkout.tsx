@@ -11,9 +11,10 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '@wilinwi/ui';
-import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
+import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS, MomoOperator, MOMO_OPERATORS, MOMO_OPERATOR_LABELS } from '@wilinwi/types';
 import { CheckCircle2, Receipt, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useCurrency } from '@/lib/currency-context';
 
 export interface CheckoutResult {
   paymentMethod: PaymentMethod;
@@ -21,6 +22,8 @@ export interface CheckoutResult {
   montantVerse?: number;
   /** Paiement mixte : part payée en espèces (le reste via paymentMethod). */
   montantEspeces?: number;
+  momoOperator?: MomoOperator;
+  momoReference?: string;
   clientNom?: string;
   clientTelephone?: string;
   aLivrer?: boolean;
@@ -38,12 +41,17 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, onConfirm }: CheckoutModalProps) {
+  const { currency, formatAmount } = useCurrency();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [clientId, setClientId] = useState<string>('');
   const [montantVerse, setMontantVerse] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
   // Paiement mixte : part en espèces (le reste via le mode sélectionné).
   const [montantEspeces, setMontantEspeces] = useState<string>('');
+
+  // Mobile Money Déclaratif (Module 4)
+  const [momoOperator, setMomoOperator] = useState<MomoOperator>('MTN');
+  const [momoReference, setMomoReference] = useState<string>('');
 
   // État Client
   const [associateClient, setAssociateClient] = useState(false);
@@ -64,6 +72,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       setMontantVerse('');
       setCashReceived('');
       setMontantEspeces('');
+      setMomoOperator('MTN');
+      setMomoReference('');
       setAssociateClient(false);
       setClientType('existing');
       setClientNom('');
@@ -121,6 +131,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       clientId: (associateClient && clientType === 'existing') ? (clientId || undefined) : undefined,
       montantVerse: paymentMethod === 'INSTALLMENT' ? Number(montantVerse) : undefined,
       montantEspeces: isMixteEligible && Number(montantEspeces) > 0 ? Number(montantEspeces) : undefined,
+      momoOperator: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
+      momoReference: paymentMethod === 'MOBILE_MONEY' && momoReference.trim() ? momoReference.trim() : undefined,
       clientNom: (associateClient && clientType === 'new') ? clientNom : undefined,
       clientTelephone: (associateClient && clientType === 'new') ? clientTelephone : undefined,
       aLivrer,
@@ -152,6 +164,11 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
         <div className="mb-6 rounded-lg bg-slate-50 p-4 text-center">
           <span className="block text-sm text-slate-500 mb-1">Total à payer</span>
           <span className="text-3xl font-black text-brand">{cartTotal.toLocaleString()} F</span>
+          {currency !== 'XOF' && currency !== 'XAF' && (
+            <span className="block text-xs font-semibold text-emerald-600 mt-1">
+              Équivalent : {formatAmount(cartTotal)}
+            </span>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -191,6 +208,42 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
                   </span>
                 </div>
               )}
+            </div>
+          )}
+
+          {paymentMethod === 'MOBILE_MONEY' && (
+            <div className="space-y-3 pt-2 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Opérateur Mobile Money *
+                </label>
+                <Select
+                  value={momoOperator}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setMomoOperator(e.target.value as MomoOperator)
+                  }
+                >
+                  {MOMO_OPERATORS.map((op) => (
+                    <option key={op} value={op}>
+                      {MOMO_OPERATOR_LABELS[op]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Référence de Transaction (ID SMS / Déclaré)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Ex: TXN-984210 ou Réf SMS"
+                  value={momoReference}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMomoReference(e.target.value)}
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Vérifiez la réception sur votre téléphone de caisse avant de valider.
+                </p>
+              </div>
             </div>
           )}
 

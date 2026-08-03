@@ -11,7 +11,7 @@
 
 import { Controller, Get, Module, Query } from '@nestjs/common';
 import type { AuthContext } from '@wilinwi/types';
-import { CurrentUser, NonVital, RequireCapabilities } from '../common/decorators';
+import { CurrentUser, RequireCapabilities } from '../common/decorators';
 import { AnalyticsService } from './analytics.service';
 
 @Controller('analytics')
@@ -26,10 +26,14 @@ class AnalyticsController {
 
   /** Rapport historique sur une période (KPIs, tendance, top produits, paiements). */
   @RequireCapabilities('reports:read')
-  @NonVital() // suspendu dès l'impayé J+3 (le dashboard de base reste vital)
   @Get('report')
-  report(@CurrentUser() user: AuthContext, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.analytics.report(user, from, to);
+  report(
+    @CurrentUser() user: AuthContext,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('compare') compare?: string,
+  ) {
+    return this.analytics.report(user, from, to, compare !== 'false');
   }
 }
 

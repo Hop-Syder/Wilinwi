@@ -18,6 +18,8 @@ export interface ReceiptSale {
   total: number;
   montantVerse: number;
   paymentMethod: PaymentMethod;
+  momoOperator?: string | null;
+  momoReference?: string | null;
   createdAt: string;
   /** Code du reçu public → QR vers la page Wilinwi /r/<code>. */
   receiptCode?: string | null;
@@ -37,6 +39,9 @@ function receiptText(sale: ReceiptSale): string {
   const lignes = sale.items
     .map((it) => `${it.quantite}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(it.prixReel * it.quantite)}`)
     .join('\n');
+  const detailsMoMo = sale.paymentMethod === 'MOBILE_MONEY' && sale.momoOperator
+    ? ` (${sale.momoOperator}${sale.momoReference ? ` - Réf: ${sale.momoReference}` : ''})`
+    : '';
   return [
     '🧾 Reçu Wilinwi',
     `N° ${sale.id.slice(0, 8).toUpperCase()}`,
@@ -45,7 +50,7 @@ function receiptText(sale: ReceiptSale): string {
     lignes,
     '',
     `TOTAL : ${formatFCFA(sale.total)}`,
-    `Payé : ${formatFCFA(sale.montantVerse)} (${PAYMENT_METHOD_LABELS[sale.paymentMethod]})`,
+    `Payé : ${formatFCFA(sale.montantVerse)} (${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${detailsMoMo})`,
     'Merci de votre achat ! — Wilinwi',
   ].join('\n');
 }
@@ -64,8 +69,9 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
       <style>{`@media print {
         body * { visibility: hidden !important; }
         #receipt-print, #receipt-print * { visibility: visible !important; }
-        #receipt-print { position: absolute; left: 0; top: 0; width: 80mm; padding: 4mm; box-shadow: none !important; }
+        #receipt-print { position: absolute; left: 0; top: 0; width: 80mm; padding: 4mm; box-shadow: none !important; margin: 0; }
         .no-print { display: none !important; }
+        @page { size: auto; margin: 0mm; }
       }`}</style>
 
       <div
@@ -116,6 +122,11 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
             <span>Payé ({PAYMENT_METHOD_LABELS[sale.paymentMethod]})</span>
             <span className="tabular">{formatFCFA(sale.montantVerse)}</span>
           </div>
+          {sale.paymentMethod === 'MOBILE_MONEY' && sale.momoOperator && (
+            <div className="text-[11px] text-slate-600 mt-0.5">
+              Opérateur : {sale.momoOperator} {sale.momoReference ? `(Réf: ${sale.momoReference})` : ''}
+            </div>
+          )}
           {reste > 0 && (
             <div className="flex justify-between text-red-600">
               <span>Reste dû</span>

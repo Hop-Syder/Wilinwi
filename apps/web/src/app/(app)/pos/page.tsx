@@ -36,6 +36,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useInfraCapabilities } from '@/lib/use-infra-capabilities';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
 import { SyncStatusDrawer } from '@/components/sync-status-drawer';
+import { CurrencySelector } from '@/components/currency-selector';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { RotateCcw, Lock } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -392,6 +393,8 @@ export default function PosPage() {
       paymentMethod: result.paymentMethod,
       montantVerse: result.montantVerse,
       montantEspeces: result.montantEspeces,
+      momoOperator: result.momoOperator,
+      momoReference: result.momoReference,
       clientId: result.clientId,
       clientNom: result.clientNom,
       clientTelephone: result.clientTelephone,
@@ -437,6 +440,8 @@ export default function PosPage() {
         total,
         montantVerse,
         paymentMethod: result.paymentMethod,
+        momoOperator: result.momoOperator,
+        momoReference: result.momoReference,
         createdAt: new Date().toISOString(),
         receiptCode: null,
         items: cart.map((l) => ({
@@ -526,6 +531,7 @@ export default function PosPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-bold text-brand">Caisse</h1>
           <div className="flex flex-wrap items-center gap-2">
+            <CurrencySelector />
             <SyncStatusDrawer
               onRefreshProducts={() => {
                 apiGet<ProductDto[]>('/api/stock/products')

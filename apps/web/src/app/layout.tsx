@@ -13,6 +13,7 @@ import type { Metadata } from 'next';
 import { Inter, Poppins, DM_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import { CurrencyProvider } from '@/lib/currency-context';
 import { ServiceWorkerRegister } from '@/lib/sw-register';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className={`${inter.variable} ${poppins.variable} ${dmMono.variable}`}>
       <body>
         <ServiceWorkerRegister />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <CurrencyProvider>{children}</CurrencyProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

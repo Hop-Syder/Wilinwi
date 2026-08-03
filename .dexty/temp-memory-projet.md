@@ -8,7 +8,7 @@
 - **Nom** : Wilinwi
 - **Type** : SaaS multi-tenant (POS · Stock · Pay · CRM · Analytics)
 - **Initialisé le** : 2026-06-19
-- **Dernière mise à jour** : 2026-06-19
+- **Dernière mise à jour** : 2026-08-03
 
 ## 🛠️ Stack détectée
 

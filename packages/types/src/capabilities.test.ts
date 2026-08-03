@@ -205,7 +205,7 @@ describe('applySaleStockToProducts — lots BATCHED (snapshot FEFO)', () => {
       stockPolicy: 'STRICT' as const,
       stock: 130,
       batches: [
-        { id: 'lotA', expiresAt: new Date('2026-08-01'), quantite: 30 },
+        { id: 'lotA', expiresAt: new Date('2026-10-01'), quantite: 30 },
         { id: 'lotB', expiresAt: new Date('2027-01-01'), quantite: 100 },
       ],
     },
