@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Select } from '@wilinwi/ui';
+import { Button, Input, Select, formatFCFA } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS, MomoOperator, MOMO_OPERATORS, MOMO_OPERATOR_LABELS } from '@wilinwi/types';
 import { CheckCircle2, Receipt, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -192,19 +192,70 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
           </div>
 
           {paymentMethod === 'CASH' && (
-            <div className="pt-2">
-              <label className="block text-sm font-medium mb-1">Espèces reçues (optionnel)</label>
-              <Input
-                type="number"
-                placeholder="Ex: 10000"
-                value={cashReceived}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCashReceived(e.target.value)}
-              />
+            <div className="pt-2 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Espèces reçues
+              </label>
+
+              {/* Boutons de Coupures Rapides FCFA */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCashReceived(String(cartTotal))}
+                  className="rounded-xl border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-xs font-extrabold text-emerald-800 hover:bg-emerald-100 transition-all active:scale-95"
+                >
+                  Compte exact
+                </button>
+                {[1000, 2000, 5000, 10000, 20000].map((note) => (
+                  <button
+                    key={note}
+                    type="button"
+                    onClick={() => {
+                      const current = Number(cashReceived) || 0;
+                      setCashReceived(String(current + note));
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs font-mono font-bold text-slate-800 hover:bg-slate-50 transition-all active:scale-95 shadow-2xs"
+                  >
+                    +{note >= 1000 ? `${note / 1000}k` : note}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="Saisir le montant perçu en FCFA..."
+                  value={cashReceived}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCashReceived(e.target.value)}
+                  className="font-mono text-lg font-bold"
+                />
+                {cashReceived && (
+                  <button
+                    type="button"
+                    onClick={() => setCashReceived('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                  >
+                    Effacer
+                  </button>
+                )}
+              </div>
+
+              {/* Affichage Grand Format de la Monnaie à Rendre */}
               {cashReceived && Number(cashReceived) > 0 && (
-                <div className="mt-2 flex justify-between text-sm">
-                  <span className="text-slate-500">Monnaie à rendre :</span>
-                  <span className={`font-bold ${changeToReturn < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                    {changeToReturn.toLocaleString()} F
+                <div
+                  className={`rounded-2xl p-4 text-center border transition-all ${
+                    changeToReturn < 0
+                      ? 'bg-rose-50 border-rose-200 text-rose-800'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm'
+                  }`}
+                >
+                  <span className="block text-xs font-bold uppercase tracking-wider opacity-75">
+                    {changeToReturn < 0 ? 'Reste à percevoir' : 'Monnaie à rendre'}
+                  </span>
+                  <span className="font-mono text-3xl font-black tracking-tight">
+                    {changeToReturn < 0
+                      ? formatFCFA(Math.abs(changeToReturn))
+                      : formatFCFA(changeToReturn)}
                   </span>
                 </div>
               )}

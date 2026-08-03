@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Button, Input } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
-import type { SupplierDto, ProductDto, EtablissementDto } from '@wilinwi/types';
+import type { SupplierDto, ProductDto } from '@wilinwi/types';
 
 interface PurchaseOrderModalProps {
   etablissements: { id: string; nom: string; type?: string }[];

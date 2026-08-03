@@ -13,6 +13,8 @@
 
 import React, { useState } from 'react';
 import { X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Download, ArrowRight, ArrowLeft } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { formatFCFA } from '@wilinwi/ui';
 import { apiPost } from '@/lib/api';
 
@@ -33,12 +35,11 @@ export interface ParsedRow {
 
 export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [fileContent, setFileContent] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [headers, setHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<string[][]>([]);
 
-  // Mapping des colonnes (index du header CSV pour chaque champ requis)
+  // Mapping des colonnes
   const [mapping, setMapping] = useState<{
     nom: number;
     sku: number;
@@ -77,57 +78,97 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     document.body.removeChild(link);
   };
 
-  // Chargement et analyse du fichier CSV
+  // Traitement des données brutes en-tête + lignes
+  const processParsedSheet = (parsedHeaders: string[], parsedRows: string[][]) => {
+    if (parsedHeaders.length === 0 || parsedRows.length === 0) {
+      setImportError('Le fichier ne contient aucune donnée utilisable.');
+      return;
+    }
+
+    setHeaders(parsedHeaders);
+    setRawRows(parsedRows);
+
+    // Mapping automatique selon les mots-clés d'en-tête
+    const autoMap = {
+      nom: parsedHeaders.findIndex((h) => /nom|designation|product|article/i.test(h)),
+      sku: parsedHeaders.findIndex((h) => /sku|ref|code/i.test(h)),
+      categorie: parsedHeaders.findIndex((h) => /cat/i.test(h)),
+      prixCatalogue: parsedHeaders.findIndex((h) => /prix.*cat|vente|price|prix/i.test(h)),
+      prixAchat: parsedHeaders.findIndex((h) => /achat|cost|cout/i.test(h)),
+      stock: parsedHeaders.findIndex((h) => /stock|qte|quantite/i.test(h)),
+    };
+
+    setMapping({
+      nom: autoMap.nom !== -1 ? autoMap.nom : 0,
+      sku: autoMap.sku !== -1 ? autoMap.sku : 1,
+      categorie: autoMap.categorie !== -1 ? autoMap.categorie : 2,
+      prixCatalogue: autoMap.prixCatalogue !== -1 ? autoMap.prixCatalogue : 3,
+      prixAchat: autoMap.prixAchat !== -1 ? autoMap.prixAchat : 4,
+      stock: autoMap.stock !== -1 ? autoMap.stock : 5,
+    });
+
+    setStep(2);
+  };
+
+  // Chargement et analyse du fichier (.csv ou .xlsx / .xls avec parseurs officiels)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      setFileContent(text);
+    setImportError(null);
 
-      const lines = text
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
 
-      if (lines.length < 2) {
-        setImportError('Le fichier doit contenir au moins un en-tête et une ligne de données.');
-        return;
-      }
+    if (isExcel) {
+      // Lecture avec le parseur officiel XLSX
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const sheetData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
 
-      const delimiter = lines[0]?.includes(';') ? ';' : ',';
-      const parsedHeaders = lines[0]!.split(delimiter).map((h) => h.replace(/^["']|["']$/g, '').trim());
-      const parsedRows = lines.slice(1).map((l) => l.split(delimiter).map((c) => c.replace(/^["']|["']$/g, '').trim()));
+          if (!sheetData || sheetData.length < 2) {
+            setImportError('Le fichier Excel doit contenir au moins un en-tête et des données.');
+            return;
+          }
 
-      setHeaders(parsedHeaders);
-      setRawRows(parsedRows);
+          const parsedHeaders = (sheetData[0] || []).map((h) => String(h || '').trim());
+          const parsedRows = sheetData.slice(1).map((row) => (row || []).map((c) => String(c || '').trim()));
 
-      // Mapping automatique des colonnes selon les noms d'en-têtes
-      const autoMap = {
-        nom: parsedHeaders.findIndex((h) => /nom|designation|product|article/i.test(h)),
-        sku: parsedHeaders.findIndex((h) => /sku|ref|code/i.test(h)),
-        categorie: parsedHeaders.findIndex((h) => /cat/i.test(h)),
-        prixCatalogue: parsedHeaders.findIndex((h) => /prix.*cat|vente|price|prix/i.test(h)),
-        prixAchat: parsedHeaders.findIndex((h) => /achat|cost|cout/i.test(h)),
-        stock: parsedHeaders.findIndex((h) => /stock|qte|quantite/i.test(h)),
+          processParsedSheet(parsedHeaders, parsedRows);
+        } catch (err) {
+          console.error('Erreur lecture Excel:', err);
+          setImportError('Impossible de lire ce fichier Excel (.xlsx). Vérifiez son format.');
+        }
       };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Lecture CSV robuste avec PapaParse
+      Papa.parse<string[]>(file, {
+        complete: (results) => {
+          if (!results.data || results.data.length < 2) {
+            setImportError('Le fichier CSV doit contenir au moins un en-tête et des données.');
+            return;
+          }
 
-      setMapping({
-        nom: autoMap.nom !== -1 ? autoMap.nom : 0,
-        sku: autoMap.sku !== -1 ? autoMap.sku : 1,
-        categorie: autoMap.categorie !== -1 ? autoMap.categorie : 2,
-        prixCatalogue: autoMap.prixCatalogue !== -1 ? autoMap.prixCatalogue : 3,
-        prixAchat: autoMap.prixAchat !== -1 ? autoMap.prixAchat : 4,
-        stock: autoMap.stock !== -1 ? autoMap.stock : 5,
+          const parsedHeaders = (results.data[0] || []).map((h) => String(h || '').trim());
+          const parsedRows = results.data
+            .slice(1)
+            .filter((row) => row.some((cell) => cell.trim().length > 0))
+            .map((row) => row.map((c) => String(c || '').trim()));
+
+          processParsedSheet(parsedHeaders, parsedRows);
+        },
+        error: (error) => {
+          console.error('Erreur parsing CSV:', error);
+          setImportError('Erreur lors de l’analyse du fichier CSV.');
+        },
       });
-
-      setStep(2);
-    };
-
-    reader.readAsText(file);
+    }
   };
 
   // Passage à l'étape 3 : Validation et détection d'anomalies
@@ -135,7 +176,7 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     const seenSkus = new Set<string>();
     const rows: ParsedRow[] = [];
 
-    rawRows.forEach((r, idx) => {
+    rawRows.forEach((r) => {
       const nom = r[mapping.nom]?.trim() || '';
       const sku = r[mapping.sku]?.trim() || '';
       const categorie = r[mapping.categorie]?.trim() || 'Général';
@@ -248,10 +289,10 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
                 <Upload className="mx-auto h-10 w-10 text-slate-400" />
                 <div>
                   <label className="cursor-pointer text-sm font-bold text-emerald-600 hover:underline">
-                    Sélectionner un fichier CSV (.csv)
-                    <input type="file" accept=".csv,text/csv" onChange={handleFileUpload} className="hidden" />
+                    Sélectionner un fichier Excel ou CSV (.xlsx, .xls, .csv)
+                    <input type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleFileUpload} className="hidden" />
                   </label>
-                  <p className="text-xs text-slate-400 mt-1">Fichiers CSV encodés en UTF-8 recommandés</p>
+                  <p className="text-xs text-slate-400 mt-1">Formats supportés : Fichiers Excel (.xlsx, .xls) ou CSV UTF-8</p>
                 </div>
               </div>
             </div>

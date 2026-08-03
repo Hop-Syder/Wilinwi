@@ -15,8 +15,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, ArrowRightLeft, Clock, Package, TrendingUp, DollarSign,
-  Layers, ChevronRight, AlertTriangle, ShieldCheck, Zap, Award
+  ArrowLeft, ArrowRightLeft, Package, Layers
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';

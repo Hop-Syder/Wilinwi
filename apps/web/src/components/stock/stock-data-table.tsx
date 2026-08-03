@@ -15,7 +15,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Package, Edit, ArrowRightLeft, Plus, Minus, ChevronDown, ChevronUp, ExternalLink, Store, Eye, EyeOff
+  Package, Edit, ArrowRightLeft, Plus, Minus, ChevronDown, ChevronUp, ExternalLink, Store
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { formatFCFA, formatQty } from '@wilinwi/ui';

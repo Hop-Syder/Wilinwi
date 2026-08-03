@@ -14,7 +14,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Plus, Package, Search, AlertTriangle, ArrowRightLeft,
+  Plus, Search, AlertTriangle, ArrowRightLeft,
   Warehouse, FileSpreadsheet, Camera
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
@@ -39,7 +39,7 @@ export default function StockPage() {
   const canSeeCost = canWrite;
   const canSeeBreakdown = user?.role === 'OWNER';
 
-  const { data, error, refetch } = useCachedQuery<ProductDto[]>(
+  const { data, refetch } = useCachedQuery<ProductDto[]>(
     'stock/products-global',
     () => apiGet<ProductDto[]>('/api/stock/products?global=true'),
   );
