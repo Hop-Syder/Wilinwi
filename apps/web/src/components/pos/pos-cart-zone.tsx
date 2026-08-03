@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type RefObject } from 'react';
 import {
   ShoppingCart, Trash2, Plus, Minus, UserCheck, AlertTriangle,
   ChevronRight, X, Store, ShoppingBag, Truck
@@ -43,6 +43,7 @@ interface PosCartZoneProps {
   orderMode: OrderMode;
   onOrderModeChange: (mode: OrderMode) => void;
   onCheckout: () => void;
+  clientSearchInputRef?: RefObject<HTMLInputElement | null>;
   disabled?: boolean;
 }
 
@@ -57,6 +58,7 @@ export function PosCartZone({
   orderMode,
   onOrderModeChange,
   onCheckout,
+  clientSearchInputRef,
   disabled,
 }: PosCartZoneProps) {
   const [clientSearch, setClientSearch] = useState('');
@@ -140,6 +142,7 @@ export function PosCartZone({
             <div>
               <div className="relative">
                 <input
+                  ref={clientSearchInputRef}
                   type="text"
                   placeholder="Client (F4) — Nom ou téléphone..."
                   value={clientSearch}

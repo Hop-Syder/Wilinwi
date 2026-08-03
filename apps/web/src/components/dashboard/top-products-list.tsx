@@ -13,8 +13,9 @@
 
 import React from 'react';
 import { Award } from 'lucide-react';
-import { formatFCFA, formatQty } from '@wilinwi/ui';
+import { formatQty } from '@wilinwi/ui';
 import { DashboardEmptyState } from './dashboard-empty-state';
+import { useCurrency } from '@/lib/currency-context';
 
 export interface TopProduct {
   id: string;
@@ -30,6 +31,7 @@ interface TopProductsListProps {
 }
 
 export function TopProductsList({ products }: TopProductsListProps) {
+  const { formatAmount } = useCurrency();
   if (!products || products.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm flex flex-col justify-between h-full">
@@ -84,7 +86,7 @@ export function TopProductsList({ products }: TopProductsListProps) {
                 </div>
 
                 <div className="text-right font-mono shrink-0 pl-2">
-                  <p className="font-bold text-slate-900">{formatFCFA(product.ca)}</p>
+                  <p className="font-bold text-slate-900">{formatAmount(product.ca)}</p>
                   {product.contributionCaPercent !== undefined && (
                     <span className="text-[10px] text-emerald-600 font-bold">
                       {product.contributionCaPercent}% du CA

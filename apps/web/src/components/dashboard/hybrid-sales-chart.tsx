@@ -23,8 +23,8 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { formatFCFA } from '@wilinwi/ui';
 import { DashboardEmptyState } from './dashboard-empty-state';
+import { useCurrency } from '@/lib/currency-context';
 
 export interface SeriePoint {
   date: string;
@@ -48,7 +48,13 @@ const fmtDate = (dStr: string) => {
 const fmtK = (n: number) => (Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
 
 export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChartProps) {
+  const { convertAmount, formatAmount } = useCurrency();
   const hasData = data && data.some((d) => d.ca > 0 || (d.benefice ?? 0) > 0);
+  const convertedData = data.map((point) => ({
+    ...point,
+    ca: convertAmount(point.ca),
+    benefice: point.benefice === undefined ? undefined : convertAmount(point.benefice),
+  }));
 
   if (!hasData) {
     return (
@@ -70,7 +76,7 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
 
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+          <ComposedChart data={convertedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
             <XAxis
               dataKey="date"
@@ -97,12 +103,12 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
                     <div className="space-y-1 pt-1 font-mono">
                       <div className="flex items-center justify-between gap-4 text-emerald-700">
                         <span>Chiffre d'Affaires :</span>
-                        <strong className="font-bold">{formatFCFA(point.ca)}</strong>
+                        <strong className="font-bold">{formatAmount(data.find((item) => item.date === point.date)?.ca ?? 0)}</strong>
                       </div>
                       {canSeeProfit && point.benefice !== undefined && (
                         <div className="flex items-center justify-between gap-4 text-amber-700">
                           <span>Marge Brute :</span>
-                          <strong className="font-bold">{formatFCFA(point.benefice)}</strong>
+                          <strong className="font-bold">{formatAmount(data.find((item) => item.date === point.date)?.benefice ?? 0)}</strong>
                         </div>
                       )}
                       <div className="flex items-center justify-between gap-4 text-slate-600">

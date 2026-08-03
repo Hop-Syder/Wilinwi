@@ -12,7 +12,6 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
   DollarSign,
@@ -38,6 +37,8 @@ import { TopProductsList } from '@/components/dashboard/top-products-list';
 import { TreasuryWidget } from '@/components/dashboard/treasury-widget';
 import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
 import { DashboardSkeletonGrid } from '@/components/dashboard/dashboard-skeletons';
+import { CurrencySelector } from '@/components/currency-selector';
+import { PosCloseSessionModal } from '@/components/pos-close-session-modal';
 
 interface ReportResponse {
   from: string;
@@ -114,7 +115,6 @@ const ymd = (d: Date) => {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const isGlobalView = user?.etablissementId === 'ALL';
   const activeEtablissementName = isGlobalView
     ? 'Tous les établissements'
@@ -135,6 +135,7 @@ export default function DashboardPage() {
   const [expenseMontant, setExpenseMontant] = useState<string>('');
   const [expenseMotif, setExpenseMotif] = useState<string>('');
   const [expenseSubmitting, setExpenseSubmitting] = useState<boolean>(false);
+  const [closeSessionModalOpen, setCloseSessionModalOpen] = useState(false);
 
   // Calcul dynamique des bornes temporelles
   const dateRange = useMemo(() => {
@@ -267,7 +268,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Contrôles dynamiques de la période */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <CurrencySelector />
           <PeriodSelector
             preset={preset}
             compare={compare}
@@ -361,8 +363,8 @@ export default function DashboardPage() {
           {/* ── AXE 4 : Actions Rapides ── */}
           <QuickActionsBar
             onOpenExpenseModal={() => setExpenseModalOpen(true)}
-            onOpenCloseSessionModal={() => router.push('/pos')}
-            onPrintZReport={() => router.push('/tresorerie')}
+            onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
+            onPrintZReport={() => setCloseSessionModalOpen(true)}
           />
 
           {/* ── AXE 3 : Visualisation de Données (Data Viz) ── */}
@@ -460,6 +462,14 @@ export default function DashboardPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {closeSessionModalOpen && (
+        <PosCloseSessionModal
+          isOpen={closeSessionModalOpen}
+          onClose={() => setCloseSessionModalOpen(false)}
+          onSuccess={() => void refetch()}
+        />
       )}
     </div>
   );

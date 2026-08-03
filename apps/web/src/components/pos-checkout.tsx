@@ -37,10 +37,11 @@ interface CheckoutModalProps {
   cartTotal: number;
   clients: ClientDto[];
   livreurs: { id: string; nom: string }[];
+  initialClientId?: string;
   onConfirm: (result: CheckoutResult) => void;
 }
 
-export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, onConfirm }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, initialClientId, onConfirm }: CheckoutModalProps) {
   const { currency, formatAmount } = useCurrency();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [clientId, setClientId] = useState<string>('');
@@ -68,13 +69,13 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
   useEffect(() => {
     if (isOpen) {
       setPaymentMethod('CASH');
-      setClientId('');
+      setClientId(initialClientId ?? '');
       setMontantVerse('');
       setCashReceived('');
       setMontantEspeces('');
       setMomoOperator('MTN');
       setMomoReference('');
-      setAssociateClient(false);
+      setAssociateClient(Boolean(initialClientId));
       setClientType('existing');
       setClientNom('');
       setClientTelephone('');
@@ -89,6 +90,20 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
   const isCreditOrInstallment = paymentMethod === 'CREDIT' || paymentMethod === 'INSTALLMENT';
   // Modes éligibles au paiement mixte (une part en espèces) : Mobile Money / Banque.
   const isMixteEligible = paymentMethod === 'MOBILE_MONEY' || paymentMethod === 'BANK_TRANSFER';
+  const selectedCreditClient = clients.find((client) => client.id === clientId);
+  const currentCreditBalance = selectedCreditClient?.soldeCredit ?? 0;
+  const outstandingCredit = paymentMethod === 'CREDIT'
+    ? cartTotal
+    : paymentMethod === 'INSTALLMENT'
+      ? Math.max(0, cartTotal - (Number(montantVerse) || 0))
+      : 0;
+  const creditLimitExceeded = Boolean(
+    isCreditOrInstallment &&
+      selectedCreditClient &&
+      selectedCreditClient.plafondCredit !== null &&
+      selectedCreditClient.plafondCredit !== undefined &&
+      currentCreditBalance + outstandingCredit > selectedCreditClient.plafondCredit,
+  );
 
   useEffect(() => {
     if (isCreditOrInstallment) {
@@ -113,6 +128,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
       const vers = Number(montantVerse);
       if (vers <= 0 || vers >= cartTotal) return false;
     }
+
+    if (creditLimitExceeded) return false;
 
     if (isMixteEligible) {
       const esp = Number(montantEspeces) || 0;
@@ -382,6 +399,11 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
                         <option key={c.id} value={c.id}>{c.nom} {c.telephone ? `(${c.telephone})` : ''}</option>
                       ))}
                     </Select>
+                    {creditLimitExceeded && selectedCreditClient && (
+                      <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-semibold text-rose-700">
+                        Plafond dépassé : dette projetée {formatFCFA(currentCreditBalance + outstandingCredit)} pour une limite de {formatFCFA(selectedCreditClient.plafondCredit ?? 0)}.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-100">

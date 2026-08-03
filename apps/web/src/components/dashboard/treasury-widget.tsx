@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { Wallet, Smartphone, Landmark, ShieldCheck } from 'lucide-react';
-import { formatFCFA } from '@wilinwi/ui';
+import { useCurrency } from '@/lib/currency-context';
 
 export interface TreasuryBalances {
   fondDeCaisse: number;
@@ -27,6 +27,7 @@ interface TreasuryWidgetProps {
 }
 
 export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
+  const { formatAmount } = useCurrency();
   const fondDeCaisse = balances?.fondDeCaisse ?? 0;
   const mobileMoney = balances?.mobileMoney ?? 0;
   const banque = balances?.banque ?? 0;
@@ -53,7 +54,7 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
             <span>Fond de Caisse (Espèces)</span>
           </div>
           <p className="font-mono text-lg font-extrabold text-slate-900 tabular-nums">
-            {formatFCFA(fondDeCaisse)}
+            {formatAmount(fondDeCaisse)}
           </p>
         </div>
 
@@ -64,7 +65,7 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
             <span>Comptes MoMo Merchant</span>
           </div>
           <p className="font-mono text-lg font-extrabold text-slate-900 tabular-nums">
-            {formatFCFA(mobileMoney)}
+            {formatAmount(mobileMoney)}
           </p>
         </div>
 
@@ -75,7 +76,7 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
             <span>Comptes Bancaires</span>
           </div>
           <p className="font-mono text-lg font-extrabold text-slate-900 tabular-nums">
-            {formatFCFA(banque)}
+            {formatAmount(banque)}
           </p>
         </div>
       </div>
@@ -86,7 +87,7 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
           Disponibilités Totales
         </span>
         <span className="font-mono text-lg font-extrabold text-emerald-400 tabular-nums">
-          {formatFCFA(total)}
+          {formatAmount(total)}
         </span>
       </div>
     </div>

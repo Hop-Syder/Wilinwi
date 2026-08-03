@@ -13,8 +13,8 @@
 
 import React from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
-import { formatFCFA } from '@wilinwi/ui';
 import { DashboardEmptyState } from './dashboard-empty-state';
+import { useCurrency } from '@/lib/currency-context';
 
 export interface PaymentItem {
   methode: string;
@@ -33,11 +33,13 @@ interface PaymentDonutChartProps {
 const DEFAULT_COLORS = ['#00A86B', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6'];
 
 export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
+  const { convertAmount, formatAmount } = useCurrency();
   const totalVentes = data.reduce((sum, item) => sum + item.montant, 0);
   const totalEncaisse = data
     .filter((item) => !item.isCredit)
     .reduce((sum, item) => sum + item.montant, 0);
   const hasData = totalVentes > 0;
+  const convertedData = data.map((item) => ({ ...item, montant: convertAmount(item.montant) }));
 
   if (!hasData) {
     return (
@@ -60,14 +62,14 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Encaissé</span>
           <span className="font-mono text-base font-extrabold text-slate-900">
-            {formatFCFA(totalEncaisse)}
+            {formatAmount(totalEncaisse)}
           </span>
         </div>
 
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={convertedData}
               dataKey="montant"
               nameKey="label"
               cx="50%"
@@ -93,7 +95,7 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
                   <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg text-xs space-y-1">
                     <p className="font-bold text-slate-900">{item.label}</p>
                     <div className="font-mono space-y-0.5">
-                      <p className="text-emerald-600 font-bold">{formatFCFA(item.montant)}</p>
+                      <p className="text-emerald-600 font-bold">{formatAmount(data.find((entry) => entry.methode === item.methode)?.montant ?? 0)}</p>
                       <p className="text-slate-500">{item.pourcentage}% du total ({item.ventes} ventes)</p>
                     </div>
                   </div>
@@ -116,7 +118,7 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
               <span className="text-slate-700 font-semibold">{item.label}</span>
             </div>
             <div className="flex items-center gap-3 font-mono">
-              <span className="text-slate-900 font-bold">{formatFCFA(item.montant)}</span>
+              <span className="text-slate-900 font-bold">{formatAmount(item.montant)}</span>
               <span className="text-slate-600 font-medium text-[11px] w-10 text-right">
                 {item.pourcentage}%
               </span>

@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { formatFCFA } from '@wilinwi/ui';
+import { useCurrency } from '@/lib/currency-context';
 
 interface KpiCardProps {
   title: string;
@@ -40,6 +40,7 @@ export function KpiCard({
   variant = 'emerald',
   sensitive = false,
 }: KpiCardProps) {
+  const { formatAmount } = useCurrency();
   const isPositive = variationPercent > 0;
   const isNegative = variationPercent < 0;
 
@@ -109,7 +110,7 @@ export function KpiCard({
         {/* Valeur Principale Grand Format */}
         <div className="space-y-1">
           <h3 className="font-mono text-2xl font-extrabold tracking-tight text-slate-900 tabular-nums">
-            {sensitive ? '•••••• FCFA' : isCurrency ? formatFCFA(value) : value.toLocaleString('fr-FR')}
+            {sensitive ? '••••••' : isCurrency ? formatAmount(value) : value.toLocaleString('fr-FR')}
           </h3>
 
           {/* Badge de variation relative */}

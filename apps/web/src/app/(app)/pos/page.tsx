@@ -39,6 +39,7 @@ export default function PosPage() {
   
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const clientSearchInputRef = useRef<HTMLInputElement>(null);
 
   // État du Panier & Client
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -69,8 +70,10 @@ export default function PosPage() {
       setProducts(prods);
       setClients(cls);
       setLivreurs(livs);
-    } catch (e) {
-      console.error('Erreur chargement POS:', e);
+      void syncEngine.cacheProducts(prods);
+    } catch {
+      const cachedProducts = await syncEngine.cachedProducts().catch(() => []);
+      setProducts(cachedProducts);
     }
   }, []);
 
@@ -91,7 +94,7 @@ export default function PosPage() {
         searchInputRef.current?.focus();
       } else if (e.key === 'F4') {
         e.preventDefault();
-        // Focus sur la zone client
+        clientSearchInputRef.current?.focus();
       } else if (e.key === 'Escape') {
         if (cart.length > 0) {
           e.preventDefault();
@@ -99,7 +102,11 @@ export default function PosPage() {
             setCart([]);
           }
         }
-      } else if ((e.key === 'Enter' || e.key === ' ') && e.target === document.body) {
+      } else if (e.key === 'Enter' || e.code === 'Space') {
+        const target = e.target;
+        if (target instanceof HTMLElement && target.closest('input, textarea, select, button, [contenteditable="true"]')) {
+          return;
+        }
         if (cart.length > 0 && !isGlobalView) {
           e.preventDefault();
           setShowCheckoutModal(true);
@@ -162,30 +169,45 @@ export default function PosPage() {
     const payload: CreateSaleInput = {
       items: cart.map((line) => ({
         productId: line.product.id,
+        variantId: line.variantId,
+        unitId: line.unitId,
+        unitFactor: line.unitFactor,
         quantite: line.quantite,
         prixReel: line.prixReel,
       })),
       paymentMethod: result.paymentMethod,
+      montantVerse: result.montantVerse,
+      montantEspeces: result.montantEspeces,
       momoOperator: result.momoOperator,
       momoReference: result.momoReference,
-      clientId: selectedClient?.id,
+      clientId: result.clientId ?? selectedClient?.id,
       clientNom: result.clientNom || selectedClient?.nom || undefined,
       clientTelephone: result.clientTelephone || selectedClient?.telephone || undefined,
+      aLivrer: result.aLivrer || orderMode === 'LIVRAISON',
+      livreurId: result.livreurId,
+      adresseLivraison: result.adresseLivraison,
     };
 
     try {
       const pendingSale = await syncEngine.enqueueSale(payload);
       await refreshPending();
 
+      if (state !== 'offline') {
+        await syncEngine.flush();
+        await refreshPending();
+      }
+      const syncedSale = await syncEngine.getSale(pendingSale.id);
+      const syncStatus = syncedSale?.status ?? 'pending';
+
       setLastSale({
         id: pendingSale.id,
         total,
-        montantVerse: result.montantVerse ?? total,
+        montantVerse: result.paymentMethod === 'CREDIT' ? 0 : result.montantVerse ?? total,
         paymentMethod: result.paymentMethod,
         momoOperator: result.momoOperator,
         momoReference: result.momoReference,
         createdAt: new Date().toISOString(),
-        receiptCode: pendingSale.id,
+        receiptCode: syncedSale?.serverId,
         items: cart.map((l) => ({
           id: l.product.id,
           quantite: l.quantite,
@@ -195,12 +217,12 @@ export default function PosPage() {
         client: payload.clientNom ? { nom: payload.clientNom, telephone: payload.clientTelephone } : null,
       });
 
-      setSaleSync({ status: state === 'offline' ? 'pending' : 'synced' });
+      setSaleSync({ status: syncStatus, error: syncedSale?.error });
       setShowSuccessModal(true);
       setCart([]);
       setSelectedClient(null);
     } catch (err) {
-      console.error('Erreur encaissement:', err);
+      setSaleSync({ status: 'error', error: err instanceof Error ? err.message : 'Encaissement impossible' });
     } finally {
       setBusy(false);
     }
@@ -284,6 +306,7 @@ export default function PosPage() {
             orderMode={orderMode}
             onOrderModeChange={setOrderMode}
             onCheckout={() => setShowCheckoutModal(true)}
+            clientSearchInputRef={clientSearchInputRef}
             disabled={isGlobalView || busy}
           />
         </div>
@@ -297,6 +320,7 @@ export default function PosPage() {
           cartTotal={cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0)}
           clients={clients}
           livreurs={livreurs}
+          initialClientId={selectedClient?.id}
           onConfirm={handleConfirmCheckout}
         />
       )}
@@ -313,7 +337,7 @@ export default function PosPage() {
           }}
           syncStatus={saleSync.status}
           syncError={saleSync.error}
-          receiptCode={lastSale?.id}
+          receiptCode={lastSale?.receiptCode}
         />
       )}
 
