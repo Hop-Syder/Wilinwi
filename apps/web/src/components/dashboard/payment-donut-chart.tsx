@@ -43,25 +43,28 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
 
   if (!hasData) {
     return (
-      <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm flex flex-col justify-between h-full">
-        <h3 className="text-base font-bold text-slate-900 mb-4">Répartition des Règlements</h3>
+      <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-[386px]">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
+          <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
+        </div>
         <DashboardEmptyState title="Aucun règlement" description="Les encaissements s'afficheront par mode de paiement." />
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm flex flex-col justify-between h-full space-y-4">
+    <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-[386px]">
       <div>
         <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
-        <p className="text-xs text-slate-600">Ventilation par canaux de paiement</p>
+        <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
       </div>
 
-      <div className="relative h-56 w-full flex items-center justify-center">
+      <div className="relative h-44 w-full flex items-center justify-center my-1">
         {/* Montant total au centre du Donut */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Encaissé</span>
-          <span className="font-mono text-base font-extrabold text-slate-900">
+          <span className="font-mono text-sm font-extrabold text-slate-900">
             {formatAmount(totalEncaisse)}
           </span>
         </div>
@@ -74,8 +77,8 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={62}
-              outerRadius={84}
+              innerRadius={48}
+              outerRadius={68}
               paddingAngle={3}
               cornerRadius={6}
             >
@@ -92,7 +95,7 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
                 if (!active || !payload || !payload.length) return null;
                 const item = payload[0]?.payload as PaymentItem;
                 return (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg text-xs space-y-1">
+                  <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg text-xs space-y-1">
                     <p className="font-bold text-slate-900">{item.label}</p>
                     <div className="font-mono space-y-0.5">
                       <p className="text-emerald-600 font-bold">{formatAmount(data.find((entry) => entry.methode === item.methode)?.montant ?? 0)}</p>
@@ -106,20 +109,20 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
         </ResponsiveContainer>
       </div>
 
-      {/* Légende Explicite */}
-      <div className="space-y-2 pt-2 border-t border-slate-100">
+      {/* Légende Explicite Compacte */}
+      <div className="space-y-1.5 pt-2 border-t border-slate-100 max-h-32 overflow-y-auto scrollbar-none">
         {data.map((item, idx) => (
           <div key={item.methode} className="flex items-center justify-between text-xs font-medium">
             <div className="flex items-center gap-2">
               <span
-                className="h-2.5 w-2.5 rounded-full"
+                className="h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: item.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length] }}
               />
-              <span className="text-slate-700 font-semibold">{item.label}</span>
+              <span className="text-slate-700 font-semibold truncate max-w-[120px]">{item.label}</span>
             </div>
-            <div className="flex items-center gap-3 font-mono">
+            <div className="flex items-center gap-2 font-mono">
               <span className="text-slate-900 font-bold">{formatAmount(item.montant)}</span>
-              <span className="text-slate-600 font-medium text-[11px] w-10 text-right">
+              <span className="text-slate-500 font-medium text-[11px] w-9 text-right">
                 {item.pourcentage}%
               </span>
             </div>
