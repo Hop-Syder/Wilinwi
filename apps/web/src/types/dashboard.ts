@@ -38,6 +38,7 @@ export interface DashboardReportResponse {
   serie: {
     date: string;
     ca: number;
+    caPrev?: number;
     benefice?: number;
     ventes: number;
     depenses: number;

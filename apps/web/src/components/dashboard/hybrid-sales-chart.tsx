@@ -29,6 +29,7 @@ import { useCurrency } from '@/lib/currency-context';
 export interface SeriePoint {
   date: string;
   ca: number;
+  caPrev?: number;
   benefice?: number;
   depenses?: number;
   ventes: number;
@@ -37,6 +38,7 @@ export interface SeriePoint {
 interface HybridSalesChartProps {
   data: SeriePoint[];
   canSeeProfit?: boolean;
+  compareActive?: boolean;
 }
 
 const fmtDate = (dStr: string) => {
@@ -47,12 +49,13 @@ const fmtDate = (dStr: string) => {
 
 const fmtK = (n: number) => (Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
 
-export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChartProps) {
+export function HybridSalesChart({ data, canSeeProfit = true, compareActive = false }: HybridSalesChartProps) {
   const { convertAmount, formatAmount } = useCurrency();
-  const hasData = data && data.some((d) => d.ca > 0 || (d.benefice ?? 0) > 0);
+  const hasData = data && data.some((d) => d.ca > 0 || (d.caPrev ?? 0) > 0 || (d.benefice ?? 0) > 0);
   const convertedData = data.map((point) => ({
     ...point,
     ca: convertAmount(point.ca),
+    caPrev: point.caPrev === undefined ? undefined : convertAmount(point.caPrev),
     benefice: point.benefice === undefined ? undefined : convertAmount(point.benefice),
   }));
 
@@ -70,7 +73,9 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-base font-bold text-slate-900">Évolution Ventes vs Rentabilité</h3>
-          <p className="text-xs text-slate-600">Volume de chiffre d'affaires et marge brute estimée</p>
+          <p className="text-xs text-slate-600">
+            Volume de chiffre d'affaires {compareActive ? '(avec comparaison relative miroir)' : 'et marge brute estimée'}
+          </p>
         </div>
       </div>
 
@@ -95,16 +100,34 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
               content={({ active, payload, label }) => {
                 if (!active || !payload || !payload.length) return null;
                 const point = payload[0]?.payload as SeriePoint;
+                const caActual = data.find((item) => item.date === point.date)?.ca ?? 0;
+                const caPrevious = data.find((item) => item.date === point.date)?.caPrev ?? 0;
+                const diffCa = caActual - caPrevious;
+
                 return (
-                  <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm space-y-1 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm space-y-1.5 text-xs">
                     <p className="font-bold text-slate-900 border-b border-slate-100 pb-1">
                       {new Date(label || Date.now()).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
-                    <div className="space-y-1 pt-1 font-mono">
+                    <div className="space-y-1 font-mono">
                       <div className="flex items-center justify-between gap-4 text-emerald-700">
-                        <span>Chiffre d'Affaires :</span>
-                        <strong className="font-bold">{formatAmount(data.find((item) => item.date === point.date)?.ca ?? 0)}</strong>
+                        <span>Période Actuelle :</span>
+                        <strong className="font-bold">{formatAmount(caActual)}</strong>
                       </div>
+
+                      {compareActive && (
+                        <>
+                          <div className="flex items-center justify-between gap-4 text-slate-500">
+                            <span>Période Précédente :</span>
+                            <strong className="font-bold">{formatAmount(caPrevious)}</strong>
+                          </div>
+                          <div className={`flex items-center justify-between gap-4 font-bold border-t border-slate-100 pt-1 ${diffCa >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            <span>Écart Comparatif :</span>
+                            <span>{diffCa >= 0 ? `+${formatAmount(diffCa)}` : formatAmount(diffCa)}</span>
+                          </div>
+                        </>
+                      )}
+
                       {canSeeProfit && point.benefice !== undefined && (
                         <div className="flex items-center justify-between gap-4 text-amber-700">
                           <span>Marge Brute :</span>
@@ -127,11 +150,23 @@ export function HybridSalesChart({ data, canSeeProfit = true }: HybridSalesChart
             />
             <Bar
               dataKey="ca"
-              name="Chiffre d'Affaires"
+              name="Chiffre d'Affaires (Actuel)"
               fill="#00A86B"
               radius={[6, 6, 0, 0]}
               maxBarSize={32}
             />
+            {compareActive && (
+              <Line
+                type="monotone"
+                dataKey="caPrev"
+                name="Période Précédente"
+                stroke="#94A3B8"
+                strokeDasharray="4 4"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#94A3B8' }}
+                activeDot={{ r: 5 }}
+              />
+            )}
             {canSeeProfit && (
               <Line
                 type="monotone"

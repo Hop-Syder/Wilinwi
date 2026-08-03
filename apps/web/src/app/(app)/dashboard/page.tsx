@@ -194,6 +194,8 @@ export default function DashboardPage() {
               title="Chiffre d'Affaires Brut"
               value={report?.chiffreAffaires ?? 0}
               variationPercent={report?.variationCaPercent}
+              previousValue={report?.chiffreAffairesPrev}
+              compareActive={compare}
               subtext={compare ? 'vs période précédente' : 'Période courante'}
               icon={<TrendingUp className="h-4 w-4" />}
               sparklineData={report?.sparklineCa}
@@ -205,6 +207,8 @@ export default function DashboardPage() {
                 title="Marge Brute Estimée"
                 value={report?.benefice ?? 0}
                 variationPercent={report?.variationBeneficePercent}
+                previousValue={report?.beneficePrev}
+                compareActive={compare}
                 subtext={compare ? 'vs période précédente' : 'Période courante'}
                 icon={<DollarSign className="h-4 w-4" />}
                 sparklineData={report?.sparklineBenefice}
@@ -214,6 +218,7 @@ export default function DashboardPage() {
               <KpiCard
                 title="Nombre de Ventes"
                 value={report?.nombreVentes ?? 0}
+                compareActive={compare}
                 subtext={`${report?.articlesVendus ?? 0} article(s) vendus`}
                 icon={<TrendingUp className="h-4 w-4" />}
                 variant="indigo"
@@ -224,6 +229,8 @@ export default function DashboardPage() {
               title="Panier Moyen"
               value={report?.panierMoyen ?? 0}
               variationPercent={report?.variationPanierMoyenPercent}
+              previousValue={report?.panierMoyenPrev}
+              compareActive={compare}
               subtext={`${report?.nombreVentes ?? 0} transaction(s)`}
               icon={<CreditCard className="h-4 w-4" />}
               sparklineData={report?.sparklinePanierMoyen}
@@ -234,6 +241,7 @@ export default function DashboardPage() {
               title="Crédits & Dettes Clients"
               value={report?.creditsEncours ?? 0}
               variationPercent={report?.variationCreditsPercent}
+              compareActive={compare}
               subtext={`${report?.alertes?.clientsEnDetteCount ?? 0} client(s) en dette`}
               icon={<CreditCard className="h-4 w-4" />}
               variant="amber"
@@ -243,7 +251,7 @@ export default function DashboardPage() {
           {/* Section 1 : Graphiques Côte à Côte (Hauteurs Égales Exactes) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-stretch" id="tour-dashboard-charts">
             <div className="lg:col-span-2 flex flex-col">
-              <HybridSalesChart data={report?.serie ?? []} canSeeProfit={canSeeProfit} />
+              <HybridSalesChart data={report?.serie ?? []} canSeeProfit={canSeeProfit} compareActive={compare} />
             </div>
 
             <div className="lg:col-span-1 flex flex-col">

@@ -60,11 +60,13 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
         <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
       </div>
 
-      <div className="relative h-44 w-full flex items-center justify-center my-1">
-        {/* Montant total au centre du Donut */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Encaissé</span>
-          <span className="font-mono text-sm font-extrabold text-slate-900">
+      <div className="relative h-48 w-full flex items-center justify-center my-1">
+        {/* Montant total au centre du Donut élargi et épuré */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">
+            Total Encaissé
+          </span>
+          <span className="font-mono text-base font-black text-slate-900 tracking-tight leading-tight">
             {formatAmount(totalEncaisse)}
           </span>
         </div>
@@ -77,10 +79,10 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={48}
-              outerRadius={68}
-              paddingAngle={3}
-              cornerRadius={6}
+              innerRadius={60}
+              outerRadius={72}
+              paddingAngle={4}
+              cornerRadius={8}
             >
               {data.map((entry, index) => (
                 <Cell

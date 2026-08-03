@@ -287,7 +287,7 @@ export class AnalyticsService {
         expByDay.set(day, (expByDay.get(day) ?? 0) + e.montant);
       }
 
-      // Ventes & marge par jour pour le graphique hybride
+      // Ventes & marge par jour pour le graphique hybride (période courante)
       const byDay = new Map<string, { ca: number; benefice: number; ventes: number }>();
       for (const s of sales) {
         const day = calendarDateInTz(s.createdAt, ctx.timezone);
@@ -298,20 +298,32 @@ export class AnalyticsService {
         byDay.set(day, cur);
       }
 
+      // Ventes par jour pour la période précédente miroir
+      const byDayPrev = new Map<string, number>();
+      for (const s of salesPrev) {
+        const day = calendarDateInTz(s.createdAt, ctx.timezone);
+        byDayPrev.set(day, (byDayPrev.get(day) ?? 0) + s.total);
+      }
+
       // Série journalière continue
-      const serie: { date: string; ca: number; benefice: number; ventes: number; depenses: number }[] = [];
+      const serie: { date: string; ca: number; caPrev: number; benefice: number; ventes: number; depenses: number }[] = [];
       let cursor = startOfDayInTz(ctx.timezone, from);
+      let cursorPrev = startOfDayInTz(ctx.timezone, prevFrom);
       for (let guard = 0; cursor <= to && guard < 370; guard++) {
         const day = calendarDateInTz(cursor, ctx.timezone);
+        const dayPrev = calendarDateInTz(cursorPrev, ctx.timezone);
         const v = byDay.get(day);
+        const caPrev = byDayPrev.get(dayPrev) ?? 0;
         serie.push({
           date: day,
           ca: v?.ca ?? 0,
+          caPrev: compare ? caPrev : 0,
           benefice: seeSensitive ? (v?.benefice ?? 0) : 0,
           ventes: v?.ventes ?? 0,
           depenses: expByDay.get(day) ?? 0,
         });
         cursor = addDays(cursor, 1);
+        cursorPrev = addDays(cursorPrev, 1);
       }
 
       // Sparklines (série de points normalisés pour les cartes Hero KPI)

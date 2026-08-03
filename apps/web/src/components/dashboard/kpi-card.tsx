@@ -20,9 +20,11 @@ interface KpiCardProps {
   value: number;
   isCurrency?: boolean;
   variationPercent?: number;
+  previousValue?: number;
   compareActive?: boolean;
   sparklineData?: number[];
   subtext?: string;
+  periodLabel?: string;
   icon?: React.ReactNode;
   variant?: 'emerald' | 'amber' | 'rose' | 'indigo';
   sensitive?: boolean;
@@ -33,9 +35,11 @@ export function KpiCard({
   value,
   isCurrency = true,
   variationPercent = 0,
+  previousValue,
   compareActive = true,
   sparklineData = [],
   subtext,
+  periodLabel,
   icon,
   variant = 'emerald',
   sensitive = false,
@@ -43,6 +47,7 @@ export function KpiCard({
   const { formatAmount } = useCurrency();
   const isPositive = variationPercent > 0;
   const isNegative = variationPercent < 0;
+  const diff = previousValue !== undefined ? value - previousValue : 0;
 
   // Calcul du tracé SVG Sparkline
   const renderSparkline = () => {
@@ -115,7 +120,7 @@ export function KpiCard({
 
           {/* Badge de variation relative */}
           {compareActive && !sensitive && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <span
                 className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold ${badgeColorClass}`}
               >
@@ -128,13 +133,21 @@ export function KpiCard({
                 )}
                 <span>{isPositive ? `+${variationPercent}%` : `${variationPercent}%`}</span>
               </span>
-              <span className="text-[11px] font-medium text-slate-600">vs période précédente</span>
+
+              {previousValue !== undefined ? (
+                <span className="text-[11px] font-medium text-slate-500">
+                  {isCurrency ? formatAmount(previousValue) : previousValue.toLocaleString('fr-FR')}{' '}
+                  {periodLabel ?? 'vs précédente'} ({diff >= 0 ? `+${isCurrency ? formatAmount(diff) : diff}` : (isCurrency ? formatAmount(diff) : diff)})
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-slate-500">vs période précédente</span>
+              )}
             </div>
           )}
         </div>
 
         {/* Sous-texte explicatif */}
-        {subtext && <p className="text-xs text-slate-600 font-medium">{subtext}</p>}
+        {!compareActive && subtext && <p className="text-xs text-slate-600 font-medium">{subtext}</p>}
       </div>
     </div>
   );
