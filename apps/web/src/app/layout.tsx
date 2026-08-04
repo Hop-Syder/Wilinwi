@@ -10,17 +10,21 @@
 // ──────────────────────────────────
 
 import type { Metadata } from 'next';
-import { Inter, Poppins, DM_Mono } from 'next/font/google';
+import { Urbanist, Outfit, DM_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { CurrencyProvider } from '@/lib/currency-context';
 import { ServiceWorkerRegister } from '@/lib/sw-register';
 import { Analytics } from '@vercel/analytics/next';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-const poppins = Poppins({
+const urbanist = Urbanist({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+});
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800', '900'],
   variable: '--font-display',
 });
 const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-mono' });
@@ -32,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${inter.variable} ${poppins.variable} ${dmMono.variable}`}>
+    <html lang="fr" className={`${urbanist.variable} ${outfit.variable} ${dmMono.variable}`}>
       <body>
         <ServiceWorkerRegister />
         <AuthProvider>
