@@ -134,53 +134,81 @@ export default function StockPage() {
 
   return (
     <div className="space-y-6 pb-16">
-      <StockAlertsBanner />
+      {/* ──────────────── 1. EN-TÊTE RÉORGANISÉ ──────────────── */}
+      <div className="space-y-3 pb-4 border-b border-slate-200/80">
+        {/* LIGNE 1 : Titre & Actions Principales Alignées sur 1 Ligne Desktop */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Gauche : Titre + Sous-titre */}
+          <div>
+            <h1 className="font-display text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>📦</span> Gestion du Stock & Catalogue
+            </h1>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              Stock consolidé — Suivi financier, mouvements et réapprovisionnements.
+            </p>
+          </div>
 
-      {/* Header Général */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
-        <div>
-          <h1 className="font-display text-2xl font-extrabold text-slate-900 tracking-tight">
-            Gestion du Stock & Catalogue
-          </h1>
-          <p className="mt-1 text-xs font-medium text-slate-500">
-            Stock consolidé — Suivi financier, mouvements et réapprovisionnement.
-          </p>
+          {/* Droite : Groupe d'Actions Aligné sur 1 Ligne (Import | Transférer | Entrepôt | + Nouveau | ❓) */}
+          <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap justify-start lg:justify-end shrink-0">
+            {canWrite && (
+              <Button
+                variant="outline"
+                onClick={() => setShowImportModal(true)}
+                className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-bold gap-1.5"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                <span>Import</span>
+              </Button>
+            )}
+
+            {canWrite && user?.etablissements && user.etablissements.length >= 2 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowTransferModal(true)}
+                className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-bold gap-1.5"
+              >
+                <ArrowRightLeft className="h-4 w-4 text-indigo-600" />
+                <span>Transférer</span>
+              </Button>
+            )}
+
+            <Link href="/entrepot">
+              <Button
+                variant="outline"
+                className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-bold gap-1.5"
+              >
+                <Warehouse className="h-4 w-4 text-slate-600" />
+                <span>Entrepôt</span>
+              </Button>
+            </Link>
+
+            {canWrite && (
+              <Button
+                onClick={() => {
+                  setEditingProduct(undefined);
+                  setShowProductModal(true);
+                }}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 gap-1.5 transition-transform active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Nouveau produit</span>
+              </Button>
+            )}
+
+            <ContextualHelp
+              storageKey="wilinwi_stock_tour_done"
+              tourSteps={tourSteps}
+              useCases={[
+                { title: 'Valeur globale du stock', description: 'Consultez le capital immobilisé au prix d\'achat et le chiffre d\'affaires potentiel au prix catalogue.' },
+                { title: 'Ajustement rapide de stock', description: 'Utilisez les boutons + / - sur la ligne d\'un produit pour enregistrer une casse, une régularisation ou une perte avec son motif obligatoire.' },
+                { title: 'Importation en 3 étapes', description: 'Importez votre catalogue volumineux via fichier CSV grâce à l\'assistant de mapping et de détection d\'anomalies.' },
+              ]}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <ContextualHelp
-            storageKey="wilinwi_stock_tour_done"
-            tourSteps={tourSteps}
-            useCases={[
-              { title: 'Valeur globale du stock', description: 'Consultez le capital immobilisé au prix d\'achat et le chiffre d\'affaires potentiel au prix catalogue.' },
-              { title: 'Ajustement rapide de stock', description: 'Utilisez les boutons + / - sur la ligne d\'un produit pour enregistrer une casse, une régularisation ou une perte avec son motif obligatoire.' },
-              { title: 'Importation en 3 étapes', description: 'Importez votre catalogue volumineux via fichier CSV grâce à l\'assistant de mapping et de détection d\'anomalies.' },
-            ]}
-          />
-
-          <Link href="/entrepot">
-            <Button variant="outline" className="rounded-xl">
-              <Warehouse className="h-4 w-4" /> Entrepôt
-            </Button>
-          </Link>
-
-          {canWrite && user?.etablissements && user.etablissements.length >= 2 && (
-            <Button onClick={() => setShowTransferModal(true)} variant="outline" className="rounded-xl">
-              <ArrowRightLeft className="h-4 w-4" /> Transférer
-            </Button>
-          )}
-
-          {canWrite && (
-            <>
-              <Button onClick={() => setShowImportModal(true)} variant="outline" className="rounded-xl">
-                <FileSpreadsheet className="h-4 w-4" /> Import Catalogue
-              </Button>
-              <Button onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }} className="rounded-xl">
-                <Plus className="h-4 w-4" /> Nouveau produit
-              </Button>
-            </>
-          )}
-        </div>
+        {/* LIGNE 2 : Fine alerte stock bas positionnée sous l'en-tête */}
+        <StockAlertsBanner />
       </div>
 
       {/* ── AXE 1 : TopBar Synthétique (KPIs Stock & Alertes) ── */}

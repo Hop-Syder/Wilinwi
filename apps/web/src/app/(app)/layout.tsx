@@ -364,12 +364,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Barre d'onglets mobile */}
+      {/* Barre d'onglets mobile (BottomNav) */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur-md sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 h-16 border-t border-slate-200/90 bg-white/95 backdrop-blur-md sm:hidden shadow-lg"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="mx-auto flex max-w-md items-stretch justify-around">
+        <div className="mx-auto flex h-full max-w-md items-center justify-around">
           {menuItems.filter((item) => canSee(item))
             .slice(0, 4)
             .map(({ href, label, icon: Icon }) => {
@@ -379,8 +379,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   key={href}
                   href={href}
                   className={cn(
-                    'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
-                    active ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
+                    'flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold transition-colors min-h-[48px]',
+                    active ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-900',
                   )}
                 >
                   <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
@@ -389,8 +389,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           <button
+            type="button"
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold text-slate-500 transition-colors hover:text-slate-900 min-h-[48px]"
           >
             <Menu className="h-5 w-5" />
             <span>Plus</span>
