@@ -26,11 +26,9 @@ import {
   ArrowRight,
   PlusCircle,
   Clock,
-  AlertTriangle,
   Store,
   DollarSign,
   FileSpreadsheet,
-  CheckCircle2,
 } from 'lucide-react';
 import { formatFCFA, cn } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
