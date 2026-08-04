@@ -12,27 +12,27 @@
 'use client';
 
 import React from 'react';
-import { ShoppingBag, Camera } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useCurrency } from '@/lib/currency-context';
 
 interface FloatingCartButtonsProps {
   itemCount: number;
   totalAmount: number;
   onOpenCart: () => void;
-  onOpenScanner: () => void;
+  onOpenScanner?: () => void;
 }
 
 export function FloatingCartButtons({
   itemCount,
   totalAmount,
   onOpenCart,
-  onOpenScanner,
+  onOpenScanner: _onOpenScanner,
 }: FloatingCartButtonsProps) {
   const { formatAmount } = useCurrency();
 
   return (
     <div className="lg:hidden fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 pointer-events-auto">
-      {/* 1. Bouton Panier Flottant (au-dessus du scanner) */}
+      {/* Bouton Panier Flottant */}
       <button
         type="button"
         onClick={onOpenCart}
@@ -53,17 +53,6 @@ export function FloatingCartButtons({
             {formatAmount(totalAmount)}
           </div>
         </div>
-      </button>
-
-      {/* 2. Bouton Scanner Flottant */}
-      <button
-        type="button"
-        onClick={onOpenScanner}
-        className="flex items-center justify-center w-12 h-12 bg-emerald-600 text-white rounded-full shadow-xl hover:bg-emerald-700 transition-all active:scale-95 border border-emerald-500/40 shrink-0"
-        title="Scanner un code-barres"
-        aria-label="Scanner un code-barres"
-      >
-        <Camera className="w-5 h-5" />
       </button>
     </div>
   );

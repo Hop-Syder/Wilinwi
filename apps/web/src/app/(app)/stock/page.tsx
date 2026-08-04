@@ -27,7 +27,7 @@ import { StockKpiCards } from '@/components/stock/stock-kpi-cards';
 import { StockDataTable } from '@/components/stock/stock-data-table';
 import { StockAdjustModal } from '@/components/stock/stock-adjust-modal';
 import { CatalogImportWizard } from '@/components/stock/catalog-import-wizard';
-import { BarcodeScannerModal, FloatingScanButton } from '@/components/stock/barcode-scanner-modal';
+import { BarcodeScannerModal } from '@/components/stock/barcode-scanner-modal';
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
 import { StockAlertsBanner } from '@/components/stock-alerts-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -279,9 +279,6 @@ export default function StockPage() {
           onTogglePosActif={handleTogglePosActif}
         />
       </div>
-
-      {/* ── AXE 5 : Bouton Flottant Persistant mobile [ 📷 Scanner ] ── */}
-      <FloatingScanButton onClick={() => setShowScannerModal(true)} />
 
       {/* Modale Ajustement Manuel (Axe 3) */}
       {adjustProduct && (

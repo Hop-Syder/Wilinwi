@@ -14,7 +14,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Lock, Unlock } from 'lucide-react';
 import type { CreateSaleInput, ProductDto, ClientDto, PosSessionDto } from '@wilinwi/types';
-import { Button } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
@@ -275,39 +274,45 @@ export default function PosPage() {
 
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col space-y-3 pb-2 overflow-hidden">
-      {/* Barre d'Action Supérieure & Clôture de Caisse */}
-      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="font-display text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <span>Caisse & Enregistrement des Ventes</span>
+      {/* EN-TÊTE COMPACT MOBILE & DESKTOP POS */}
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+        {/* CÔTÉ GAUCHE : Titre + Statut de caisse unifié */}
+        <div className="flex items-center gap-2 overflow-hidden">
+          {/* Titre Raccourci sur Mobile */}
+          <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight shrink-0 flex items-center gap-2">
+            <span className="sm:hidden font-extrabold text-emerald-950">Caisse POS</span>
+            <span className="hidden sm:inline font-extrabold text-emerald-950">Caisse & Enregistrement</span>
             {isGlobalView && (
               <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
-                Mode Tous Établissements (Lecture seule)
+                Tous Établissements (Lecture seule)
               </span>
             )}
           </h1>
 
-          {/* Voyant Statut Dynamique Caisse */}
+          {/* Badge Statut + Fond de caisse unifié */}
           {!isGlobalView && (
             loadingSession ? (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 animate-pulse">
-                Chargement caisse...
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 animate-pulse whitespace-nowrap">
+                Chargement...
               </span>
             ) : activeSession ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Caisse Ouverte (Fond: {formatAmount(activeSession.fondInitial)})
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200/80 rounded-full text-xs font-semibold text-emerald-700 whitespace-nowrap shadow-xs truncate">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate">
+                  Ouverte <span className="text-emerald-600/80 font-normal">({formatAmount(activeSession.fondInitial)})</span>
+                </span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-50 text-rose-800 border border-rose-200/80 shadow-2xs">
-                <span className="h-2 w-2 rounded-full bg-rose-500" />
-                Caisse Fermée
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 border border-rose-200/80 rounded-full text-xs font-semibold text-rose-700 whitespace-nowrap shadow-xs truncate">
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                <span>Fermée</span>
               </span>
             )
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* CÔTÉ DROITE : Actions (Aide + Clôture/Ouverture) */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <ContextualHelp
             storageKey="wilinwi_pos_tour_done"
             tourSteps={tourSteps}
@@ -319,21 +324,25 @@ export default function PosPage() {
 
           {!isGlobalView && (
             activeSession ? (
-              <Button
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => setShowCloseModal(true)}
-                className="rounded-xl text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
               >
-                <Lock className="mr-1.5 h-3.5 w-3.5" /> Clôturer Caisse
-              </Button>
+                <Lock className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden sm:inline">Clôturer Caisse</span>
+                <span className="sm:hidden">Clôturer</span>
+              </button>
             ) : (
-              <Button
-                variant="primary"
+              <button
+                type="button"
                 onClick={() => setShowOpenModal(true)}
-                className="rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all active:scale-95 shadow-xs"
               >
-                <Unlock className="mr-1.5 h-3.5 w-3.5" /> Ouvrir Caisse
-              </Button>
+                <Unlock className="w-3.5 h-3.5 text-white" />
+                <span className="hidden sm:inline">Ouvrir Caisse</span>
+                <span className="sm:hidden">Ouvrir</span>
+              </button>
             )
           )}
         </div>
