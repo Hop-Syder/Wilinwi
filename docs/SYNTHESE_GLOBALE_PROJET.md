@@ -4,7 +4,7 @@
  * @organization Nexus Partners
  * @description Document de synthèse globale du projet Wilinwi (Description, Détails techniques, Étape actuelle, Cartographie des fonctions et Schéma de base de données)
  * @created 2026-08-01
- * @updated 2026-08-01
+ * @updated 2026-08-04
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -15,7 +15,7 @@
 > **"Le système d'exploitation du commerce africain." — *Gérez. Vendez. Grandissez.***
 > 
 > **Auteur** : @hopsyder | **Organisation** : Nexus Partners  
-> **Date de génération** : 01 Août 2026  
+> **Date de mise à jour** : 04 Août 2026  
 > **Statut** : Document de référence complet du projet
 
 ---
@@ -77,12 +77,15 @@ Le système garantit une isolation stricte des données grâce à une **double c
 ### 3.1 Ce qui est entièrement livré et fonctionnel
 * ✅ **Architecture Monorepo & CI/CD** : Configuration Turborepo, pnpm workspaces, GitHub Actions (`build`, `typecheck`, `test`).
 * ✅ **Isolation RLS & Multi-Tenant** : 100% opérationnel avec `PrismaService.forTenant()`.
-* ✅ **Module Caisse & POS (Offline-First)** : Panier, recherche rapide (Cmd+K), encaissement multi-modes (Cash, MoMo, Banque, Crédit), génération de reçu public QR (`/r/<code>`), file de synchronisation Dexie.js.
-* ✅ **Architecture de Stock Hub & Spoke** : Stock par emplacement (`ProductStock`), réceptions fournisseurs (`PurchaseOrder`), transferts d'entrepôt vers boutiques (`DispatchOrder`).
-* ✅ **Module CRM & Gestion des Dettes** : Fiche client, plafond de crédit, remboursement lettré avec algorithme FIFO automatique.
-* ✅ **Module Trésorerie & Multi-Comptes** : Mouvements de caisse, dépenses catégorisées, transferts entre comptes avec vérification de solde, clôture de caisse avec calcul des écarts.
+* ✅ **Module Caisse & POS (Offline-First)** : Panier, raccourcis clavier (`F2`, `F4`, `Entrée`, `Échap`), isolation du catalogue par boutique, encaissement multi-modes (Cash, MoMo, Banque, Crédit), voyant dynamique de session (`Caisse Ouverte` / `Caisse Fermée`), ouverture avec fond de caisse initial (`PosOpenSessionModal`), génération de reçu public QR (`/r/<code>`), file de synchronisation Dexie.js.
+* ✅ **Gestion des Clôtures & Rapports Z** : Clôture physique par comptage de coupures (`POSCloseSessionModal`), calcul des écarts, purge IndexedDB préalable et impression thermique du Rapport Z (`ReportZPrintModal`).
+* ✅ **Architecture de Stock Hub & Spoke** : Stock par emplacement (`ProductStock`), réceptions fournisseurs (`PurchaseOrder`), transferts d'entrepôt vers boutiques (`DispatchOrder`), double valorisation financière (Valeur d'Achat vs Valeur de Vente) et fiches produits 3 onglets avec journal d'opérateur.
+* ✅ **Module CRM & Gestion des Dettes** : Fiche client, vérification automatique du plafond de crédit au POS, remboursement lettré avec algorithme FIFO automatique.
+* ✅ **Module Trésorerie & Multi-Devises** : Mouvements de caisse, dépenses catégorisées, transferts entre comptes avec vérification de solde, recalcul instantané multi-devises (`FCFA`, `EUR`, `USD`, `GHS`) via `useCurrency()`.
+* ✅ **Dashboard & Comparaison Temporelle** : En-tête 1 ligne responsive, tracé comparatif miroir (`compare=true`) sur `HybridSalesChart` et Command Hub d'actions rapides.
+* ✅ **Gestion des Abonnements & Dunning** : Cycle d'impayé automatique (Alerte $\rightarrow$ Grâce 3j $\rightarrow$ Mode Lecture Seule).
 * ✅ **Gestion des Établissements & Appareils** : Support multi-boutiques, contrôle du nombre maximum d'appareils autorisés par plan (`Device` / `maxDevices`).
-* ✅ **Console Super-Admin Platform (`apps/admin-web`)** : Gestion des entreprises, attribution des plans, modules à la carte (`moduleAddons`), facturation manuelle/échéances, métriques globales.
+* ✅ **Console Super-Admin Platform (`apps/admin-web`)** : Supervision des entreprises, attribution des plans, modules à la carte (`moduleAddons`), facturation manuelle/échéances, métriques globales.
 * ✅ **Centre de Notifications & Alertes Audit** : Notifications in-app pour rupture de stock / impayés, système d'alertes d'audit (`AuditAlert`).
 
 ### 3.2 Ce qui est prêt en Schéma / En Cours / À venir (Feuille de route)

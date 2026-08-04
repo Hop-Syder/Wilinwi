@@ -7,7 +7,7 @@
 
 ## 🛠️ Stack Technique
 
-*   **Framework** : [Next.js 14](https://nextjs.org/) (App Router & Server Actions)
+*   **Framework** : [Next.js 15](https://nextjs.org/) (App Router & Server Actions)
 *   **Langage** : [TypeScript](https://www.typescriptlang.org/) (Typage strict partagé avec le backend via `@wilinwi/types`)
 *   **Styling** : [TailwindCSS](https://tailwindcss.com/) & composants partagés `@wilinwi/ui` (Design Premium *Black Luxury* : tons sombres, accents or/miel et vert émeraude)
 *   **Client Base de données & Offline** : [Dexie.js](https://dexie.org/) (IndexedDB) pour la résilience hors-ligne totale (synchronisation bidirectionnelle avec le backend)

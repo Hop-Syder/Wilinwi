@@ -2,9 +2,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description README principal détaillant l'architecture, le CI/CD, les déploiements Vercel/Railway et les correctifs DB
+ * @description README principal détaillant l'architecture, les 5 modules métier, le CI/CD, les déploiements Vercel/Railway et les correctifs DB
  * @created 2026-06-19
- * @updated 2026-06-30
+ * @updated 2026-08-04
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -17,8 +17,34 @@
 
 SaaS multi-tenant de gestion de commerce pour l'Afrique de l'Ouest (POS, Stock, Pay, CRM, Market, Analytics, IA), pensé pour les réalités locales : Mobile Money, vente à crédit, négociation tracée, et **fonctionnement hors-ligne**.
 
-Ce dépôt contient les **fondations et le MVP1 « Le Socle »**.
-Pour en savoir plus sur l'architecture complète, les conventions de code et les instructions de développement approfondies, veuillez consulter [CLAUDE.md](file:///home/hopsyder/Projet/Wilinwi/CLAUDE.md).
+Ce dépôt contient l'ensemble des modules métiers de la plateforme **Wilinwi MVP1 & MVP2**.
+Pour en savoir plus sur l'architecture complète, les conventions de code et les instructions de développement approfondies, veuillez consulter [CLAUDE.md](file:///home/hopsyder/Projet/Wilinwi/CLAUDE.md) et le dossier [`docs/`](file:///home/hopsyder/Projet/Wilinwi/docs/README.md).
+
+---
+
+## 💎 Fonctionnalités et Modules Clés
+
+1. **Point de Vente & Caisse (`/pos`)** :
+   - **Catalogue Isolé par Boutique** : Sélection multi-établissements avec masquage strict des produits non affectés au point de vente actif.
+   - **Sessions de Caisse Dynamiques** : Voyant vert/rouge (`Caisse Ouverte` / `Caisse Fermée`), ouverture avec saisie du fond de caisse initial et clôture physique par comptage de coupures.
+   - **Raccourcis Clavier POS** : `F2` (recherche produit), `F4` (client CRM), `Entrée` (encaissement), `Échap` (vider le panier).
+   - **Encaissement Avancé & Crédit** : Paiement fractionné (espèces + MoMo / virement) et vérification dynamique des plafonds de crédit client.
+
+2. **Ventes & Clôtures de Caisse (`/ventes`)** :
+   - Historique des ventes individuelles et suivi des **Rapports Z** avec réimpression thermique ticket Z (`ReportZPrintModal`).
+   - Synthèse des écarts de caisse, fonds initiaux et totaux comptés.
+
+3. **Dashboard & Analytics (`/dashboard`)** :
+   - **Comparaison Temporelle Dynamique** : Tracé comparatif miroir (`compare=true`) sur `HybridSalesChart`.
+   - **Command Hub & En-tête Unifiée** : En-tête responsive 1 ligne et accès rapide aux formulaires d'exploitation.
+
+4. **Gestion des Stocks (`/stock`)** :
+   - **Fiche Produit 3 Onglets** (`/stock/[id]`) : Synthèse & Tarification, Journal chronologique des mouvements (avec traçabilité de l'**Auteur / Opérateur**), Analyse des performances 30j (Fast/Slow/Dormant).
+   - **Double Valorisation Financière** : Affichage simultané de la Valeur d'Achat (capital immobilisé) et de la Valeur de Vente (potentielles recettes).
+
+5. **Multi-Devises & Gestion d'Abonnement (Dunning)** :
+   - **Recalcul Multi-Devises** (`FCFA`, `EUR`, `USD`, `GHS`) en temps réel sur tous les écrans via `useCurrency()`.
+   - **Cycle d'Abonnement** : Avertissement $\rightarrow$ Grâce 3j $\rightarrow$ Verrouillage automatique en Mode Lecture Seule (`read-only.guard.ts`).
 
 ---
 

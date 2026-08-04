@@ -12,17 +12,19 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Lock } from 'lucide-react';
-import type { CreateSaleInput, ProductDto, ClientDto } from '@wilinwi/types';
+import { Lock, Unlock } from 'lucide-react';
+import type { CreateSaleInput, ProductDto, ClientDto, PosSessionDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
+import { useCurrency } from '@/lib/currency-context';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { ContextualHelp } from '@/components/contextual-help';
 import { PosCloseSessionModal } from '@/components/pos-close-session-modal';
+import { PosOpenSessionModal } from '@/components/pos-open-session-modal';
 import type { TourStep } from '@/components/tour-guide';
 import { PosCatalogZone } from '@/components/pos/pos-catalog-zone';
 import { PosCartZone, type CartLine, type OrderMode } from '@/components/pos/pos-cart-zone';
@@ -31,6 +33,7 @@ import { BarcodeScannerModal } from '@/components/stock/barcode-scanner-modal';
 export default function PosPage() {
   const { refreshPending, state } = useSync();
   const { user } = useAuth();
+  const { formatAmount } = useCurrency();
   const isGlobalView = user?.etablissementId === 'ALL';
 
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -41,6 +44,10 @@ export default function PosPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const clientSearchInputRef = useRef<HTMLInputElement>(null);
 
+  // Session de caisse active
+  const [activeSession, setActiveSession] = useState<PosSessionDto | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+
   // État du Panier & Client
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientDto | null>(null);
@@ -50,6 +57,7 @@ export default function PosPage() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
@@ -77,9 +85,28 @@ export default function PosPage() {
     }
   }, []);
 
+  // Récupération dynamique de la session de caisse active
+  const fetchActiveSession = useCallback(async () => {
+    if (!user || isGlobalView) {
+      setActiveSession(null);
+      setLoadingSession(false);
+      return;
+    }
+    setLoadingSession(true);
+    try {
+      const session = await apiGet<PosSessionDto | null>('/api/pos/sessions/active');
+      setActiveSession(session);
+    } catch {
+      setActiveSession(null);
+    } finally {
+      setLoadingSession(false);
+    }
+  }, [user, isGlobalView]);
+
   useEffect(() => {
     void loadInitialData();
-  }, [loadInitialData]);
+    void fetchActiveSession();
+  }, [loadInitialData, fetchActiveSession]);
 
   // Raccourcis Clavier Globaux (F2: Recherche, F4: Client, Entrée/Espace: Encaissement, Échap: Vider)
   useEffect(() => {
@@ -246,8 +273,8 @@ export default function PosPage() {
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col space-y-3 pb-2 overflow-hidden">
       {/* Barre d'Action Supérieure & Clôture de Caisse */}
-      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-        <div>
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-display text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <span>Caisse & Enregistrement des Ventes</span>
             {isGlobalView && (
@@ -256,6 +283,25 @@ export default function PosPage() {
               </span>
             )}
           </h1>
+
+          {/* Voyant Statut Dynamique Caisse */}
+          {!isGlobalView && (
+            loadingSession ? (
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 animate-pulse">
+                Chargement caisse...
+              </span>
+            ) : activeSession ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Caisse Ouverte (Fond: {formatAmount(activeSession.fondInitial)})
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-50 text-rose-800 border border-rose-200/80 shadow-2xs">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
+                Caisse Fermée
+              </span>
+            )
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -268,13 +314,25 @@ export default function PosPage() {
             ]}
           />
 
-          <Button
-            variant="outline"
-            onClick={() => setShowCloseModal(true)}
-            className="rounded-xl text-xs font-bold"
-          >
-            <Lock className="mr-1.5 h-3.5 w-3.5" /> Clôturer la Session
-          </Button>
+          {!isGlobalView && (
+            activeSession ? (
+              <Button
+                variant="outline"
+                onClick={() => setShowCloseModal(true)}
+                className="rounded-xl text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50"
+              >
+                <Lock className="mr-1.5 h-3.5 w-3.5" /> Clôturer Caisse
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => setShowOpenModal(true)}
+                className="rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+              >
+                <Unlock className="mr-1.5 h-3.5 w-3.5" /> Ouvrir Caisse
+              </Button>
+            )
+          )}
         </div>
       </div>
 
@@ -305,7 +363,13 @@ export default function PosPage() {
             onSelectClient={setSelectedClient}
             orderMode={orderMode}
             onOrderModeChange={setOrderMode}
-            onCheckout={() => setShowCheckoutModal(true)}
+            onCheckout={() => {
+              if (!activeSession && !isGlobalView) {
+                setShowOpenModal(true);
+              } else {
+                setShowCheckoutModal(true);
+              }
+            }}
             clientSearchInputRef={clientSearchInputRef}
             disabled={isGlobalView || busy}
           />
@@ -360,11 +424,27 @@ export default function PosPage() {
         />
       )}
 
+      {/* Modale Ouverture de Caisse */}
+      {showOpenModal && (
+        <PosOpenSessionModal
+          isOpen={showOpenModal}
+          onClose={() => setShowOpenModal(false)}
+          onSuccess={(session) => {
+            setActiveSession(session);
+            void fetchActiveSession();
+          }}
+        />
+      )}
+
       {/* Modale Clôture de Caisse (Axe 5) */}
       {showCloseModal && (
         <PosCloseSessionModal
           isOpen={showCloseModal}
           onClose={() => setShowCloseModal(false)}
+          onSuccess={() => {
+            setActiveSession(null);
+            void fetchActiveSession();
+          }}
         />
       )}
     </div>
