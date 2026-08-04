@@ -39,6 +39,7 @@ export interface SessionEtablissement {
 export interface SessionUser {
   userId: string;
   email: string;
+  nom?: string;
   tenantId: string;
   role: Role;
   plan: Plan;
@@ -133,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser({
         userId: me.userId,
         email: me.email,
+        nom: me.profile?.nom,
         tenantId: me.tenantId,
         role: me.role,
         plan: me.plan,

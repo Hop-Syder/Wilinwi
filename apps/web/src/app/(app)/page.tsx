@@ -79,7 +79,8 @@ export default function HubPage() {
   // Nom d'affichage de l'utilisateur
   const getUserDisplayName = () => {
     if (!user) return 'Cher partenaire';
-    if (user.email) {
+    if (user.nom) return user.nom;
+    if (user.email && !user.email.endsWith('@pin.local')) {
       const parts = user.email.split('@')[0].split('.');
       const first = parts[0];
       return first.charAt(0).toUpperCase() + first.slice(1);

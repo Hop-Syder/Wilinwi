@@ -202,11 +202,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {/* Badge Utilisateur Profil (Desktop) */}
               <div className="hidden items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 p-1.5 pr-3.5 shadow-2xs hover:border-slate-300 transition-all sm:flex">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-xs font-black text-white shadow-xs">
-                  {user.email.substring(0, 2).toUpperCase()}
+                  {(user.nom || user.email).substring(0, 2).toUpperCase()}
                 </div>
                 <div className="flex flex-col text-left leading-none">
-                  <span className="text-xs font-extrabold text-slate-900 max-w-[130px] truncate">
-                    {user.email}
+                  <span className="text-xs font-extrabold text-slate-900 max-w-[130px] truncate" title={user.nom || user.email}>
+                    {user.nom || (user.email.endsWith('@pin.local') ? 'Caissier' : user.email)}
                   </span>
                   <span className="text-[10px] text-blue-600 font-bold mt-0.5 tracking-wide uppercase">
                     {ROLE_LABELS[user.role] ?? user.role}
@@ -315,10 +315,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="border-t border-border pt-4 mt-auto">
           <div className="flex items-center gap-3 mb-4 px-1">
             <div className="flex h-10 w-10 items-center justify-center rounded bg-primary/10 text-primary font-bold text-sm">
-              {user.email.substring(0, 2).toUpperCase()}
+              {(user.nom || user.email).substring(0, 2).toUpperCase()}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-text-primary truncate">{user.email}</span>
+              <span className="text-sm font-bold text-text-primary truncate">
+                {user.nom || (user.email.endsWith('@pin.local') ? 'Caissier' : user.email)}
+              </span>
               <span className="text-xs text-text-secondary font-medium">{ROLE_LABELS[user.role] ?? user.role}</span>
             </div>
           </div>
