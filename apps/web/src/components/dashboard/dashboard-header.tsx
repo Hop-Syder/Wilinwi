@@ -84,6 +84,11 @@ export function DashboardHeader({
                 : `Hors-ligne — ${pendingCount} locale${pendingCount > 1 ? 's' : ''}`}
             </span>
           </span>
+
+          <span className="hidden xl:inline-block text-xs text-slate-500 font-medium whitespace-nowrap bg-slate-100/70 border border-slate-200/80 px-3 py-1 rounded-full">
+            Période : <strong className="text-slate-800">{dateRange.from}</strong> au{' '}
+            <strong className="text-slate-800">{dateRange.to}</strong>
+          </span>
         </div>
 
         {/* Partie Droite : Sélecteur de Devise + Filtre Période + Aide Contextuelle */}
