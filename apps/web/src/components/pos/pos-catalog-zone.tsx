@@ -68,49 +68,48 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
 
     return (
       <div className="flex flex-col h-full space-y-4">
-        {/* Omnibox de Recherche Universelle (F2) */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              ref={ref}
-              type="text"
-              placeholder="Rechercher ou scanner code-barres (F2)..."
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-12 py-3 text-sm font-semibold text-slate-900 shadow-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-400"
-            />
+        {/* Omnibox Capsule de Recherche avec Scanner Caméra encastré à droite */}
+        <div className="relative w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            ref={ref}
+            type="text"
+            placeholder="Rechercher ou scanner code-barres (F2)..."
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            className="w-full rounded-full border border-slate-200/90 bg-white pl-11 pr-20 py-3 text-sm font-semibold text-slate-900 shadow-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-400"
+          />
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {query && (
               <button
                 type="button"
                 onClick={() => onQueryChange('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-100 p-1 text-slate-400 hover:text-slate-700"
+                className="rounded-full bg-slate-100 p-1 text-slate-400 hover:text-slate-700 transition-colors"
+                title="Effacer"
               >
                 ✕
               </button>
             )}
+            <button
+              type="button"
+              onClick={onOpenScanner}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-all active:scale-95 border border-emerald-200/80 shadow-2xs"
+              title="Scanner Caméra"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
           </div>
-
-          {/* Scanner Caméra Mobile / Tablette */}
-          <button
-            type="button"
-            onClick={onOpenScanner}
-            className="flex h-11.5 w-11.5 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95 transition-all"
-            title="Scanner Caméra"
-          >
-            <Camera className="h-5 w-5 text-emerald-600" />
-          </button>
         </div>
 
-        {/* Bandeau de Filtres par Catégories (Pills) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* Bandeau de Filtres par Catégories (Pills sans scrollbar visible) */}
+        <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden no-scrollbar pb-1">
           <button
             type="button"
             onClick={() => setSelectedCategory('ALL')}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
               selectedCategory === 'ALL'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
             }`}
           >
             <Tag className="h-3.5 w-3.5" />
@@ -124,14 +123,14 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
                   selectedCategory === cat
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
                 }`}
               >
                 <span>{cat}</span>
-                <span className={`text-[10px] rounded-full px-1.5 py-0.2 ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`text-[10px] rounded-full px-1.5 py-0.2 font-mono ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
                   {count}
                 </span>
               </button>

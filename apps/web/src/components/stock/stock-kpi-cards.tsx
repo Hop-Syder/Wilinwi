@@ -98,6 +98,50 @@ export function StockKpiCards({
             </div>
           )}
         </div>
+
+        {/* Ligne 3 Mobile : [ SOUS SEUIL D'ALERTE ⚠️ ] | [ RUPTURES DE STOCK ❗ ] */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Sous Seuil d'Alerte */}
+          <button
+            type="button"
+            onClick={onToggleLowStockFilter}
+            className={`flex items-center justify-between rounded-2xl border p-3.5 transition-all text-left ${
+              filterLowStockActive
+                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                : 'bg-amber-50/80 text-amber-950 border-amber-200/90 hover:bg-amber-100/60'
+            }`}
+          >
+            <div className="min-w-0 pr-1">
+              <span className={`text-[10px] font-extrabold uppercase tracking-wider block leading-tight ${filterLowStockActive ? 'text-amber-100' : 'text-amber-800'}`}>
+                Stock Bas
+              </span>
+              <span className="text-xs font-black font-mono mt-0.5 block">
+                {lowStockCount} art. ⚠️
+              </span>
+            </div>
+            <ArrowRight className={`h-3.5 w-3.5 shrink-0 ${filterLowStockActive ? 'text-white' : 'text-amber-600'}`} />
+          </button>
+
+          {/* Ruptures de Stock */}
+          <div className="flex items-center justify-between rounded-2xl border border-rose-200/90 bg-rose-50/80 p-3.5 text-rose-950">
+            <div className="min-w-0 pr-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-800 block leading-tight">
+                Ruptures
+              </span>
+              <span className="text-xs font-black font-mono text-rose-950 mt-0.5 block">
+                {outOfStockCount} rupt. ❗
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onGeneratePurchaseOrder}
+              title="Générer Bon de Commande"
+              className="p-1.5 bg-rose-600 text-white rounded-xl shadow-2xs hover:bg-rose-700 active:scale-95 transition-all shrink-0"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── VUE DESKTOP & TABLETTE (≥ md) : GRID 2/4 COLONNES COMPLÈTE ── */}
