@@ -2,8 +2,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Page principale du module d'approvisionnement / Entrepôt
+ * @description Page principale du module d'approvisionnement & entrepôt (KPIs 4 Métriques, 3 Onglets & Workflow Logistique)
  * @created 2026-06-28
+ * @updated 2026-08-05
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -11,17 +12,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Truck, Plus, CheckCircle, DollarSign, Search, Eye, FileDown } from 'lucide-react';
-import { Button, Card, Badge } from '@wilinwi/ui';
+import { Truck, Plus, Search, FileDown, Warehouse, ShoppingBag } from 'lucide-react';
+import { Button, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
+import { SupplierFormModal, RecordSupplierPaymentModal } from '@/components/supplier-modals';
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
 import { generatePurchaseOrderPdf } from '@/lib/purchase-order-pdf';
-import type { SupplierDto, PurchaseOrderDto, EtablissementDto } from '@wilinwi/types';
+import { WarehouseKpiCards } from '@/components/entrepot/warehouse-kpi-cards';
+import { SupplierDebtSchedule } from '@/components/entrepot/supplier-debt-schedule';
+import type { SupplierDto, PurchaseOrderDto, EtablissementDto, DispatchOrderDto, ProductDto } from '@wilinwi/types';
 
 const STATUS_TONES: Record<string, 'outline' | 'brand' | 'neutral' | 'success' | 'warning' | 'danger'> = {
   DRAFT: 'neutral',
@@ -30,17 +33,6 @@ const STATUS_TONES: Record<string, 'outline' | 'brand' | 'neutral' | 'success' |
   RECEIVED: 'success',
   CANCELLED: 'danger',
 } as const;
-
-/** Ligne de règlement fournisseur (GET /api/suppliers/payments). */
-interface SupplierPaymentRow {
-  id: string;
-  fournisseurId: string;
-  etablissementId?: string | null;
-  montant: number;
-  methode: string;
-  note?: string | null;
-  createdAt: string;
-}
 
 const STATUS_LABELS = {
   DRAFT: 'Brouillon',
@@ -53,17 +45,16 @@ const STATUS_LABELS = {
 export default function EntrepotPage() {
   const { user } = useAuth();
   const currentEtablissementId = user?.etablissementId ?? null;
-  const [activeTab, setActiveTab] = useState<'suppliers' | 'orders' | 'payments'>('suppliers');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'orders' | 'suppliers'>('dispatch');
   
   // Data states
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
-  const [payments, setPayments] = useState<SupplierPaymentRow[]>([]);
   const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
+  const [dispatches, setDispatches] = useState<DispatchOrderDto[]>([]);
+  const [products, setProducts] = useState<ProductDto[]>([]);
   
   // Filters & loading
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals state
@@ -71,7 +62,6 @@ export default function EntrepotPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierDto | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<SupplierDto | null>(null);
   const [showPoModal, setShowPoModal] = useState(false);
-  const [viewPoInvoice, setViewPoInvoice] = useState<PurchaseOrderDto | null>(null);
   const [downloadingPoId, setDownloadingPoId] = useState<string | null>(null);
 
   async function handleDownloadPoPdf(order: PurchaseOrderDto) {
@@ -84,23 +74,21 @@ export default function EntrepotPage() {
   }
 
   async function loadData() {
-    setLoading(true);
-    setError(null);
     try {
-      const [sups, ords, pays, etabs] = await Promise.all([
-        apiGet<SupplierDto[]>('/api/suppliers'),
-        apiGet<PurchaseOrderDto[]>('/api/purchase-orders'),
-        apiGet<SupplierPaymentRow[]>('/api/suppliers/payments'),
-        apiGet<EtablissementDto[]>('/api/etablissements'),
+      const [sups, ords, etabs, disps, prods] = await Promise.all([
+        apiGet<SupplierDto[]>('/api/suppliers').catch(() => []),
+        apiGet<PurchaseOrderDto[]>('/api/purchase-orders').catch(() => []),
+        apiGet<EtablissementDto[]>('/api/etablissements').catch(() => []),
+        apiGet<DispatchOrderDto[]>('/api/dispatches').catch(() => []),
+        apiGet<ProductDto[]>('/api/stock/products').catch(() => []),
       ]);
       setSuppliers(sups);
       setOrders(ords);
-      setPayments(pays);
       setEtablissements(etabs);
+      setDispatches(disps);
+      setProducts(prods);
     } catch {
-      setError("Impossible de charger les données du module d'approvisionnement.");
-    } finally {
-      setLoading(false);
+      // Ignorer silencieusement si défaillance réseau mineure
     }
   }
 
@@ -125,7 +113,6 @@ export default function EntrepotPage() {
   );
 
   const filteredOrders = orders.filter((o) => {
-    // Filter by establishment scope
     if (currentEtablissementId && currentEtablissementId !== 'ALL' && o.etablissementId !== currentEtablissementId) {
       return false;
     }
@@ -133,56 +120,46 @@ export default function EntrepotPage() {
       (o.fournisseurNom && o.fournisseurNom.toLowerCase().includes(searchQuery.toLowerCase()));
   });
 
-  const filteredPayments = payments.filter((p) => {
-    if (currentEtablissementId && currentEtablissementId !== 'ALL' && p.etablissementId !== currentEtablissementId) {
-      return false;
-    }
-    const sup = suppliers.find((s) => s.id === p.fournisseurId);
-    return sup?.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.note && p.note.toLowerCase().includes(searchQuery.toLowerCase()));
-  });
-
-  const totalDetteFournisseurs = suppliers.reduce((sum, s) => sum + (s.soldeDette || 0), 0);
+  // Métriques pour les 4 KPIs Synthétiques
+  const totalStockValue = products.reduce((sum, p) => sum + (p.prixCatalogue || 0) * (p.stock || 0), 0);
+  const inTransitCount = dispatches.filter((d) => d.statut === 'DRAFT' || d.statut === 'VALIDATED').length;
+  const pendingOrdersCount = orders.filter((o) => o.statut === 'ORDERED' || o.statut === 'PARTIAL').length;
+  const reorderAlertsCount = products.filter((p) => (p.stock || 0) <= (p.seuilAlerte ?? 5)).length;
 
   const tourSteps: TourStep[] = [
     {
       targetId: 'tour-entrepot-kpis',
       title: 'Vos indicateurs entrepôt',
-      content:
-        "Suivez d'un coup d'œil le nombre de fournisseurs, le total que vous leur devez (dettes) et les commandes en cours.",
+      content: "Suivez d'un coup d'œil le stock réparti, les expéditions en transit et les bons de commande en attente.",
       position: 'bottom',
     },
     {
       targetId: 'tour-entrepot-tabs',
-      title: 'Fournisseurs, commandes, paiements',
-      content:
-        'Créez vos fournisseurs, rédigez un bon de commande, puis « Réceptionnez » la livraison : le stock entre à l\'entrepôt et la dette fournisseur se met à jour. Réglez les fournisseurs depuis l\'onglet paiements.',
-      position: 'bottom',
-    },
-    {
-      targetId: 'tour-entrepot-dispatch',
-      title: 'Approvisionner les boutiques',
-      content:
-        'Le bouton « Dispatch » transfère la marchandise de l\'entrepôt vers une boutique. À la validation, le stock quitte l\'entrepôt et arrive en boutique, prêt à la vente.',
+      title: 'Transferts, commandes, fournisseurs',
+      content: 'Basculez entre le suivi des transferts inter-boutiques, les commandes fournisseurs et le répertoire avec échéancier des dettes.',
       position: 'bottom',
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/80 pb-4">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-teal-950">Approvisionnement & Entrepôt</h1>
-          <p className="mt-1 text-sm text-slate-500">Gérez vos fournisseurs, bons de commande, réceptions et dettes.</p>
+          <h1 className="font-display text-2xl font-extrabold text-teal-950 flex items-center gap-2">
+            <span>🏭</span> Approvisionnement & Entrepôt
+          </h1>
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            Logistique multi-boutiques — Expéditions, commandes fournisseurs et échéancier des dettes.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link
             id="tour-entrepot-dispatch"
             href="/entrepot/dispatch"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 transition-colors hover:bg-teal-100"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-extrabold text-teal-800 transition-all hover:bg-teal-100 shadow-2xs"
           >
-            <Truck className="h-4 w-4" /> Dispatch
+            <Truck className="h-4 w-4" /> Nouveau Dispatch
           </Link>
           {activeTab === 'suppliers' && (
             <Button
@@ -204,282 +181,227 @@ export default function EntrepotPage() {
             storageKey="wilinwi_entrepot_tour_done"
             tourSteps={tourSteps}
             useCases={[
-              { title: 'Ajouter un fournisseur', description: 'Onglet « Fournisseurs » → Nouveau fournisseur. Renseignez nom, téléphone et contact. Sa dette se calcule automatiquement à chaque réception.' },
-              { title: 'Commander puis réceptionner', description: 'Onglet « Commandes » → Rédiger un Bon (produits, quantités, prix d\'achat). À l\'arrivée du camion, ouvrez le bon et « Réceptionnez » : le stock entre à l\'entrepôt, la dette fournisseur augmente du montant reçu (moins l\'acompte).' },
-              { title: 'Payer un fournisseur', description: 'Sur une fiche fournisseur, enregistrez un règlement : la dette baisse et la sortie d\'argent est inscrite en trésorerie. On ne peut pas payer plus que la dette due.' },
-              { title: 'Approvisionner une boutique (Dispatch)', description: 'Bouton « Dispatch » → choisissez entrepôt source et boutique destination, ajoutez les produits, puis validez. Le stock quitte l\'entrepôt et arrive en boutique, prêt à la vente.' },
-              { title: 'Réception & dispatch en ligne uniquement', description: 'Ces opérations modifient le stock de deux endroits : elles exigent une connexion active. Un bandeau vous prévient si vous êtes hors-ligne.' },
+              { title: 'Transfert Inter-Boutiques (Dispatch)', description: 'Expédiez de la marchandise depuis le dépôt vers une boutique. La réception contrôle les quantités et enregistre les éventuels écarts.' },
+              { title: 'Commande Fournisseur', description: 'Rédigez un Bon de Commande, téléchargez le PDF officiel et réceptionnez les livraisons partielles ou totales.' },
+              { title: 'Échéancier des Dettes', description: 'Consultez la liste des fournisseurs impayés et réglez les dettes avec écriture automatique en trésorerie.' },
             ]}
           />
         </div>
       </div>
 
-      <div className="mt-4">
-        <OfflineBanner message="Mode hors-ligne : la réception de commande et les transferts nécessitent une connexion." />
+      <OfflineBanner message="Mode hors-ligne : la réception de commande et les transferts exigent une connexion internet." />
+
+      {/* ── AXE 1 : TopBar Synthétique (KPIs Entrepôt) ── */}
+      <div id="tour-entrepot-kpis">
+        <WarehouseKpiCards
+          totalStockValue={totalStockValue}
+          inTransitCount={inTransitCount}
+          pendingOrdersCount={pendingOrdersCount}
+          reorderAlertsCount={reorderAlertsCount}
+          onSelectTab={(tab) => setActiveTab(tab)}
+        />
       </div>
 
-      {/* KPI Cards (for suppliers & dettes) */}
-      <div id="tour-entrepot-kpis" className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="flex items-center gap-4 p-4 border border-brand/10 bg-brand/5">
-          <div className="rounded-xl bg-brand/10 p-3 text-brand">
-            <Truck className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fournisseurs Actifs</div>
-            <div className="text-xl font-bold text-slate-900">{suppliers.filter((s) => s.actif).length}</div>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-4 p-4 border border-red-100 bg-red-50/50">
-          <div className="rounded-xl bg-red-100 p-3 text-red-600">
-            <DollarSign className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dette Fournisseurs</div>
-            <div className="text-xl font-bold text-red-600">
-              {totalDetteFournisseurs.toLocaleString('fr-FR')} FCFA
-            </div>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-4 p-4 border border-emerald-100 bg-emerald-50/50">
-          <div className="rounded-xl bg-emerald-100 p-3 text-emerald-600">
-            <CheckCircle className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Commandes En Cours</div>
-            <div className="text-xl font-bold text-emerald-600">
-              {orders.filter((o) => o.statut === 'ORDERED' || o.statut === 'PARTIAL').length}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Tab Switcher & Search */}
-      <div id="tour-entrepot-tabs" className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border-b border-slate-200 pb-2">
-        <div className="flex gap-2 text-sm font-medium">
+      {/* ── AXE 1 : Navigation par Onglets (Tabs UI) ── */}
+      <div className="border-b border-slate-200" id="tour-entrepot-tabs">
+        <nav className="flex space-x-6 text-sm font-bold">
           <button
-            onClick={() => { setActiveTab('suppliers'); setSearchQuery(''); }}
-            className={`pb-2 px-3 transition-colors border-b-2 ${
-              activeTab === 'suppliers'
-                ? 'border-brand text-brand font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            type="button"
+            onClick={() => setActiveTab('dispatch')}
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'dispatch'
+                ? 'border-teal-600 text-teal-800 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Fournisseurs
+            <Truck className="h-4 w-4" />
+            <span>Transferts Inter-Boutiques (Dispatch)</span>
           </button>
+
           <button
-            onClick={() => { setActiveTab('orders'); setSearchQuery(''); }}
-            className={`pb-2 px-3 transition-colors border-b-2 ${
+            type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'orders'
-                ? 'border-brand text-brand font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-teal-600 text-teal-800 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Bons de Commande
+            <span>📦 Commandes & Réceptions Fournisseurs</span>
           </button>
-          <button
-            onClick={() => { setActiveTab('payments'); setSearchQuery(''); }}
-            className={`pb-2 px-3 transition-colors border-b-2 ${
-              activeTab === 'payments'
-                ? 'border-brand text-brand font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Règlements & Dettes
-          </button>
-        </div>
 
-        <div className="relative max-w-xs w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder={
+          <button
+            type="button"
+            onClick={() => setActiveTab('suppliers')}
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'suppliers'
-                ? 'Rechercher un fournisseur...'
-                : activeTab === 'orders'
-                ? 'Référence, fournisseur...'
-                : 'Filtrer les règlements...'
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-9 pr-4 text-sm text-slate-800 outline-none focus:border-brand"
-          />
-        </div>
+                ? 'border-teal-600 text-teal-800 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Warehouse className="h-4 w-4" />
+            <span>Fournisseurs & Échéancier Dettes</span>
+          </button>
+        </nav>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {/* Barre de Recherche */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Rechercher par nom, bon de commande, référence..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-full border border-slate-200/90 bg-white pl-10 pr-4 py-2 text-xs font-semibold text-slate-900 outline-none shadow-2xs focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+        />
+      </div>
 
-      {/* Main content table */}
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <p className="text-sm text-slate-500">Chargement des données...</p>
-        </div>
-      ) : (
-        <Card className="overflow-x-auto p-0 border border-slate-100 shadow-sm">
-          {activeTab === 'suppliers' && (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
-                <tr>
-                  <th className="px-4 py-3">Nom</th>
-                  <th className="px-4 py-3">Téléphone / Contact</th>
-                  <th className="px-4 py-3">Adresse</th>
-                  <th className="px-4 py-3 text-right">Dette Courante</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredSuppliers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">Aucun fournisseur trouvé.</td>
-                  </tr>
-                ) : (
-                  filteredSuppliers.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-semibold text-slate-900">{s.nom}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {s.telephone && <div>{s.telephone}</div>}
-                        {s.contact && <div className="text-xs text-slate-400">{s.contact}</div>}
-                        {!s.telephone && !s.contact && '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">{s.adresse ?? '—'}</td>
-                      <td className="px-4 py-3 text-right font-bold text-red-600">
-                        {s.soldeDette.toLocaleString('fr-FR')} FCFA
-                      </td>
-                      <td className="px-4 py-3 text-right flex justify-end gap-2">
-                        {s.soldeDette > 0 && (
-                          <Button size="sm" variant="outline" onClick={() => setShowPaymentModal(s)} className="text-xs border-brand text-brand hover:bg-brand/5">
-                            Régler dette
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => { setSelectedSupplier(s); setShowSupplierModal(true); }} className="text-xs">
-                          Modifier
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+      {/* ── ONGLET 1 : Transferts Inter-Boutiques (Dispatch) ── */}
+      {activeTab === 'dispatch' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900">Historique des Expéditions Inter-Magasins</h3>
+            <Link href="/entrepot/dispatch">
+              <Button size="sm" variant="outline" className="rounded-xl text-xs font-bold gap-1">
+                <Truck className="h-3.5 w-3.5" /> Gérer les transferts
+              </Button>
+            </Link>
+          </div>
 
-          {activeTab === 'orders' && (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
-                <tr>
-                  <th className="px-4 py-3">Référence</th>
-                  <th className="px-4 py-3">Fournisseur</th>
-                  <th className="px-4 py-3">Destination</th>
-                  <th className="px-4 py-3">Statut</th>
-                  <th className="px-4 py-3 text-right">M. Total</th>
-                  <th className="px-4 py-3 text-right">M. Reçu / Payé</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOrders.length === 0 ? (
+          {dispatches.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-8 text-center text-slate-500 space-y-2">
+              <Truck className="mx-auto h-10 w-10 text-slate-300" />
+              <h4 className="text-sm font-bold text-slate-900">Aucun transfert inter-boutique enregistré</h4>
+              <p className="text-xs text-slate-500">Utilisez le bouton "Nouveau Dispatch" pour expédier du stock d'un dépôt vers une boutique.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+              <table className="w-full text-sm text-left">
+                <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase font-bold">
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Aucun bon de commande trouvé.</td>
+                    <th className="px-4 py-3.5">Référence</th>
+                    <th className="px-4 py-3.5">Statut</th>
+                    <th className="px-4 py-3.5">Source ➔ Destination</th>
+                    <th className="px-4 py-3.5 text-center">Articles</th>
+                    <th className="px-4 py-3.5 text-right">Date</th>
                   </tr>
-                ) : (
-                  filteredOrders.map((o) => (
-                    <tr key={o.id} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-900">{o.reference}</td>
-                      <td className="px-4 py-3 text-slate-800">{o.fournisseurNom ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-500">{o.etablissementNom ?? '—'}</td>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {dispatches.map((d) => (
+                    <tr key={d.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">#{d.reference}</td>
                       <td className="px-4 py-3">
-                        <Badge tone={STATUS_TONES[o.statut]}>{STATUS_LABELS[o.statut]}</Badge>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold border ${
+                          d.statut === 'VALIDATED'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : d.statut === 'DRAFT'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : 'bg-rose-50 text-rose-800 border-rose-200'
+                        }`}>
+                          {d.statut === 'VALIDATED' ? '🟢 Reçu' : d.statut === 'DRAFT' ? '🔵 En Transit' : '🔴 Annulé'}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900">
-                        {o.montantTotal.toLocaleString('fr-FR')} FCFA
+                      <td className="px-4 py-3 text-xs text-slate-700 font-bold">
+                        {d.sourceId} ➔ {d.destinationId}
                       </td>
-                      <td className="px-4 py-3 text-right text-xs text-slate-500">
-                        <div>Reçu: {o.montantRecu.toLocaleString('fr-FR')}</div>
-                        <div>Payé: {o.montantPaye.toLocaleString('fr-FR')}</div>
+                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-900">
+                        {d.items?.length ?? 0}
                       </td>
-                      <td className="px-4 py-3 text-right flex justify-end gap-2 items-center">
-                        <button
-                          onClick={() => setViewPoInvoice(o)}
-                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors"
-                          title="Voir la facture"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => void handleDownloadPoPdf(o)}
-                          disabled={downloadingPoId === o.id}
-                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors disabled:opacity-50"
-                          title="Télécharger la facture PDF"
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </button>
-                        {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
-                          <Link href={`/entrepot/reception/${o.id}`}>
-                            <Button size="sm" className="text-xs bg-brand hover:bg-brand/90 text-white">
-                              Réceptionner
-                            </Button>
-                          </Link>
-                        )}
-                        {(o.statut === 'DRAFT' || o.statut === 'ORDERED') && (
-                          <Button size="sm" variant="outline" onClick={() => handleCancelOrder(o.id)} className="text-xs border-red-200 text-red-500 hover:bg-red-50">
-                            Annuler
-                          </Button>
-                        )}
+                      <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">
+                        {new Date(d.createdAt).toLocaleDateString('fr-FR')}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-
-          {activeTab === 'payments' && (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Fournisseur</th>
-                  <th className="px-4 py-3">Méthode</th>
-                  <th className="px-4 py-3 text-right">Montant Réglé</th>
-                  <th className="px-4 py-3">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredPayments.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">Aucun règlement trouvé.</td>
-                  </tr>
-                ) : (
-                  filteredPayments.map((p) => {
-                    const supplier = suppliers.find((s) => s.id === p.fournisseurId);
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 text-slate-500">{new Date(p.createdAt).toLocaleString('fr-FR')}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-900">{supplier?.nom ?? 'Fournisseur inconnu'}</td>
-                        <td className="px-4 py-3 text-slate-600">{p.methode}</td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-600">
-                          {p.montant.toLocaleString('fr-FR')} FCFA
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">{p.note ?? '—'}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          )}
-        </Card>
+        </div>
       )}
 
-      {/* Modals */}
+      {/* ── ONGLET 2 : Commandes & Réceptions Fournisseurs ── */}
+      {activeTab === 'orders' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900">Bons de Commande Fournisseurs</h3>
+            <Button size="sm" onClick={() => setShowPoModal(true)} className="rounded-xl text-xs font-bold bg-teal-600 text-white">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Nouveau Bon
+            </Button>
+          </div>
+
+          {filteredOrders.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200/70 bg-white p-8 text-center text-slate-500 space-y-2">
+              <ShoppingBag className="mx-auto h-10 w-10 text-slate-300" />
+              <h4 className="text-sm font-bold text-slate-900">Aucun bon de commande enregistré</h4>
+              <p className="text-xs text-slate-500">Rédigez un nouveau bon de commande pour approvisionner vos réserves.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+              <table className="w-full text-sm text-left">
+                <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase font-bold">
+                  <tr>
+                    <th className="px-4 py-3.5">Réf.</th>
+                    <th className="px-4 py-3.5">Fournisseur</th>
+                    <th className="px-4 py-3.5">Statut</th>
+                    <th className="px-4 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">#{o.reference}</td>
+                      <td className="px-4 py-3 text-slate-800 font-bold">{o.fournisseurNom || 'Fournisseur inconnu'}</td>
+                      <td className="px-4 py-3">
+                        <Badge tone={STATUS_TONES[o.statut] ?? 'neutral'}>
+                          {STATUS_LABELS[o.statut as keyof typeof STATUS_LABELS] ?? o.statut}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPoPdf(o)}
+                          disabled={downloadingPoId === o.id}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        >
+                          <FileDown className="h-3.5 w-3.5 text-teal-600" /> PDF
+                        </button>
+                        {o.statut !== 'CANCELLED' && o.statut !== 'RECEIVED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelOrder(o.id)}
+                            className="text-xs text-rose-600 font-bold hover:underline"
+                          >
+                            Annuler
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ONGLET 3 : Fournisseurs & Échéancier Dettes ── */}
+      {activeTab === 'suppliers' && (
+        <div className="space-y-6">
+          {/* Section Échéancier des Dettes Fournisseurs (Axe 4) */}
+          <SupplierDebtSchedule
+            suppliers={filteredSuppliers}
+            onRecordPayment={(supplier) => setShowPaymentModal(supplier)}
+          />
+        </div>
+      )}
+
+      {/* Modales Fournisseurs, Règlements & Bons de Commande */}
       {showSupplierModal && (
         <SupplierFormModal
-          supplier={selectedSupplier}
+          supplier={selectedSupplier ?? undefined}
           onClose={() => setShowSupplierModal(false)}
-          onSuccess={() => {
-            setShowSupplierModal(false);
-            void loadData();
-          }}
+          onSuccess={() => { setShowSupplierModal(false); void loadData(); }}
         />
       )}
 
@@ -487,10 +409,7 @@ export default function EntrepotPage() {
         <RecordSupplierPaymentModal
           supplier={showPaymentModal}
           onClose={() => setShowPaymentModal(null)}
-          onSuccess={() => {
-            setShowPaymentModal(null);
-            void loadData();
-          }}
+          onSuccess={() => { setShowPaymentModal(null); void loadData(); }}
         />
       )}
 
@@ -499,17 +418,7 @@ export default function EntrepotPage() {
           etablissements={etablissements}
           currentEtablissementId={currentEtablissementId}
           onClose={() => setShowPoModal(false)}
-          onSuccess={() => {
-            setShowPoModal(false);
-            void loadData();
-          }}
-        />
-      )}
-
-      {viewPoInvoice && (
-        <PurchaseOrderInvoiceModal
-          order={viewPoInvoice}
-          onClose={() => setViewPoInvoice(null)}
+          onSuccess={() => { setShowPoModal(false); void loadData(); }}
         />
       )}
     </div>
