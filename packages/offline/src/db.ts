@@ -64,6 +64,13 @@ export class WilinwiOfflineDB extends Dexie {
       products: 'id, nom',
       cache: 'key, cachedAt',
     });
+    // v3 : cache local de session POS pour démarrage déconnecté.
+    this.version(3).stores({
+      pendingSales: 'id, status, createdAt',
+      products: 'id, nom',
+      cache: 'key, cachedAt',
+      posSessions: 'id, etablissementId, status',
+    });
   }
 }
 

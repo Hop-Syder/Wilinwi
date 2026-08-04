@@ -447,6 +447,16 @@ export default function PosPage() {
           }}
         />
       )}
+      {/* Bouton de Scan Mobile Flottant Persistant (375px-639px) */}
+      <button
+        type="button"
+        onClick={() => setShowScannerModal(true)}
+        className="sm:hidden fixed right-4 bottom-20 z-40 flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 font-extrabold text-white shadow-xl shadow-emerald-600/30 transition-transform active:scale-95 border border-emerald-400/30 min-h-[48px]"
+        aria-label="Scanner code-barres"
+      >
+        <span className="text-base">📷</span>
+        <span className="text-xs tracking-wider uppercase font-black">Scanner</span>
+      </button>
     </div>
   );
 }

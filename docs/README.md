@@ -27,6 +27,8 @@ Ce dossier rassemble l'ensemble des documents d'architecture, de cadrage fonctio
 ---
 
 ### 2. Spécifications & Cahier des Charges
+* 📄 **[directive-ui-ux-master-mvp2.md](directive-ui-ux-master-mvp2.md)**  
+  *Directive de Développement & UI/UX Master — Wilinwi MVP2.* Exigences d'excellence UI/UX, Design System Slate/Emerald, ergonomie caisse Split-Screen 2/3 + 1/3, raccourcis clavier F2/F4, PWA mobile-first, fiche produit 3 onglets et règles d'isolation multi-tenant.
 * 📄 **[tdr-specifications-wilinwi.md](tdr-specifications-wilinwi.md)**  
   Termes de Référence (TDR) officiels décrivant les exigences métiers, la sécurité multi-tenant, la résilience offline (IndexedDB / SyncEngine) et les règles financières (devise FCFA sans centimes).
 * 📄 **[newplan-tdr.md](newplan-tdr.md)**  
@@ -49,6 +51,8 @@ Ce dossier rassemble l'ensemble des documents d'architecture, de cadrage fonctio
 ---
 
 ### 5. Audits & Évaluations d'Architecture
+* 📄 **[audit-report-mvp2.md](audit-report-mvp2.md)**  
+  *Audit Technique et Sécurité Sans Concession — Wilinwi MVP2.* Analyse chirurgicale du monorepo, inventaire du code mort, conformité métier POS & Rapports Z, imperméabilité multi-tenant RLS, fuites mémoire et matrice de priorité P0/P1/P2.
 * 📄 **[audit-report-independant.md](audit-report-independant.md)**  
   Rapport d'audit indépendant sur la robustesse du code, l'isolation RLS et les performances.
 * 📄 **[audit-report.md](audit-report.md)**  

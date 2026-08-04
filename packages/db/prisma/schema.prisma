@@ -611,6 +611,7 @@ model StockMovement {
 
   @@index([tenantId])
   @@index([productId])
+  @@index([tenantId, productId, createdAt])
   @@map("stock_movements")
 }
 
@@ -705,6 +706,7 @@ model Sale {
   @@index([tenantId, livreurId])
   @@index([tenantId, etablissementId])
   @@index([tenantId, posSessionId])
+  @@index([tenantId, vendeurId])
   @@map("sales")
 }
 

@@ -54,6 +54,28 @@ export function PosOpenSessionModal({ isOpen, onClose, onSuccess }: PosOpenSessi
       onSuccess(session);
       onClose();
     } catch (err: unknown) {
+      // Fallback Offline : si pas de réseau, créer une session locale temporaire
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        const offlineSession: PosSessionDto = {
+          id: `local-session-${Date.now()}`,
+          tenantId: user?.tenantId || 'local-tenant',
+          etablissementId: user?.etablissementId || 'local-etab',
+          openedById: user?.userId || 'local-user',
+          status: 'OPEN',
+          fondInitial: numericAmount,
+          totalEspeces: 0,
+          totalMoMo: 0,
+          totalBanque: 0,
+          totalCredit: 0,
+          totalVentes: 0,
+          nombreVentes: 0,
+          soldeTheorique: numericAmount,
+          openedAt: new Date().toISOString(),
+        };
+        onSuccess(offlineSession);
+        onClose();
+        return;
+      }
       setErrorMsg(err instanceof Error ? err.message : 'Impossible d\'ouvrir la session de caisse.');
     } finally {
       setLoading(false);
