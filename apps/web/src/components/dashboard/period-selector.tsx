@@ -62,7 +62,7 @@ export function PeriodSelector({
               onClick={() => onPresetChange(p)}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
                 active
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200/60'
+                  ? 'bg-indigo-600 text-white shadow-xs font-extrabold border border-indigo-700'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >

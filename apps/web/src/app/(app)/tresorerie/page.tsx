@@ -248,7 +248,7 @@ export default function TresoreriePage() {
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-brand">Trésorerie</h1>
+          <h1 className="font-display text-2xl font-extrabold text-rose-950">Trésorerie</h1>
           <p className="mt-1 text-sm text-slate-500">Journal financier · Virements · Clôtures</p>
         </div>
         <div className="flex items-center gap-2">

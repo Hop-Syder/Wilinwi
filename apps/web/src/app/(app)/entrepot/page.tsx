@@ -173,24 +173,30 @@ export default function EntrepotPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-brand">Approvisionnement & Entrepôt</h1>
+          <h1 className="font-display text-2xl font-extrabold text-teal-950">Approvisionnement & Entrepôt</h1>
           <p className="mt-1 text-sm text-slate-500">Gérez vos fournisseurs, bons de commande, réceptions et dettes.</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             id="tour-entrepot-dispatch"
             href="/entrepot/dispatch"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 transition-colors hover:bg-teal-100"
           >
             <Truck className="h-4 w-4" /> Dispatch
           </Link>
           {activeTab === 'suppliers' && (
-            <Button onClick={() => { setSelectedSupplier(null); setShowSupplierModal(true); }}>
+            <Button
+              onClick={() => { setSelectedSupplier(null); setShowSupplierModal(true); }}
+              className="rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-md shadow-teal-600/20 gap-1.5 transition-transform active:scale-95"
+            >
               <Plus className="h-4 w-4" /> Nouveau fournisseur
             </Button>
           )}
           {activeTab === 'orders' && (
-            <Button onClick={() => setShowPoModal(true)}>
+            <Button
+              onClick={() => setShowPoModal(true)}
+              className="rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-md shadow-teal-600/20 gap-1.5 transition-transform active:scale-95"
+            >
               <Plus className="h-4 w-4" /> Rédiger un Bon
             </Button>
           )}

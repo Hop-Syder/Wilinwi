@@ -153,7 +153,10 @@ export default function ProductStockDetailsPage() {
             ]}
           />
           {canWrite && (
-            <Button onClick={() => setShowMovementModal(true)} className="rounded-xl">
+            <Button
+              onClick={() => setShowMovementModal(true)}
+              className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md shadow-amber-600/20 transition-transform active:scale-95"
+            >
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Mouvement manuel
             </Button>
           )}
@@ -168,7 +171,7 @@ export default function ProductStockDetailsPage() {
             onClick={() => setActiveTab('overview')}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === 'overview'
-                ? 'border-emerald-600 text-emerald-700'
+                ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -180,7 +183,7 @@ export default function ProductStockDetailsPage() {
             onClick={() => setActiveTab('history')}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === 'history'
-                ? 'border-emerald-600 text-emerald-700'
+                ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -192,7 +195,7 @@ export default function ProductStockDetailsPage() {
             onClick={() => setActiveTab('performance')}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === 'performance'
-                ? 'border-emerald-600 text-emerald-700'
+                ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >

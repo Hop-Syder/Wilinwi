@@ -312,10 +312,10 @@ export default function ClientsPage() {
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 to-brand bg-clip-text text-transparent">Gestion Relation Client (CRM)</h1>
-          <p className="mt-1 text-sm text-slate-500">Suivi des fiches clients, limites de crédits autorisées et recouvrement.</p>
+          <h1 className="font-display text-2xl font-extrabold text-violet-950">Clients & CRM</h1>
+          <p className="mt-1 text-sm text-slate-500">Gestion du fichier client, encaissements de dettes et comptes courants.</p>
         </div>
-        <div className="flex items-center gap-2" id="tour-clients-new">
+        <div className="flex items-center gap-2">
           <ContextualHelp 
             storageKey="wilinwi_clients_tour_done"
             tourSteps={tourSteps}
@@ -327,7 +327,10 @@ export default function ClientsPage() {
             ]}
           />
           {canWrite && (
-            <Button onClick={() => { setShowAddForm(true); setSelectedId(null); }}>
+            <Button
+              onClick={() => { setShowAddForm(true); setSelectedId(null); }}
+              className="rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-extrabold text-xs shadow-md shadow-violet-600/20 transition-transform active:scale-95"
+            >
               <Plus className="h-4 w-4 mr-1.5" /> Nouveau client
             </Button>
           )}

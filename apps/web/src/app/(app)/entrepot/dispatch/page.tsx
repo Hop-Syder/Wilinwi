@@ -139,8 +139,8 @@ export default function DispatchPage() {
       </Link>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
-            <Truck className="h-6 w-6" /> Dispatch
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold text-teal-950">
+            <Truck className="h-6 w-6 text-teal-600" /> Dispatch
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             Transférez la marchandise de l'entrepôt vers une boutique. La validation déplace le stock.
@@ -157,7 +157,11 @@ export default function DispatchPage() {
             ]}
           />
           <div id="tour-dispatch-new">
-            <Button onClick={openCreate} disabled={offline}>
+            <Button
+              onClick={openCreate}
+              disabled={offline}
+              className="rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-md shadow-teal-600/20 gap-1.5 transition-transform active:scale-95"
+            >
               <Plus className="h-4 w-4" /> Nouveau dispatch
             </Button>
           </div>
