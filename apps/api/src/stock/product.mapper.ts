@@ -28,10 +28,12 @@ export function toProductDto(
     variants?: ProductVariant[];
     batches?: ProductBatch[];
     units?: ProductUnit[];
+    exclusions?: { etablissementId: string }[];
   },
   role: Role,
   stockParEtablissement?: Record<string, number>,
   otherEtablissementsStock?: { etablissementNom: string; stock: number }[],
+  etablissementIds?: string[],
 ): ProductDto {
   const base: ProductDto = {
     id: product.id,
@@ -74,6 +76,10 @@ export function toProductDto(
 
   if (otherEtablissementsStock && otherEtablissementsStock.length > 0) {
     base.otherEtablissementsStock = otherEtablissementsStock;
+  }
+
+  if (etablissementIds && etablissementIds.length > 0) {
+    base.etablissementIds = etablissementIds;
   }
 
   // Conditionnements commerciaux (Wholesale M5) : visibles par tous les rôles

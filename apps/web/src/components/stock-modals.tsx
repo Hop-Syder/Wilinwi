@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { X, Plus, Trash2, Sparkles } from 'lucide-react';
-import { Button } from '@wilinwi/ui';
+import { X, Plus, Trash2, Sparkles, Store } from 'lucide-react';
+import { Button, cn } from '@wilinwi/ui';
 import {
   formatQuantity,
   maxProductPhotos,
@@ -205,10 +205,69 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
       };
     })
   );
+  const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
+  const [selectedEtablissementIds, setSelectedEtablissementIds] = useState<string[]>([]);
+  const [allEtablissementsSelected, setAllEtablissementsSelected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    apiGet<EtablissementDto[]>('/api/etablissements')
+      .then((data) => {
+        if (!isMounted) return;
+        setEtablissements(data);
+        const allIds = data.map((e) => e.id);
+
+        if (!product) {
+          // Pré-sélection automatique : si l'utilisateur est connecté sur une boutique spécifique (ex: Boutique C),
+          // on pré-coche uniquement cette boutique.
+          if (user?.etablissementId && allIds.includes(user.etablissementId)) {
+            setSelectedEtablissementIds([user.etablissementId]);
+            setAllEtablissementsSelected(false);
+          } else {
+            setSelectedEtablissementIds(allIds);
+            setAllEtablissementsSelected(true);
+          }
+        } else {
+          // Produit existant : si etablissementIds est présent dans le produit, l'utiliser.
+          if (product.etablissementIds && product.etablissementIds.length > 0) {
+            setSelectedEtablissementIds(product.etablissementIds);
+            setAllEtablissementsSelected(product.etablissementIds.length === allIds.length);
+          } else {
+            setSelectedEtablissementIds(allIds);
+            setAllEtablissementsSelected(true);
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [product, user?.etablissementId]);
+
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const toggleEtablissement = (id: string) => {
+    setSelectedEtablissementIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      setAllEtablissementsSelected(next.length === etablissements.length);
+      return next;
+    });
+  };
+
+  const toggleAllEtablissements = () => {
+    if (allEtablissementsSelected) {
+      // Décocher tout sauf la boutique courante si possible
+      const fallback = user?.etablissementId ? [user.etablissementId] : [];
+      setSelectedEtablissementIds(fallback);
+      setAllEtablissementsSelected(false);
+    } else {
+      setSelectedEtablissementIds(etablissements.map((e) => e.id));
+      setAllEtablissementsSelected(true);
+    }
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -227,6 +286,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
         prixAchat: Number(form.prixAchat),
         prixPlancher: Number(form.prixPlancher),
         prixCatalogue: Number(form.prixCatalogue),
+        etablissementIds: selectedEtablissementIds,
         stock: isEditing
           ? undefined
           : hasStock && !batched
@@ -400,6 +460,65 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               </div>
             )}
           </div>
+
+          {/* Section : Point(s) de vente & Affectation */}
+          {etablissements.length > 1 && (
+            <div className="col-span-full my-2 border-t border-slate-100 pt-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Store className="h-4 w-4 text-blue-600" /> Point(s) de vente & Affectation
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Sélectionnez les boutiques où ce produit sera disponible et proposé en caisse.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAllEtablissements}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-extrabold text-blue-700 hover:bg-blue-100 transition-colors shrink-0"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {allEtablissementsSelected ? 'Décocher tout' : 'Disponible dans TOUTES les boutiques'}
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {etablissements.map((etab) => {
+                  const checked = selectedEtablissementIds.includes(etab.id);
+                  const isCurrent = user?.etablissementId === etab.id;
+
+                  return (
+                    <div
+                      key={etab.id}
+                      onClick={() => toggleEtablissement(etab.id)}
+                      className={cn(
+                        'flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none',
+                        checked
+                          ? 'border-blue-300 bg-blue-50/40 text-blue-950 font-bold shadow-2xs'
+                          : 'border-slate-200 bg-slate-50/50 text-slate-500 opacity-60 hover:opacity-100'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {}}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-xs font-extrabold">{etab.nom}</span>
+                      </div>
+                      {isCurrent && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">
+                          Boutique Actuelle
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="col-span-full my-2 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between mb-3">

@@ -56,7 +56,7 @@ export class StockService {
     // plus anciens (les autres restent en base, simplement masqués).
     const downgraded = ctx.dunning.downgraded;
 
-    const { products, breakdownByProduct, otherStockMap } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+    const { products, breakdownByProduct, otherStockMap, allEtabIds } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const prods = await tx.product.findMany({
         where: {
           tenantId: ctx.tenantId,
@@ -70,6 +70,7 @@ export class StockService {
         include: {
           variants: true,
           units: true,
+          exclusions: { select: { etablissementId: true } },
           // Lots de la boutique courante (BATCHED) : snapshot POS + péremption.
           ...(!globalView && ctx.etablissementId
             ? {
@@ -93,7 +94,11 @@ export class StockService {
             v.stock = byVariant.get(v.id) ?? 0;
           }
         }
-        return { products: prods, breakdownByProduct: byEtablissement, otherStockMap: new Map<string, { etablissementNom: string; stock: number }[]>() };
+        const allEtabs = await tx.etablissement.findMany({
+          where: { tenantId: ctx.tenantId, actif: true },
+          select: { id: true },
+        });
+        return { products: prods, breakdownByProduct: byEtablissement, otherStockMap: new Map<string, { etablissementNom: string; stock: number }[]>(), allEtabIds: allEtabs.map((e) => e.id) };
       } else {
         // Vue scopée (POS, autres) : stock de l'établissement courant + consultation inter-boutiques.
         const otherStockMapLocal = new Map<string, { etablissementNom: string; stock: number }[]>();
@@ -127,7 +132,11 @@ export class StockService {
             otherStockMapLocal.set(s.productId, list);
           }
         }
-        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>(), otherStockMap: otherStockMapLocal };
+        const allEtabs = await tx.etablissement.findMany({
+          where: { tenantId: ctx.tenantId, actif: true },
+          select: { id: true },
+        });
+        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>(), otherStockMap: otherStockMapLocal, allEtabIds: allEtabs.map((e) => e.id) };
       }
     });
 
@@ -135,9 +144,17 @@ export class StockService {
       ? [...products].sort((a, b) => a.nom.localeCompare(b.nom))
       : products;
 
-    return sorted.map((p) =>
-      toProductDto(p, ctx.role, breakdownByProduct.get(p.id), otherStockMap?.get(p.id)),
-    );
+    return sorted.map((p) => {
+      const excludedSet = new Set((p.exclusions || []).map((ex) => ex.etablissementId));
+      const allowedEtabIds = (allEtabIds || []).filter((id: string) => !excludedSet.has(id));
+      return toProductDto(
+        p,
+        ctx.role,
+        breakdownByProduct.get(p.id),
+        otherStockMap?.get(p.id),
+        allowedEtabIds.length < (allEtabIds || []).length ? allowedEtabIds : undefined,
+      );
+    });
   }
 
   async getProduct(ctx: AuthContext, id: string) {
@@ -229,6 +246,31 @@ export class StockService {
         },
         include: { variants: true },
       });
+
+      // Affectation aux boutiques (Opt-Out) : si etablissementIds est spécifié (ou si ctx.etablissementId est présent),
+      // nous générons les exclusions pour les établissements non sélectionnés.
+      const allTenantEtabs = await tx.etablissement.findMany({
+        where: { tenantId: ctx.tenantId, actif: true },
+        select: { id: true },
+      });
+
+      let targetEtabIds: string[] | null = null;
+      if (input.etablissementIds && input.etablissementIds.length > 0) {
+        targetEtabIds = input.etablissementIds;
+      } else if (ctx.etablissementId) {
+        targetEtabIds = [ctx.etablissementId];
+      }
+
+      if (targetEtabIds && targetEtabIds.length < allTenantEtabs.length) {
+        const excludedIds = allTenantEtabs
+          .map((e) => e.id)
+          .filter((id) => !targetEtabIds!.includes(id));
+        for (const etabId of excludedIds) {
+          await tx.productExclusion.create({
+            data: { tenantId: ctx.tenantId, productId: created.id, etablissementId: etabId },
+          });
+        }
+      }
 
       // Grand livre : le stock initial devient un mouvement IN rattaché à un
       // établissement (courant, sinon primaire) → le stock scopé reste cohérent.
@@ -476,6 +518,28 @@ export class StockService {
                 delta: createdVariant.stock,
               });
             }
+          }
+        }
+      }
+
+      if (input.etablissementIds !== undefined) {
+        await tx.productExclusion.deleteMany({
+          where: { productId: id, tenantId: ctx.tenantId },
+        });
+
+        const allTenantEtabs = await tx.etablissement.findMany({
+          where: { tenantId: ctx.tenantId, actif: true },
+          select: { id: true },
+        });
+
+        if (input.etablissementIds.length > 0 && input.etablissementIds.length < allTenantEtabs.length) {
+          const excludedIds = allTenantEtabs
+            .map((e) => e.id)
+            .filter((etabId) => !input.etablissementIds!.includes(etabId));
+          for (const etabId of excludedIds) {
+            await tx.productExclusion.create({
+              data: { tenantId: ctx.tenantId, productId: id, etablissementId: etabId },
+            });
           }
         }
       }

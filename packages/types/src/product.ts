@@ -281,6 +281,8 @@ const CreateProductSchemaBase = z.object({
   stock: QuantitySchema.default(0),
   seuilAlerte: QuantitySchema.default(5),
   variants: z.array(ProductVariantInputSchema).default([]),
+  /** Liste des IDs d'établissements affectés/autorisés (vide/null = toutes les boutiques). */
+  etablissementIds: z.array(IdSchema).optional(),
 });
 
 export const CreateProductSchema = CreateProductSchemaBase.superRefine((data, ctx) => {
@@ -443,6 +445,8 @@ export const ProductDtoSchema = z.object({
   units: z.array(ProductUnitDtoSchema).optional(),
   // Stock des autres établissements de l'entreprise (Niveau 2 - Consultation Inter-Boutiques).
   otherEtablissementsStock: z.array(z.object({ etablissementNom: z.string(), stock: z.number() })).optional(),
+  // Liste des IDs d'établissements autorisés (si renseigné).
+  etablissementIds: z.array(IdSchema).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 
