@@ -25,30 +25,35 @@ export interface StockDelta {
 
 /**
  * Applique un delta au solde ProductStock de l'emplacement (crée la ligne si absente).
- * Unicité (etab, produit, variante) garantie par index partiels (rls.sql).
+ * Utilise `updateMany` en 1 seule requête atomique (au lieu de findFirst + update),
+ * éliminant ainsi les allers-retours réseau et les risques d'expiration de transaction.
  */
 export async function applyStockDelta(tx: TenantTx, p: StockDelta): Promise<void> {
   const variantId = p.variantId ?? null;
-  const existing = await tx.productStock.findFirst({
+  const updated = await tx.productStock.updateMany({
     where: { etablissementId: p.etablissementId, productId: p.productId, variantId },
-    select: { id: true },
+    data: { quantite: { increment: p.delta } },
   });
-  if (existing) {
-    await tx.productStock.update({
-      where: { id: existing.id },
-      data: { quantite: { increment: p.delta } },
-    });
-  } else {
-    await tx.productStock.create({
-      data: {
-        tenantId: p.tenantId,
-        etablissementId: p.etablissementId,
-        productId: p.productId,
-        variantId,
-        quantite: p.delta,
-        quantiteMin: p.quantiteMin ?? 0,
-      },
-    });
+
+  if (updated.count === 0) {
+    try {
+      await tx.productStock.create({
+        data: {
+          tenantId: p.tenantId,
+          etablissementId: p.etablissementId,
+          productId: p.productId,
+          variantId,
+          quantite: p.delta,
+          quantiteMin: p.quantiteMin ?? 0,
+        },
+      });
+    } catch (err) {
+      // En cas de collision concurrentielle (création simultanée), mise à jour atomique.
+      await tx.productStock.updateMany({
+        where: { etablissementId: p.etablissementId, productId: p.productId, variantId },
+        data: { quantite: { increment: p.delta } },
+      });
+    }
   }
 }
 

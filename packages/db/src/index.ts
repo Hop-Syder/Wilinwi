@@ -48,6 +48,6 @@ export function withTenant<T>(tenantId: string, fn: (tx: TenantTx) => Promise<T>
       await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
-    { maxWait: 10_000, timeout: 20_000 },
+    { maxWait: 20_000, timeout: 60_000 },
   );
 }
