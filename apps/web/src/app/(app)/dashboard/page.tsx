@@ -189,7 +189,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Section Hero KPIs */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" id="tour-dashboard-stats">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-stretch" id="tour-dashboard-stats">
             <KpiCard
               title="Chiffre d'Affaires Brut"
               value={report?.chiffreAffaires ?? 0}

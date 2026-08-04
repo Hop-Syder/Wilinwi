@@ -97,7 +97,7 @@ export function KpiCard({
       : 'bg-slate-100 text-slate-600 border-slate-200';
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300">
+    <div className="relative h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300">
       {/* Dynamic Sparkline SVG Background */}
       {renderSparkline()}
 
