@@ -30,6 +30,7 @@ import {
   X,
   Truck,
   Warehouse,
+  Building2,
 } from 'lucide-react';
 import { OfflineIndicator, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type InfraCapability, type ModuleKey } from '@wilinwi/types';
@@ -156,68 +157,85 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Conteneur de navigation fixe (Sticky) */}
       <div className="sticky top-0 z-30 w-full">
         {/* Ligne de dégradé de marque en haut (Black Luxury: Gold, Blue, Green) */}
-        <div className="h-1 w-full bg-gradient-to-r from-gold via-brand to-emerald" />
+        <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-blue-600 to-emerald-500 shadow-xs" />
 
-        {/* Header / Navbar */}
-        <header className="w-full border-b border-border bg-surface/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1536px] items-center justify-between px-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            {/* Navigation mobile */}
-            <Link href="/" className="font-display text-xl font-black tracking-tight text-primary flex items-center gap-2 shrink-0" title="Wilinwi">
-              <Image src="/logo.png" alt="Wilinwi" width={150} height={150} className="object-contain" />
+        {/* Header Floating Glass Navbar */}
+        <header className="w-full border-b border-slate-200/80 bg-white/85 backdrop-blur-xl shadow-xs transition-all">
+          <div className="mx-auto flex h-16 max-w-[1536px] items-center justify-between px-3 sm:px-6">
+            {/* Zone Gauche : Logo + Groupe/Entreprise + Switcher Boutique */}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="font-display text-xl font-black tracking-tight text-slate-900 flex items-center gap-2 shrink-0 group transition-transform active:scale-95"
+                title="Wilinwi"
+              >
+                <Image src="/logo.png" alt="Wilinwi" width={140} height={140} className="object-contain transition-transform group-hover:scale-105" />
+                {user.boutiqueNom && (
+                  <span className="sm:hidden truncate max-w-[140px] text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/70">
+                    {user.boutiqueNom}
+                  </span>
+                )}
+              </Link>
+
+              {/* Nom du Groupe / Entreprise (Desktop) */}
               {user.boutiqueNom && (
-                <span className="sm:hidden truncate max-w-[150px]">{user.boutiqueNom}</span>
+                <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 text-xs font-black tracking-tight text-slate-900 lg:flex bg-slate-100/80 px-3 py-1.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <Building2 className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span className="truncate max-w-[200px]">{user.boutiqueNom}</span>
+                </div>
               )}
-            </Link>
 
-            {user.boutiqueNom && (
-              <span className="hidden items-center gap-2 border-l border-border pl-4 text-base font-extrabold tracking-tight text-text-primary lg:flex">
-                <span className="text-primary text-lg">🏢</span> {user.boutiqueNom}
-              </span>
-            )}
-
-            {/* Sélecteur d'établissement courant (switch instantané). */}
-            <div className="hidden border-l border-border pl-3 sm:block">
-              <EtablissementSwitcher />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <OfflineIndicator state={state} pending={pending} />
-            <NotificationBell />
-
-            {/* Badge Utilisateur (Desktop) */}
-            <div className="hidden items-center gap-3 rounded border border-border bg-surface p-1.5 pr-3 shadow-sm sm:flex">
-              <div className="flex h-7 w-7 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
-                {user.email.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="flex flex-col text-left leading-none">
-                <span className="text-xs font-semibold text-text-primary max-w-[120px] truncate">{user.email}</span>
-                <span className="text-[10px] text-text-secondary font-medium mt-0.5">{ROLE_LABELS[user.role] ?? user.role}</span>
+              {/* Sélecteur d'établissement courant */}
+              <div className="hidden border-l border-slate-200 pl-3 sm:block">
+                <EtablissementSwitcher />
               </div>
             </div>
 
-            <div className="hidden items-center gap-1.5 border-l border-border pl-3 sm:flex">
-              <button
-                onClick={() => void lock()}
-                className="flex h-9 w-9 items-center justify-center rounded text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-                aria-label="Verrouiller"
-                title="Verrouiller (poste partagé)"
-              >
-                <Lock className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => signOut()}
-                className="flex h-9 w-9 items-center justify-center rounded text-text-secondary transition-colors hover:bg-danger/10 hover:text-danger"
-                aria-label="Se déconnecter"
-                title="Se déconnecter"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
+            {/* Zone Droite : Statut Sync + Cloche Notification + Badge Profil + Actions */}
+            <div className="flex items-center gap-3">
+              <OfflineIndicator state={state} pending={pending} />
+              
+              <div className="flex items-center justify-center p-1 rounded-2xl hover:bg-slate-100/80 transition-colors">
+                <NotificationBell />
+              </div>
+
+              {/* Badge Utilisateur Profil (Desktop) */}
+              <div className="hidden items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 p-1.5 pr-3.5 shadow-2xs hover:border-slate-300 transition-all sm:flex">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-xs font-black text-white shadow-xs">
+                  {user.email.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex flex-col text-left leading-none">
+                  <span className="text-xs font-extrabold text-slate-900 max-w-[130px] truncate">
+                    {user.email}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-bold mt-0.5 tracking-wide uppercase">
+                    {ROLE_LABELS[user.role] ?? user.role}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Actions (Verrouiller + Se Déconnecter) */}
+              <div className="hidden items-center gap-1.5 border-l border-slate-200 pl-3 sm:flex">
+                <button
+                  onClick={() => void lock()}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+                  aria-label="Verrouiller"
+                  title="Verrouiller la session (poste partagé)"
+                >
+                  <Lock className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => signOut()}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200/60 bg-rose-50/50 text-rose-600 shadow-2xs transition-all hover:bg-rose-100/80 hover:border-rose-300 active:scale-95"
+                  aria-label="Se déconnecter"
+                  title="Se déconnecter"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
       </div>
 
       {/* Halos lumineux en arrière-plan (Or et Bleu) — rognés par leur wrapper */}

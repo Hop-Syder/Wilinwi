@@ -72,11 +72,11 @@ export function CollapsibleSidebar({ items }: CollapsibleSidebarProps) {
   return (
     <aside
       className={cn(
-        'hidden sm:block shrink-0 transition-all duration-300 ease-in-out select-none',
+        'hidden sm:block shrink-0 transition-all duration-300 ease-in-out select-none relative z-40',
         collapsed ? 'w-[72px]' : 'w-56'
       )}
     >
-      <div className="sticky top-20 flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white/90 p-2.5 shadow-sm backdrop-blur-md transition-all duration-300">
+      <div className="sticky top-20 flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white/95 p-2.5 shadow-sm backdrop-blur-md transition-all duration-300">
         {/* Entête de contrôle (Toggle plier/déplier) */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-2 px-1 mb-1">
           {!collapsed && (
@@ -146,10 +146,12 @@ export function CollapsibleSidebar({ items }: CollapsibleSidebarProps) {
                   )}
                 </Link>
 
-                {/* Tooltip flottant (Mode réduit / Collapsed) */}
+                {/* Tooltip flottant (Mode réduit / Collapsed) - 100% Premier Plan z-[9999] */}
                 {collapsed && (
-                  <div className="absolute left-full top-1/2 ml-3 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white shadow-xl whitespace-nowrap border border-slate-800">
+                  <div className="absolute left-full top-1/2 ml-3 -translate-y-1/2 z-[9999] pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100 origin-left">
+                    <div className="relative flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-extrabold text-white shadow-2xl whitespace-nowrap border border-slate-700/80 ring-1 ring-black/10">
+                      {/* Flèche du tooltip */}
+                      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 border-y-4 border-y-transparent border-r-6 border-r-slate-900" />
                       <span>{label}</span>
                       {badge !== undefined && (
                         <span className="rounded-full bg-blue-500/30 px-1.5 py-0.5 text-[10px] text-blue-200">
