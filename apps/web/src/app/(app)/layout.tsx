@@ -43,6 +43,7 @@ import { EtablissementSwitcher } from '@/components/etablissement-switcher';
 import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { NotificationBell } from '@/components/notification-bell';
+import { CollapsibleSidebar } from '@/components/collapsible-sidebar';
 
 // `infraCap` (optionnel) : capacité d'infrastructure requise pour voir l'entrée
 // (TDR v2) — les entrées verticales (Food, Santé…) se brancheront ici.
@@ -330,32 +331,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Layout Container */}
       <div className="mx-auto flex max-w-[1536px] gap-4 px-3 sm:px-6 pt-6 pb-24 sm:pb-6">
-        {/* Floating Sidebar (Desktop) */}
-        <nav className="hidden w-44 shrink-0 sm:block">
-          <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
-            <ul className="space-y-1">
-              {menuItems.filter((item) => canSee(item)).map(({ href, label, icon: Icon }) => {
-                const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      className={cn(
-                        'group flex items-center gap-3 rounded px-3 py-2 text-sm font-semibold transition-all duration-250 cursor-pointer',
-                        active
-                          ? 'bg-primary text-slate-900 shadow-md shadow-primary/10'
-                          : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
-                      )}
-                    >
-                      <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-slate-900' : 'text-text-secondary/60 group-hover:text-text-primary')} />
-                      {label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </nav>
+        {/* Sidebar Collapsible (Desktop - Développable & Réductible) */}
+        <CollapsibleSidebar items={menuItems.filter((item) => canSee(item))} />
 
         {/* Content main */}
         {/* La `key` sur l'établissement courant remonte le contenu de page à chaque
