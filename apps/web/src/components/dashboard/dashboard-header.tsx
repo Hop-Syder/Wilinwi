@@ -1,7 +1,7 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Composant En-tête du Tableau de Bord (Architecture 2 Lignes Desktop / 3 Lignes Mobile & Égalisation)
+ * @description Composant En-tête du Tableau de Bord (Architecture 2 Lignes Desktop / 4 Lignes Nettes Mobile)
  * @created 2026-06-20
  * @updated 2026-08-04
  * 🌐 ceo.nexuspartners.xyz
@@ -12,7 +12,7 @@
 'use client';
 
 import React from 'react';
-import { Store, Wifi, WifiOff, Calendar } from 'lucide-react';
+import { Store, Wifi, WifiOff, Calendar, RefreshCw } from 'lucide-react';
 import { CurrencySelector } from '@/components/currency-selector';
 import { PeriodSelector, PeriodPreset } from '@/components/dashboard/period-selector';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -129,23 +129,33 @@ export function DashboardHeader({
         </div>
       </div>
 
-      {/* ── AFFICHAGE MOBILE & TABLETTE (< lg) — 3 LIGNES COMPACTES ── */}
+      {/* ── AFFICHAGE MOBILE & TABLETTE (< lg) — 4 LIGNES NETTES ── */}
       <div className="lg:hidden space-y-2.5">
-        {/* LIGNE 1 MOBILE : Titre + Badge Boutique */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h1 className="font-display text-xl font-extrabold text-slate-900 tracking-tight">
-            Tableau de bord
-          </h1>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            <Store className="w-3.5 h-3.5 text-slate-500" />
-            <span className="truncate max-w-[150px]">{activeEtablissementName}</span>
-          </span>
+        {/* LIGNE 1 MOBILE : [ Tableau de bord | 🏪 Prestige Prêt-à-Porter ] --------------- [ ❓ Aide ] */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="font-display text-lg font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
+              Tableau de bord
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 min-w-0">
+              <Store className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <span className="truncate max-w-[130px]">{activeEtablissementName}</span>
+            </span>
+          </div>
+
+          <div className="shrink-0">
+            <ContextualHelp
+              storageKey="wilinwi_dashboard_tour_done"
+              tourSteps={tourSteps}
+              useCases={dashboardUseCases}
+            />
+          </div>
         </div>
 
-        {/* LIGNE 2 MOBILE : Badge Statut (Gauche) + Sélecteur Devises & Aide (Droite) */}
-        <div className="flex items-center justify-between gap-2">
+        {/* LIGNE 2 MOBILE : [ 🟢 En ligne (0) ] ---------------- [ 🌐 XOF (FCFA) ▾ ] [ 📅 2026-07-29 → 2026-08-04 ] */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border shrink-0 ${
               isOnline
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -156,41 +166,57 @@ export function DashboardHeader({
             ) : (
               <WifiOff className="h-3 w-3 text-amber-600 shrink-0" />
             )}
-            <span className="truncate">
+            <span className="whitespace-nowrap">
               {isOnline ? `En ligne (${pendingCount})` : `Hors-ligne (${pendingCount})`}
             </span>
           </span>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <CurrencySelector />
-            <ContextualHelp
-              storageKey="wilinwi_dashboard_tour_done"
-              tourSteps={tourSteps}
-              useCases={dashboardUseCases}
-            />
+            <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-semibold bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-xl whitespace-nowrap">
+              <Calendar className="w-3 h-3 text-slate-500 shrink-0" />
+              <span>
+                {dateRange.from} → {dateRange.to}
+              </span>
+            </span>
           </div>
         </div>
 
-        {/* LIGNE 3 MOBILE : Badge Période (Gauche) + Filtre Période & Actions (Droite) */}
-        <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-          <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-semibold bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
-            <Calendar className="w-3 h-3 text-slate-500" />
-            <span>
-              {dateRange.from} → {dateRange.to}
-            </span>
-          </span>
-
+        {/* LIGNE 3 MOBILE : [ Aujourd'hui | Hier | 7j | Ce mois | Personnalisé ] */}
+        <div className="overflow-x-auto max-w-full pb-0.5">
           <PeriodSelector
             preset={preset}
-            compare={compare}
+            compare={false}
             onPresetChange={onPresetChange}
-            onCompareToggle={onCompareToggle}
+            onCompareToggle={() => {}}
             customFrom={customFrom}
             customTo={customTo}
             onCustomDateChange={onCustomDateChange}
-            isRefreshing={loading}
-            onRefresh={onRefresh}
+            hideCompareAndRefresh
           />
+        </div>
+
+        {/* LIGNE 4 MOBILE : [ ☑ vs période précédente ] ----------------------------------- [ 🔄 ] */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <label className="inline-flex items-center gap-1.5 cursor-pointer select-none rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={compare}
+              onChange={(e) => onCompareToggle(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+            />
+            <span>vs période précédente</span>
+          </label>
+
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            title="Actualiser les données"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
+          </button>
         </div>
       </div>
     </div>

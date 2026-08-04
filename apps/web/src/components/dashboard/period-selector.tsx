@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Composant sélecteur de période dynamique avec comparaison relative et dates personnalisées
  * @created 2026-08-03
- * @updated 2026-08-03
+ * @updated 2026-08-04
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -26,6 +26,7 @@ interface PeriodSelectorProps {
   onCustomDateChange?: (from: string, to: string) => void;
   isRefreshing?: boolean;
   onRefresh?: () => void;
+  hideCompareAndRefresh?: boolean;
 }
 
 const PRESET_LABELS: Record<PeriodPreset, string> = {
@@ -46,9 +47,10 @@ export function PeriodSelector({
   onCustomDateChange,
   isRefreshing,
   onRefresh,
+  hideCompareAndRefresh = false,
 }: PeriodSelectorProps) {
   return (
-    <div className="inline-flex items-center gap-2 flex-nowrap">
+    <div className="inline-flex items-center gap-2 flex-nowrap max-w-full overflow-x-auto">
       {/* Groupe des boutons de préconfiguration */}
       <div className="inline-flex items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/80 shadow-2xs">
         {(['today', 'yesterday', 'last7', 'thisMonth', 'custom'] as PeriodPreset[]).map((p) => {
@@ -92,18 +94,20 @@ export function PeriodSelector({
       )}
 
       {/* Switch de comparaison relative vs période précédente */}
-      <label className="inline-flex items-center gap-1.5 cursor-pointer select-none rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors whitespace-nowrap">
-        <input
-          type="checkbox"
-          checked={compare}
-          onChange={(e) => onCompareToggle(e.target.checked)}
-          className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
-        />
-        <span>vs période précédente</span>
-      </label>
+      {!hideCompareAndRefresh && (
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={compare}
+            onChange={(e) => onCompareToggle(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+          />
+          <span>vs période précédente</span>
+        </label>
+      )}
 
       {/* Bouton d'actualisation manuelle */}
-      {onRefresh && (
+      {!hideCompareAndRefresh && onRefresh && (
         <button
           type="button"
           onClick={onRefresh}
