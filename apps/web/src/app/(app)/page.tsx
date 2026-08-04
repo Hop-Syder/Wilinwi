@@ -96,21 +96,21 @@ export default function HubPage() {
     async function fetchStats() {
       try {
         // Session caisse & ventes du jour
-        const sessionRes = await apiGet<{ activeSession?: { openedAt: string; userNom?: string }; todayCount?: number; todayTotal?: number }>('/api/pos/session/current').catch(() => null);
+        const activeSession = await apiGet<{ id: string; openedAt: string; openedBy?: { nom?: string } } | null>('/api/pos/sessions/active').catch(() => null);
         // Dashboard summary (Analytics)
-        const summaryRes = await apiGet<{ outOfStock?: number; totalProducts?: number; soldeGlobal?: number; pendingTransfers?: number }>('/api/analytics/reports/dashboard-summary').catch(() => null);
+        const summaryRes = await apiGet<{ chiffreAffaires?: number; nombreVentes?: number; alertes?: { outOfStockProducts?: number } }>('/api/analytics/reports/dashboard').catch(() => null);
 
         if (isMounted) {
           setLiveStats({
-            sessionOpen: !!sessionRes?.activeSession,
-            caissierNom: sessionRes?.activeSession?.userNom,
-            todaySalesCount: sessionRes?.todayCount ?? 14,
-            todaySalesVolume: sessionRes?.todayTotal ?? 345000,
-            outOfStockCount: summaryRes?.outOfStock ?? 2,
-            totalProducts: summaryRes?.totalProducts ?? 128,
-            tresorerieSolde: summaryRes?.soldeGlobal ?? 1850000,
-            dettesClients: 120000,
-            pendingTransfers: summaryRes?.pendingTransfers ?? 1,
+            sessionOpen: !!activeSession,
+            caissierNom: activeSession?.openedBy?.nom,
+            todaySalesCount: summaryRes?.nombreVentes ?? 0,
+            todaySalesVolume: summaryRes?.chiffreAffaires ?? 0,
+            outOfStockCount: summaryRes?.alertes?.outOfStockProducts ?? 0,
+            totalProducts: 128,
+            tresorerieSolde: summaryRes?.chiffreAffaires ?? 0,
+            dettesClients: 0,
+            pendingTransfers: 0,
           });
         }
       } catch {
@@ -158,9 +158,9 @@ export default function HubPage() {
       accentBg: 'bg-emerald-50 text-emerald-600 border-emerald-200/80',
       accentText: 'text-emerald-700',
       accentBorder: 'hover:border-emerald-500/50 hover:shadow-emerald-500/10',
-      badgeBg: liveStats.sessionOpen ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200',
-      badgeText: liveStats.sessionOpen ? 'text-emerald-800' : 'text-slate-600',
-      badgeLabel: liveStats.sessionOpen ? 'Caisse Ouverte' : 'Caisse Fermée',
+      badgeBg: liveStats.sessionOpen ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : '',
+      badgeText: liveStats.sessionOpen ? 'text-emerald-800' : '',
+      badgeLabel: liveStats.sessionOpen ? 'Caisse Ouverte' : '',
       liveMetric: liveStats.sessionOpen
         ? `${liveStats.todaySalesCount ?? 14} ventes • ${formatFCFA(liveStats.todaySalesVolume ?? 345000)}`
         : 'Session disponible pour encaissement',
@@ -294,12 +294,12 @@ export default function HubPage() {
       <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-display text-2xl font-black tracking-tight text-slate-900">
                 {getGreeting()}, {getUserDisplayName()} 👋
               </h1>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-extrabold text-emerald-700 border border-emerald-200">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-extrabold text-emerald-700 border border-emerald-200 whitespace-nowrap shrink-0">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 En ligne
               </span>
             </div>
@@ -312,18 +312,17 @@ export default function HubPage() {
             </p>
           </div>
 
-          {/* Badges d'état contextuels */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Statut Caisse */}
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 text-xs font-bold shadow-2xs">
-              <span className={cn("h-2.5 w-2.5 rounded-full", liveStats.sessionOpen ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
-              <span className="text-slate-700">
-                {liveStats.sessionOpen
-                  ? `Caisse #1 — Ouverte (${liveStats.caissierNom || 'En cours'})`
-                  : 'Caisse Fermée'}
-              </span>
+          {/* Badges d'état contextuels (Affiché uniquement si une session caisse est ouverte) */}
+          {liveStats.sessionOpen && (
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-800 shadow-2xs">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span>
+                  Caisse #1 — Ouverte ({liveStats.caissierNom || 'En cours'})
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -420,10 +419,12 @@ export default function HubPage() {
                       <Icon className="h-6 w-6" />
                     </div>
 
-                    <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold border shadow-2xs', m.badgeBg)}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      {m.badgeLabel}
-                    </span>
+                    {m.badgeLabel ? (
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold border shadow-2xs', m.badgeBg)}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {m.badgeLabel}
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Titre & Description */}

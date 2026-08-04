@@ -29,6 +29,8 @@ import type { TourStep } from '@/components/tour-guide';
 import { PosCatalogZone } from '@/components/pos/pos-catalog-zone';
 import { PosCartZone, type CartLine, type OrderMode } from '@/components/pos/pos-cart-zone';
 import { BarcodeScannerModal } from '@/components/stock/barcode-scanner-modal';
+import { FloatingCartButtons } from '@/components/pos/floating-cart-buttons';
+import { MobileCartDrawer } from '@/components/pos/mobile-cart-drawer';
 
 export default function PosPage() {
   const { refreshPending, state } = useSync();
@@ -59,6 +61,7 @@ export default function PosPage() {
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showMobileCartDrawer, setShowMobileCartDrawer] = useState(false);
   
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
   const [lastSale, setLastSale] = useState<ReceiptSale | null>(null);
@@ -351,8 +354,8 @@ export default function PosPage() {
           />
         </div>
 
-        {/* Partie Droite : Zone Panier & Client Persistant (1 Colonne lg = 1/3) */}
-        <div className="min-h-0 flex flex-col" id="tour-pos-cart">
+        {/* Partie Droite : Zone Panier & Client Persistant (1 Colonne lg = 1/3 sur Desktop) */}
+        <div className="hidden lg:flex min-h-0 flex-col" id="tour-pos-cart">
           <PosCartZone
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
@@ -447,16 +450,36 @@ export default function PosPage() {
           }}
         />
       )}
-      {/* Bouton de Scan Mobile Flottant Persistant (375px-639px) */}
-      <button
-        type="button"
-        onClick={() => setShowScannerModal(true)}
-        className="sm:hidden fixed right-4 bottom-20 z-40 flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 font-extrabold text-white shadow-xl shadow-emerald-600/30 transition-transform active:scale-95 border border-emerald-400/30 min-h-[48px]"
-        aria-label="Scanner code-barres"
-      >
-        <span className="text-base">📷</span>
-        <span className="text-xs tracking-wider uppercase font-black">Scanner</span>
-      </button>
+      {/* Bouton Panier Flottant & Compteur (Mobile & Tablette < lg) */}
+      <FloatingCartButtons
+        itemCount={cart.reduce((sum, line) => sum + line.quantite, 0)}
+        totalAmount={cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0)}
+        onOpenCart={() => setShowMobileCartDrawer(true)}
+        onOpenScanner={() => setShowScannerModal(true)}
+      />
+
+      {/* Bottom Sheet Panier Grand Format 92vh (Mobile & Tablette < lg) */}
+      <MobileCartDrawer
+        isOpen={showMobileCartDrawer}
+        onClose={() => setShowMobileCartDrawer(false)}
+        cart={cart}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveLine={handleRemoveLine}
+        onClearCart={() => setCart([])}
+        clients={clients}
+        selectedClient={selectedClient}
+        onSelectClient={setSelectedClient}
+        orderMode={orderMode}
+        onOrderModeChange={setOrderMode}
+        onProceedToCheckout={() => {
+          if (!activeSession && !isGlobalView) {
+            setShowOpenModal(true);
+          } else {
+            setShowCheckoutModal(true);
+          }
+        }}
+        disabled={isGlobalView || busy}
+      />
     </div>
   );
 }
