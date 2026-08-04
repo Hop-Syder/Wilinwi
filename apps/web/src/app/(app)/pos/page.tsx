@@ -75,8 +75,8 @@ export default function PosPage() {
     try {
       const [prods, cls, livs] = await Promise.all([
         apiGet<ProductDto[]>('/api/stock/products'),
-        apiGet<ClientDto[]>('/api/clients').catch(() => []),
-        apiGet<{ id: string; nom: string }[]>('/api/livraisons/livreurs').catch(() => []),
+        apiGet<ClientDto[]>('/api/crm/clients').catch(() => []),
+        apiGet<{ id: string; nom: string }[]>('/api/users/pos').catch(() => []),
       ]);
       setProducts(prods);
       setClients(cls);

@@ -1,7 +1,7 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Carte KPIs Synthèse Stock Haut de Page (Bandeau Compact Mobile & Grid Desktop)
+ * @description Carte KPIs Synthèse Stock Haut de Page (Grid 2 Colonnes md:grid-cols-2 & Vue Mobile L1: Total Réf, L2: Valeur Stock)
  * @created 2026-08-03
  * @updated 2026-08-04
  * 🌐 ceo.nexuspartners.xyz
@@ -44,70 +44,59 @@ export function StockKpiCards({
 }: StockKpiCardsProps) {
   return (
     <div>
-      {/* ── VUE MOBILE (< md) : BANDEAU COMPACT SYNTHÉTIQUE SUR 2 LIGNES ── */}
-      <div className="md:hidden space-y-2">
-        {/* Ligne 1 Mobile : Total Réf & Valeur Vente */}
+      {/* ── VUE MOBILE (< md) : 2 LIGNES DÉDIÉES (L1: Total Références, L2: Valeur du Stock) ── */}
+      <div className="md:hidden space-y-2.5">
+        {/* Ligne 1 Mobile : [ Total Références ] */}
         <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-              <Package className="h-4 w-4" />
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
+              <Package className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase text-slate-500 block leading-tight">Références</span>
-              <p className="text-sm font-black text-slate-900 font-mono">
-                {formatQty(totalProducts)} <span className="text-[11px] font-sans font-semibold text-emerald-700">({activeProductsCount} act.)</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block leading-tight">
+                Total Références
+              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="font-mono text-base font-black text-slate-900 tabular-nums">
+                  {formatQty(totalProducts)}
+                </span>
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                  {activeProductsCount} actif{activeProductsCount > 1 ? 's' : ''}
+                </span>
+                {archivedProductsCount > 0 && (
+                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    {archivedProductsCount} inact.
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ligne 2 Mobile : [ Valeur du Stock ] */}
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 shrink-0">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block leading-tight">
+                Valeur du Stock (CA Potentiel)
+              </span>
+              <p className="font-mono text-base font-black text-slate-900 tabular-nums mt-0.5">
+                {formatFCFA(totalValueRetail)}
               </p>
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="text-[10px] font-bold uppercase text-slate-500 block leading-tight">Valeur Stock</span>
-            <p className="text-sm font-black text-slate-900 font-mono">
-              {formatFCFA(totalValueRetail)}
-            </p>
-          </div>
-        </div>
-
-        {/* Ligne 2 Mobile : Sous seuil (Alerte) & Ruptures */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* Sous Seuil d'Alerte */}
-          <button
-            type="button"
-            onClick={onToggleLowStockFilter}
-            className={`flex items-center justify-between rounded-2xl border p-3 transition-all text-left ${
-              filterLowStockActive
-                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                : 'bg-amber-50/70 text-amber-900 border-amber-200/80 hover:bg-amber-100/60'
-            }`}
-          >
-            <div className="min-w-0 pr-1">
-              <span className={`text-[10px] font-bold uppercase block leading-tight ${filterLowStockActive ? 'text-amber-100' : 'text-amber-700'}`}>
-                Stock Bas
-              </span>
-              <span className="text-xs font-black font-mono">
-                {lowStockCount} art. ⚠️
+          {canSeeCost && totalValueCost > 0 && (
+            <div className="text-right pl-2 border-l border-slate-100 shrink-0">
+              <span className="text-[9px] font-bold uppercase text-slate-500 block leading-none">Capital</span>
+              <span className="font-mono text-xs font-extrabold text-slate-700 tabular-nums mt-0.5 block">
+                {formatFCFA(totalValueCost)}
               </span>
             </div>
-            <ArrowRight className={`h-3.5 w-3.5 shrink-0 ${filterLowStockActive ? 'text-white' : 'text-amber-600'}`} />
-          </button>
-
-          {/* Ruptures de Stock */}
-          <div className="flex items-center justify-between rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3 text-rose-900">
-            <div className="min-w-0 pr-1">
-              <span className="text-[10px] font-bold uppercase text-rose-700 block leading-tight">Ruptures</span>
-              <span className="text-xs font-black font-mono text-rose-900">
-                {outOfStockCount} rupt. ❗
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={onGeneratePurchaseOrder}
-              title="Générer Bon de Commande"
-              className="p-1.5 bg-rose-600 text-white rounded-lg shadow-2xs hover:bg-rose-700 active:scale-95 transition-all shrink-0"
-            >
-              <ShoppingCart className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
