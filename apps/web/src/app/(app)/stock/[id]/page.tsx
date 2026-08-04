@@ -32,6 +32,7 @@ type Movement = {
   motif: string;
   createdAt: string;
   saleId?: string;
+  createdByName?: string;
 };
 
 export default function ProductStockDetailsPage() {
@@ -299,6 +300,7 @@ export default function ProductStockDetailsPage() {
                   <th className="px-4 py-3.5">Type de mouvement</th>
                   <th className="px-4 py-3.5">Quantité</th>
                   <th className="px-4 py-3.5">Motif / Référence</th>
+                  <th className="px-4 py-3.5">Auteur / Opérateur</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -324,11 +326,14 @@ export default function ProductStockDetailsPage() {
                       {m.motif}
                       {m.saleId && <Badge tone="brand" className="ml-2">Ticket Vente</Badge>}
                     </td>
+                    <td className="px-4 py-3 text-xs text-slate-600 font-semibold">
+                      {m.createdByName || (m.saleId ? 'Système Vente POS' : 'Gérant / Admin')}
+                    </td>
                   </tr>
                 ))}
                 {movements.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-slate-400 space-y-2">
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 space-y-2">
                       <Package className="mx-auto h-8 w-8 text-slate-300" />
                       <p className="font-semibold text-slate-600">Aucun mouvement enregistré pour ce produit.</p>
                     </td>

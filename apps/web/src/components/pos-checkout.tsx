@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Select, formatFCFA } from '@wilinwi/ui';
+import { Button, Input, Select } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS, MomoOperator, MOMO_OPERATORS, MOMO_OPERATOR_LABELS } from '@wilinwi/types';
 import { CheckCircle2, Receipt, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -271,8 +271,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                   </span>
                   <span className="font-mono text-3xl font-black tracking-tight">
                     {changeToReturn < 0
-                      ? formatFCFA(Math.abs(changeToReturn))
-                      : formatFCFA(changeToReturn)}
+                      ? formatAmount(Math.abs(changeToReturn))
+                      : formatAmount(changeToReturn)}
                   </span>
                 </div>
               )}
@@ -401,7 +401,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                     </Select>
                     {creditLimitExceeded && selectedCreditClient && (
                       <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-semibold text-rose-700">
-                        Plafond dépassé : dette projetée {formatFCFA(currentCreditBalance + outstandingCredit)} pour une limite de {formatFCFA(selectedCreditClient.plafondCredit ?? 0)}.
+                        Plafond dépassé : dette projetée {formatAmount(currentCreditBalance + outstandingCredit)} pour une limite de {formatAmount(selectedCreditClient.plafondCredit ?? 0)}.
                       </p>
                     )}
                   </div>

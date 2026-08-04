@@ -10,9 +10,10 @@
 // ──────────────────────────────────
 
 import { Receipt as ReceiptIcon, Eye, CheckCircle2, Store } from 'lucide-react';
-import { Card, formatFCFA } from '@wilinwi/ui';
+import { Card } from '@wilinwi/ui';
 import type { Sale } from './types';
 import { STATUS } from './types';
+import { useCurrency } from '@/lib/currency-context';
 
 interface VentesTableProps {
   sales: Sale[];
@@ -29,6 +30,8 @@ export function VentesTable({
   onSelectReceipt,
   onSelectPayment,
 }: VentesTableProps) {
+  const { formatAmount } = useCurrency();
+
   return (
     <Card id="tour-ventes-table" className="overflow-hidden border-slate-200/80 shadow-sm">
       {/* 📱 Mobile : cartes empilées */}
@@ -39,7 +42,7 @@ export function VentesTable({
             <div key={s.id} className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="tabular text-lg font-bold text-slate-900">{formatFCFA(s.total)}</p>
+                  <p className="tabular text-lg font-bold text-slate-900">{formatAmount(s.total)}</p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {isGlobalView ? (s.etablissement?.nom ?? '—') : (s.client?.nom || 'Comptoir')} ·{' '}
                     {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -50,7 +53,7 @@ export function VentesTable({
                   {STATUS[s.status]?.label || s.status}
                 </span>
               </div>
-              {reste > 0 && <p className="mt-1 text-xs font-semibold text-amber-600">Reste dû : {formatFCFA(reste)}</p>}
+              {reste > 0 && <p className="mt-1 text-xs font-semibold text-amber-600">Reste dû : {formatAmount(reste)}</p>}
               <div className="mt-3 flex items-center gap-2">
                 <button
                   onClick={() => onSelectDetail(s)}
@@ -139,13 +142,13 @@ export function VentesTable({
                     </span>
                   </td>
                   <td className="tabular px-5 py-3.5 text-right font-medium text-slate-600">
-                    {formatFCFA(s.montantVerse)}
+                    {formatAmount(s.montantVerse)}
                   </td>
                   <td className={`tabular px-5 py-3.5 text-right font-bold ${reste > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                    {reste > 0 ? formatFCFA(reste) : '—'}
+                    {reste > 0 ? formatAmount(reste) : '—'}
                   </td>
                   <td className="tabular px-5 py-3.5 text-right font-bold text-slate-900">
-                    {formatFCFA(s.total)}
+                    {formatAmount(s.total)}
                   </td>
                   <td className="px-5 py-3.5 text-center">
                     <div className="flex items-center justify-center gap-1.5">

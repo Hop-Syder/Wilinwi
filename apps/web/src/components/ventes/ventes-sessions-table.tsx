@@ -10,8 +10,9 @@
 // ──────────────────────────────────
 
 import { Receipt as ReceiptIcon, CheckCircle2 } from 'lucide-react';
-import { Card, formatFCFA } from '@wilinwi/ui';
+import { Card } from '@wilinwi/ui';
 import type { PosSessionDto } from '@wilinwi/types';
+import { useCurrency } from '@/lib/currency-context';
 
 interface VentesSessionsTableProps {
   sessions: PosSessionDto[];
@@ -24,6 +25,8 @@ export function VentesSessionsTable({
   onFilterBySession,
   onSelectReportZ,
 }: VentesSessionsTableProps) {
+  const { formatAmount } = useCurrency();
+
   return (
     <Card className="p-4 border-slate-200/80 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
@@ -70,21 +73,21 @@ export function VentesSessionsTable({
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right text-slate-600 font-medium">
-                    {formatFCFA(sess.fondInitial)}
+                    {formatAmount(sess.fondInitial)}
                   </td>
                   <td className="px-5 py-3.5 text-right font-bold text-slate-900">
-                    {formatFCFA(sess.totalVentes)} ({sess.nombreVentes})
+                    {formatAmount(sess.totalVentes)} ({sess.nombreVentes})
                   </td>
                   <td className="px-5 py-3.5 text-right text-slate-600">
-                    {formatFCFA(sess.soldeTheorique)}
+                    {formatAmount(sess.soldeTheorique)}
                   </td>
                   <td className="px-5 py-3.5 text-right font-bold text-slate-900">
-                    {sess.soldeReel !== null && sess.soldeReel !== undefined ? formatFCFA(sess.soldeReel) : '—'}
+                    {sess.soldeReel !== null && sess.soldeReel !== undefined ? formatAmount(sess.soldeReel) : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right font-bold">
                     {sess.ecart !== null && sess.ecart !== undefined ? (
                       <span className={sess.ecart === 0 ? 'text-emerald-700' : sess.ecart > 0 ? 'text-blue-700' : 'text-rose-600'}>
-                        {sess.ecart === 0 ? '0 FCFA' : sess.ecart > 0 ? `+${formatFCFA(sess.ecart)}` : formatFCFA(sess.ecart)}
+                        {sess.ecart === 0 ? formatAmount(0) : sess.ecart > 0 ? `+${formatAmount(sess.ecart)}` : formatAmount(sess.ecart)}
                       </span>
                     ) : (
                       '—'

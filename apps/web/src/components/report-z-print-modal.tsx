@@ -12,8 +12,9 @@
 'use flex';
 
 import { Printer, X, Receipt, Wallet, DollarSign, Smartphone, CreditCard } from 'lucide-react';
-import { Button, formatFCFA } from '@wilinwi/ui';
+import { Button } from '@wilinwi/ui';
 import type { PosSessionDto } from '@wilinwi/types';
+import { useCurrency } from '@/lib/currency-context';
 
 interface ReportZPrintModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ interface ReportZPrintModalProps {
 }
 
 export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModalProps) {
+  const { formatAmount } = useCurrency();
+
   if (!isOpen || !session) return null;
 
   const handlePrint = () => {
@@ -78,23 +81,23 @@ export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModa
               <p className="font-bold text-slate-900 uppercase text-[10px] tracking-wider">Ventilation des Ventes</p>
               <div className="flex justify-between">
                 <span className="flex items-center gap-1"><Wallet className="w-3 h-3 text-slate-500"/> Espèces :</span>
-                <span className="font-bold">{formatFCFA(session.totalEspeces)}</span>
+                <span className="font-bold">{formatAmount(session.totalEspeces)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="flex items-center gap-1"><Smartphone className="w-3 h-3 text-brand"/> Mobile Money :</span>
-                <span className="font-bold">{formatFCFA(session.totalMoMo)}</span>
+                <span className="font-bold">{formatAmount(session.totalMoMo)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-emerald-600"/> Carte / Virement :</span>
-                <span className="font-bold">{formatFCFA(session.totalBanque)}</span>
+                <span className="font-bold">{formatAmount(session.totalBanque)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="flex items-center gap-1"><DollarSign className="w-3 h-3 text-amber-600"/> Crédits Clients :</span>
-                <span className="font-bold">{formatFCFA(session.totalCredit)}</span>
+                <span className="font-bold">{formatAmount(session.totalCredit)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-slate-300 font-bold text-slate-900 text-xs">
                 <span>TOTAL VENTES ({session.nombreVentes} Ventes) :</span>
-                <span>{formatFCFA(session.totalVentes)}</span>
+                <span>{formatAmount(session.totalVentes)}</span>
               </div>
             </div>
 
@@ -103,24 +106,24 @@ export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModa
               <p className="font-bold text-slate-900 uppercase text-[10px] tracking-wider">Contrôle de Caisse</p>
               <div className="flex justify-between">
                 <span>Fond Initial de Caisse :</span>
-                <span>{formatFCFA(session.fondInitial)}</span>
+                <span>{formatAmount(session.fondInitial)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Solde Théorique Caisse :</span>
-                <span className="font-semibold">{formatFCFA(session.soldeTheorique)}</span>
+                <span className="font-semibold">{formatAmount(session.soldeTheorique)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Solde Réel Compté :</span>
-                <span className="font-bold text-slate-900">{formatFCFA(session.soldeReel ?? 0)}</span>
+                <span className="font-bold text-slate-900">{formatAmount(session.soldeReel ?? 0)}</span>
               </div>
               <div className="flex justify-between font-bold pt-1 border-t border-slate-200">
                 <span>Écart Constaté :</span>
                 <span className={(session.ecart ?? 0) === 0 ? 'text-emerald-700' : (session.ecart ?? 0) > 0 ? 'text-blue-700' : 'text-red-600'}>
                   {(session.ecart ?? 0) === 0
-                    ? '0 FCFA (Exact)'
+                    ? `${formatAmount(0)} (Exact)`
                     : (session.ecart ?? 0) > 0
-                    ? `+${formatFCFA(session.ecart!)}`
-                    : formatFCFA(session.ecart!)}
+                    ? `+${formatAmount(session.ecart!)}`
+                    : formatAmount(session.ecart!)}
                 </span>
               </div>
               {session.note && (
