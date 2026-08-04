@@ -15,6 +15,7 @@ import { useMemo, useState, forwardRef } from 'react';
 import { Search, Tag, Camera, PackageX } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { ProductGridCard } from './product-grid-card';
+import { StockInterBoutiquesModal } from './stock-inter-boutiques-modal';
 
 interface PosCatalogZoneProps {
   products: ProductDto[];
@@ -31,6 +32,7 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
     ref
   ) {
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+    const [selectedInterBoutiqueProduct, setSelectedInterBoutiqueProduct] = useState<ProductDto | null>(null);
 
     // Liste unique des catégories
     const categories = useMemo(() => {
@@ -146,6 +148,7 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
                   key={product.id}
                   product={product}
                   onSelect={onSelectProduct}
+                  onOpenStockInterBoutiques={setSelectedInterBoutiqueProduct}
                   disabled={disabled}
                 />
               ))}
@@ -162,6 +165,12 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
             </div>
           )}
         </div>
+
+        {/* Modale de consultation du stock inter-boutiques */}
+        <StockInterBoutiquesModal
+          product={selectedInterBoutiqueProduct}
+          onClose={() => setSelectedInterBoutiqueProduct(null)}
+        />
       </div>
     );
   }

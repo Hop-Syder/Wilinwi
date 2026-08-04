@@ -441,6 +441,8 @@ export const ProductDtoSchema = z.object({
   batches: z.array(BatchDtoSchema).optional(),
   // Conditionnements commerciaux (Wholesale — Milestone 5).
   units: z.array(ProductUnitDtoSchema).optional(),
+  // Stock des autres établissements de l'entreprise (Niveau 2 - Consultation Inter-Boutiques).
+  otherEtablissementsStock: z.array(z.object({ etablissementNom: z.string(), stock: z.number() })).optional(),
 });
 export type ProductDto = z.infer<typeof ProductDtoSchema>;
 

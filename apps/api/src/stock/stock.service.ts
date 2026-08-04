@@ -56,7 +56,7 @@ export class StockService {
     // plus anciens (les autres restent en base, simplement masqués).
     const downgraded = ctx.dunning.downgraded;
 
-    const { products, breakdownByProduct } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+    const { products, breakdownByProduct, otherStockMap } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const prods = await tx.product.findMany({
         where: {
           tenantId: ctx.tenantId,
@@ -93,9 +93,10 @@ export class StockService {
             v.stock = byVariant.get(v.id) ?? 0;
           }
         }
-        return { products: prods, breakdownByProduct: byEtablissement };
+        return { products: prods, breakdownByProduct: byEtablissement, otherStockMap: new Map<string, { etablissementNom: string; stock: number }[]>() };
       } else {
-        // Vue scopée (POS, autres) : stock de l'établissement courant uniquement.
+        // Vue scopée (POS, autres) : stock de l'établissement courant + consultation inter-boutiques.
+        const otherStockMapLocal = new Map<string, { etablissementNom: string; stock: number }[]>();
         if (ctx.etablissementId) {
           const { byProduct, byVariant } = await this.scopedStockMaps(tx, ctx.tenantId, ctx.etablissementId);
           for (const p of prods) {
@@ -104,8 +105,29 @@ export class StockService {
               v.stock = byVariant.get(v.id) ?? 0;
             }
           }
+
+          // Récupération de tous les stocks des autres établissements du tenant pour les produits
+          const etabs = await tx.etablissement.findMany({
+            where: { tenantId: ctx.tenantId, actif: true },
+            select: { id: true, nom: true },
+          });
+          const etabNameMap = new Map(etabs.map((e) => [e.id, e.nom]));
+
+          const allStocks = await tx.productStock.findMany({
+            where: { tenantId: ctx.tenantId, variantId: null },
+            select: { productId: true, etablissementId: true, quantite: true },
+          });
+
+          for (const s of allStocks) {
+            if (s.etablissementId === ctx.etablissementId) continue;
+            if (s.quantite <= 0) continue;
+            const etabNom = etabNameMap.get(s.etablissementId) ?? 'Autre boutique';
+            const list = otherStockMapLocal.get(s.productId) || [];
+            list.push({ etablissementNom: etabNom, stock: s.quantite });
+            otherStockMapLocal.set(s.productId, list);
+          }
         }
-        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>() };
+        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>(), otherStockMap: otherStockMapLocal };
       }
     });
 
@@ -114,7 +136,7 @@ export class StockService {
       : products;
 
     return sorted.map((p) =>
-      toProductDto(p, ctx.role, breakdownByProduct.get(p.id)),
+      toProductDto(p, ctx.role, breakdownByProduct.get(p.id), otherStockMap?.get(p.id)),
     );
   }
 

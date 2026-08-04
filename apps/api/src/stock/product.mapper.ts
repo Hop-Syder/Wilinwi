@@ -31,6 +31,7 @@ export function toProductDto(
   },
   role: Role,
   stockParEtablissement?: Record<string, number>,
+  otherEtablissementsStock?: { etablissementNom: string; stock: number }[],
 ): ProductDto {
   const base: ProductDto = {
     id: product.id,
@@ -69,6 +70,10 @@ export function toProductDto(
   // Breakdown par établissement : réservé au PROPRIÉTAIRE (OWNER) uniquement.
   if (role === 'OWNER' && stockParEtablissement) {
     base.stockParEtablissement = stockParEtablissement;
+  }
+
+  if (otherEtablissementsStock && otherEtablissementsStock.length > 0) {
+    base.otherEtablissementsStock = otherEtablissementsStock;
   }
 
   // Conditionnements commerciaux (Wholesale M5) : visibles par tous les rôles

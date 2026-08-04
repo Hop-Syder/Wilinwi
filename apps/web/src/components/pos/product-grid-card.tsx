@@ -20,10 +20,16 @@ import { formatFCFA, formatQty } from '@wilinwi/ui';
 interface ProductGridCardProps {
   product: ProductDto;
   onSelect: (product: ProductDto) => void;
+  onOpenStockInterBoutiques?: (product: ProductDto) => void;
   disabled?: boolean;
 }
 
-export function ProductGridCard({ product, onSelect, disabled }: ProductGridCardProps) {
+export function ProductGridCard({
+  product,
+  onSelect,
+  onOpenStockInterBoutiques,
+  disabled,
+}: ProductGridCardProps) {
   const [justAdded, setJustAdded] = useState(false);
 
   const stock = product.stock ?? 0;
@@ -32,7 +38,11 @@ export function ProductGridCard({ product, onSelect, disabled }: ProductGridCard
   const isLowStock = stock > 0 && stock <= seuil;
 
   const handleTap = () => {
-    if (disabled || isOutOfStock) return;
+    if (disabled) return;
+    if (isOutOfStock) {
+      onOpenStockInterBoutiques?.(product);
+      return;
+    }
     onSelect(product);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 350);
@@ -42,12 +52,12 @@ export function ProductGridCard({ product, onSelect, disabled }: ProductGridCard
     <button
       type="button"
       onClick={handleTap}
-      disabled={disabled || isOutOfStock}
+      disabled={disabled}
       className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200 select-none ${
         justAdded
           ? 'scale-95 border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-400'
           : isOutOfStock
-            ? 'border-slate-200 bg-slate-100/70 opacity-60 cursor-not-allowed'
+            ? 'border-slate-200/90 bg-slate-50/70 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 hover:border-amber-400 hover:shadow-xs cursor-pointer'
             : 'border-slate-200/90 bg-white hover:border-emerald-500 hover:shadow-md active:scale-95'
       }`}
     >
