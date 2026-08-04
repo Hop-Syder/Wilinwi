@@ -113,11 +113,10 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
             }`}
           >
             <Tag className="h-3.5 w-3.5" />
-            <span>Toutes ({products.length})</span>
+            <span>Toutes</span>
           </button>
 
           {categories.map((cat) => {
-            const count = products.filter((p) => p.categorie === cat).length;
             return (
               <button
                 key={cat}
@@ -130,9 +129,6 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
                 }`}
               >
                 <span>{cat}</span>
-                <span className={`text-[10px] rounded-full px-1.5 py-0.2 font-mono ${selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                  {count}
-                </span>
               </button>
             );
           })}
