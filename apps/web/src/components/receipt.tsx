@@ -29,9 +29,10 @@ export interface ReceiptSale {
 
 /** Base de l'URL publique du reçu (domaine court configurable, sinon origine courante). */
 function receiptBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_WEB_BASE_URL) return process.env.NEXT_PUBLIC_WEB_BASE_URL;
   if (process.env.NEXT_PUBLIC_RECEIPT_BASE_URL) return process.env.NEXT_PUBLIC_RECEIPT_BASE_URL;
-  if (typeof window !== 'undefined') return window.location.origin;
-  return 'https://wilinwi.com';
+  if (typeof window !== 'undefined' && window.location.origin) return window.location.origin;
+  return 'https://wilinwi.nexus-partners.xyz';
 }
 
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */

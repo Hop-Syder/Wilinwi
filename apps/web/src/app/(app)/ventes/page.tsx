@@ -312,17 +312,17 @@ export default function VentesPage() {
                 type="button"
                 onClick={() => setActiveTab('SESSIONS')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'SESSIONS' ? 'bg-white text-brand shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                  activeTab === 'SESSIONS' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                Clôtures de Caisse (Rapports Z)
+                Clôtures de Caisse (Rapports Journaliers)
               </button>
             </div>
           </div>
           <p className="text-xs text-slate-500">
             {activeTab === 'SALES'
               ? 'Consultez, filtrez et gérez les ventes de votre entreprise'
-              : 'Historique des clôtures de caisse et réimpression des Rapports Z'}
+              : 'Historique des clôtures de caisse et réimpression des rapports journaliers'}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
