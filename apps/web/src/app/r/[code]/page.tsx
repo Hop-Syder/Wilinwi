@@ -1,138 +1,81 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { ReceiptPublicView } from '@/components/receipt-public-view';
+import type { PublicReceiptData } from '@/components/receipt-client-actions';
 
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Page PUBLIQUE du reçu (après scan du QR) — choix du canal : WhatsApp / SMS / Email / PDF.
+ * @description Page Server Component (RSC) du reçu public (Route: /r/[code])
+ * @created 2026-06-20
+ * @updated 2026-08-05
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
  */
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { MessageCircle, Smartphone, Mail, Printer, CheckCircle2 } from 'lucide-react';
+// ──────────────────────────────────
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
-interface ReceiptItem {
-  nom: string;
-  quantite: number;
-  prixReel: number;
-}
-interface PublicReceipt {
-  code: string;
-  boutique: string;
-  total: number;
-  montantVerse: number;
-  items: ReceiptItem[];
-  date: string;
-  cancelled?: boolean;
-}
+async function fetchReceiptData(code: string): Promise<PublicReceiptData | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/public/receipt/${encodeURIComponent(code)}`, {
+      cache: 'no-store',
+    });
 
-const fcfa = (n: number) => `${new Intl.NumberFormat('fr-FR').format(Math.round(n))} FCFA`;
+    if (!res.ok) {
+      return null;
+    }
 
-export default function PublicReceiptPage() {
-  const params = useParams<{ code: string }>();
-  const code = params?.code;
-  const [receipt, setReceipt] = useState<PublicReceipt | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ok' | 'notfound'>('loading');
-
-  useEffect(() => {
-    if (!code) return;
-    fetch(`${API_URL}/api/public/receipt/${code}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((d: PublicReceipt) => {
-        setReceipt(d);
-        setStatus('ok');
-        // Si le paramètre download=true est présent, déclencher l'impression automatique
-        if (typeof window !== 'undefined' && window.location.search.includes('download=true')) {
-          setTimeout(() => {
-            window.print();
-          }, 800);
-        }
-      })
-      .catch(() => setStatus('notfound'));
-  }, [code]);
-
-  if (status === 'loading') {
-    return <Centered>Chargement du reçu…</Centered>;
+    const data: PublicReceiptData = await res.json();
+    return data;
+  } catch {
+    return null;
   }
-  if (status === 'notfound' || !receipt) {
-    return <Centered>Reçu introuvable ou expiré.</Centered>;
+}
+
+/** Génération dynamique des métadonnées SEO/OpenGraph */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const receipt = await fetchReceiptData(code);
+
+  if (!receipt) {
+    return {
+      title: 'Reçu Introuvable — Wilinwi',
+      description: "Le reçu demandé n'existe pas ou a expiré.",
+    };
   }
 
-  const text = [
-    `🧾 Reçu ${receipt.boutique}`,
-    new Date(receipt.date).toLocaleString('fr-FR'),
-    '',
-    ...receipt.items.map((it) => `${it.quantite}× ${it.nom} = ${fcfa(it.prixReel * it.quantite)}`),
-    '',
-    `TOTAL : ${fcfa(receipt.total)}`,
-    'Merci de votre achat ! — via Wilinwi',
-  ].join('\n');
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  const smsUrl = `sms:?body=${encodeURIComponent(text)}`;
-  const mailUrl = `mailto:?subject=${encodeURIComponent('Votre reçu ' + receipt.boutique)}&body=${encodeURIComponent(text)}`;
-
-  return (
-    <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8 text-text-primary">
-      <style>{`@media print { .no-print { display:none !important; } body { background:#fff; color:#000; } }`}</style>
-
-      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-md" id="recu">
-        {receipt.cancelled && (
-          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-center text-sm font-bold uppercase tracking-wide text-red-700">
-            Vente annulée — ce reçu ne vaut plus preuve d'achat
-          </div>
-        )}
-        <div className="text-center">
-          <CheckCircle2 className={`mx-auto h-12 w-12 ${receipt.cancelled ? 'text-red-400' : 'text-success'}`} />
-          <h1 className="mt-2 font-display text-lg font-bold text-text-primary">
-            {receipt.cancelled ? 'Vente annulée' : 'Merci pour votre achat'}
-          </h1>
-          <p className="text-sm text-text-secondary">{receipt.boutique}</p>
-          <p className="mt-3 text-3xl font-extrabold text-primary">
-            {fcfa(receipt.total)}
-          </p>
-          <p className="text-xs text-text-secondary/70">
-            {new Date(receipt.date).toLocaleString('fr-FR')} · N° {receipt.code}
-          </p>
-        </div>
-
-        <div className="my-4 border-t border-dashed border-border" />
-        <ul className="space-y-1.5 text-sm">
-          {receipt.items.map((it, i) => (
-            <li key={i} className="flex justify-between text-text-primary">
-              <span>
-                {it.quantite}× {it.nom}
-              </span>
-              <span className="font-semibold">{fcfa(it.prixReel * it.quantite)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="no-print mt-6 w-full max-w-sm space-y-2">
-        <p className="text-center text-sm font-semibold text-text-secondary">Recevoir mon reçu</p>
-        <a href={waUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-[#00A86B] py-3 font-semibold text-white transition-opacity hover:opacity-90">
-          <MessageCircle className="h-5 w-5" /> WhatsApp
-        </a>
-        <a href={smsUrl} className="flex items-center justify-center gap-2 rounded-xl bg-surface py-3 font-semibold text-text-primary border border-border transition-colors hover:bg-surface-hover">
-          <Smartphone className="h-5 w-5" /> SMS
-        </a>
-        <a href={mailUrl} className="flex items-center justify-center gap-2 rounded-xl bg-surface py-3 font-semibold text-text-primary border border-border transition-colors hover:bg-surface-hover">
-          <Mail className="h-5 w-5" /> Email
-        </a>
-        <button onClick={() => window.print()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-white transition-opacity hover:opacity-90">
-          <Printer className="h-5 w-5" /> Télécharger PDF / Imprimer
-        </button>
-        <p className="pt-3 text-center text-xs text-text-secondary/50">Propulsé par ◈ Wilinwi</p>
-      </div>
-    </main>
-  );
+  return {
+    title: `Reçu ${receipt.code} — ${receipt.boutique}`,
+    description: `Reçu d'achat original de ${receipt.total} FCFA chez ${receipt.boutique}.`,
+    openGraph: {
+      title: `Reçu ${receipt.code} — ${receipt.boutique}`,
+      description: `Reçu de caisse certifié Wilinwi — ${receipt.total} FCFA`,
+    },
+  };
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center text-slate-500">
-      {children}
-    </main>
-  );
+export default async function PublicReceiptPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<{ download?: string }>;
+}) {
+  const { code } = await params;
+  const { download } = await searchParams;
+
+  const receipt = await fetchReceiptData(code);
+
+  if (!receipt) {
+    notFound();
+  }
+
+  const autoPrint = download === 'true';
+
+  return <ReceiptPublicView receipt={receipt} autoPrint={autoPrint} />;
 }

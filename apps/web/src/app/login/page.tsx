@@ -119,13 +119,13 @@ export default function LoginPage() {
 
     try {
       setPinToken(pinCode);
-      const me = await refreshUser();
+      await refreshUser();
       setLoadingStep('Redirection vers la caisse tactile...');
       setTimeout(() => {
         setLoading(false);
         router.push('/pos');
       }, 500);
-    } catch (err: any) {
+    } catch {
       setLoading(false);
       setError('Code PIN invalide. Veuillez réessayer.');
     }
