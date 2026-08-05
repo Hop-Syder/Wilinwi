@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Truck, Plus, Search, FileDown, Warehouse, ShoppingBag } from 'lucide-react';
+import { Truck, Plus, Search, FileDown, Warehouse, ShoppingBag, UserPlus } from 'lucide-react';
 import { Button, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -325,9 +325,19 @@ export default function EntrepotPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-slate-900">Bons de Commande Fournisseurs</h3>
-            <Button size="sm" onClick={() => setShowPoModal(true)} className="rounded-xl text-xs font-bold bg-teal-600 text-white">
-              <Plus className="h-3.5 w-3.5 mr-1" /> Nouveau Bon
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setSelectedSupplier(null); setShowSupplierModal(true); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-2xs transition-all active:scale-95"
+              >
+                <UserPlus className="w-3.5 h-3.5 text-teal-600" />
+                <span>Ajouter Fournisseur</span>
+              </button>
+              <Button size="sm" onClick={() => setShowPoModal(true)} className="rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white">
+                <Plus className="h-3.5 w-3.5 mr-1" /> Nouveau Bon
+              </Button>
+            </div>
           </div>
 
           {filteredOrders.length === 0 ? (

@@ -175,6 +175,9 @@ export default function VentesPage() {
     let encaisse = 0;
     let resteDu = 0;
     let annulées = 0;
+    let especesTotal = 0;
+    let momoTotal = 0;
+    let creditTotal = 0;
 
     sales.forEach((s) => {
       if (s.status === 'CANCELLED') {
@@ -183,11 +186,35 @@ export default function VentesPage() {
         salesCount++;
         ca += s.total;
         encaisse += s.montantVerse;
-        resteDu += s.total - s.montantVerse;
+        const due = Math.max(0, s.total - s.montantVerse);
+        resteDu += due;
+
+        const method = (s.modePaiement || s.paymentMethod || '').toUpperCase();
+        if (method.includes('MTN') || method.includes('WAVE') || method.includes('MOOV') || method.includes('MOMO')) {
+          momoTotal += s.montantVerse;
+        } else if (method.includes('CREDIT') || method.includes('CRÉDIT') || s.status === 'PENDING_PAYMENT') {
+          creditTotal += due;
+        } else {
+          especesTotal += s.montantVerse;
+        }
       }
     });
 
-    return { salesCount, ca, encaisse, resteDu, annulées };
+    const totalCalculated = encaisse + creditTotal;
+    const panierMoyen = salesCount > 0 ? Math.round(ca / salesCount) : 0;
+    const especesPct = totalCalculated > 0 ? Math.round((especesTotal / totalCalculated) * 100) : 0;
+    const momoPct = totalCalculated > 0 ? Math.round((momoTotal / totalCalculated) * 100) : 0;
+    const creditPct = totalCalculated > 0 ? Math.max(0, 100 - especesPct - momoPct) : 0;
+
+    return {
+      salesCount,
+      ca,
+      encaisse,
+      resteDu,
+      annulées,
+      panierMoyen,
+      repartition: { especesPct, momoPct, creditPct },
+    };
   }, [sales]);
 
   // Encaissement d'un reste dû

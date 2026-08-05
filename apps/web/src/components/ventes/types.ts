@@ -15,6 +15,8 @@ export interface Sale extends ReceiptSale {
   status: 'COMPLETED' | 'PENDING_PAYMENT' | 'CANCELLED';
   vendeur?: { id: string; nom: string; email: string } | null;
   etablissement?: { id: string; nom: string } | null;
+  modePaiement?: string;
+  referenceClient?: string;
 }
 
 export const STATUS: Record<

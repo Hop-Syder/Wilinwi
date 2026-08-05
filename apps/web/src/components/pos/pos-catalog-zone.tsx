@@ -12,7 +12,7 @@
 'use client';
 
 import { useMemo, useState, forwardRef } from 'react';
-import { Search, Tag, Camera, PackageX } from 'lucide-react';
+import { Search, Camera, PackageX } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { ProductGridCard } from './product-grid-card';
 import { StockInterBoutiquesModal } from './stock-inter-boutiques-modal';
@@ -112,7 +112,6 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
                 : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
             }`}
           >
-            <Tag className="h-3.5 w-3.5" />
             <span>Toutes</span>
           </button>
 

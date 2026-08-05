@@ -1,15 +1,18 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Composant des cartes KPI financières pour la page Ventes
+ * @description Cartes KPIs Financières Ventes (4 Métriques Clés)
  * @created 2026-06-20
- * @updated 2026-08-04
+ * @updated 2026-08-05
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
-import { Card } from '@wilinwi/ui';
+'use client';
+
+import React from 'react';
+import { DollarSign, ShoppingBag, PieChart, TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/lib/currency-context';
 
 interface VentesKpisProps {
@@ -19,6 +22,12 @@ interface VentesKpisProps {
     encaisse: number;
     resteDu: number;
     annulées: number;
+    panierMoyen: number;
+    repartition: {
+      especesPct: number;
+      momoPct: number;
+      creditPct: number;
+    };
   };
 }
 
@@ -26,39 +35,88 @@ export function VentesKpis({ kpis }: VentesKpisProps) {
   const { formatAmount } = useCurrency();
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <Card className="p-4 bg-gradient-to-br from-white to-blue-50/30 border-blue-100/60 shadow-sm relative overflow-hidden group">
-        <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5 text-blue-900 font-bold text-7xl select-none group-hover:scale-110 transition-transform">
-          #
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      {/* KPI 1 : Chiffre d'Affaires Total Encaissé */}
+      <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800">
+            CA Encaissé
+          </span>
+          <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200/80">
+            <DollarSign className="h-4 w-4" />
+          </div>
         </div>
-        <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Ventes</span>
-        <span className="block mt-2 font-display text-2xl font-black text-blue-900">{kpis.salesCount}</span>
-      </Card>
-
-      <Card className="p-4 bg-gradient-to-br from-white to-emerald-50/30 border-emerald-100/60 shadow-sm relative overflow-hidden group">
-        <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5 text-emerald-900 font-bold text-7xl select-none group-hover:scale-110 transition-transform">
-          F
+        <div>
+          <span className="font-mono text-xl font-black text-emerald-950 tabular-nums">
+            {formatAmount(kpis.encaisse)}
+          </span>
+          <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">Sur la période sélectionnée</p>
         </div>
-        <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Chiffre d'Affaires</span>
-        <span className="block mt-2 font-display text-2xl font-black text-emerald-800">{formatAmount(kpis.ca)}</span>
-      </Card>
+      </div>
 
-      <Card className="p-4 bg-gradient-to-br from-white to-slate-50 border-slate-200/60 shadow-sm relative overflow-hidden group">
-        <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Encaissé</span>
-        <span className="block mt-2 font-display text-2xl font-black text-slate-800">{formatAmount(kpis.encaisse)}</span>
-      </Card>
+      {/* KPI 2 : Volume de Transactions */}
+      <div className="rounded-2xl border border-indigo-200/80 bg-indigo-50/60 p-4 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-800">
+            Transactions
+          </span>
+          <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200/80">
+            <ShoppingBag className="h-4 w-4" />
+          </div>
+        </div>
+        <div>
+          <span className="font-mono text-xl font-black text-indigo-950 tabular-nums">
+            {kpis.salesCount} vente{kpis.salesCount > 1 ? 's' : ''}
+          </span>
+          <p className="text-[11px] text-indigo-700 font-semibold mt-0.5">
+            {kpis.annulées > 0 ? `${kpis.annulées} annulée${kpis.annulées > 1 ? 's' : ''}` : 'Toutes validées'}
+          </p>
+        </div>
+      </div>
 
-      <Card className="p-4 bg-gradient-to-br from-white to-amber-50/30 border-amber-100/60 shadow-sm relative overflow-hidden group">
-        <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Reste à encaisser</span>
-        <span className={`block mt-2 font-display text-2xl font-black ${kpis.resteDu > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-          {formatAmount(kpis.resteDu)}
-        </span>
-      </Card>
+      {/* KPI 3 : Panier Moyen */}
+      <div className="rounded-2xl border border-violet-200/80 bg-violet-50/60 p-4 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-violet-800">
+            Panier Moyen
+          </span>
+          <div className="p-2 bg-violet-100 text-violet-700 rounded-xl border border-violet-200/80">
+            <TrendingUp className="h-4 w-4" />
+          </div>
+        </div>
+        <div>
+          <span className="font-mono text-xl font-black text-violet-950 tabular-nums">
+            {formatAmount(kpis.panierMoyen)}
+          </span>
+          <p className="text-[11px] text-violet-700 font-semibold mt-0.5">Montant moyen / ticket</p>
+        </div>
+      </div>
 
-      <Card className="p-4 bg-gradient-to-br from-white to-rose-50/30 border-rose-100/60 shadow-sm relative overflow-hidden group col-span-2 md:col-span-1">
-        <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Annulées</span>
-        <span className="block mt-2 font-display text-2xl font-black text-rose-700">{kpis.annulées}</span>
-      </Card>
+      {/* KPI 4 : Répartition des Règlements */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex flex-col justify-between space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+            Règlements
+          </span>
+          <div className="p-2 bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80">
+            <PieChart className="h-4 w-4" />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs font-extrabold text-slate-800">
+            <span className="text-emerald-700">Espèces : {kpis.repartition.especesPct}%</span>
+            <span className="text-blue-700">MoMo : {kpis.repartition.momoPct}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-100 flex overflow-hidden">
+            <div className="bg-emerald-500 h-full" style={{ width: `${kpis.repartition.especesPct}%` }} />
+            <div className="bg-blue-500 h-full" style={{ width: `${kpis.repartition.momoPct}%` }} />
+            <div className="bg-rose-400 h-full" style={{ width: `${kpis.repartition.creditPct}%` }} />
+          </div>
+          <span className="text-[10px] text-slate-400 font-semibold block text-right">
+            Crédit : {kpis.repartition.creditPct}%
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

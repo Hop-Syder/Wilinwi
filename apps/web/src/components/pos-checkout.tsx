@@ -706,8 +706,15 @@ export function SaleSuccessModal({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="bg-white p-4 rounded-lg inline-block border border-border shadow-inner mb-4">
-                <QRCodeSVG value={receiptCode ? `${window.location.origin}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`} size={180} />
+              <div className="bg-white p-3 rounded-xl inline-block border border-border shadow-2xs mb-4">
+                <QRCodeSVG
+                  value={receiptCode ? `${window.location.origin}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`}
+                  size={180}
+                  level="M"
+                  includeMargin={true}
+                  fgColor="#000000"
+                  bgColor="#FFFFFF"
+                />
               </div>
               <p className="text-xs text-text-secondary leading-relaxed">
                 Scannez ce QR Code avec un smartphone pour télécharger le reçu directement en format PDF.

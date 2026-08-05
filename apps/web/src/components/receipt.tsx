@@ -35,7 +35,7 @@ function receiptBaseUrl(): string {
 }
 
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */
-function receiptText(sale: ReceiptSale): string {
+function _receiptText(sale: ReceiptSale): string {
   const lignes = sale.items
     .map((it) => `${it.quantite}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(it.prixReel * it.quantite)}`)
     .join('\n');
@@ -58,10 +58,9 @@ function receiptText(sale: ReceiptSale): string {
 export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: () => void }) {
   const { user } = useAuth();
   const entreprise = user?.boutiqueNom ?? 'Wilinwi';
-  const phone = (sale.client?.telephone ?? '').replace(/[^0-9]/g, '');
-  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(receiptText(sale))}`;
-  // QR → page Wilinwi (choix du canal : PDF/WhatsApp/SMS/Email). Repli wa.me si pas de code.
-  const qrValue = sale.receiptCode ? `${receiptBaseUrl()}/r/${sale.receiptCode}` : waUrl;
+  const shortCode = sale.receiptCode || sale.id.slice(0, 8).toUpperCase();
+  // QR → URL courte absolue aérée (ex: https://wilinwi.com/r/X7K9P2) pour gros motifs facilement scannables sur imprimante thermique
+  const qrValue = `${receiptBaseUrl()}/r/${shortCode}`;
   const reste = sale.total - sale.montantVerse;
 
   return (
@@ -69,7 +68,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
       <style>{`@media print {
         body * { visibility: hidden !important; }
         #receipt-print, #receipt-print * { visibility: visible !important; }
-        #receipt-print { position: absolute; left: 0; top: 0; width: 80mm; padding: 4mm; box-shadow: none !important; margin: 0; }
+        #receipt-print { position: absolute; left: 0; top: 0; width: 80mm; padding: 4mm; box-shadow: none !important; margin: 0; page-break-inside: avoid; }
         .no-print { display: none !important; }
         @page { size: auto; margin: 0mm; }
       }`}</style>
@@ -93,8 +92,8 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
               <span className="font-display text-lg font-bold">{entreprise}</span>
             </div>
             <div className="text-[11px] text-slate-500">Reçu de caisse</div>
-            <div className="mt-1 tabular text-[11px]">
-              N° {sale.id.slice(0, 8).toUpperCase()}
+            <div className="mt-1 tabular text-[11px] font-bold">
+              N° {shortCode}
             </div>
             <div className="tabular text-[11px] text-slate-500">
               {new Date(sale.createdAt).toLocaleString('fr-FR')}
@@ -135,10 +134,23 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
           )}
           {sale.client && <div className="mt-1 text-[11px]">Client : {sale.client.nom}</div>}
 
-          <div className="mt-3 flex flex-col items-center">
-            <QRCodeSVG value={qrValue} size={104} level="M" />
-            <div className="mt-1 text-center text-[10px] text-slate-500">
-              Scannez pour votre reçu (WhatsApp · SMS · PDF)
+          {/* Grand QR Code Aéré Grand Format (160px) pour Impression Thermique Net & Lisible */}
+          <div className="mt-4 flex flex-col items-center space-y-1 print:page-break-inside-avoid">
+            <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+              <QRCodeSVG
+                value={qrValue}
+                size={160}
+                level="M"
+                includeMargin={true}
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+            </div>
+            <div className="text-center font-mono text-[10px] font-bold text-slate-900 tracking-tight">
+              wilinwi.com/r/{shortCode}
+            </div>
+            <div className="text-center text-[10px] text-slate-500">
+              Scannez pour votre reçu numérique (PDF · WhatsApp · SMS)
             </div>
           </div>
 

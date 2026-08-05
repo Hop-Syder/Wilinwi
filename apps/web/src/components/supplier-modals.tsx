@@ -9,7 +9,7 @@ import type { SupplierDto, PurchaseOrderDto } from '@wilinwi/types';
 interface SupplierFormModalProps {
   supplier?: SupplierDto | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (supplier?: SupplierDto) => void;
 }
 
 export function SupplierFormModal({ supplier, onClose, onSuccess }: SupplierFormModalProps) {
@@ -35,11 +35,12 @@ export function SupplierFormModal({ supplier, onClose, onSuccess }: SupplierForm
       };
 
       if (supplier) {
-        await apiPatch(`/api/suppliers/${supplier.id}`, payload);
+        const updated = await apiPatch<SupplierDto>(`/api/suppliers/${supplier.id}`, payload);
+        onSuccess(updated);
       } else {
-        await apiPost('/api/suppliers', payload);
+        const created = await apiPost<SupplierDto>('/api/suppliers', payload);
+        onSuccess(created);
       }
-      onSuccess();
     } catch (e) {
       setError((e as ApiError).message);
     } finally {

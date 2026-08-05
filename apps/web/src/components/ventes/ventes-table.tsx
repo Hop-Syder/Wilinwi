@@ -1,14 +1,17 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Tableau desktop et cartes mobiles des ventes
+ * @description Tableau desktop et cartes mobiles des ventes avec badges colorés par mode de règlement
  * @created 2026-06-20
- * @updated 2026-08-04
+ * @updated 2026-08-05
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
+'use client';
+
+import React from 'react';
 import { Receipt as ReceiptIcon, Eye, CheckCircle2, Store } from 'lucide-react';
 import { Card } from '@wilinwi/ui';
 import type { Sale } from './types';
@@ -23,6 +26,24 @@ interface VentesTableProps {
   onSelectPayment: (sale: Sale) => void;
 }
 
+export function PaymentMethodBadge({ method }: { method?: string }) {
+  if (!method) return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">🟢 Espèces</span>;
+  const m = method.toUpperCase();
+  if (m.includes('MTN')) {
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">🟡 MTN MoMo</span>;
+  }
+  if (m.includes('WAVE')) {
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-sky-100 text-sky-900 border border-sky-300">🔵 Wave</span>;
+  }
+  if (m.includes('MOOV')) {
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">🔵 Moov Money</span>;
+  }
+  if (m.includes('CREDIT') || m.includes('CRÉDIT')) {
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-rose-50 text-rose-800 border border-rose-200">🔴 Crédit</span>;
+  }
+  return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">🟢 Espèces</span>;
+}
+
 export function VentesTable({
   sales,
   isGlobalView,
@@ -33,49 +54,37 @@ export function VentesTable({
   const { formatAmount } = useCurrency();
 
   return (
-    <Card id="tour-ventes-table" className="overflow-hidden border-slate-200/80 shadow-sm">
+    <Card id="tour-ventes-table" className="overflow-hidden border-slate-200/80 shadow-xs rounded-2xl">
       {/* 📱 Mobile : cartes empilées */}
       <div className="divide-y divide-slate-100 md:hidden">
         {sales.map((s) => {
           const reste = s.total - s.montantVerse;
           return (
-            <div key={s.id} className="p-4">
+            <div key={s.id} onClick={() => onSelectDetail(s)} className="p-4 hover:bg-slate-50/70 transition-colors cursor-pointer space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="tabular text-lg font-bold text-slate-900">{formatAmount(s.total)}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {isGlobalView ? (s.etablissement?.nom ?? '—') : (s.client?.nom || 'Comptoir')} ·{' '}
-                    {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                <div>
+                  <span className="font-mono text-xs font-bold text-indigo-700">#{s.id.slice(0, 8).toUpperCase()}</span>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {isGlobalView ? (s.etablissement?.nom ?? '—') : (s.client?.nom || 'Comptoir')}
                   </p>
-                  {s.vendeur?.nom && <p className="text-[11px] text-slate-400">Vendeur : {s.vendeur.nom}</p>}
                 </div>
-                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${STATUS[s.status]?.color || ''}`}>
-                  {STATUS[s.status]?.label || s.status}
+
+                <div className="flex items-center gap-1.5">
+                  <PaymentMethodBadge method={s.modePaiement} />
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${STATUS[s.status]?.color || ''}`}>
+                    {STATUS[s.status]?.label || s.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs text-slate-500 font-medium">
+                  {s.vendeur?.nom ? `Caissier : ${s.vendeur.nom}` : ''}
                 </span>
+                <span className="font-mono text-base font-black text-slate-900">{formatAmount(s.total)}</span>
               </div>
-              {reste > 0 && <p className="mt-1 text-xs font-semibold text-amber-600">Reste dû : {formatAmount(reste)}</p>}
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  onClick={() => onSelectDetail(s)}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                >
-                  <Eye className="h-3.5 w-3.5" /> Détail
-                </button>
-                <button
-                  onClick={() => onSelectReceipt(s)}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-brand transition-colors hover:bg-blue-50"
-                >
-                  <ReceiptIcon className="h-3.5 w-3.5" /> Reçu
-                </button>
-                {s.status === 'PENDING_PAYMENT' && (
-                  <button
-                    onClick={() => onSelectPayment(s)}
-                    className="flex-1 rounded-lg bg-amber-100 py-2 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-200"
-                  >
-                    Encaisser
-                  </button>
-                )}
-              </div>
+
+              {reste > 0 && <p className="text-xs font-extrabold text-amber-600 text-right">Reste dû : {formatAmount(reste)}</p>}
             </div>
           );
         })}
@@ -89,44 +98,41 @@ export function VentesTable({
 
       {/* 🖥️ Desktop : tableau */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-slate-500 uppercase tracking-wider text-xs font-bold">
+        <table className="w-full text-sm text-left">
+          <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 uppercase tracking-wider text-xs font-bold">
             <tr>
-              <th className="px-5 py-3.5">Heure / Date</th>
-              <th className="px-5 py-3.5">N° Vente</th>
-              <th className="px-5 py-3.5">Vendeur</th>
+              <th className="px-4 py-3.5">N° Reçu / Date</th>
+              <th className="px-4 py-3.5">Caissier</th>
               {isGlobalView ? (
-                <th className="px-5 py-3.5">
+                <th className="px-4 py-3.5">
                   <span className="flex items-center gap-1.5">
                     <Store className="h-3.5 w-3.5" /> Boutique
                   </span>
                 </th>
               ) : (
-                <th className="px-5 py-3.5">Client</th>
+                <th className="px-4 py-3.5">Client</th>
               )}
-              <th className="px-5 py-3.5">Statut</th>
-              <th className="px-5 py-3.5 text-right">Payé</th>
-              <th className="px-5 py-3.5 text-right">Reste dû</th>
-              <th className="px-5 py-3.5 text-right">Total</th>
-              <th className="px-5 py-3.5 text-center">Actions</th>
+              <th className="px-4 py-3.5">Règlement</th>
+              <th className="px-4 py-3.5">Statut</th>
+              <th className="px-4 py-3.5 text-right">Total</th>
+              <th className="px-4 py-3.5 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 font-medium">
             {sales.map((s) => {
               const reste = s.total - s.montantVerse;
               return (
-                <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-3.5 tabular text-slate-500">
-                    <div className="font-semibold text-slate-800">
-                      {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3.5">
+                    <div className="font-mono text-xs font-extrabold text-indigo-900">
+                      #{s.id.slice(0, 8).toUpperCase()}
                     </div>
-                    <div className="text-[11px]">{new Date(s.createdAt).toLocaleDateString('fr-FR')}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {new Date(s.createdAt).toLocaleDateString('fr-FR')} {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-brand font-semibold">
-                    #{s.id.slice(0, 8).toUpperCase()}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 font-medium">{s.vendeur?.nom || '—'}</td>
-                  <td className="px-5 py-3.5 text-slate-600 font-medium">
+                  <td className="px-4 py-3.5 text-slate-700 font-bold">{s.vendeur?.nom || '—'}</td>
+                  <td className="px-4 py-3.5 text-slate-700 font-bold">
                     {isGlobalView ? (
                       <span className="flex items-center gap-1.5">
                         <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -136,32 +142,30 @@ export function VentesTable({
                       s.client?.nom || <span className="text-slate-400 font-normal italic">Comptoir</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${STATUS[s.status]?.color || ''}`}>
+                  <td className="px-4 py-3.5">
+                    <PaymentMethodBadge method={s.modePaiement} />
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className={`px-2.5 py-0.5 text-xs font-extrabold rounded-full border ${STATUS[s.status]?.color || ''}`}>
                       {STATUS[s.status]?.label || s.status}
                     </span>
                   </td>
-                  <td className="tabular px-5 py-3.5 text-right font-medium text-slate-600">
-                    {formatAmount(s.montantVerse)}
-                  </td>
-                  <td className={`tabular px-5 py-3.5 text-right font-bold ${reste > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                    {reste > 0 ? formatAmount(reste) : '—'}
-                  </td>
-                  <td className="tabular px-5 py-3.5 text-right font-bold text-slate-900">
+                  <td className="tabular px-4 py-3.5 text-right font-mono font-black text-slate-900 text-sm">
                     {formatAmount(s.total)}
+                    {reste > 0 && <span className="block text-[10px] text-amber-600 font-bold">Reste: {formatAmount(reste)}</span>}
                   </td>
-                  <td className="px-5 py-3.5 text-center">
+                  <td className="px-4 py-3.5 text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onSelectDetail(s)}
-                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                        className="rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
                         title="Voir le détail"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onSelectReceipt(s)}
-                        className="rounded-lg p-1.5 text-brand hover:bg-blue-50 transition-colors"
+                        className="rounded-xl p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
                         title="Voir le reçu"
                       >
                         <ReceiptIcon className="h-4 w-4" />
@@ -169,7 +173,7 @@ export function VentesTable({
                       {s.status === 'PENDING_PAYMENT' && (
                         <button
                           onClick={() => onSelectPayment(s)}
-                          className="rounded-lg px-2 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 transition-colors"
+                          className="rounded-xl px-2 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 transition-colors"
                           title="Encaisser le solde"
                         >
                           Encaisser
@@ -182,7 +186,7 @@ export function VentesTable({
             })}
             {sales.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-16 text-center text-slate-400">
+                <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                   <CheckCircle2 className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                   Aucune vente trouvée avec ces filtres.
                 </td>
