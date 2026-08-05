@@ -21,6 +21,7 @@
     "rls": "psql \"$DIRECT_URL\" -f prisma/rls.sql",
     "push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
+    "seed:prestige": "tsx prisma/seed-prestige-3months.ts",
     "studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'no lint for db'"
