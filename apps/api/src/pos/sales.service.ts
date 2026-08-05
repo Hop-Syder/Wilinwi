@@ -1516,6 +1516,20 @@ export class SalesService {
         },
       });
 
+      // Notification automatique pour la gestion si un déficit de caisse est déclaré
+      if (ecart < 0) {
+        await tx.notification.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: ctx.etablissementId,
+            type: 'INFO',
+            titre: `Écart de caisse — Session #${active.id.slice(0, 8).toUpperCase()}`,
+            message: `Déficit de ${Math.abs(ecart)} FCFA à la clôture par ${closed.closedBy?.nom ?? 'un caissier'}${note ? ` (${note})` : ''}.`,
+            entityId: active.id,
+          },
+        });
+      }
+
       return closed;
     });
   }
