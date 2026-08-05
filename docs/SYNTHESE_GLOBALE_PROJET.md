@@ -128,12 +128,13 @@ Le système garantit une isolation stricte des données grâce à une **double c
 | `/pos/returns` | `app/(app)/pos/returns/page.tsx` | **Retours & Remboursements** : Interface de traitement des retours d'articles avec ré-entrée en stock et émission d'avoir/remboursement. |
 | `/stock` | `app/(app)/stock/page.tsx` | **Gestion du Catalogue** : Liste des produits, ajouts/modifications, prix, seuils d'alerte, catégories et filtrage par statut de stock. |
 | `/ventes` | `app/(app)/ventes/page.tsx` | **Historique des Ventes** : Inscription de toutes les ventes réalisées, filtrage par date/vendeur/mode de paiement, réimpression de reçu et annulation. |
-| `/clients` | `app/(app)/clients/page.tsx` | **Gestion CRM Client** : Vue double-colonne des clients, suivi des crédits/ardoises, enregistrement de règlements de dette avec récapitulatif. |
-| `/tresorerie` | `app/(app)/tresorerie/page.tsx` | **Gestion Trésorerie** : Vue des comptes (Caisse, MoMo, Banque), saisie des dépenses par catégorie, virements inter-comptes et clôtures de caisse. |
-| `/entrepot` | `app/(app)/entrepot/page.tsx` | **Entrepôt Central** : Pilotage des réceptions fournisseurs, gestion des bons de commande d'achat et suivi du stock central. |
+| `/clients` | `app/(app)/clients/page.tsx` | **Module CRM Clients & Dettes (Violet)** : 4 Top Cards KPIs (Total clients, Encours total, Créances en retard, Taux recouvrement), Onglet Annuaire, Onglet Carnet de Dettes, Tiroir client slide-over 3 sous-onglets, Modale de remboursement FIFO & Impression reçu thermique de dette. |
+| `/tresorerie` | `app/(app)/tresorerie/page.tsx` | **Module Trésorerie & Caisses (Rose)** : Top Cards de solde multi-comptes (Espèces, MoMo MTN/Moov, Wave, Banque, Consolidé), Historique des mouvements, Modale dépense OPEX, Modale transferts neutres inter-comptes, Modale pointage solde MoMo/Banque. |
+| `/livraisons` | `app/(app)/livraisons/page.tsx` | **Module Livraisons & Expéditions (Amber)** : 4 Top Cards KPIs (Transit, Préparation, COD à recouvrer, Taux succès), Pipeline Kanban 4 colonnes, Fiche WhatsApp livreur pré-remplie, Appel 1-clic client/livreur, Pointage des règlements COD livreur avec réintégration automatique de stock. |
+| `/entrepot` | `app/(app)/entrepot/page.tsx` | **Entrepôt Central (Teal)** : Pilotage des réceptions fournisseurs, gestion des bons de commande d'achat et suivi du stock central. |
 | `/entrepot/dispatch` | `app/(app)/entrepot/dispatch/page.tsx` | **Transferts (Dispatch)** : Interface de création et de validation des ordres de transfert de stock du magasin central vers les boutiques. |
 | `/dashboard` | `app/(app)/dashboard/page.tsx` | **Analytics du Jour** : Visualisation graphique des ventes du jour, répartition par mode de paiement et top des articles vendus. |
-| `/parametres` | `app/(app)/parametres/page.tsx` | **Configuration du Tenant** : Paramètres de l'entreprise, des établissements, des utilisateurs/rôles et des appareils autorisés. |
+| `/parametres` | `app/(app)/parametres/page.tsx` | **Module Paramètres & Configuration (Indigo)** : Centre de contrôle unifié à 5 Onglets (Tabs UI) : Profil Entreprise & IFU, Éditeur reçu thermique + Live Preview, Équipe & PIN caissier 4 chiffres, Établissements & Dépôts, Journal d'audit avec export CSV. |
 | `/r/[code]` | `app/r/[code]/page.tsx` | **Ticket Web Public** : Page de reçu électronique accessible par scanner le QR code imprimé sur le reçu physique. |
 
 ### 4.3 Matrice des Rôles & Capacités Utilisateur

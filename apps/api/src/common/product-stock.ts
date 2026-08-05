@@ -47,7 +47,7 @@ export async function applyStockDelta(tx: TenantTx, p: StockDelta): Promise<void
           quantiteMin: p.quantiteMin ?? 0,
         },
       });
-    } catch (err) {
+    } catch (_err) {
       // En cas de collision concurrentielle (création simultanée), mise à jour atomique.
       await tx.productStock.updateMany({
         where: { etablissementId: p.etablissementId, productId: p.productId, variantId },
