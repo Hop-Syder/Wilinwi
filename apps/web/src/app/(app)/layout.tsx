@@ -74,7 +74,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { state, pending } = useSync();
-  const [locked, setLocked] = useState(false);
+  const [locked, setLocked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return !getPinToken();
+  });
   const [pinUsers, setPinUsers] = useState<PinUser[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -119,8 +122,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !user) {
       router.replace('/login');
     } else if (!loading && user && !getPinToken()) {
-      // Force le lock PIN si aucune session PIN n'est active
       void lock();
+    } else if (!loading && user && getPinToken()) {
+      setLocked(false);
     }
   }, [loading, user, router]);
 
@@ -142,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Onboarding localisation : bloque le propriétaire (après le déverrouillage PIN)
   // tant que le pays/ville du siège n'est pas renseigné — comptes neufs ou existants.
   if (user.role === 'OWNER' && !user.pays) {
-    return <OnboardingLocalisationModal onDone={refreshUser} />;
+    return <OnboardingLocalisationModal onDone={() => { void refreshUser(); }} />;
   }
 
   // Impayé J+30 : écran bloquant — sauf l'OWNER sur les Paramètres (pour régulariser).

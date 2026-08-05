@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { Button, Input } from '@wilinwi/ui';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
+import { getPinToken } from '@/lib/api';
 import { Mail, Lock, ArrowRight, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
 
 export default function LoginPage() {
@@ -67,10 +68,23 @@ export default function LoginPage() {
       setLoading(false);
       return setError(error.message);
     }
-    // Charge le profil AVANT de naviguer → le Hub trouve `user` prêt (plus de
-    // redirection intempestive vers /login). Le préloader du bouton reste affiché.
-    await refreshUser();
-    router.push('/');
+    // Charge le profil AVANT de naviguer → redirection sécurisée selon le rôle.
+    const me = await refreshUser();
+
+    if (me?.role === 'CASHIER' || me?.role === 'SELLER') {
+      router.push('/pos');
+    } else if (me?.role === 'DELIVERY') {
+      router.push('/livraisons');
+    } else {
+      // OWNER / MANAGER : s'il n'y a pas de session PIN sur cet appareil,
+      // orienter vers /pos où la modale PIN s'affichera immédiatement
+      // au-dessus de la caisse, évitant tout flash des stats du Hub/Dashboard.
+      if (!getPinToken()) {
+        router.push('/pos');
+      } else {
+        router.push('/');
+      }
+    }
   }
 
   return (

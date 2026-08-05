@@ -86,7 +86,7 @@ interface AuthState {
   user: SessionUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<SessionUser | null>;
   /** Bascule de profil par PIN : stocke le jeton minté puis recharge la session. */
   loginWithPin: (accessToken: string) => Promise<void>;
   /** Change l'établissement courant (switch instantané, sans reconnexion). */
@@ -97,7 +97,7 @@ const AuthCtx = createContext<AuthState>({
   user: null,
   loading: true,
   signOut: async () => { },
-  refreshUser: async () => { },
+  refreshUser: async () => null,
   loginWithPin: async () => { },
   setEtablissement: async () => { },
 });
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   /** Résout l'utilisateur courant depuis /api/auth/me (rôle + modules frais). */
-  const resolve = useCallback(async () => {
+  const resolve = useCallback(async (): Promise<SessionUser | null> => {
     let hasSession = !!getPinToken();
     if (!hasSession) {
       const { data } = await getSupabase().auth.getSession();
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!hasSession) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
     try {
       const me = await apiGet<MeResponse>('/api/auth/me');
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         (stored === 'ALL' && canSeeAll);
 
       if (!valid) setEtablissementId(me.etablissementId);
-      setUser({
+      const nextUser: SessionUser = {
         userId: me.userId,
         email: me.email,
         nom: me.profile?.nom,
@@ -147,7 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscriptionStatus: me.subscriptionStatus ?? 'ACTIVE',
         dunning: me.dunning ?? ACTIVE_DUNNING,
         isPlatformAdmin: me.isPlatformAdmin ?? false,
-      });
+      };
+      setUser(nextUser);
+      return nextUser;
     } catch (e) {
       // Appareil révoqué / limite d'appareils : mémorise le motif pour le login.
       const err = e as { status?: number; message?: string };
@@ -163,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void getSupabase().auth.signOut();
       }
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -187,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    await resolve();
+    return await resolve();
   };
 
   const loginWithPin = async (accessToken: string) => {
