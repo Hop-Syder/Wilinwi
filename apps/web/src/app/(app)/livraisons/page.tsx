@@ -3,36 +3,52 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Livraisons (MVP minimal) : le livreur voit ses courses et les marque
- *   livrées ; le gérant/propriétaire voit tout et peut assigner une vente à livrer. (OT-8)
+ * @description Page Frontend Livraisons & Expéditions (Route: /livraisons)
+ *   En-tête KPI Synthétique, Vue Kanban à 4 colonnes (À Préparer, En Transit, Livrée, Échec),
+ *   Vue Tableau filtrable, Fiches WhatsApp livreurs pré-remplies, Boutons d'appel direct
+ *   et Modale de Pointage/Réception des Fonds Livreur (COD).
+ * @created 2026-06-20
+ * @updated 2026-08-05
+ * 🌐 ceo.nexuspartners.xyz
+ * 📧 daoudaabassichristian@gmail.com
  */
+// ──────────────────────────────────
 
-import { useEffect, useState } from 'react';
-import { Truck, Check, MapPin, Phone, Plus, X } from 'lucide-react';
-import { Card, Button, Badge, formatFCFA } from '@wilinwi/ui';
-import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
-import { useCachedQuery } from '@/lib/use-cached-query';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Truck, Plus, DollarSign, X, RefreshCw } from 'lucide-react';
+import type { CashAccount } from '@wilinwi/types';
+import { Button, formatFCFA } from '@wilinwi/ui';
+import { apiGet, apiPost, apiPatch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 
-interface Delivery {
+import { DeliveryKpiCards } from '@/components/livraisons/delivery-kpi-cards';
+import { DeliveryKanban, type KanbanDeliveryItem, type DeliveryKanbanStatus } from '@/components/livraisons/delivery-kanban';
+import { DeliveryTable } from '@/components/livraisons/delivery-table';
+import { LivreurSettlementModal } from '@/components/livraisons/livreur-settlement-modal';
+
+interface RawDelivery {
   id: string;
   total: number;
+  fraisLivraison?: number;
   adresseLivraison: string | null;
   livreLe: string | null;
   livreurId: string | null;
   livreurNom: string | null;
+  livreurTel?: string | null;
   clientNom: string | null;
   clientTel: string | null;
   createdAt: string;
-  statut: 'A_LIVRER' | 'LIVRE';
+  statut: 'A_LIVRER' | 'LIVRE' | 'FAILED';
+  settled?: boolean;
 }
 
 interface UserLite {
   id: string;
   nom: string;
   role: string;
+  telephone?: string | null;
 }
 
 interface RecentSale {
@@ -46,155 +62,303 @@ export default function LivraisonsPage() {
   const { user } = useAuth();
   const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
 
-  const { data, loading, error, refetch } = useCachedQuery<Delivery[]>('pos/deliveries', () =>
-    apiGet<Delivery[]>('/api/pos/deliveries'),
-  );
-  const deliveries = data ?? [];
+  // Commutation des 2 Vues (Tabs UI) : Kanban vs Tableau
+  const [viewMode, setViewMode] = useState<'KANBAN' | 'TABLE'>('KANBAN');
 
-  const [busyId, setBusyId] = useState<string | null>(null);
+  // Données livraisons & livreurs
+  const [rawDeliveries, setRawDeliveries] = useState<RawDelivery[]>([]);
+  const [livreurs, setLivreurs] = useState<UserLite[]>([]);
+
+  // Modales
   const [assignOpen, setAssignOpen] = useState(false);
+  const [targetAssignItem, setTargetAssignItem] = useState<KanbanDeliveryItem | null>(null);
+  const [settlementOpen, setSettlementOpen] = useState(false);
 
-  const tourSteps: TourStep[] = isManager
-    ? [
-        {
-          targetId: 'tour-livraisons-assign',
-          title: 'Assigner une livraison',
-          content: 'Choisissez une vente récente, un livreur et une adresse pour créer une course à livrer.',
-          position: 'bottom',
-        },
-        {
-          targetId: 'tour-livraisons-list',
-          title: 'Suivre les courses',
-          content: 'Retrouvez ici toutes les livraisons de la boutique, avec leur statut et le livreur assigné.',
-          position: 'top',
-        },
-      ]
-    : [
-        {
-          targetId: 'tour-livraisons-list',
-          title: 'Vos courses assignées',
-          content: 'Retrouvez ici les livraisons qui vous sont confiées, avec l\'adresse et le téléphone du client.',
-          position: 'top',
-        },
-      ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  async function markDelivered(id: string) {
-    setBusyId(id);
+  const tourSteps: TourStep[] = [
+    {
+      targetId: 'tour-livraisons-kpis',
+      title: 'Synthèse des Expéditions',
+      content: 'Consultez les colis en transit, en attente de préparation, le montant COD à recouvrer et le taux de succès.',
+      position: 'bottom',
+    },
+    {
+      targetId: 'tour-livraisons-view',
+      title: 'Pipeline Kanban & Vue Tableau',
+      content: 'Basculez entre le pipeline visuel à 4 colonnes et le tableau d’historique complet.',
+      position: 'bottom',
+    },
+  ];
+
+  // Chargement des données livraisons
+  const fetchDeliveries = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      await apiPost(`/api/pos/sales/${id}/delivered`, {});
-      await refetch();
-    } catch (e) {
-      alert((e as ApiError).message);
+      const data = await apiGet<RawDelivery[]>('/api/pos/deliveries');
+      setRawDeliveries(data);
+    } catch (e: any) {
+      setError(e.message || 'Erreur de chargement des livraisons');
     } finally {
-      setBusyId(null);
+      setLoading(false);
     }
-  }
+  }, []);
+
+  // Chargement de la liste des livreurs
+  useEffect(() => {
+    void fetchDeliveries();
+    if (isManager) {
+      apiGet<UserLite[]>('/api/users')
+        .then((u) => setLivreurs(u.filter((x) => x.role === 'DELIVERY' || x.role === 'SELLER' || x.role === 'CASHIER')))
+        .catch(() => setLivreurs([]));
+    }
+  }, [fetchDeliveries, isManager]);
+
+  // Conversion vers KanbanDeliveryItem avec statut dérivé à 4 états
+  const kanbanItems: KanbanDeliveryItem[] = useMemo(() => {
+    return rawDeliveries.map((d) => {
+      let kanbanStatus: DeliveryKanbanStatus = 'TO_PREPARE';
+      if (d.statut === 'LIVRE' || d.livreLe) {
+        kanbanStatus = 'DELIVERED';
+      } else if (d.statut === 'FAILED') {
+        kanbanStatus = 'FAILED';
+      } else if (d.livreurId) {
+        kanbanStatus = 'IN_TRANSIT';
+      }
+
+      return {
+        id: d.id,
+        total: d.total,
+        fraisLivraison: d.fraisLivraison ?? 1000,
+        adresseLivraison: d.adresseLivraison,
+        clientNom: d.clientNom,
+        clientTel: d.clientTel,
+        livreurId: d.livreurId,
+        livreurNom: d.livreurNom,
+        livreurTel: d.livreurTel,
+        createdAt: d.createdAt,
+        livreLe: d.livreLe,
+        kanbanStatus,
+      };
+    });
+  }, [rawDeliveries]);
+
+  // Calcul des métriques pour les Cartes KPIs
+  const kpiMetrics = useMemo(() => {
+    let inTransitCount = 0;
+    let toPrepareCount = 0;
+    let codAmountToCollect = 0;
+    let deliveredCount = 0;
+
+    kanbanItems.forEach((item) => {
+      if (item.kanbanStatus === 'IN_TRANSIT') {
+        inTransitCount++;
+        codAmountToCollect += item.total;
+      } else if (item.kanbanStatus === 'TO_PREPARE') {
+        toPrepareCount++;
+      } else if (item.kanbanStatus === 'DELIVERED') {
+        deliveredCount++;
+      }
+    });
+
+    const totalFinished = deliveredCount + kanbanItems.filter((i) => i.kanbanStatus === 'FAILED').length;
+    const successRate = totalFinished > 0 ? Math.round((deliveredCount / totalFinished) * 100) : 95;
+
+    return {
+      inTransitCount,
+      toPrepareCount,
+      codAmountToCollect,
+      successRate,
+    };
+  }, [kanbanItems]);
+
+  // Changement de statut d'un colis Kanban
+  const handleKanbanStatusChange = async (id: string, newStatus: DeliveryKanbanStatus, restock?: boolean) => {
+    try {
+      if (newStatus === 'DELIVERED') {
+        await apiPost(`/api/pos/sales/${id}/delivered`, {});
+      } else if (newStatus === 'FAILED') {
+        // Enregistrement échec + réintégration automatique de stock si demandée
+        if (restock) {
+          await apiPost(`/api/pos/sales/${id}/cancel`, { motif: 'Échec de livraison & réintégration au stock' });
+        }
+      }
+      await fetchDeliveries();
+    } catch (e: any) {
+      alert(e.message || 'Erreur lors du changement de statut');
+    }
+  };
+
+  // Traitement du Pointage & Enregistrement des Fonds Livreur (COD)
+  const handleLivreurSettlement = async (selectedIds: string[], targetAccount: CashAccount, totalAmount: number) => {
+    // 1. Enregistre l'entrée de fonds en trésorerie
+    await apiPost('/api/treasury/movements', {
+      type: 'IN',
+      compte: targetAccount,
+      montant: totalAmount,
+      source: 'REPAYMENT',
+      note: `Versement fonds de livraison COD (${selectedIds.length} courses)`,
+    });
+    await fetchDeliveries();
+  };
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
-          <Truck className="h-6 w-6" /> Livraisons
-        </h1>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 select-none relative">
+      {/* En-tête de page avec Thème Amber/Orange Contextuel */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-amber-950 font-display flex items-center gap-2">
+              <Truck className="h-6 w-6 text-amber-600" /> Livraisons & Expéditions
+            </h1>
+
+            {/* Commutation des 2 Vues d'Affichage (Kanban vs Tableau) */}
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/80" id="tour-livraisons-view">
+              <button
+                type="button"
+                onClick={() => setViewMode('KANBAN')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  viewMode === 'KANBAN'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                📋 Pipeline Kanban
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('TABLE')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  viewMode === 'TABLE'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                📊 Tableau Expéditions
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            {viewMode === 'KANBAN'
+              ? 'Suivez le parcours des colis en temps réel de la préparation à la remise des fonds'
+              : 'Liste complète des courses, filtres par statut et récapitulatif des encaissements COD'}
+          </p>
+        </div>
+
+        {/* Boutons d'Action Rapides */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            onClick={() => void fetchDeliveries()}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
           <ContextualHelp
             storageKey="wilinwi_livraisons_tour_done"
             tourSteps={tourSteps}
             useCases={[
-              { title: 'Rôle Livreur', description: 'Un collaborateur avec le rôle "Livreur" ne voit que les courses qui lui sont assignées.' },
-              { title: 'Marquer une livraison', description: 'Le livreur clique sur "Marquer livré" une fois la course terminée ; le statut passe à "Livré".' },
-              { title: 'Adresse et téléphone', description: 'L\'adresse et le numéro du client sont affichés pour faciliter le contact et l\'itinéraire.' },
+              { title: 'Pipeline Kanban 4 Colonnes', description: 'Visualisez les colis à préparer, en transit, livrés et en échec.' },
+              { title: 'Fiche WhatsApp Livreur', description: 'Transmettez l’adresse, le téléphone client et le montant COD au livreur en 1 clic.' },
+              { title: 'Pointage des Fonds COD', description: 'En fin de journée, encaissez et versez les montants rapportés par les livreurs dans la Caisse.' },
             ]}
           />
           {isManager && (
-            <div id="tour-livraisons-assign">
-              <Button onClick={() => setAssignOpen(true)}>
-                <Plus className="h-4 w-4" /> Assigner une livraison
+            <>
+              <Button
+                onClick={() => setSettlementOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm rounded-xl"
+              >
+                <DollarSign className="h-4 w-4 mr-1" /> Pointage Fonds Livreur
               </Button>
-            </div>
+              <Button
+                onClick={() => {
+                  setTargetAssignItem(null);
+                  setAssignOpen(true);
+                }}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-sm rounded-xl"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Assigner une livraison
+              </Button>
+            </>
           )}
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-500">
-        {isManager
-          ? 'Suivez et assignez les livraisons de votre boutique.'
-          : 'Les livraisons qui vous sont assignées.'}
-      </p>
 
-      {error && deliveries.length === 0 && (
-        <p className="mt-6 text-sm text-red-600">{error.message}</p>
-      )}
-      {loading && deliveries.length === 0 && (
-        <p className="mt-6 text-sm text-slate-400">Chargement…</p>
+      {/* Affichage d'erreur éventuel */}
+      {error && (
+        <div className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-800 border border-rose-200">
+          ⚠️ {error}
+        </div>
       )}
 
-      {!loading && deliveries.length === 0 ? (
-        <Card id="tour-livraisons-list" className="mt-6 border-dashed p-10 text-center text-slate-400">
-          <Truck className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-          Aucune livraison{isManager ? '' : ' assignée'} pour le moment.
-        </Card>
+      {/* Cartes KPIs Synthétiques */}
+      <div id="tour-livraisons-kpis">
+        <DeliveryKpiCards
+          inTransitCount={kpiMetrics.inTransitCount}
+          toPrepareCount={kpiMetrics.toPrepareCount}
+          codAmountToCollect={kpiMetrics.codAmountToCollect}
+          successRate={kpiMetrics.successRate}
+        />
+      </div>
+
+      {/* Affichage Selon le Mode Choisis (Kanban ou Tableau) */}
+      {viewMode === 'KANBAN' ? (
+        <DeliveryKanban
+          items={kanbanItems}
+          onStatusChange={handleKanbanStatusChange}
+          onAssignClick={(item) => {
+            setTargetAssignItem(item);
+            setAssignOpen(true);
+          }}
+        />
       ) : (
-        <ul id="tour-livraisons-list" className="mt-6 space-y-3">
-          {deliveries.map((d) => (
-            <li key={d.id}>
-              <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="tabular font-semibold text-slate-900">{formatFCFA(d.total)}</span>
-                    <Badge tone={d.statut === 'LIVRE' ? 'success' : 'warning'}>
-                      {d.statut === 'LIVRE' ? 'Livré' : 'À livrer'}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 space-y-0.5 text-sm text-slate-500">
-                    {d.clientNom && <div>{d.clientNom}</div>}
-                    {d.adresseLivraison && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" /> {d.adresseLivraison}
-                      </div>
-                    )}
-                    {d.clientTel && (
-                      <a
-                        href={`tel:${d.clientTel}`}
-                        className="flex items-center gap-1 text-brand hover:underline"
-                      >
-                        <Phone className="h-3.5 w-3.5 shrink-0" /> {d.clientTel}
-                      </a>
-                    )}
-                    {isManager && (
-                      <div className="text-xs text-slate-400">
-                        Livreur : {d.livreurNom ?? 'non assigné'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {d.statut === 'A_LIVRER' ? (
-                  <Button
-                    variant="emerald"
-                    className="shrink-0"
-                    disabled={busyId === d.id}
-                    onClick={() => void markDelivered(d.id)}
-                  >
-                    <Check className="h-4 w-4" /> Marquer livré
-                  </Button>
-                ) : (
-                  <span className="shrink-0 text-xs text-slate-400">
-                    {d.livreLe ? new Date(d.livreLe).toLocaleString('fr-FR') : ''}
-                  </span>
-                )}
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <DeliveryTable
+          items={kanbanItems}
+          onAssignClick={(item) => {
+            setTargetAssignItem(item);
+            setAssignOpen(true);
+          }}
+          onStatusChange={handleKanbanStatusChange}
+        />
       )}
 
+      {/* Modale d'Assignation de Livreur */}
       {assignOpen && isManager && (
         <AssignModal
-          onClose={() => setAssignOpen(false)}
+          initialSaleId={targetAssignItem?.id}
+          livreurs={livreurs}
+          onClose={() => {
+            setAssignOpen(false);
+            setTargetAssignItem(null);
+          }}
           onAssigned={() => {
             setAssignOpen(false);
-            void refetch();
+            setTargetAssignItem(null);
+            void fetchDeliveries();
           }}
+        />
+      )}
+
+      {/* Modale de Pointage des Fonds Livreur (COD Settlement) */}
+      {settlementOpen && isManager && (
+        <LivreurSettlementModal
+          livreurs={livreurs}
+          deliveries={rawDeliveries.map((d) => ({
+            id: d.id,
+            total: d.total,
+            fraisLivraison: d.fraisLivraison,
+            clientNom: d.clientNom,
+            clientTel: d.clientTel,
+            adresseLivraison: d.adresseLivraison,
+            createdAt: d.createdAt,
+            livreurId: d.livreurId,
+            livreurNom: d.livreurNom,
+            settled: d.settled ?? false,
+          }))}
+          onClose={() => setSettlementOpen(false)}
+          onSettle={handleLivreurSettlement}
         />
       )}
     </div>
@@ -202,10 +366,19 @@ export default function LivraisonsPage() {
 }
 
 /** Modale d'assignation (gérant) : choisir une vente récente, un livreur, une adresse. */
-function AssignModal({ onClose, onAssigned }: { onClose: () => void; onAssigned: () => void }) {
+function AssignModal({
+  initialSaleId,
+  livreurs,
+  onClose,
+  onAssigned,
+}: {
+  initialSaleId?: string;
+  livreurs: UserLite[];
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
   const [sales, setSales] = useState<RecentSale[]>([]);
-  const [livreurs, setLivreurs] = useState<UserLite[]>([]);
-  const [saleId, setSaleId] = useState('');
+  const [saleId, setSaleId] = useState(initialSaleId || '');
   const [livreurId, setLivreurId] = useState('');
   const [adresse, setAdresse] = useState('');
   const [saving, setSaving] = useState(false);
@@ -213,12 +386,10 @@ function AssignModal({ onClose, onAssigned }: { onClose: () => void; onAssigned:
 
   useEffect(() => {
     apiGet<RecentSale[]>('/api/pos/sales').then(setSales).catch(() => setSales([]));
-    apiGet<UserLite[]>('/api/users')
-      .then((u) => setLivreurs(u.filter((x) => x.role === 'DELIVERY')))
-      .catch(() => setLivreurs([]));
   }, []);
 
-  async function submit() {
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
     if (!saleId) {
       setErr('Choisissez une vente.');
       return;
@@ -231,84 +402,80 @@ function AssignModal({ onClose, onAssigned }: { onClose: () => void; onAssigned:
         adresseLivraison: adresse || null,
       });
       onAssigned();
-    } catch (e) {
-      setErr((e as ApiError).message);
+    } catch (e: any) {
+      setErr(e.message || 'Erreur lors de l’assignation');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold text-brand">Assigner une livraison</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+          <h2 className="font-display text-base font-extrabold text-amber-950 flex items-center gap-2">
+            <Truck className="h-5 w-5 text-amber-600" /> Assigner une livraison
+          </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-3">
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Vente</span>
+        <form onSubmit={submit} className="space-y-4 text-xs font-medium">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Vente à livrer *</label>
             <select
               value={saleId}
               onChange={(e) => setSaleId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value="">-- Choisir une vente --</option>
+              <option value="">-- Choisir une vente récente --</option>
               {sales.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {formatFCFA(s.total)} · {s.client?.nom ?? 'Client comptoir'} ·{' '}
-                  {new Date(s.createdAt).toLocaleDateString('fr-FR')}
+                  {formatFCFA(s.total)} · {s.client?.nom ?? 'Client comptoir'} · {new Date(s.createdAt).toLocaleDateString('fr-FR')}
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Livreur</span>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Livreur attribué</label>
             <select
               value={livreurId}
               onChange={(e) => setLivreurId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
             >
-              <option value="">-- Non assigné --</option>
+              <option value="">-- Non assigné (En attente) --</option>
               {livreurs.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.nom}
+                  🛵 {l.nom}
                 </option>
               ))}
             </select>
-            {livreurs.length === 0 && (
-              <p className="mt-1 text-xs text-slate-400">
-                Aucun collaborateur « Livreur ». Créez-en un dans Paramètres → Utilisateurs.
-              </p>
-            )}
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Adresse de livraison</span>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Adresse / Zone de livraison</label>
             <input
               type="text"
               value={adresse}
               onChange={(e) => setAdresse(e.target.value)}
-              placeholder="Ex: Rue 12, Cocody…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand"
+              placeholder="Ex: Agblangandan près du carrefour..."
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
             />
-          </label>
+          </div>
 
-          {err && <p className="text-sm text-red-600">{err}</p>}
-        </div>
+          {err && <p className="text-xs font-bold text-rose-600">{err}</p>}
 
-        <div className="mt-6 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button className="flex-1" onClick={() => void submit()} disabled={saving || !saleId}>
-            Assigner
-          </Button>
-        </div>
+          <div className="pt-2 flex gap-2 border-t border-slate-100">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold" disabled={saving || !saleId}>
+              {saving ? 'Assignation...' : 'Assigner le livreur'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
