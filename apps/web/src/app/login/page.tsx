@@ -17,19 +17,18 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { getPinToken, setPinToken } from '@/lib/api';
 import {
   Eye,
   EyeOff,
   Lock,
   Mail,
-  Smartphone,
   ShieldCheck,
   ArrowRight,
   TrendingUp,
-  CheckCircle2,
-  Zap,
-  LayoutGrid,
+  Sparkles,
+  Wifi,
+  CreditCard,
+  Store,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -46,8 +45,7 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
 
   // Simulation Ventes du jour en direct sur le panneau de gauche
-  const [sales, setSales] = useState(148500);
-  const [barHeights, setBarHeights] = useState([40, 60, 50, 75, 95]);
+  const [sales, setSales] = useState(152566);
 
   useEffect(() => {
     setMounted(true);
@@ -59,13 +57,6 @@ export default function LoginPage() {
 
     const interval = setInterval(() => {
       setSales((s) => s + Math.floor(Math.random() * 800) + 200);
-      setBarHeights((prev) =>
-        prev.map((h, i) => {
-          if (i === 4) return 95;
-          const diff = Math.floor(Math.random() * 15) - 7;
-          return Math.max(30, Math.min(90, h + diff));
-        })
-      );
     }, 2800);
     return () => clearInterval(interval);
   }, []);
@@ -109,142 +100,122 @@ export default function LoginPage() {
 
   return (
     <div className="h-screen h-[100dvh] w-screen overflow-hidden grid grid-cols-1 lg:grid-cols-2 bg-white font-sans text-slate-900 antialiased">
-      {/* 1. PANNEAU GAUCHE : BENTO BOX FINTECH (Desktop Zéro-Scroll) */}
-      <div className="hidden lg:flex flex-col justify-between p-7 xl:p-10 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white relative overflow-hidden h-full select-none border-r border-slate-800/40">
-        {/* Halos lumineux */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-500/[0.07] rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-indigo-600/[0.10] rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.025] bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+      {/* 1. PANNEAU GAUCHE : VIVANT & COLORÉ */}
+      <div className="hidden lg:flex flex-col justify-between p-8 xl:p-12 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white relative overflow-hidden h-full select-none border-r border-slate-800">
 
-        {/* ─── LOGO + TAGLINE ─── */}
+        {/* Halos lumineux ambiants */}
+        <div className="absolute -top-20 -left-20 w-96 h-96 bg-emerald-500/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-amber-500/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/3 -translate-y-1/2 w-80 h-80 bg-indigo-500/15 rounded-full blur-[100px] pointer-events-none" />
+
+        {/* ─── LOGO + HEADLINE ─── */}
         <div className="relative z-10 shrink-0">
-          <Image
-            src="/logo.png"
-            alt="Wilinwi Logo"
-            width={160}
-            height={44}
-            className="object-contain brightness-0 invert mb-2.5"
-            style={{ height: 'auto', maxHeight: '42px' }}
-            priority
-          />
-          <p className="text-[13px] xl:text-sm font-semibold text-slate-400 leading-snug max-w-xs">
-            Le système d'exploitation du commerce africain.
-          </p>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 via-teal-500 to-indigo-500 p-0.5 shadow-lg shadow-emerald-500/30 shrink-0">
+              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center font-black text-xl text-emerald-400">
+                W
+              </div>
+            </div>
+            <div>
+              <span className="text-2xl font-black tracking-tight text-white block leading-none">Wilinwi</span>
+              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block mt-0.5">
+                Le système d&apos;exploitation du commerce africain
+              </span>
+            </div>
+          </div>
+          <h2 className="text-xl xl:text-2xl font-black leading-tight text-slate-100 max-w-md">
+            Démarrez votre caisse &amp; vos stocks en moins de{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+              2 minutes
+            </span>.
+          </h2>
         </div>
 
-        {/* ─── BENTO GRID ─── */}
-        <div className="relative z-10 my-auto flex flex-col gap-2.5 max-w-md w-full">
+        {/* ─── VISUEL VIVANT : CARTE POS GLASSMORPHISM ─── */}
+        <div className="relative z-10 my-auto">
 
-          {/* Bento 1 — Grand widget Terminal (pleine largeur) */}
-          <div className="relative rounded-2xl border border-white/[0.09] bg-white/[0.045] backdrop-blur-xl p-4 xl:p-5 overflow-hidden group transition-all hover:bg-white/[0.065] hover:border-white/[0.14]">
-            {/* Glow interne */}
-            <div className="absolute -top-8 -right-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Terminal Actif</span>
-                </div>
+          {/* Carte principale */}
+          <div className="p-5 rounded-3xl bg-slate-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+
+            {/* Badge Offre + badge En direct */}
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/30 shadow-sm">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>14 JOURS D&apos;ESSAI OFFERTS</span>
               </div>
-              <span className="text-[11px] text-slate-500 font-medium">Ganhi · Cotonou</span>
-            </div>
-            {/* Montant + trend */}
-            <div className="flex items-baseline gap-2 mb-3">
-              <span className="text-2xl xl:text-3xl font-black font-mono tracking-tight text-white">
-                {mounted ? sales.toLocaleString('fr-FR') : '148 500'}&nbsp;
-                <span className="text-lg text-slate-400 font-bold">FCFA</span>
-              </span>
-              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full shrink-0">
-                <TrendingUp className="w-3 h-3" /> +14.2%
+              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                En direct
               </span>
             </div>
-            {/* Sparkline */}
-            <div className="flex items-end gap-1.5 h-10 mb-3">
-              {barHeights.map((h, idx) => (
-                <div
-                  key={idx}
-                  className={`flex-1 rounded-t-md transition-all duration-700 ${
-                    idx === 4
-                      ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.45)]'
-                      : idx >= 3
-                      ? 'bg-emerald-500/40'
-                      : 'bg-slate-700/70 group-hover:bg-slate-600/80'
-                  }`}
-                  style={{ height: `${h}%` }}
-                />
-              ))}
-            </div>
-            {/* Footer status */}
-            <div className="flex items-center justify-between pt-2 border-t border-white/[0.07] text-[11px]">
-              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Sync OK
+
+            {/* CA du jour */}
+            <div className="my-2">
+              <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block">
+                Ventes encaissées aujourd&apos;hui · Boutique Ganhi (Cotonou)
               </span>
-              <span className="font-mono text-slate-500">IndexedDB v2.4</span>
+              <div className="flex items-baseline gap-3 mt-1">
+                <span className="text-3xl xl:text-4xl font-black text-white tracking-tight font-mono">
+                  {mounted ? sales.toLocaleString('fr-FR') : '152 566'}{' '}
+                  <span className="text-xl font-bold text-emerald-400">FCFA</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  +14.2%
+                </span>
+              </div>
+            </div>
+
+            {/* Badges modes de paiement colorés */}
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-800/80 flex-wrap">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Modes acceptés:</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">MTN MoMo</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-400/20 text-blue-300 border border-blue-400/30">Moov MoMo</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">Wave</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">Espèces</span>
             </div>
           </div>
 
-          {/* Bento 2+3 — Deux cards côte à côte */}
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* Card Offline */}
-            <div className="relative rounded-2xl border border-white/[0.09] bg-white/[0.04] backdrop-blur-xl p-3.5 xl:p-4 overflow-hidden group transition-all hover:bg-white/[0.07] hover:border-white/[0.14]">
-              <div className="absolute -top-6 -right-6 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="mb-2 flex items-center justify-between">
-                <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/20">
-                  <Zap className="w-4 h-4 text-emerald-400" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70">100% Offline</span>
+          {/* 3 avantages avec icônes colorées */}
+          <div className="grid grid-cols-1 gap-2.5 mt-4">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+                <Wifi className="w-4 h-4" />
               </div>
-              <h4 className="text-[13px] font-bold text-slate-100 leading-tight">Caisse Sans Internet</h4>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                Ventes enregistrées en local, sync auto à la reconnexion.
-              </p>
+              <span className="text-xs font-semibold text-slate-200">
+                Fonctionnement <strong className="text-emerald-400">100% Hors-Ligne</strong> sans coupure
+              </span>
             </div>
 
-            {/* Card Mobile Money */}
-            <div className="relative rounded-2xl border border-white/[0.09] bg-white/[0.04] backdrop-blur-xl p-3.5 xl:p-4 overflow-hidden group transition-all hover:bg-white/[0.07] hover:border-white/[0.14]">
-              <div className="absolute -top-6 -right-6 w-16 h-16 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="mb-2 flex items-center justify-between">
-                <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/20">
-                  <Smartphone className="w-4 h-4 text-amber-400" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">MoMo</span>
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                <CreditCard className="w-4 h-4" />
               </div>
-              <h4 className="text-[13px] font-bold text-slate-100 leading-tight">Mobile Money</h4>
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                {['MTN', 'Moov', 'Wave'].map((op) => (
-                  <span key={op} className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300 border border-white/10">
-                    {op}
-                  </span>
-                ))}
-              </div>
+              <span className="text-xs font-semibold text-slate-200">
+                <strong className="text-amber-400">Sans carte bancaire</strong> requise à l&apos;inscription
+              </span>
             </div>
-          </div>
 
-          {/* Bento 4 — Multi-boutiques (pleine largeur) */}
-          <div className="relative rounded-2xl border border-white/[0.09] bg-white/[0.04] backdrop-blur-xl p-3.5 xl:p-4 overflow-hidden group transition-all hover:bg-white/[0.07] hover:border-white/[0.14]">
-            <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-indigo-500/15 border border-indigo-500/20 shrink-0">
-                <LayoutGrid className="w-4 h-4 text-indigo-400" />
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+              <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 shrink-0">
+                <Store className="w-4 h-4" />
               </div>
-              <div>
-                <h4 className="text-[13px] font-bold text-slate-100">Multi-Boutiques & Dépôts</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Basculez entre vos points de vente en 1 clic — stocks & caisses unifiés.
-                </p>
-              </div>
+              <span className="text-xs font-semibold text-slate-200">
+                Création <strong className="text-indigo-300">automatique</strong> de votre premier magasin
+              </span>
             </div>
           </div>
         </div>
 
-        {/* ─── FOOTER SÉCURITÉ ─── */}
-        <div className="flex items-center justify-between text-xs text-slate-500 relative z-10 border-t border-white/[0.07] pt-3 shrink-0">
+        {/* ─── FOOTER ─── */}
+        <div className="flex items-center justify-between text-xs text-slate-400 relative z-10 pt-3 border-t border-slate-800/60 shrink-0">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Données chiffrées & isolation par boutique</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Données sécurisées &amp; isolées</span>
           </div>
-          <span className="font-bold text-slate-600">Bénin · XOF</span>
+          <span className="font-semibold text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+            🇧🇯 Bénin / XOF (FCFA)
+          </span>
         </div>
       </div>
 
