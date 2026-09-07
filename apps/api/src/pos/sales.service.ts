@@ -19,7 +19,6 @@ import {
   accountForPayment,
   type AuthContext,
   type CreateSaleInput,
-  type InstallmentStatus,
 } from '@wilinwi/types';
 import { randomBytes } from 'node:crypto';
 import { Prisma, type TenantTx } from '@wilinwi/db';
@@ -27,6 +26,14 @@ import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
+import {
+  exceedsCreditLimit,
+  installmentStatus,
+  projectedCreditDebt,
+  resolveAcompte,
+  resolvePayment,
+  splitMixedPayment,
+} from './sales-logic';
 
 @Injectable()
 export class SalesService {
@@ -167,7 +174,7 @@ export class SalesService {
       }
 
       // Acompte : validé tôt (échoue vite) pour les deux flux.
-      const intendedAcompte = this.validateAcompte(input, total);
+      const intendedAcompte = resolveAcompte(input.paymentMethod, input.montantVerse, total);
       // Crédit client : vérifier le plafond avant de créer la vente.
       await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
       
@@ -266,7 +273,7 @@ export class SalesService {
       }
     }
 
-    const { montantVerse, status } = this.resolvePayment(
+    const { montantVerse, status } = resolvePayment(
       sale.paymentMethod,
       sale.total,
       sale.montantVerse,
@@ -278,7 +285,7 @@ export class SalesService {
         update: {
           montantVerse,
           soldeRestant: sale.total - montantVerse,
-          status: this.installmentStatus(sale.total, montantVerse),
+          status: installmentStatus(sale.total, montantVerse),
         },
         create: {
           tenantId: ctx.tenantId,
@@ -286,7 +293,7 @@ export class SalesService {
           montantTotal: sale.total,
           montantVerse,
           soldeRestant: sale.total - montantVerse,
-          status: this.installmentStatus(sale.total, montantVerse),
+          status: installmentStatus(sale.total, montantVerse),
         },
       });
     }
@@ -304,8 +311,7 @@ export class SalesService {
     // Paiement mixte : `montantEspeces` va en CAISSE, le reste sur le compte du mode.
     const compte = accountForPayment(sale.paymentMethod);
     if (montantVerse > 0) {
-      const espece =
-        compte === 'CAISSE' ? 0 : Math.min(Math.max(sale.montantEspeces ?? 0, 0), montantVerse);
+      const { espece, reste } = splitMixedPayment(compte, montantVerse, sale.montantEspeces);
       if (espece > 0) {
         await tx.cashMovement.create({
           data: {
@@ -320,7 +326,6 @@ export class SalesService {
           },
         });
       }
-      const reste = montantVerse - espece;
       if (compte && reste > 0) {
         await tx.cashMovement.create({
           data: {
@@ -373,7 +378,7 @@ export class SalesService {
       const applique = Math.min(montant, inst.soldeRestant);
       const montantVerse = inst.montantVerse + applique;
       const soldeRestant = Math.max(inst.montantTotal - montantVerse, 0);
-      const status = this.installmentStatus(inst.montantTotal, montantVerse);
+      const status = installmentStatus(inst.montantTotal, montantVerse);
 
       const updated = await tx.saleInstallment.update({
         where: { saleId },
@@ -463,10 +468,11 @@ export class SalesService {
         // Reversal trésorerie : on ressort la part encaissée (en ventilant le mixte).
         const compte = accountForPayment(target.paymentMethod);
         if (target.montantVerse > 0) {
-          const espece =
-            compte === 'CAISSE'
-              ? 0
-              : Math.min(Math.max(target.montantEspeces ?? 0, 0), target.montantVerse);
+          const { espece, reste } = splitMixedPayment(
+            compte,
+            target.montantVerse,
+            target.montantEspeces,
+          );
           if (espece > 0) {
             await tx.cashMovement.create({
               data: {
@@ -482,7 +488,6 @@ export class SalesService {
               },
             });
           }
-          const reste = target.montantVerse - espece;
           if (compte && reste > 0) {
             await tx.cashMovement.create({
               data: {
@@ -842,45 +847,11 @@ export class SalesService {
     });
     if (!client) throw new NotFoundException('Client introuvable');
 
-    const detteProjetee = input.paymentMethod === 'CREDIT' ? total : total - intendedAcompte;
-    if (
-      client.plafondCredit !== null &&
-      client.soldeCredit + detteProjetee > client.plafondCredit
-    ) {
+    const detteProjetee = projectedCreditDebt(input.paymentMethod, total, intendedAcompte);
+    if (exceedsCreditLimit(client.soldeCredit, client.plafondCredit, detteProjetee)) {
       throw new BadRequestException(
         `Plafond de crédit dépassé : dette ${client.soldeCredit} + ${detteProjetee} > plafond ${client.plafondCredit}`,
       );
     }
-  }
-
-  private validateAcompte(input: CreateSaleInput, total: number): number {
-    if (input.paymentMethod !== 'INSTALLMENT') return 0;
-    const verse = input.montantVerse ?? 0;
-    if (verse <= 0) throw new BadRequestException("Le montant de l'acompte doit être positif");
-    if (verse > total) throw new BadRequestException("L'acompte dépasse le total");
-    return verse;
-  }
-
-  private resolvePayment(
-    paymentMethod: CreateSaleInput['paymentMethod'],
-    total: number,
-    intendedAcompte: number,
-  ): { montantVerse: number; status: 'COMPLETED' | 'PENDING_PAYMENT' } {
-    if (paymentMethod === 'INSTALLMENT') {
-      return {
-        montantVerse: intendedAcompte,
-        status: intendedAcompte >= total ? 'COMPLETED' : 'PENDING_PAYMENT',
-      };
-    }
-    if (paymentMethod === 'CREDIT') {
-      return { montantVerse: 0, status: 'PENDING_PAYMENT' };
-    }
-    return { montantVerse: total, status: 'COMPLETED' };
-  }
-
-  private installmentStatus(total: number, verse: number): InstallmentStatus {
-    if (verse <= 0) return 'PENDING';
-    if (verse >= total) return 'SETTLED';
-    return 'PARTIAL';
   }
 }

@@ -21,6 +21,7 @@ import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { toClientDto } from './client.mapper';
+import { applyPaymentToInstallment } from './payment-allocation';
 
 @Injectable()
 export class ClientsService {
@@ -110,30 +111,30 @@ export class ClientsService {
           const inst = sale.installment;
           const soldeRestant = inst.soldeRestant;
           if (soldeRestant > 0) {
-            const aPayer = Math.min(remaining, soldeRestant);
-            const newMontantVerse = inst.montantVerse + aPayer;
-            const newSoldeRestant = soldeRestant - aPayer;
-            const newInstStatus = newMontantVerse >= sale.total ? 'SETTLED' : 'PARTIAL';
-            const newSaleStatus = newSoldeRestant === 0 ? 'COMPLETED' : 'PENDING_PAYMENT';
+            const app = applyPaymentToInstallment(remaining, {
+              total: sale.total,
+              montantVerse: inst.montantVerse,
+              soldeRestant,
+            });
 
             await tx.saleInstallment.update({
               where: { saleId: sale.id },
               data: {
-                montantVerse: newMontantVerse,
-                soldeRestant: newSoldeRestant,
-                status: newInstStatus,
+                montantVerse: app.montantVerse,
+                soldeRestant: app.soldeRestant,
+                status: app.installmentStatus,
               },
             });
 
             await tx.sale.update({
               where: { id: sale.id },
               data: {
-                montantVerse: newMontantVerse,
-                status: newSaleStatus,
+                montantVerse: app.montantVerse,
+                status: app.saleStatus,
               },
             });
 
-            remaining -= aPayer;
+            remaining -= app.aPayer;
           }
         }
       }
@@ -155,30 +156,30 @@ export class ClientsService {
           const soldeRestant = inst.soldeRestant;
           if (soldeRestant <= 0) continue;
 
-          const aPayer = Math.min(remaining, soldeRestant);
-          const newMontantVerse = inst.montantVerse + aPayer;
-          const newSoldeRestant = soldeRestant - aPayer;
-          const newInstStatus = newMontantVerse >= sale.total ? 'SETTLED' : 'PARTIAL';
-          const newSaleStatus = newSoldeRestant === 0 ? 'COMPLETED' : 'PENDING_PAYMENT';
+          const app = applyPaymentToInstallment(remaining, {
+            total: sale.total,
+            montantVerse: inst.montantVerse,
+            soldeRestant,
+          });
 
           await tx.saleInstallment.update({
             where: { saleId: sale.id },
             data: {
-              montantVerse: newMontantVerse,
-              soldeRestant: newSoldeRestant,
-              status: newInstStatus,
+              montantVerse: app.montantVerse,
+              soldeRestant: app.soldeRestant,
+              status: app.installmentStatus,
             },
           });
 
           await tx.sale.update({
             where: { id: sale.id },
             data: {
-              montantVerse: newMontantVerse,
-              status: newSaleStatus,
+              montantVerse: app.montantVerse,
+              status: app.saleStatus,
             },
           });
 
-          remaining -= aPayer;
+          remaining -= app.aPayer;
         }
       }
 

@@ -9,9 +9,8 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import {
-  CASH_ACCOUNTS,
   CASH_ACCOUNT_LABELS,
   hasCapability,
   type AuthContext,
@@ -24,6 +23,12 @@ import {
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
+import {
+  assertSufficientBalance,
+  closingAdjustment,
+  requireClosingNote,
+  sumBalances,
+} from './treasury-logic';
 
 export type Balances = Record<CashAccount, number>;
 
@@ -70,12 +75,13 @@ export class TreasuryService {
       where: { tenantId, ...(etablissementId ? { etablissementId } : {}) },
       _sum: { montant: true },
     });
-    const balances = Object.fromEntries(CASH_ACCOUNTS.map((c) => [c, 0])) as Balances;
-    for (const r of rows) {
-      const montant = r._sum.montant ?? 0;
-      balances[r.compte] += r.type === 'IN' ? montant : -montant;
-    }
-    return balances;
+    return sumBalances(
+      rows.map((r) => ({
+        compte: r.compte,
+        type: r.type,
+        montant: r._sum.montant ?? 0,
+      })),
+    );
   }
 
   /** Soldes par compte = Σ(entrées) − Σ(sorties) de l'établissement courant. */
@@ -179,12 +185,7 @@ export class TreasuryService {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       // Vérification du solde source (établissement courant)
       const balances = await this.computeBalances(tx, ctx.tenantId, ctx.etablissementId);
-      if (balances[input.from] < input.montant) {
-        const label = CASH_ACCOUNT_LABELS[input.from];
-        throw new BadRequestException(
-          `Solde insuffisant sur ${label} : ${balances[input.from].toLocaleString('fr-FR')} FCFA disponible, ${input.montant.toLocaleString('fr-FR')} FCFA requis.`,
-        );
-      }
+      assertSufficientBalance(balances, input.from, input.montant);
 
       await tx.cashMovement.create({
         data: {
@@ -280,11 +281,7 @@ export class TreasuryService {
       const ecart = input.soldeReel - soldeTheorique;
 
       // Motif obligatoire en cas d'écart
-      if (ecart !== 0 && !input.note?.trim()) {
-        throw new BadRequestException(
-          `Un écart de ${ecart > 0 ? '+' : ''}${ecart} FCFA a été constaté. Veuillez saisir un motif explicatif.`,
-        );
-      }
+      requireClosingNote(ecart, input.note);
 
       const cashClose = await tx.cashClose.create({
         data: {
@@ -300,14 +297,15 @@ export class TreasuryService {
       });
 
       // Aligne le solde système sur le comptage réel.
-      if (ecart !== 0) {
+      const ajustement = closingAdjustment(ecart);
+      if (ajustement) {
         await tx.cashMovement.create({
           data: {
             tenantId: ctx.tenantId,
             etablissementId: ctx.etablissementId,
-            type: ecart > 0 ? 'IN' : 'OUT',
+            type: ajustement.type,
             compte: input.compte,
-            montant: Math.abs(ecart),
+            montant: ajustement.montant,
             source: 'ADJUSTMENT',
             note: `Écart clôture : ${input.note ?? ''}`,
             createdBy: ctx.userId,
