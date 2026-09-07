@@ -26,6 +26,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @wilinwi/db generate
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Build · Typecheck · Test
         run: pnpm turbo build typecheck test
         env:

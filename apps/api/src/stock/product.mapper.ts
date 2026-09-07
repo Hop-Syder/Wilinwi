@@ -9,7 +9,7 @@
  */
 // ──────────────────────────────────
 
-import { canSeeSensitivePricing, type ProductDto, type Role, type ProductVariantDto } from '@wilinwi/types';
+import { canSeeSensitivePricing, type ProductDto, type Role } from '@wilinwi/types';
 import type { Product, ProductVariant } from '@wilinwi/db';
 
 /**

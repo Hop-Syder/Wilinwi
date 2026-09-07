@@ -37,6 +37,7 @@
     "@types/geoip-lite": "^1.4.4",
     "@types/node": "^22.13.0",
     "@types/ws": "^8.5.13",
+    "eslint": "^9.39.5",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

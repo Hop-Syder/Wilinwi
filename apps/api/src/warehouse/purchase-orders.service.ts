@@ -29,6 +29,7 @@ export class PurchaseOrdersService {
         where: {
           tenantId: ctx.tenantId,
           ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- statut enum Prisma casté pour s'adapter au type généré
           ...(status ? { statut: status as any } : {}),
         },
         include: {

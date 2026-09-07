@@ -8,12 +8,11 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { AuthContext, CreateSupplierInput, UpdateSupplierInput, RecordSupplierPaymentInput } from '@wilinwi/types';
 import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { ActivityService } from '../common/activity.service';
-import { assertConcreteEtablissement } from '../common/scope';
 import { toSupplierDto } from './supplier.mapper';
 
 @Injectable()

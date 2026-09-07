@@ -374,7 +374,7 @@ export class StockService {
       const product = await this.ensureProduct(tx, ctx.tenantId, input.productId);
       const delta = this.signedDelta(input.type, input.quantite);
 
-      let newParentStock = product.stock + delta;
+      const newParentStock = product.stock + delta;
 
       if (input.variantId) {
         const variant = product.variants.find(v => v.id === input.variantId);

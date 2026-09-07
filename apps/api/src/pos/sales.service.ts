@@ -553,6 +553,7 @@ export class SalesService {
         
         // Vérifier que la quantité retournée (historique + demandée) ne dépasse pas la quantité vendue
         // On force le cast 'any' si prisma client n'est pas encore généré pour quantiteRetournee
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- champ Prisma `quantiteRetournee` pas encore typé dans le client généré
         const itemAny = item as any;
         const prevReturned = itemAny.quantiteRetournee || 0;
         if (prevReturned + ret.quantiteRetournee > item.quantite) {
@@ -562,6 +563,7 @@ export class SalesService {
         // MAJ de la ligne
         await tx.saleItem.update({
           where: { id: item.id },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- champ Prisma `quantiteRetournee` pas encore typé
           data: { quantiteRetournee: { increment: ret.quantiteRetournee } } as any,
         });
 
@@ -636,6 +638,7 @@ export class SalesService {
         where: { id: saleId },
         include: { items: { include: { priceOverride: true } }, installment: true },
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- `findUnique` peut renvoyer null ; vente validée en amont
       return toSaleDto(updatedSale as any, ctx.role);
     });
   }
@@ -643,6 +646,7 @@ export class SalesService {
   // ─────────────────────────── Livraisons (MVP minimal) ───────────────────────────
 
   /** DTO léger d'une livraison (statut dérivé de `livreLe`). */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DTO léger sans type Prisma strict (includes variables)
   private toDeliveryDto(s: any) {
     return {
       id: s.id,
@@ -694,6 +698,7 @@ export class SalesService {
   /** Liste des livraisons : un livreur ne voit que les siennes (non livrées). */
   async listDeliveries(ctx: AuthContext) {
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clause `where` Prisma construite dynamiquement
       const where: any = { tenantId: ctx.tenantId, aLivrer: true };
       if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
       if (ctx.role === 'DELIVERY') {
@@ -729,6 +734,7 @@ export class SalesService {
   }
 
   async list(ctx: AuthContext, filters?: { from?: string; to?: string; status?: string; clientId?: string; q?: string }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- clause `where` Prisma construite dynamiquement
     const where: any = { tenantId: ctx.tenantId };
     // Phase 1 : on ne montre que l'établissement courant.
     if (ctx.etablissementId) where.etablissementId = ctx.etablissementId;
