@@ -95,7 +95,7 @@ export default function LoginPage() {
               <p className="text-[10px] text-slate-400">Ventes du jour</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold font-mono tracking-tight text-white transition-all duration-300">
-                  {sales.toLocaleString()} FCFA
+                  {sales.toLocaleString('fr-FR')} FCFA
                 </span>
                 <span className="text-[10px] font-semibold text-[#00A86B] bg-[#00A86B]/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <TrendingUp className="w-2.5 h-2.5" /> +14.2%

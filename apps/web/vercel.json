@@ -3,9 +3,9 @@
 
   "framework": "nextjs",
 
-  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @wilinwi/db build && pnpm --filter @wilinwi/types build && pnpm --filter @wilinwi/ui build && pnpm --filter web build",
+  "buildCommand": "cd ../.. && pnpm --filter @wilinwi/db build && pnpm --filter @wilinwi/types build && pnpm --filter @wilinwi/ui build && pnpm --filter web build",
   "outputDirectory": ".next",
-  "installCommand": "echo 'pnpm install géré par buildCommand'",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
 
   "headers": [
     {
