@@ -275,6 +275,10 @@ model User {
   poste     String? // intitulé de poste libre (ex: Caissier principal)
   /// Hash du code PIN (bcrypt) pour le login sur poste partagé. Jamais en clair.
   pinCode   String?  @map("pin_code")
+  /// Compteur d'échecs de PIN (anti-bruteforce persistant, incrémenté atomiquement).
+  pinFailCount Int @default(0) @map("pin_fail_count")
+  /// Verrou PIN actif jusqu'à cette date (anti-bruteforce persistant).
+  pinLockedUntil DateTime? @map("pin_locked_until")
   /// true → utilise `permissions` (overrides) ; false → modules par défaut du rôle.
   customPermissions Boolean  @default(false) @map("custom_permissions")
   /// Modules autorisés (clés ModuleKey) quand customPermissions = true.

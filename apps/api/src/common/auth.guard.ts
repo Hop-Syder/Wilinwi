@@ -12,7 +12,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { createRemoteJWKSet } from 'jose';
 import {
   computeDunning,
   effectiveModules,
@@ -24,17 +24,22 @@ import {
   type SubscriptionStatus,
 } from '@wilinwi/types';
 import { IS_PUBLIC_KEY } from './decorators';
+import { createAccessTokenVerifier, type AccessTokenVerifier } from './jwt-verifier';
 import { PrismaService } from './prisma.service';
 
 /**
- * Vérifie le JWT Supabase (clés de signature asymétriques ES256, publiées sur le
- * JWKS du projet — gère nativement la rotation de clé) et résout le contexte
- * tenant. Le tenant_id et le rôle sont lus depuis app_metadata, posés à la
- * création de l'utilisateur — c'est le socle du SSO du Hub.
+ * Vérifie le JWT et résout le contexte tenant. Deux origines de token possibles :
+ *  - Supabase (login e-mail/mot de passe) : clés asymétriques ES256 publiées sur
+ *    le JWKS du projet (gère nativement la rotation de clé).
+ *  - Interne (login PIN sur poste partagé, cf. AuthService.pinLogin) : HS256,
+ *    signé avec SUPABASE_JWT_SECRET — ce token n'est jamais émis par Supabase et
+ *    n'apparaîtra donc jamais dans son JWKS, d'où l'essai JWKS puis repli HS256.
+ * Le tenant_id et le rôle sont lus depuis app_metadata, posés à la création de
+ * l'utilisateur — c'est le socle du SSO du Hub.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly jwks: JWTVerifyGetKey;
+  private readonly verifyToken: AccessTokenVerifier;
 
   constructor(
     private readonly reflector: Reflector,
@@ -42,7 +47,14 @@ export class AuthGuard implements CanActivate {
     private readonly prisma: PrismaService,
   ) {
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL').replace(/\/$/, '');
-    this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+    const jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+    // Secret symétrique OPTIONNEL : sert uniquement au secours HS256 des tokens
+    // PIN. S'il est absent, le secours est désactivé (fail-closed).
+    const hs256Secret = this.config.get<string | undefined>('SUPABASE_JWT_SECRET');
+    this.verifyToken = createAccessTokenVerifier(
+      jwks,
+      hs256Secret ? new TextEncoder().encode(hs256Secret) : null,
+    );
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,8 +70,7 @@ export class AuthGuard implements CanActivate {
 
     let payload: Record<string, unknown>;
     try {
-      const verified = await jwtVerify(token, this.jwks);
-      payload = verified.payload as Record<string, unknown>;
+      payload = await this.verifyToken(token);
     } catch {
       throw new UnauthorizedException('Token invalide');
     }

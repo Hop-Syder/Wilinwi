@@ -24,11 +24,7 @@ import type { AuthContext, InviteUserInput, PinLoginInput, SignUpInput } from '@
 import { PrismaService } from '../common/prisma.service';
 import { ActivityService } from '../common/activity.service';
 import { SupabaseAdminService } from './supabase-admin.service';
-
-// Anti-bruteforce PIN (en mémoire) : 5 échecs → verrou 60 s par (tenant,user).
-const pinFails = new Map<string, { count: number; until: number }>();
-const MAX_PIN_FAILS = 5;
-const LOCK_MS = 60_000;
+import { MAX_PIN_FAILS, PIN_LOCK_MS, resolvePinAttempt } from './pin-lock';
 
 @Injectable()
 export class AuthService {
@@ -192,27 +188,73 @@ export class AuthService {
    * Login par PIN sur poste partagé. `ctx` = session tenant déjà valide sur
    * l'appareil (preuve d'appartenance). Vérifie le PIN (hash) puis MINTE un JWT
    * compatible (même secret HS256) pour l'utilisateur cible → bascule de profil.
+   * Anti-bruteforce persistant en base (5 échecs → verrou 60 s par utilisateur).
    */
   async pinLogin(ctx: AuthContext, input: PinLoginInput) {
-    const key = `${ctx.tenantId}:${input.userId}`;
-    const lock = pinFails.get(key);
-    if (lock && lock.until > Date.now()) {
+    const now = Date.now();
+
+    const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.user.findFirst({
+        where: { id: input.userId, tenantId: ctx.tenantId },
+        select: {
+          id: true,
+          nom: true,
+          email: true,
+          role: true,
+          poste: true,
+          actif: true,
+          pinCode: true,
+          pinFailCount: true,
+          pinLockedUntil: true,
+        },
+      }),
+    );
+
+    // Utilisateur inconnu : rien à verrouiller (le compteur est porté par la ligne
+    // User, déjà scopée au tenant). On rejette sans incrémenter.
+    if (!user) {
+      throw new UnauthorizedException('PIN invalide');
+    }
+
+    const valid = Boolean(
+      user.actif && user.pinCode && (await bcrypt.compare(input.pin, user.pinCode)),
+    );
+    const attempt = resolvePinAttempt(
+      { failCount: user.pinFailCount, lockedUntil: user.pinLockedUntil },
+      now,
+      valid,
+    );
+
+    if (attempt.kind === 'locked') {
       throw new UnauthorizedException('Trop de tentatives. Réessayez dans une minute.');
     }
 
-    const user = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.user.findFirst({ where: { id: input.userId, tenantId: ctx.tenantId } }),
-    );
-    const ok = user && user.actif && user.pinCode && (await bcrypt.compare(input.pin, user.pinCode));
-    if (!user || !user.actif || !user.pinCode || !ok) {
-      const count = (lock?.count ?? 0) + 1;
-      pinFails.set(key, {
-        count,
-        until: count >= MAX_PIN_FAILS ? Date.now() + LOCK_MS : 0,
+    if (attempt.kind === 'success') {
+      // Succès : reset complet du compteur et du verrou.
+      await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        tx.user.update({
+          where: { id: user.id },
+          data: { pinFailCount: 0, pinLockedUntil: null },
+        }),
+      );
+    } else {
+      // Échec : incrément atomique côté base (pas de read-then-write concurrent),
+      // puis verrou si le seuil est atteint.
+      await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+        const updated = await tx.user.update({
+          where: { id: user.id },
+          data: { pinFailCount: { increment: 1 } },
+          select: { pinFailCount: true },
+        });
+        if (updated.pinFailCount >= MAX_PIN_FAILS) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: { pinLockedUntil: new Date(now + PIN_LOCK_MS) },
+          });
+        }
       });
       throw new UnauthorizedException('PIN invalide');
     }
-    pinFails.delete(key);
 
     const accessToken = await new SignJWT({
       email: user.email,
