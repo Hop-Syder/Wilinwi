@@ -1,11 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "__meta": "Wilinwi Web (Next.js 15 App Router) — Turborepo monorepo",
-  "__author": "@hopsyder | Nexus Partners",
 
   "framework": "nextjs",
 
-  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @wilinwi/db generate && pnpm --filter @wilinwi/types build && pnpm --filter @wilinwi/ui build && pnpm --filter web build",
+  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @wilinwi/db build && pnpm --filter @wilinwi/types build && pnpm --filter @wilinwi/ui build && pnpm --filter web build",
   "outputDirectory": ".next",
   "installCommand": "echo 'pnpm install géré par buildCommand'",
 
