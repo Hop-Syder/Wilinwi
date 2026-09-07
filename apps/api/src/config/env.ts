@@ -23,7 +23,9 @@ export const EnvSchema = z.object({
   ADMIN_DATABASE_URL: z.string().optional(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SUPABASE_JWT_SECRET: z.string().min(1),
+  /** Non utilisé pour la vérification des JWT (clés asymétriques ES256 via JWKS,
+   *  cf. AuthGuard) — conservé au cas où un usage HS256 legacy serait réintroduit. */
+  SUPABASE_JWT_SECRET: z.string().optional(),
   /** Origines autorisées par CORS (séparées par des virgules). Vide = permissif. */
   CORS_ORIGINS: z.string().optional(),
   /** URL de base du frontend (lien d'invitation → /set-password). Déf. localhost:3000. */

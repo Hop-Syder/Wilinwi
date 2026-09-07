@@ -12,7 +12,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { jwtVerify } from 'jose';
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import {
   computeDunning,
   effectiveModules,
@@ -27,20 +27,22 @@ import { IS_PUBLIC_KEY } from './decorators';
 import { PrismaService } from './prisma.service';
 
 /**
- * Vérifie le JWT Supabase (HS256, signé avec SUPABASE_JWT_SECRET) et résout
- * le contexte tenant. Le tenant_id et le rôle sont lus depuis app_metadata,
- * posés à la création de l'utilisateur — c'est le socle du SSO du Hub.
+ * Vérifie le JWT Supabase (clés de signature asymétriques ES256, publiées sur le
+ * JWKS du projet — gère nativement la rotation de clé) et résout le contexte
+ * tenant. Le tenant_id et le rôle sont lus depuis app_metadata, posés à la
+ * création de l'utilisateur — c'est le socle du SSO du Hub.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly secret: Uint8Array;
+  private readonly jwks: JWTVerifyGetKey;
 
   constructor(
     private readonly reflector: Reflector,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.secret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
+    const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL').replace(/\/$/, '');
+    this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -56,7 +58,7 @@ export class AuthGuard implements CanActivate {
 
     let payload: Record<string, unknown>;
     try {
-      const verified = await jwtVerify(token, this.secret);
+      const verified = await jwtVerify(token, this.jwks);
       payload = verified.payload as Record<string, unknown>;
     } catch {
       throw new UnauthorizedException('Token invalide');
