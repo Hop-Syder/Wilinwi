@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wilinwi — Analyse de projet (2026-09-07)</title>
+<style>
+  :root { --ink:#1a2233; --muted:#5a6579; --line:#dde3ee; --bg:#f6f8fc; --card:#ffffff;
+          --red:#b42318; --red-bg:#fef3f2; --orange:#b54708; --orange-bg:#fffaeb;
+          --yellow:#8a6116; --yellow-bg:#fffbea; --green:#067647; --green-bg:#ecfdf3; --blue:#175cd3; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:2rem; background:var(--bg); color:var(--ink);
+         font:15px/1.6 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  main { max-width:960px; margin:0 auto; }
+  h1 { font-size:1.7rem; margin:0 0 .2rem; }
+  h2 { font-size:1.2rem; margin:2.2rem 0 .6rem; border-bottom:2px solid var(--line); padding-bottom:.3rem; }
+  h3 { font-size:1rem; margin:1.4rem 0 .4rem; }
+  .sub { color:var(--muted); margin-bottom:1.5rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; margin:.8rem 0; }
+  table { border-collapse:collapse; width:100%; margin:.6rem 0; background:var(--card); font-size:.92rem; }
+  th, td { border:1px solid var(--line); padding:.45rem .6rem; text-align:left; vertical-align:top; }
+  th { background:#eef2f9; }
+  code, pre { font-family:Consolas, "Cascadia Mono", Menlo, monospace; font-size:.88rem; }
+  code { background:#eef2f9; border-radius:4px; padding:.1rem .35rem; }
+  pre { background:#0f172a; color:#e2e8f0; border-radius:8px; padding:.9rem 1rem; overflow-x:auto; line-height:1.5; }
+  .tag { display:inline-block; font-size:.75rem; font-weight:700; border-radius:999px; padding:.12rem .55rem; vertical-align:middle; }
+  .crit { color:var(--red); background:var(--red-bg); border:1px solid #fecdca; }
+  .imp  { color:var(--orange); background:var(--orange-bg); border:1px solid #fedf89; }
+  .min  { color:var(--yellow); background:var(--yellow-bg); border:1px solid #fde272; }
+  .ok   { color:var(--green); background:var(--green-bg); border:1px solid #abefc6; }
+  .info { color:var(--blue); background:#eff8ff; border:1px solid #b2ddff; }
+  .arch { font-family:Consolas, Menlo, monospace; font-size:.85rem; white-space:pre; overflow-x:auto;
+          background:#0f172a; color:#e2e8f0; border-radius:8px; padding:1rem; line-height:1.55; }
+  .note { color:var(--muted); font-size:.88rem; }
+  ul { margin:.4rem 0 .8rem 1.2rem; padding:0; }
+  li { margin:.25rem 0; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Wilinwi — Analyse de projet</h1>
+<p class="sub">Workspace analysé : <code>D:\Projets\Wilinwi</code> · Lecture seule (aucune modification, aucune installation) · 7 septembre 2026 · Analyse déléguée à ZCode, points clés contre-vérifiés par AutoCoder.</p>
+
+<h2>1. Synthèse</h2>
+<div class="card">
+<p><strong>Wilinwi — « Le système d'exploitation du commerce africain »</strong> : SaaS <strong>multi-tenant</strong> de gestion commerciale pour l'Afrique de l'Ouest (POS, stock, trésorerie, CRM, analytics), avec exigences locales : Mobile Money (MTN MoMo, Moov Money), vente à crédit, fonctionnement <strong>hors-ligne</strong>. Stade actuel : <strong>MVP1 « Le Socle »</strong> (v0.1.0).</p>
+<p>Ce qui ressort le plus de l'analyse :</p>
+<ul>
+  <li>Architecture solide sur l'isolation multi-tenant : RLS PostgreSQL <code>FORCE</code> + <code>withTenant()</code>, double rôle DB, relecture DB à chaque requête.</li>
+  <li><span class="tag crit">Critique</span> Chaîne <code>lint</code> inopérante (ESLint ni dépendance ni configuré) — la qualité statique ne repose que sur <code>typecheck</code>, et la CI ne le détecte pas.</li>
+  <li><span class="tag crit">Critique</span> Monétisation neutralisée (gating désactivé, facturation inexistante) alors que le business plan définit 4 plans — angle mort n°1 selon les audits internes.</li>
+  <li><span class="tag imp">Important</span> Couverture de test très faible (6 fichiers pour ~28 000 LOC), rate-limit du login PIN en mémoire, dérive de migrations en prod documentée dans le README.</li>
+  <li>Build/test <strong>non exécutables localement</strong> : <code>node_modules</code> absent et installation hors périmètre de la session.</li>
+</ul>
+</div>
+
+<h2>2. Stack technique</h2>
+<table>
+<tr><th>Couche</th><th>Technologies</th></tr>
+<tr><td>Langages</td><td>TypeScript (100 % du code applicatif), SQL (RLS, migrations)</td></tr>
+<tr><td>Frontend</td><td>Next.js 15 (App Router) · React 19 · TailwindCSS 3 · Recharts · jsPDF</td></tr>
+<tr><td>Backend</td><td>NestJS 11 · Zod · Supabase Auth (JWT) · Helmet · @nestjs/throttler</td></tr>
+<tr><td>Données</td><td>PostgreSQL (Supabase) · Prisma ORM 6.3 · Row-Level Security</td></tr>
+<tr><td>Offline</td><td>Dexie.js (IndexedDB) + SyncEngine (<code>@wilinwi/offline</code>)</td></tr>
+<tr><td>Monorepo</td><td>pnpm 10 workspaces + Turborepo 2 · Node ≥ 20 · CI GitHub Actions</td></tr>
+</table>
+
+<h2>3. Structure</h2>
+<pre>Wilinwi/
+├── apps/
+│   ├── api/          # API NestJS (:4000) — 17 modules métier
+│   ├── web/          # SaaS client Next.js (:3000) — 8 routes métier
+│   └── admin-web/    # Console super-admin Next.js (:3001)
+├── packages/
+│   ├── db/           # @wilinwi/db — Prisma, schema, migrations, rls.sql, seeds
+│   ├── types/        # @wilinwi/types — Zod, RBAC (roles.ts), gating — « source de vérité »
+│   ├── ui/           # @wilinwi/ui — lib composants + preset Tailwind
+│   └── offline/      # @wilinwi/offline — Dexie + SyncEngine
+├── docs/             # 2 audits, cadrage rôles, pilotage, plan admin
+├── architecture/     # evaluation_architecture.md
+├── design-system/    # MASTER.md
+├── scripts/          # add-headers.js, test-addons.ts, upgrade-to-business.mjs
+├── .github/workflows/ci.yml
+└── README.md, CLAUDE.md, AGENTS.md, buinessplan.md, raisonnement.md,
+    dexty.config.yaml, railway.toml, .env.example</pre>
+
+<h2>4. Architecture</h2>
+<p>Monolithe modulaire : 3 applications déployées séparément + 4 packages partagés.</p>
+<div class="arch">[web :3000]      [admin-web :3001]          (Vercel)
+     │  REST /api      │
+     ▼                 ▼
+[API NestJS :4000]  ← guards globaux : AuthGuard (JWT Supabase + relecture DB),
+     │                  CapabilitiesGuard (RBAC), PlatformAdminGuard, ThrottlerGuard
+     ▼
+[@wilinwi/db] withTenant(tenantId) → set_config('app.current_tenant_id') → RLS PostgreSQL
+     │                     ▲
+     │                     └── module platform → ADMIN_DATABASE_URL (rôle wilinwi_admin,
+     ▼                         fonctions SECURITY DEFINER app.*, contourne RLS volontairement)
+PostgreSQL/Supabase — schéma multi-tenant (Tenant + tables à tenantId)</div>
+<ul>
+  <li><strong>Points d'entrée</strong> : <code>apps/api/src/main.ts</code> (helmet, CORS allowlist, trust proxy, préfixe <code>/api</code>, port 4000) ; <code>apps/api/src/app.module.ts</code> (16 modules + HealthController <code>/health</code>) ; frontends en App Router (<code>src/app/</code>).</li>
+  <li><strong>Modules API</strong> : auth, etablissement, stock, inventory, pos (ventes), crm, treasury, analytics, sync, admin, warehouse, notifications, plans, platform, public, common (guards, pipes Zod, PrismaService, AdminPrismaService).</li>
+  <li><strong>Transverse</strong> : RBAC dans <code>packages/types/src/roles.ts</code> (matrice unique), masquage DTO par rôle (ex. <code>prixAchat</code> retiré aux vendeurs), idempotence offline via <code>clientGeneratedId</code>.</li>
+  <li><strong>Routes web</strong> : dashboard, pos, ventes, stock, clients, tresorerie, entrepot, livraisons, parametres.</li>
+</ul>
+
+<h2>5. Commandes — résultats réels</h2>
+<table>
+<tr><th>Vérification</th><th>Résultat observé</th></tr>
+<tr><td><code>node --version</code></td><td><span class="tag ok">OK</span> v22.22.0 (exit 0, conforme <code>engines ≥20</code>)</td></tr>
+<tr><td><code>pnpm --version</code></td><td><span class="tag crit">Absent</span> exit 127 — pnpm n'est pas installé sur cette machine</td></tr>
+<tr><td><code>npx turbo --version</code></td><td><span class="tag ok">OK</span> 2.10.12 (cache npx utilisateur uniquement, projet intact)</td></tr>
+<tr><td><code>pnpm build / test / typecheck / lint</code></td><td><span class="tag info">Non exécuté</span> <code>node_modules</code> absent ; installation hors périmètre. La CI (<code>ci.yml</code>) lance <code>turbo build typecheck test</code>.</td></tr>
+<tr><td><code>git status / log</code>, scans grep/secrets</td><td><span class="tag ok">OK</span> exit 0</td></tr>
+</table>
+<p class="note">Analyse statique : <code>lint</code> est cassé par construction — les scripts de <code>api</code>, <code>types</code>, <code>ui</code>, <code>offline</code> invoquent <code>eslint</code>, mais ESLint n'est déclaré dans <em>aucun</em> package.json, et <strong>aucun fichier de config ESLint</strong> n'existe dans le dépôt (contre-vérifié indépendamment par AutoCoder : 0 fichier <code>.eslintrc*</code>/<code>eslint.config.*</code> trouvé). Cohérent avec l'absence de <code>lint</code> dans la CI.</p>
+
+<h2>6. État git et secrets</h2>
+<ul>
+  <li>Remote : <code>github.com/Hop-Syder/Wilinwi.git</code>, branche <code>main</code> à jour avec <code>origin/main</code>. 273 fichiers suivis. Dernier commit <code>a75abe6</code> (15 juil. 2026), historique conventionnel propre.</li>
+  <li><span class="tag min">Mineur</span> Changement local non commité : <code>Wilinwi_Plan_Projet.docx</code> supprimé du disque, suppression non commitée (statut <code>D</code>).</li>
+  <li>Branches distantes non fusionnées : <code>main-mvp2</code> (refonte login/signup « bento box », nettoyages) et <code>vercel/install-vercel-web-analytics-iwmiaw</code>.</li>
+  <li><span class="tag ok">OK</span> Secrets : aucun <code>.env</code> réel (seulement <code>.env.example</code>, 13 variables) ; scan de motifs de secrets sur les fichiers suivis : négatif ; <code>.gitignore</code> couvre <code>.env*</code>.</li>
+  <li><span class="tag min">Mineur</span> <code>ADMIN_DATABASE_URL</code> cité dans README/.env.example mais absent de <code>turbo.json → globalEnv</code> (à vérifier si le module platform doit tourner via turbo).</li>
+</ul>
+
+<h2>7. Risques</h2>
+<h3><span class="tag crit">Critiques</span></h3>
+<table>
+<tr><th>#</th><th>Risque</th><th>Détail</th></tr>
+<tr><td>1</td><td><code>pnpm lint</code> inopérant</td><td>ESLint absent des dépendances + aucune config. La qualité statique repose uniquement sur <code>typecheck</code> ; la CI ne lance pas lint et ne détecte donc pas le problème.</td></tr>
+<tr><td>2</td><td>Monétisation neutralisée</td><td>Les audits internes (<code>docs/audit-report-independant.md</code>) confirment : gating des plans désactivé, facturation inexistante, alors que <code>buinessplan.md</code> définit STARTER/PRO/BUSINESS/ENTERPRISE. Angle mort n°1 selon l'auditeur.</td></tr>
+<tr><td>3</td><td>Vecteur de fraude offline</td><td>Les ventes IndexedDB hors-ligne sont manipulables côté client avant synchro (documenté dans les audits).</td></tr>
+</table>
+<h3><span class="tag imp">Importants</span></h3>
+<table>
+<tr><th>#</th><th>Risque</th><th>Détail</th></tr>
+<tr><td>4</td><td>Tests quasi absents</td><td>6 fichiers de test (3 mappers API, 3 packages/types) pour ~190 fichiers source (~28 000 LOC). Aucun test d'intégration API, aucun test front, aucun e2e.</td></tr>
+<tr><td>5</td><td>Rate-limit PIN en mémoire</td><td><code>auth.service.ts</code> : compteur perdu au redémarrage, inopérant multi-instance → anti-bruteforce fragile sur Railway.</td></tr>
+<tr><td>6</td><td>Onboarding membres sans email</td><td>Invitation = mot de passe temporaire à recopier ; reset mot de passe et vérification email absents (<code>email_confirm:true</code> court-circuité).</td></tr>
+<tr><td>7</td><td>Dérive de migrations en prod</td><td>README documente des correctifs SQL à exécuter à la main dans Supabase (erreurs P2022, enum <code>CashAccount</code>) ; historique réduit à une migration <code>baseline</code> unique + <code>migrations-archive</code>.</td></tr>
+</table>
+<h3><span class="tag min">Mineurs</span></h3>
+<ul>
+  <li>Suppression non commitée de <code>Wilinwi_Plan_Projet.docx</code>.</li>
+  <li>Typo de nom de fichier <code>buinessplan.md</code> (→ <code>businessplan.md</code>).</li>
+  <li>Pas de <code>LICENSE</code>, pas de <code>CONTRIBUTING</code>, pas de <code>docs/adr/</code> (alors qu'AGENTS.md demande d'y persister les décisions), pas de <code>.nvmrc</code>.</li>
+  <li>CORS ouvert à toutes origines si <code>CORS_ORIGINS</code> absent (choix conscient avec alerte log — <code>main.ts:31-46</code>).</li>
+  <li><code>apps/web</code> et <code>apps/admin-web</code> sans script <code>test</code> (skippés par turbo) — légitime mais à expliciter.</li>
+</ul>
+
+<h2>8. Points forts</h2>
+<div class="card">
+<ul>
+  <li><strong>Isolation multi-tenant réelle</strong> : <code>withTenant()</code> + RLS <code>FORCE</code> (<code>packages/db/src/index.ts:44</code>), double rôle DB public/admin, verrou au niveau privilèges.</li>
+  <li><strong>Révocation immédiate</strong> des comptes désactivés : relecture DB à chaque requête (<code>auth.guard.ts</code>).</li>
+  <li><strong>Anti-fraude prix</strong> : refus de vente sous plancher.</li>
+  <li><strong>Atomicité métier</strong> : ventes, lettrage crédit FIFO, virements en une transaction.</li>
+  <li><strong>Documentation interne riche</strong> : 2 audits relecture-code, cadrage rôles, pilotage admin, README/CLAUDE.md détaillés, headers d'auteur normalisés.</li>
+</ul>
+</div>
+
+<h2>9. Documentation</h2>
+<p><strong>Existante</strong> : README (stack, sécurité plateforme, déploiements Vercel/Railway, CI) · CLAUDE.md (conventions, RLS/rôles) · 2 audits produit/architecture (juin 2026) · <code>docs/cadrage-roles.md</code> · <code>docs/pilotage-admin.md</code> · <code>docs/plan-projet-admin.md</code> · <code>architecture/evaluation_architecture.md</code> · <code>buinessplan.md</code> · <code>design-system/MASTER.md</code>.</p>
+<p><strong>Manquante</strong> : ADR formalisés (<code>docs/adr/</code>), guide de contribution, licence, doc d'API (OpenAPI/Swagger), diagrammes à jour.</p>
+
+<h2>10. Non vérifié dans cette session</h2>
+<ul>
+  <li>Résultats réels de <code>build</code>/<code>typecheck</code>/<code>test</code> (<code>node_modules</code> absent ; installation hors périmètre). La CI GitHub est le seul garant actuel.</li>
+  <li>Disponibilité réelle des déploiements Railway / Vercel / Supabase et conformité du schéma en production.</li>
+  <li>Contenu exact des 2 branches distantes non mergées.</li>
+</ul>
+<p class="note">Confiance estimée du rapport : ~88/100. Actions de validation humaine recommandées : exécuter <code>pnpm install &amp;&amp; pnpm turbo build typecheck test</code> sur un poste équipé ; arbitrer le sort du <code>docx</code> supprimé et de la branche <code>main-mvp2</code>.</p>
+
+<h2>11. Prochaine action recommandée</h2>
+<div class="card">
+<p>Réparer la chaîne <code>lint</code> : ajouter ESLint + une config partagée aux devDependencies des 4 packages concernés (<code>api</code>, <code>types</code>, <code>ui</code>, <code>offline</code>), puis ajouter <code>lint</code> à <code>ci.yml</code>. C'est le correctif le moins coûteux qui sécurise la qualité de tout le reste (tests, gating, facturation ensuite).</p>
+</div>
+
+</main>
+</body>
+</html>

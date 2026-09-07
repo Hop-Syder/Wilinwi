@@ -1,0 +1,41 @@
+# ==============================================================================
+# render.yaml — Wilinwi API (NestJS 11 · Turborepo monorepo)
+# Déploiement en Blueprint (Infrastructure as Code) : https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+services:
+  - type: web
+    name: wilinwi-backend
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: .
+    buildCommand: pnpm install --frozen-lockfile && pnpm turbo run build --filter=api
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: ADMIN_DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: PLATFORM_ADMIN_EMAILS
+        sync: false

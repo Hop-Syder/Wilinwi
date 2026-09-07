@@ -18,8 +18,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Derrière le proxy Railway : faire confiance au 1er hop pour que `req.ip` reflète
-  // l'IP réelle du client (X-Forwarded-For) → rate-limiting correct par IP.
+  // Derrière le proxy de la plateforme d'hébergement (Render, etc.) : faire confiance au
+  // 1er hop pour que `req.ip` reflète l'IP réelle du client (X-Forwarded-For) → rate-limiting
+  // correct par IP.
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   // En-têtes de sécurité HTTP (XSS, sniffing, clickjacking…). API JSON → CSP inutile.
