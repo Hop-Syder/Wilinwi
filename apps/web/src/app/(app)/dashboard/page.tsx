@@ -25,6 +25,7 @@ import {
 import { Store } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
+import { VoiceDashboardPanel } from '@/components/voice-dashboard-panel';
 import { StatCard, Card, CardTitle, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
@@ -152,6 +153,11 @@ export default function DashboardPage() {
             ]}
           />
         </div>
+      </div>
+
+      {/* Assistant vocal Wilinwi AI : questions en lecture seule sur les vraies données. */}
+      <div className="mt-4">
+        <VoiceDashboardPanel />
       </div>
 
       {/* KPIs du jour */}

@@ -35,5 +35,6 @@ class AnalyticsController {
 @Module({
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
+  exports: [AnalyticsService],
 })
 export class AnalyticsModule {}

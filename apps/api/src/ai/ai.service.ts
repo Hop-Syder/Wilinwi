@@ -27,6 +27,7 @@ import {
   type VoiceInterpretResult,
   type VoiceIntentType,
 } from '@wilinwi/types';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { StockService } from '../stock/stock.service';
 import { buildSystemPrompt } from './ai.mapper';
 import { AiUnavailableError, GeminiClient } from './gemini.client';
@@ -45,7 +46,10 @@ const INTENT_CAPABILITY: Partial<Record<VoiceIntentType, Capability>> = {
   QUERY_SALES_TODAY: 'reports:read',
   // Expose des chiffres d'autres boutiques → exigence renforcée (cf. plan Phase 3).
   QUERY_TOP_SHOP: 'reports:read_full',
-  QUERY_STOCK_LOW: 'reports:read',
+  // Même source et même capacité que la page Stock (StockService.alerts) —
+  // pas reports:read : un SELLER qui voit les alertes de stock dans l'UI doit
+  // pouvoir les demander à la voix, un CASHIER (sans stock:read) non.
+  QUERY_STOCK_LOW: 'stock:read',
   CREATE_REPLENISHMENT_DRAFT: 'supplier:manage',
 };
 
@@ -54,6 +58,7 @@ export class AiService {
   constructor(
     private readonly gemini: GeminiClient,
     private readonly stock: StockService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   async interpret(ctx: AuthContext, req: VoiceInterpretRequest): Promise<VoiceInterpretResult> {
@@ -103,11 +108,13 @@ export class AiService {
         return this.resolveCart(ctx, intent.items);
 
       case 'QUERY_SALES_TODAY':
+        return this.answerSalesToday(ctx);
+
       case 'QUERY_TOP_SHOP':
+        return this.answerTopShop(ctx);
+
       case 'QUERY_STOCK_LOW':
-        throw new NotImplementedException(
-          'Questions vocales du tableau de bord pas encore disponibles (Phase 3).',
-        );
+        return this.answerStockLow(ctx);
 
       case 'CREATE_REPLENISHMENT_DRAFT':
         throw new NotImplementedException(
@@ -168,6 +175,77 @@ export class AiService {
       ok: true,
       resolvedCartItems: resolved,
       ...(unresolved.length > 0 ? { unresolvedQueries: unresolved } : {}),
+    };
+  }
+
+  /**
+   * « Combien avons-nous vendu aujourd'hui ? » — réutilise AnalyticsService.dashboard()
+   * (déjà scopé tenant/établissement + capacité reports:read). Le texte de
+   * réponse est construit ici, côté backend, à partir des chiffres réels —
+   * Gemini n'a fait que classifier la question, il n'a jamais vu ni renvoyé de chiffre.
+   */
+  private async answerSalesToday(ctx: AuthContext): Promise<VoiceInterpretResult> {
+    const dash = await this.analytics.dashboard(ctx);
+    return {
+      ok: true,
+      answer: {
+        text: `Aujourd'hui : ${dash.ventesDuJour.toLocaleString('fr-FR')} FCFA de ventes, ${dash.articlesVendus} article(s) vendu(s).`,
+        data: { ventesDuJour: dash.ventesDuJour, articlesVendus: dash.articlesVendus },
+      },
+    };
+  }
+
+  /**
+   * « Quelle boutique a le plus vendu ? » — réutilise AnalyticsService.report(),
+   * dont `parEtablissement` couvre déjà toutes les boutiques du tenant
+   * indépendamment de l'établissement courant. Scopé à la journée en cours,
+   * comme `answerSalesToday`. Capacité renforcée (reports:read_full) : expose
+   * des chiffres d'autres boutiques que celle de l'appelant.
+   */
+  private async answerTopShop(ctx: AuthContext): Promise<VoiceInterpretResult> {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const rapport = await this.analytics.report(ctx, start.toISOString(), end.toISOString());
+    const top = [...rapport.parEtablissement].sort((a, b) => b.ventes - a.ventes)[0];
+
+    if (!top || top.ventes === 0) {
+      return { ok: true, answer: { text: "Aucune vente aujourd'hui pour le moment.", data: {} } };
+    }
+    return {
+      ok: true,
+      answer: {
+        text: `${top.nom} a le plus vendu aujourd'hui : ${top.ventes.toLocaleString('fr-FR')} FCFA (${top.nombreVentes} vente(s)).`,
+        data: {
+          etablissementId: top.etablissementId,
+          nom: top.nom,
+          ventes: top.ventes,
+          nombreVentes: top.nombreVentes,
+        },
+      },
+    };
+  }
+
+  /**
+   * « Quels produits sont en stock faible ? » — réutilise StockService.alerts()
+   * (même source que la page Stock, capacité stock:read, aucune écriture).
+   */
+  private async answerStockLow(ctx: AuthContext): Promise<VoiceInterpretResult> {
+    const alerts = await this.stock.alerts(ctx);
+    if (alerts.length === 0) {
+      return { ok: true, answer: { text: 'Aucun produit en stock faible pour le moment.', data: { count: 0 } } };
+    }
+    const top = alerts.slice(0, 5);
+    const suffix = alerts.length > top.length ? '…' : '';
+    return {
+      ok: true,
+      answer: {
+        text: `${alerts.length} produit(s) en stock faible : ${top
+          .map((a) => `${a.productNom} (${a.quantite})`)
+          .join(', ')}${suffix}.`,
+        data: { count: alerts.length, items: top },
+      },
     };
   }
 }

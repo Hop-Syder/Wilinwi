@@ -8,6 +8,7 @@
 import { NotImplementedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthContextSchema, type AuthContext, type ProductDto, type Role } from '@wilinwi/types';
+import type { AnalyticsService } from '../analytics/analytics.service';
 import type { StockService } from '../stock/stock.service';
 import { AiService } from './ai.service';
 import { AiUnavailableError, type GeminiClient } from './gemini.client';
@@ -41,6 +42,23 @@ type ServiceOptions = {
   geminiError?: Error;
   /** query → produits renvoyés par StockService.search pour cette requête. */
   searchResults?: Record<string, ProductDto[]>;
+  stockAlerts?: Array<{
+    productId: string;
+    productNom: string;
+    variantId: string | null;
+    etablissementId: string;
+    etablissementNom: string | null;
+    quantite: number;
+    quantiteMin: number;
+  }>;
+  dashboard?: { ventesDuJour: number; articlesVendus: number };
+  parEtablissement?: Array<{
+    etablissementId: string;
+    nom: string;
+    ventes: number;
+    nombreVentes: number;
+    depenses: number;
+  }>;
 };
 
 function makeService(opts: ServiceOptions): AiService {
@@ -50,10 +68,21 @@ function makeService(opts: ServiceOptions): AiService {
       return opts.geminiRaw ?? '';
     }),
   };
-  const stock: Pick<StockService, 'search'> = {
+  const stock: Pick<StockService, 'search' | 'alerts'> = {
     search: vi.fn(async (_ctx: AuthContext, q: string) => opts.searchResults?.[q] ?? []),
+    alerts: vi.fn(async () => opts.stockAlerts ?? []),
   };
-  return new AiService(gemini as GeminiClient, stock as StockService);
+  const analytics: Pick<AnalyticsService, 'dashboard' | 'report'> = {
+    dashboard: vi.fn(
+      async () => (opts.dashboard ?? { ventesDuJour: 0, articlesVendus: 0 }) as never,
+    ),
+    report: vi.fn(async () => ({ parEtablissement: opts.parEtablissement ?? [] }) as never),
+  };
+  return new AiService(
+    gemini as GeminiClient,
+    stock as StockService,
+    analytics as AnalyticsService,
+  );
 }
 
 describe('AiService.interpret — dégradation & fiabilité', () => {
@@ -161,14 +190,16 @@ describe('AiService.interpret — permissions appliquées en code, jamais délé
   });
 
   it('OWNER (avec reports:read_full) passe la vérification de capacité pour QUERY_TOP_SHOP', async () => {
-    const service = makeService({ geminiRaw: JSON.stringify({ intent: 'QUERY_TOP_SHOP' }) });
-    // Pas encore câblé (Phase 3) : la capacité passe, la résolution analytique non.
-    await expect(
-      service.interpret(ctxFor('OWNER'), {
-        transcript: 'quelle boutique a le plus vendu',
-        context: 'dashboard',
-      }),
-    ).rejects.toBeInstanceOf(NotImplementedException);
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_TOP_SHOP' }),
+      parEtablissement: [{ etablissementId: 'e1', nom: 'Boutique A', ventes: 500, nombreVentes: 3, depenses: 0 }],
+    });
+    const result = await service.interpret(ctxFor('OWNER'), {
+      transcript: 'quelle boutique a le plus vendu',
+      context: 'dashboard',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.answer?.data).toMatchObject({ etablissementId: 'e1', nom: 'Boutique A' });
   });
 
   it('MANAGER (avec supplier:manage) peut demander un brouillon de réapprovisionnement', async () => {
@@ -331,5 +362,104 @@ describe('AiService.interpret — ADD_PRODUCTS_TO_CART (Phase 1 : résolution pr
     ]);
     expect(result.clarification?.quantity).toBe(2);
     expect(result.clarification?.candidates.map((c) => c.productId)).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('AiService.interpret — QUERY_* (Phase 3 : Q&A dashboard, jamais de chiffre inventé)', () => {
+  it('QUERY_SALES_TODAY : le texte est construit depuis AnalyticsService.dashboard(), pas depuis Gemini', async () => {
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_SALES_TODAY' }),
+      dashboard: { ventesDuJour: 12345, articlesVendus: 7 },
+    });
+    const result = await service.interpret(ctxFor('OWNER'), {
+      transcript: 'combien avons-nous vendu aujourd’hui',
+      context: 'dashboard',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.answer?.data).toEqual({ ventesDuJour: 12345, articlesVendus: 7 });
+    // toLocaleString('fr-FR') sépare les milliers par une espace insécable
+    // ( ), pas une espace classique.
+    expect(result.answer?.text).toMatch(/12\s345 FCFA/);
+  });
+
+  it("QUERY_SALES_TODAY : un champ chiffré injecté par Gemini n'a AUCUN effet (le schéma ne le déclare pas)", async () => {
+    // Le schéma QUERY_SALES_TODAY ne porte aucun champ de données — même si
+    // Gemini renvoie des chiffres, ils sont retirés avant d'atteindre AiService.
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_SALES_TODAY', ventesDuJour: 999999999 }),
+      dashboard: { ventesDuJour: 500, articlesVendus: 2 },
+    });
+    const result = await service.interpret(ctxFor('OWNER'), {
+      transcript: 'combien avons-nous vendu',
+      context: 'dashboard',
+    });
+    expect(result.answer?.data).toEqual({ ventesDuJour: 500, articlesVendus: 2 });
+  });
+
+  it('QUERY_TOP_SHOP : sélectionne la boutique avec le plus de ventes du jour', async () => {
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_TOP_SHOP' }),
+      parEtablissement: [
+        { etablissementId: 'e1', nom: 'Boutique A', ventes: 500, nombreVentes: 3, depenses: 0 },
+        { etablissementId: 'e2', nom: 'Boutique B', ventes: 900, nombreVentes: 5, depenses: 0 },
+      ],
+    });
+    const result = await service.interpret(ctxFor('OWNER'), {
+      transcript: 'quelle boutique a le plus vendu',
+      context: 'dashboard',
+    });
+    expect(result.answer?.data).toMatchObject({ etablissementId: 'e2', nom: 'Boutique B' });
+  });
+
+  it("QUERY_TOP_SHOP : aucune vente aujourd'hui → réponse honnête, pas d'invention", async () => {
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_TOP_SHOP' }),
+      parEtablissement: [
+        { etablissementId: 'e1', nom: 'Boutique A', ventes: 0, nombreVentes: 0, depenses: 0 },
+      ],
+    });
+    const result = await service.interpret(ctxFor('OWNER'), {
+      transcript: 'quelle boutique a le plus vendu',
+      context: 'dashboard',
+    });
+    expect(result.answer?.text).toMatch(/aucune vente/i);
+  });
+
+  it('QUERY_STOCK_LOW : réutilise StockService.alerts(), résume les 5 premiers', async () => {
+    const service = makeService({
+      geminiRaw: JSON.stringify({ intent: 'QUERY_STOCK_LOW' }),
+      stockAlerts: [
+        {
+          productId: 'p1',
+          productNom: 'Coca-Cola',
+          variantId: null,
+          etablissementId: 'e1',
+          etablissementNom: 'Boutique A',
+          quantite: 2,
+          quantiteMin: 10,
+        },
+      ],
+    });
+    const result = await service.interpret(ctxFor('SELLER'), {
+      transcript: 'quels produits sont en stock faible',
+      context: 'dashboard',
+    });
+    expect(result.answer?.data).toMatchObject({ count: 1 });
+    expect(result.answer?.text).toContain('Coca-Cola');
+  });
+
+  it('QUERY_STOCK_LOW : SELLER (stock:read) autorisé, CASHIER (sans stock:read) refusé', async () => {
+    const service = makeService({ geminiRaw: JSON.stringify({ intent: 'QUERY_STOCK_LOW' }) });
+    const seller = await service.interpret(ctxFor('SELLER'), {
+      transcript: 'stock faible',
+      context: 'dashboard',
+    });
+    expect(seller.ok).toBe(true);
+
+    const cashier = await service.interpret(ctxFor('CASHIER'), {
+      transcript: 'stock faible',
+      context: 'dashboard',
+    });
+    expect(cashier).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 });
