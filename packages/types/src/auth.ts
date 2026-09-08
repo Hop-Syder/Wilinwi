@@ -68,5 +68,9 @@ export const AuthContextSchema = z.object({
   dunning: DunningStateSchema.default(ACTIVE_DUNNING),
   /** Indique si l'utilisateur est un super-admin plateforme (Nexus super-admin). */
   isPlatformAdmin: z.boolean().default(false),
+  /** Indique si le tenant est « grand-père » : limites numériques non enforced.
+   *  Vrai si gatingActivatedAt est null (pas encore activé), ou si le tenant a été
+   *  créé avant gatingActivatedAt, ou si grandfatheredUntil est dans le futur. */
+  isGrandfathered: z.boolean().default(false),
 });
 export type AuthContext = z.infer<typeof AuthContextSchema>;

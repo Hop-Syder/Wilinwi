@@ -19,6 +19,7 @@ export interface ResolvedPlanLimits {
   maxEtablissements: number;
   maxDevices: number;
   maxPhotos: number;
+  maxProducts: number;
 }
 
 /**
@@ -49,6 +50,8 @@ export class PlanConfigService {
       maxEtablissements: r.maxEtablissements,
       maxDevices: r.maxDevices,
       maxPhotos: r.maxPhotos,
+      maxProducts: r.maxProducts,
+      activatedAt: r.activatedAt,
       updatedAt: r.updatedAt,
     }));
     this.loadedAt = Date.now();
@@ -72,6 +75,7 @@ export class PlanConfigService {
         maxEtablissements: Number.POSITIVE_INFINITY,
         maxDevices: Number.POSITIVE_INFINITY,
         maxPhotos: 0,
+        maxProducts: Number.POSITIVE_INFINITY,
       };
     }
     return {
@@ -79,12 +83,23 @@ export class PlanConfigService {
       maxEtablissements: resolveLimit(c.maxEtablissements),
       maxDevices: resolveLimit(c.maxDevices),
       maxPhotos: resolveLimit(c.maxPhotos), // -1 → Infinity (illimité) ; 0 = désactivé
+      maxProducts: resolveLimit(c.maxProducts),
     };
   }
 
   /** Nombre de photos produit autorisées par le plan (0 = images désactivées). */
   async maxProductPhotos(plan: Plan): Promise<number> {
     return (await this.getLimits(plan)).maxPhotos;
+  }
+
+  /** Date d'activation du gating pour un plan (null = pas encore activé → permissif). */
+  /** Date d''activation globale du gating (null = pas encore activé → permissif).
+   *  `activatedAt` est stocké sur chaque PlanConfig mais est conceptuellement global :
+   *  on lit la valeur depuis STARTER (premier plan). Toute modification par le
+   *  super-admin doit poser la même date sur tous les plans. */
+  async getGatingActivatedAt(): Promise<Date | null> {
+    const starter = await this.get('STARTER' as Plan);
+    return starter?.activatedAt ?? null;
   }
 
   /** Vide le cache (à appeler après une écriture de configuration). */

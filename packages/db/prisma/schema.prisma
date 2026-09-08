@@ -59,6 +59,10 @@ model PlanConfig {
   maxEtablissements Int       @default(-1) @map("max_etablissements")
   maxDevices        Int       @default(-1) @map("max_devices")
   maxPhotos         Int       @default(0) @map("max_photos")
+  maxProducts       Int       @default(-1) @map("max_products")
+  /// Date d'activation du gating numérique (null = pas encore activé → permissif).
+  /// Les tenants créés AVANT cette date sont « grand-père » (limites numériques non enforced).
+  activatedAt       DateTime? @map("activated_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@map("plan_configs")
@@ -146,6 +150,9 @@ model Tenant {
   /// Entreprise INTERNE (compte super-admin Nexus, démo…) : exclue des vues, métriques
   /// et funnel de la console plateforme pour ne pas polluer les chiffres clients.
   internal           Boolean            @default(false)
+  /// Date jusqu'à laquelle ce tenant est « grand-père » (limites numériques non enforced).
+  /// Override individuel qui prime sur le gatingActivatedAt global du PlanConfig.
+  grandfatheredUntil DateTime?          @map("grandfathered_until")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 

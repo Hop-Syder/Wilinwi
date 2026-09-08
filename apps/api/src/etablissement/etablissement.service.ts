@@ -61,7 +61,11 @@ export class EtablissementService {
   async listAccessible(ctx: AuthContext): Promise<EtablissementDto[]> {
     const rows = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.etablissement.findMany({
-        where: { tenantId: ctx.tenantId, actif: true, userAccess: { some: { userId: ctx.userId } } },
+        where: {
+          tenantId: ctx.tenantId,
+          actif: true,
+          userAccess: { some: { userId: ctx.userId } },
+        },
         orderBy: { createdAt: 'asc' },
       }),
     );
@@ -70,14 +74,19 @@ export class EtablissementService {
 
   async create(ctx: AuthContext, input: CreateEtablissementInput): Promise<EtablissementDto> {
     // Quota d'établissements selon le plan (config pilotable en base — Starter 1 · Pro 2 · Business+ illimité).
-    const max = (await this.planConfig.getLimits(ctx.plan)).maxEtablissements;
-    const etab = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const count = await tx.etablissement.count({ where: { tenantId: ctx.tenantId } });
+    // Les tenants grand-père (isGrandfathered) ne sont pas soumis aux limites numériques.
+    if (!ctx.isGrandfathered) {
+      const max = (await this.planConfig.getLimits(ctx.plan)).maxEtablissements;
+      const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        tx.etablissement.count({ where: { tenantId: ctx.tenantId } }),
+      );
       if (count >= max) {
         throw new ConflictException(
           `Limite du plan ${ctx.plan} atteinte (${max} établissement${max > 1 ? 's' : ''}). Passez à un plan supérieur pour en ajouter.`,
         );
       }
+    }
+    const etab = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const created = await tx.etablissement.create({
         data: {
           tenantId: ctx.tenantId,

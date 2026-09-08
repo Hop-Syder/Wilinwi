@@ -47,12 +47,12 @@ Quatre paliers, du gratuit au sur-mesure.
 
 ### Tableau comparatif
 
-| Palier | Cible | Établissements | Utilisateurs | Inclus (clés) | Mensuel | Annuel |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Starter** | Entrepreneurs, petites boutiques | 1 | 1 | Essentiels, ventes illimitées, hors-ligne, dashboard de base | **Gratuit** | — |
-| **Pro** | PME | 2 | Illimité | + Rapports avancés, dépenses, créances, sauvegardes auto, support prioritaire | **7 500 FCFA** | **75 000 FCFA** |
-| **Business** | Entreprises en croissance | Illimité | Illimité | + Multi-établissements, transferts de stock, CRM, **images produits**, API, intégrations | **20 000 FCFA** | **200 000 FCFA** |
-| **Enterprise** | Grandes entreprises / réseaux | Illimité | Illimité | + **Site e-commerce personnalisé**, personnalisation, intégrations spécifiques, SLA, accompagnement dédié | **Sur devis** | **Sur devis** |
+| Palier | Cible | Établissements | Utilisateurs | Appareils | Photos/produit | Produits | Mensuel | Annuel |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Starter** | Entrepreneurs, petites boutiques | 1 | 1 | 1 | 0 (désactivé) | 100 | **Gratuit** | — |
+| **Pro** | PME | 2 | 5 | 5 | 0 (désactivé) | Illimité | **5 000 FCFA** | **50 000 FCFA** |
+| **Business** | Entreprises en croissance | Illimité | Illimité | 30 | 6 | Illimité | **15 000 FCFA** | **150 000 FCFA** |
+| **Enterprise** | Grandes entreprises / réseaux | Illimité | Illimité | Illimité | 12 | Illimité | **Sur devis** | **Sur devis** |
 
 ### Détail des paliers
 
@@ -60,32 +60,33 @@ Quatre paliers, du gratuit au sur-mesure.
 Destiné aux entrepreneurs et petites boutiques. *Objectif : permettre de découvrir Wilinwi sans
 friction.*
 
-- 1 entreprise, 1 établissement
+- 1 utilisateur, 1 établissement, 1 appareil
+- 100 produits maximum
+- Photos produits désactivées
 - Fonctionnalités essentielles
 - Ventes illimitées
 - Mode hors-ligne
 - Tableau de bord de base
 
-**Pro — 7 500 FCFA/mois (ou 75 000 FCFA/an)**
+**Pro — 5 000 FCFA/mois (ou 50 000 FCFA/an)**
 Destiné aux PME.
 
-- 2 établissements
-- Utilisateurs illimités
+- 5 utilisateurs, 2 établissements, 5 appareils
 - Produits illimités
+- Photos produits désactivées
 - Rapports avancés
 - Gestion des dépenses
 - Gestion des créances
 - Sauvegardes automatiques
 - Assistance prioritaire
 
-**Business — 20 000 FCFA/mois (ou 200 000 FCFA/an)**
+**Business — 15 000 FCFA/mois (ou 150 000 FCFA/an)**
 Pour les entreprises en croissance.
 
-- Multi-établissements
-- Utilisateurs illimités
+- Utilisateurs illimités, établissements illimités, 30 appareils
+- 6 photos par produit
 - Transferts de stock
 - CRM
-- Images produits
 - Tableaux de bord avancés
 - API
 - Intégrations
@@ -93,7 +94,8 @@ Pour les entreprises en croissance.
 **Enterprise — sur devis**
 Pour les grandes entreprises.
 
-- Établissements illimités
+- Utilisateurs illimités, établissements illimités, appareils illimités
+- 12 photos par produit
 - Site e-commerce personnalisé
 - Personnalisation
 - Intégrations spécifiques

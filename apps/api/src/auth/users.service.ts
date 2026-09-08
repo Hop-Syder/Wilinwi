@@ -54,7 +54,12 @@ export class UsersService {
         include: { etablissements: { select: { etablissementId: true } } },
       }),
     );
-    return users.map((u) => toUserDto(u, u.etablissements.map((e) => e.etablissementId)));
+    return users.map((u) =>
+      toUserDto(
+        u,
+        u.etablissements.map((e) => e.etablissementId),
+      ),
+    );
   }
 
   /** Écran « Connexion utilisateur » (PIN) : profils actifs du tenant. */
@@ -90,14 +95,17 @@ export class UsersService {
       throw new ForbiddenException('Seul le propriétaire peut créer un autre propriétaire.');
     }
     // Limite d'utilisateurs selon l'abonnement (§8) — config pilotable en base.
-    const max = (await this.planConfig.getLimits(ctx.plan)).maxUsers;
-    const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.user.count({ where: { tenantId: ctx.tenantId, actif: true } }),
-    );
-    if (count >= max) {
-      throw new ConflictException(
-        `Limite du plan ${ctx.plan} atteinte (${max} utilisateur(s)). Passez à un plan supérieur.`,
+    // Les tenants grand-père (isGrandfathered) ne sont pas soumis aux limites numériques.
+    if (!ctx.isGrandfathered) {
+      const max = (await this.planConfig.getLimits(ctx.plan)).maxUsers;
+      const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        tx.user.count({ where: { tenantId: ctx.tenantId, actif: true } }),
       );
+      if (count >= max) {
+        throw new ConflictException(
+          `Limite du plan ${ctx.plan} atteinte (${max} utilisateur(s)). Passez à un plan supérieur.`,
+        );
+      }
     }
 
     // Email → invitation Supabase (le collaborateur définit son mot de passe via le
@@ -180,7 +188,7 @@ export class UsersService {
       // ni promouvoir quiconque au rôle OWNER.
       if (ctx.role !== 'OWNER' && (existing.role === 'OWNER' || input.role === 'OWNER')) {
         throw new ForbiddenException(
-          "Un gérant ne peut pas modifier un propriétaire ni attribuer le rôle propriétaire.",
+          'Un gérant ne peut pas modifier un propriétaire ni attribuer le rôle propriétaire.',
         );
       }
       if (existing.role === 'OWNER' && (input.role || input.actif === false)) {
@@ -256,7 +264,7 @@ export class UsersService {
       if (!existing) throw new NotFoundException('Utilisateur introuvable');
       // Anti-escalade : un gérant ne peut pas réinitialiser le PIN du propriétaire.
       if (ctx.role !== 'OWNER' && existing.role === 'OWNER') {
-        throw new ForbiddenException("Un gérant ne peut pas modifier le code PIN du propriétaire.");
+        throw new ForbiddenException('Un gérant ne peut pas modifier le code PIN du propriétaire.');
       }
       await tx.user.update({ where: { id }, data: { pinCode: hash } });
     });

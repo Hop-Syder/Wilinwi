@@ -13,9 +13,11 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { validateEnv } from './config/env';
 import { CommonModule } from './common/common.module';
 import { Public } from './common/decorators';
+import { BillingCronService } from './common/billing-cron.service';
 import { AuthModule } from './auth/auth.module';
 import { EtablissementModule } from './etablissement/etablissement.module';
 import { StockModule } from './stock/stock.module';
@@ -56,6 +58,8 @@ class HealthController {
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Rate-limiting global (anti-abus / DoS) : 300 requêtes / minute / IP.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
+    // Cron scheduler (billing overdue, etc.) — runs every hour.
+    ScheduleModule.forRoot(),
     CommonModule,
     AuthModule,
     EtablissementModule,
@@ -74,6 +78,6 @@ class HealthController {
     PlansModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [BillingCronService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

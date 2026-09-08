@@ -165,7 +165,9 @@ export class PlatformService {
         ${plan}::text, ${input.label}::text,
         ${input.priceMonthly}::int, ${input.priceYearly}::int,
         ${input.maxUsers}::int, ${input.maxEtablissements}::int,
-        ${input.maxDevices}::int, ${input.maxPhotos}::int
+        ${input.maxDevices}::int, ${input.maxPhotos}::int,
+        ${input.maxProducts}::int,
+        ${input.activatedAt}::timestamptz
       )
     `;
     this.planConfig.invalidate();
@@ -178,7 +180,10 @@ export class PlatformService {
    * Définit les modules « à la carte » d'une entreprise (Lot 2.4) — remplace l'ensemble.
    * La prise d'effet est immédiate : l'AuthGuard relit `module_addons` à chaque requête.
    */
-  async setTenantModules(tenantId: string, modules: ModuleKey[]): Promise<{ moduleAddons: ModuleKey[] }> {
+  async setTenantModules(
+    tenantId: string,
+    modules: ModuleKey[],
+  ): Promise<{ moduleAddons: ModuleKey[] }> {
     await this.adminPrisma.client.$executeRaw`
       SELECT app.platform_set_tenant_modules(${tenantId}::uuid, ${modules}::text[])
     `;
@@ -266,7 +271,9 @@ export class PlatformService {
         activated
       FROM app.platform_activation_funnel()
     `;
-    return rows[0] ?? { total: 0, withAnyProduct: 0, with10Products: 0, withAnySale: 0, activated: 0 };
+    return (
+      rows[0] ?? { total: 0, withAnyProduct: 0, with10Products: 0, withAnySale: 0, activated: 0 }
+    );
   }
 
   /** Entreprises non activées (créées mais < 10 articles ou aucune vente) — pour relance. */
@@ -329,7 +336,10 @@ export class PlatformService {
 
   /** Réinitialise le mot de passe : génère un mot de passe temporaire (rendu une fois). */
   async resetUserPassword(userId: string): Promise<PlatformResetPasswordDto> {
-    const tempPassword = randomBytes(9).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 12);
+    const tempPassword = randomBytes(9)
+      .toString('base64')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .slice(0, 12);
     await this.supabaseAdmin.setPassword(userId, tempPassword);
     return { tempPassword };
   }
@@ -353,7 +363,15 @@ export class PlatformService {
     `;
     return (
       rows[0] ?? {
-        mrr: 0, arr: 0, active: 0, trialing: 0, cancelled: 0, total: 0, arpu: 0, churnRate: 0, ltv: 0,
+        mrr: 0,
+        arr: 0,
+        active: 0,
+        trialing: 0,
+        cancelled: 0,
+        total: 0,
+        arpu: 0,
+        churnRate: 0,
+        ltv: 0,
       }
     );
   }
@@ -376,5 +394,15 @@ export class PlatformService {
     return this.adminPrisma.client.$queryRaw<PlatformEtabGeoDto[]>`
       SELECT ville, count FROM app.platform_etablissements_geo()
     `;
+  }
+
+  /** Active le gating globalement en posant activatedAt sur les 4 plans.
+   *  Utilise la fonction SQL platform_set_gating_activated qui synchronise
+   *  automatiquement toutes les lignes plan_configs. */
+  async setGatingActivatedAt(activatedAt: Date | null): Promise<void> {
+    await this.adminPrisma.client.$executeRawUnsafe(
+      `SELECT app.platform_set_gating_activated(${activatedAt ? `'${activatedAt.toISOString()}'` : 'NULL'}::timestamptz)`,
+    );
+    this.planConfig.invalidate();
   }
 }

@@ -56,17 +56,19 @@ export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {
 /**
  * Limites par plan (cf. businessplan.md §3). `UNLIMITED` = pas de plafond.
  * `maxDevices` défini ; enforcement appareils ultérieur.
+ * `maxProducts` : -1 = illimité, sinon plafond d'articles.
  */
 export const PLAN_LIMITS: Record<
   Plan,
-  { maxUsers: number; maxEtablissements: number; maxDevices: number; maxPhotos: number }
+  { maxUsers: number; maxEtablissements: number; maxDevices: number; maxPhotos: number; maxProducts: number }
 > = {
   // `maxPhotos` = nombre de photos par produit (galerie). 0 = images désactivées
   // (réservées à Business+, cf. businessplan.md §3).
-  STARTER: { maxUsers: 1, maxEtablissements: 1, maxDevices: 1, maxPhotos: 0 },
-  PRO: { maxUsers: UNLIMITED, maxEtablissements: 2, maxDevices: 5, maxPhotos: 0 },
-  BUSINESS: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: 30, maxPhotos: 6 },
-  ENTERPRISE: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: UNLIMITED, maxPhotos: 12 },
+  // `maxProducts` = nombre d'articles. 100 pour Starter, UNLIMITED pour les autres.
+  STARTER: { maxUsers: 1, maxEtablissements: 1, maxDevices: 1, maxPhotos: 0, maxProducts: 100 },
+  PRO: { maxUsers: 5, maxEtablissements: 2, maxDevices: 5, maxPhotos: 0, maxProducts: UNLIMITED },
+  BUSINESS: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: 30, maxPhotos: 6, maxProducts: UNLIMITED },
+  ENTERPRISE: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: UNLIMITED, maxPhotos: 12, maxProducts: UNLIMITED },
 };
 
 /** Nombre de photos par produit autorisé par le plan (0 = images désactivées). */

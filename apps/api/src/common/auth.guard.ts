@@ -26,6 +26,8 @@ import {
 import { IS_PUBLIC_KEY } from './decorators';
 import { createAccessTokenVerifier, type AccessTokenVerifier } from './jwt-verifier';
 import { PrismaService } from './prisma.service';
+import { PlanConfigService } from './plan-config.service';
+import { isGrandfathered } from './grandfather';
 
 /**
  * Vérifie le JWT et résout le contexte tenant. Deux origines de token possibles :
@@ -45,6 +47,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly planConfig: PlanConfigService,
   ) {
     const supabaseUrl = this.config.getOrThrow<string>('SUPABASE_URL').replace(/\/$/, '');
     const jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
@@ -99,11 +102,21 @@ export class AuthGuard implements CanActivate {
       const dunning = computeDunning(subscriptionStatus, tenant.pastDueSince);
       const realPlan = tenant.plan as Plan;
       const effectivePlan: Plan = dunning.downgraded ? 'STARTER' : realPlan;
+      const gatingActivatedAt = await this.planConfig.getGatingActivatedAt();
+      const now = new Date();
+      const isGF = isGrandfathered({
+        createdAt: tenant.createdAt,
+        grandfatheredUntil: tenant.grandfatheredUntil,
+        gatingActivatedAt,
+        now,
+      });
       // Modules « à la carte » de l'entreprise (Lot 2.4) — neutralisés tant que l'abonnement
       // est rétrogradé pour impayé (J+7+), comme le plan lui-même.
       const moduleAddons: ModuleKey[] = dunning.downgraded
         ? []
-        : (tenant.moduleAddons.filter((m) => (MODULES as readonly string[]).includes(m)) as ModuleKey[]);
+        : (tenant.moduleAddons.filter((m) =>
+            (MODULES as readonly string[]).includes(m),
+          ) as ModuleKey[]);
       // Établissements accessibles à l'utilisateur (uniquement ceux encore actifs).
       const access = await tx.userEtablissement.findMany({
         where: { userId, etablissement: { actif: true } },
@@ -120,6 +133,7 @@ export class AuthGuard implements CanActivate {
         subscriptionStatus,
         dunning,
         role: dbRole,
+        isGrandfathered: isGF,
         modules: effectiveModules(
           dbRole,
           effectivePlan,
@@ -166,6 +180,7 @@ export class AuthGuard implements CanActivate {
       subscriptionStatus: resolved.subscriptionStatus,
       dunning: resolved.dunning,
       isPlatformAdmin,
+      isGrandfathered: resolved.isGrandfathered,
     };
     req.user = ctx;
     return true;

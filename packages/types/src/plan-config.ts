@@ -39,6 +39,9 @@ export const PlanConfigSchema = z.object({
   maxEtablissements: z.number().int().min(LIMIT_UNLIMITED),
   maxDevices: z.number().int().min(LIMIT_UNLIMITED),
   maxPhotos: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = désactivé
+  maxProducts: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = aucun
+  /// Date d'activation du gating numérique (null = pas encore activé → permissif).
+  activatedAt: z.coerce.date().nullable(),
   updatedAt: z.coerce.date(),
 });
 export type PlanConfigDto = z.infer<typeof PlanConfigSchema>;
@@ -52,5 +55,7 @@ export const UpdatePlanConfigSchema = z.object({
   maxEtablissements: z.number().int().min(LIMIT_UNLIMITED),
   maxDevices: z.number().int().min(LIMIT_UNLIMITED),
   maxPhotos: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = désactivé
+  maxProducts: z.number().int().min(LIMIT_UNLIMITED), // -1 = illimité · 0 = aucun
+  activatedAt: z.coerce.date().nullable(),
 });
 export type UpdatePlanConfigInput = z.infer<typeof UpdatePlanConfigSchema>;

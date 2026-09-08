@@ -23,6 +23,7 @@ import { SignJWT } from 'jose';
 import type { AuthContext, InviteUserInput, PinLoginInput, SignUpInput } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
 import { ActivityService } from '../common/activity.service';
+import { PlanConfigService } from '../common/plan-config.service';
 import { SupabaseAdminService } from './supabase-admin.service';
 import { MAX_PIN_FAILS, PIN_LOCK_MS, resolvePinAttempt } from './pin-lock';
 
@@ -36,8 +37,11 @@ export class AuthService {
     private readonly supabase: SupabaseAdminService,
     private readonly config: ConfigService,
     private readonly activity: ActivityService,
+    private readonly planConfig: PlanConfigService,
   ) {
-    this.jwtSecret = new TextEncoder().encode(this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'));
+    this.jwtSecret = new TextEncoder().encode(
+      this.config.getOrThrow<string>('SUPABASE_JWT_SECRET'),
+    );
   }
 
   /**
@@ -99,6 +103,19 @@ export class AuthService {
     // Anti-escalade : seul un OWNER peut inviter un autre OWNER.
     if (input.role === 'OWNER' && ctx.role !== 'OWNER') {
       throw new ForbiddenException('Seul le propriétaire peut inviter un autre propriétaire.');
+    }
+    // Limite d'utilisateurs selon l'abonnement — le bypass grand-père est respecté
+    // via ctx.isGrandfathered (limites numériques non enforced si vrai).
+    if (!ctx.isGrandfathered) {
+      const max = (await this.planConfig.getLimits(ctx.plan)).maxUsers;
+      const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        tx.user.count({ where: { tenantId: ctx.tenantId, actif: true } }),
+      );
+      if (count >= max) {
+        throw new ConflictException(
+          `Limite du plan ${ctx.plan} atteinte (${max} utilisateur(s)). Passez à un plan supérieur.`,
+        );
+      }
     }
     // Invitation par email : le collaborateur définit son mot de passe via le lien reçu.
     const { id: userId } = await this.supabase.inviteByEmail(input.email);

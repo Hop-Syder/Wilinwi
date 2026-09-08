@@ -44,46 +44,52 @@ export class StockService {
     // plus anciens (les autres restent en base, simplement masqués).
     const downgraded = ctx.dunning.downgraded;
 
-    const { products, breakdownByProduct } = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
-      const prods = await tx.product.findMany({
-        where: { tenantId: ctx.tenantId, actif: true },
-        include: { variants: true },
-        orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
-        ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
-      });
+    const { products, breakdownByProduct } = await this.prisma.forTenant(
+      ctx.tenantId,
+      async (tx) => {
+        const prods = await tx.product.findMany({
+          where: { tenantId: ctx.tenantId, actif: true },
+          include: { variants: true },
+          orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
+          ...(downgraded ? { take: DOWNGRADE_MAX_PRODUCTS } : {}),
+        });
 
-      if (globalView) {
-        // Vue consolidée (page Stock) : Σ tous mouvements du tenant, toutes boutiques.
-        const { byProduct, byVariant, byEtablissement } = await this.globalStockMaps(tx, ctx.tenantId);
-        for (const p of prods) {
-          p.stock = byProduct.get(p.id) ?? 0;
-          for (const v of p.variants) {
-            v.stock = byVariant.get(v.id) ?? 0;
-          }
-        }
-        return { products: prods, breakdownByProduct: byEtablissement };
-      } else {
-        // Vue scopée (POS, autres) : stock de l'établissement courant uniquement.
-        if (ctx.etablissementId) {
-          const { byProduct, byVariant } = await this.scopedStockMaps(tx, ctx.tenantId, ctx.etablissementId);
+        if (globalView) {
+          // Vue consolidée (page Stock) : Σ tous mouvements du tenant, toutes boutiques.
+          const { byProduct, byVariant, byEtablissement } = await this.globalStockMaps(
+            tx,
+            ctx.tenantId,
+          );
           for (const p of prods) {
             p.stock = byProduct.get(p.id) ?? 0;
             for (const v of p.variants) {
               v.stock = byVariant.get(v.id) ?? 0;
             }
           }
+          return { products: prods, breakdownByProduct: byEtablissement };
+        } else {
+          // Vue scopée (POS, autres) : stock de l'établissement courant uniquement.
+          if (ctx.etablissementId) {
+            const { byProduct, byVariant } = await this.scopedStockMaps(
+              tx,
+              ctx.tenantId,
+              ctx.etablissementId,
+            );
+            for (const p of prods) {
+              p.stock = byProduct.get(p.id) ?? 0;
+              for (const v of p.variants) {
+                v.stock = byVariant.get(v.id) ?? 0;
+              }
+            }
+          }
+          return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>() };
         }
-        return { products: prods, breakdownByProduct: new Map<string, Record<string, number>>() };
-      }
-    });
-
-    const sorted = downgraded
-      ? [...products].sort((a, b) => a.nom.localeCompare(b.nom))
-      : products;
-
-    return sorted.map((p) =>
-      toProductDto(p, ctx.role, breakdownByProduct.get(p.id)),
+      },
     );
+
+    const sorted = downgraded ? [...products].sort((a, b) => a.nom.localeCompare(b.nom)) : products;
+
+    return sorted.map((p) => toProductDto(p, ctx.role, breakdownByProduct.get(p.id)));
   }
 
   async getProduct(ctx: AuthContext, id: string) {
@@ -118,9 +124,25 @@ export class StockService {
         'Abonnement impayé : ajout de produits suspendu (catalogue limité à 50 articles). Régularisez pour le réactiver.',
       );
     }
+    // Limite de produits selon le plan — les tenants grand-père ne sont pas soumis.
+    if (!ctx.isGrandfathered) {
+      const limits = await this.planConfig.getLimits(ctx.plan);
+      const count = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        tx.product.count({ where: { tenantId: ctx.tenantId, actif: true } }),
+      );
+      if (count >= limits.maxProducts) {
+        throw new ConflictException(
+          `Limite du plan ${ctx.plan} atteinte (${limits.maxProducts} produit(s)). Passez à un plan supérieur.`,
+        );
+      }
+    }
     // Gating images : la galerie produit est réservée aux plans Business+ ;
     // on borne au nombre autorisé (0 = aucune image pour Starter/Pro).
-    const photos = input.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
+    // Les tenants grand-père ne sont pas soumis au plafond photos non plus.
+    const maxPhotos = ctx.isGrandfathered
+      ? input.photos.length
+      : await this.planConfig.maxProductPhotos(ctx.plan);
+    const photos = input.photos.slice(0, maxPhotos);
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const created = await tx.product.create({
         data: {
@@ -148,7 +170,8 @@ export class StockService {
 
       // Grand livre : le stock initial devient un mouvement IN rattaché à un
       // établissement (courant, sinon primaire) → le stock scopé reste cohérent.
-      const etablissementId = ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
+      const etablissementId =
+        ctx.etablissementId ?? (await this.primaryEtablissementId(tx, ctx.tenantId));
       if (etablissementId) {
         if (created.stock !== 0) {
           await tx.stockMovement.create({
@@ -268,7 +291,8 @@ export class StockService {
     for (const row of byEtabProd) {
       if (!row.etablissementId) continue;
       const existing = byEtablissement.get(row.productId) ?? {};
-      existing[row.etablissementId] = (existing[row.etablissementId] ?? 0) + (row._sum.quantite ?? 0);
+      existing[row.etablissementId] =
+        (existing[row.etablissementId] ?? 0) + (row._sum.quantite ?? 0);
       byEtablissement.set(row.productId, existing);
     }
 
@@ -280,8 +304,12 @@ export class StockService {
     // via un mouvement (ADJUST/IN/OUT) qui tient grand livre + projection à jour.
     const { variants, ...scalars } = input;
     // Gating images : on borne la galerie au nombre autorisé par le plan.
+    // Les tenants grand-père ne sont pas soumis au plafond photos.
     if (scalars.photos !== undefined) {
-      scalars.photos = scalars.photos.slice(0, await this.planConfig.maxProductPhotos(ctx.plan));
+      const maxPhotos = ctx.isGrandfathered
+        ? scalars.photos.length
+        : await this.planConfig.maxProductPhotos(ctx.plan);
+      scalars.photos = scalars.photos.slice(0, maxPhotos);
     }
     const product = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const existing = await this.ensureProduct(tx, ctx.tenantId, id);
@@ -299,8 +327,10 @@ export class StockService {
 
       if (variants) {
         const existingVariants = await tx.productVariant.findMany({ where: { productId: id } });
-        const incomingIds = variants.map(v => v.id).filter(Boolean);
-        const toDelete = existingVariants.filter(ev => !incomingIds.includes(ev.id)).map(ev => ev.id);
+        const incomingIds = variants.map((v) => v.id).filter(Boolean);
+        const toDelete = existingVariants
+          .filter((ev) => !incomingIds.includes(ev.id))
+          .map((ev) => ev.id);
 
         if (toDelete.length > 0) {
           await tx.productVariant.deleteMany({ where: { id: { in: toDelete } } });
@@ -314,7 +344,7 @@ export class StockService {
               data: {
                 attributs: v.attributs,
                 sku: v.sku ?? null,
-              }
+              },
             });
           } else {
             const createdVariant = await tx.productVariant.create({
@@ -324,7 +354,7 @@ export class StockService {
                 attributs: v.attributs,
                 sku: v.sku ?? null,
                 stock: v.stock,
-              }
+              },
             });
             // Stock initial de la NOUVELLE variante = mouvement IN + projection,
             // comme à la création du produit (cohérence grand livre).
@@ -354,10 +384,10 @@ export class StockService {
         }
       }
 
-      return tx.product.update({ 
-        where: { id }, 
+      return tx.product.update({
+        where: { id },
         data: scalars,
-        include: { variants: true }
+        include: { variants: true },
       });
     });
     return toProductDto(product, ctx.role);
@@ -377,10 +407,12 @@ export class StockService {
       const newParentStock = product.stock + delta;
 
       if (input.variantId) {
-        const variant = product.variants.find(v => v.id === input.variantId);
+        const variant = product.variants.find((v) => v.id === input.variantId);
         if (!variant) throw new NotFoundException('Variante introuvable');
         if (variant.stock + delta < 0) {
-          throw new BadRequestException('Opération refusée : Le stock de la variante ne peut pas être négatif.');
+          throw new BadRequestException(
+            'Opération refusée : Le stock de la variante ne peut pas être négatif.',
+          );
         }
         await tx.productVariant.update({
           where: { id: input.variantId },
@@ -388,7 +420,9 @@ export class StockService {
         });
       } else {
         if (newParentStock < 0) {
-          throw new BadRequestException('Opération refusée : Le stock global ne peut pas être négatif.');
+          throw new BadRequestException(
+            'Opération refusée : Le stock global ne peut pas être négatif.',
+          );
         }
       }
 
@@ -438,18 +472,24 @@ export class StockService {
         where: { id: input.sourceEtablissementId, tenantId: ctx.tenantId },
       });
       if (!source) {
-        throw new NotFoundException("L'établissement source n'existe pas ou ne vous appartient pas.");
+        throw new NotFoundException(
+          "L'établissement source n'existe pas ou ne vous appartient pas.",
+        );
       }
 
       const destination = await tx.etablissement.findFirst({
         where: { id: input.destinationEtablissementId, tenantId: ctx.tenantId },
       });
       if (!destination) {
-        throw new NotFoundException("L'établissement de destination n'existe pas ou ne vous appartient pas.");
+        throw new NotFoundException(
+          "L'établissement de destination n'existe pas ou ne vous appartient pas.",
+        );
       }
 
       if (source.id === destination.id) {
-        throw new BadRequestException("Les établissements source et de destination doivent être différents.");
+        throw new BadRequestException(
+          'Les établissements source et de destination doivent être différents.',
+        );
       }
 
       // Vérifier le stock disponible dans la source
@@ -625,9 +665,9 @@ export class StockService {
   }
 
   private async ensureProduct(tx: TenantTx, tenantId: string, id: string) {
-    const product = await tx.product.findFirst({ 
+    const product = await tx.product.findFirst({
       where: { id, tenantId },
-      include: { variants: true }
+      include: { variants: true },
     });
     if (!product) throw new NotFoundException('Produit introuvable');
     return product;
