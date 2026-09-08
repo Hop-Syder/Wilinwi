@@ -31,6 +31,10 @@ const buttonVariants = cva(
         md: 'h-10 px-4 text-sm',
         lg: 'h-12 px-6 text-base',
         icon: 'h-9 w-9 p-0',
+        // Cible tactile ≥44px (cahier des charges §7) — additive, ne change
+        // pas la taille par défaut (md) pour ne pas redimensionner tous les
+        // boutons existants d'apps/web ET apps/admin-web.
+        touch: 'h-11 px-4 text-sm',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

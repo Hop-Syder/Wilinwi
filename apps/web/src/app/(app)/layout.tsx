@@ -31,7 +31,7 @@ import {
   Truck,
   Warehouse,
 } from 'lucide-react';
-import { OfflineIndicator, cn } from '@wilinwi/ui';
+import { OfflineIndicator, Toaster, cn } from '@wilinwi/ui';
 import { ROLE_LABELS, type ModuleKey } from '@wilinwi/types';
 import { useAuth } from '@/lib/auth-context';
 import { useSync } from '@/lib/use-sync';
@@ -138,6 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Pas d'overflow-hidden ici : il neutraliserait le `sticky` du header
     // (les halos décoratifs sont rognés par leur propre conteneur ci-dessous).
     <div className="min-h-screen bg-background font-sans antialiased text-text-primary relative">
+      <Toaster />
       {/* Conteneur de navigation fixe (Sticky) */}
       <div className="sticky top-0 z-30 w-full">
         {/* Ligne de dégradé de marque en haut (Black Luxury: Gold, Blue, Green) */}
