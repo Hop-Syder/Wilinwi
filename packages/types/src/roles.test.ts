@@ -85,6 +85,30 @@ describe('gating des modules par plan', () => {
   });
 });
 
+describe('assistant vocal Wilinwi AI (capacité ai:use, gating plan/module)', () => {
+  it('OWNER/MANAGER/SELLER/CASHIER ont la capacité ai:use, pas DELIVERY', () => {
+    for (const role of ['OWNER', 'MANAGER', 'SELLER', 'CASHIER'] as Role[]) {
+      expect(hasCapability(role, 'ai:use')).toBe(true);
+    }
+    expect(hasCapability('DELIVERY', 'ai:use')).toBe(false);
+  });
+
+  it("un CASHIER sur un plan ENTERPRISE a le module AI dans ses modules effectifs", () => {
+    const mods = effectiveModules('CASHIER', 'ENTERPRISE', false, []);
+    expect(mods.includes('AI')).toBe(true);
+  });
+
+  it("un CASHIER sur un plan STARTER n'a PAS le module AI (capacité de rôle seule ne suffit pas)", () => {
+    const mods = effectiveModules('CASHIER', 'STARTER', false, []);
+    expect(mods.includes('AI')).toBe(false);
+  });
+
+  it("l'add-on AI débloque le module pour un plan qui ne l'inclut pas nativement", () => {
+    const mods = effectiveModules('MANAGER', 'PRO', false, [], ['AI']);
+    expect(mods.includes('AI')).toBe(true);
+  });
+});
+
 describe('modules premium à la carte (add-ons)', () => {
   it('un add-on débloque un module au-delà du plan', () => {
     const base = effectiveModules('OWNER', 'STARTER', false, []);

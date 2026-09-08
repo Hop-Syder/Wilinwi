@@ -32,6 +32,12 @@ export const EnvSchema = z.object({
   WEB_BASE_URL: z.string().url().optional(),
   /** Allowlist des emails d'administration plateforme, séparés par des virgules. */
   PLATFORM_ADMIN_EMAILS: z.string().default(''),
+  /** Assistant vocal Wilinwi AI (module AI). Optionnelles : sans clé, l'API
+   *  démarre normalement et l'assistant se dégrade en "indisponible" (fallback
+   *  manuel) — l'IA ne doit jamais bloquer le boot ni le reste du produit. */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  GEMINI_TIMEOUT_MS: z.coerce.number().default(8000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -69,6 +69,8 @@ export const CAPABILITIES = [
   // Rapports
   'reports:read',
   'reports:read_full', // marges, prix d'achat, trésorerie
+  // Assistant vocal Wilinwi AI (module AI, réservé au plan ENTERPRISE ou add-on)
+  'ai:use',
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -104,8 +106,9 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'delivery:update',
     'reports:read',
     'reports:read_full',
+    'ai:use',
   ],
-  SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read'],
+  SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read', 'ai:use'],
   CASHIER: [
     'sale:create', // Wilinwi AI §21/§3 : la caissière vend elle-même (manuellement ou vocalement)
     'sale:read',
@@ -116,7 +119,9 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
     'client:read',
     'client:view_credit',
     'client:collect_payment',
+    'ai:use',
   ],
+  // DELIVERY : pas d'assistant vocal (hors périmètre du cahier des charges).
   DELIVERY: ['delivery:update'],
 };
 
@@ -175,14 +180,15 @@ export const CAP_MODULE: Record<Capability, ModuleKey | 'ADMIN'> = {
   'delivery:update': 'DELIVERY',
   'reports:read': 'ANALYTICS',
   'reports:read_full': 'ANALYTICS',
+  'ai:use': 'AI',
 };
 
 /** Modules visibles par défaut selon le rôle (avant overrides & plan). */
 export const ROLE_MODULES: Record<Role, readonly ModuleKey[]> = {
   OWNER: [...MODULES],
-  MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY'],
-  SELLER: ['POS', 'STOCK'],
-  CASHIER: ['POS', 'CRM'],
+  MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY', 'AI'],
+  SELLER: ['POS', 'STOCK', 'AI'],
+  CASHIER: ['POS', 'CRM', 'AI'],
   DELIVERY: ['DELIVERY'],
 };
 
