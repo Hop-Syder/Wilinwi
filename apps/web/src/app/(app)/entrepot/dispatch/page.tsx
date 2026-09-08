@@ -10,16 +10,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Truck, X, Trash2, CheckCircle2, Ban, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, X, Trash2, CheckCircle2, Ban, ArrowRight, Mic, Loader2 } from 'lucide-react';
 import {
   DISPATCH_STATUS_LABELS,
   type DispatchOrderDto,
   type EtablissementDto,
   type ProductDto,
+  type VoiceInterpretResult,
+  type VoiceProductCandidate,
 } from '@wilinwi/types';
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useSync } from '@/lib/use-sync';
+import { useVoiceCapture } from '@/lib/use-voice-capture';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -48,6 +51,17 @@ export default function DispatchPage() {
   const [note, setNote] = useState('');
   const [validateNow, setValidateNow] = useState(true);
   const [rows, setRows] = useState<Row[]>([{ productId: '', quantite: '' }]);
+
+  // Commande vocale : ne fait QUE pré-remplir ce même formulaire — la
+  // création reste déclenchée uniquement par le clic manuel sur "Créer".
+  const voice = useVoiceCapture();
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [voiceClarification, setVoiceClarification] = useState<{
+    question: string;
+    quantity?: number;
+    candidates: VoiceProductCandidate[];
+  } | null>(null);
 
   const tourSteps: TourStep[] = [
     {
@@ -95,6 +109,71 @@ export default function DispatchPage() {
     setValidateNow(true);
     setRows([{ productId: '', quantite: '' }]);
     setOpen(true);
+  }
+
+  /** Ouvre le formulaire pré-rempli par la voix — jamais validé automatiquement
+   *  (validateNow forcé à false : une commande vocale reste un brouillon tant
+   *  que le responsable ne l'a pas explicitement validée). */
+  function openWithDraft(draft: NonNullable<VoiceInterpretResult['draft']>) {
+    setError(null);
+    setSourceId('');
+    setDestinationId(draft.destinationId ?? '');
+    setNote('Commande vocale');
+    setValidateNow(false);
+    setRows(
+      draft.items.length > 0
+        ? draft.items.map((it) => ({ productId: it.productId, quantite: String(it.quantite) }))
+        : [{ productId: '', quantite: '' }],
+    );
+    setOpen(true);
+  }
+
+  async function handleVoiceTranscript(transcript: string) {
+    setVoiceStatus(null);
+    setVoiceClarification(null);
+    setVoiceLoading(true);
+    try {
+      const result = await apiPost<VoiceInterpretResult>('/api/ai/voice/interpret', {
+        transcript,
+        context: 'pos',
+      });
+      if (!result.ok) {
+        setVoiceStatus(
+          result.error === 'FORBIDDEN'
+            ? "Vous n'avez pas la permission d'utiliser l'assistant vocal pour cette action."
+            : 'Assistant vocal indisponible. Utilisez le formulaire manuel.',
+        );
+        return;
+      }
+      if (result.draft) {
+        openWithDraft(result.draft);
+        if (result.unresolvedQueries && result.unresolvedQueries.length > 0) {
+          setVoiceStatus(`Introuvable : ${result.unresolvedQueries.join(', ')}. Ajoutez-les manuellement.`);
+        }
+        if (!result.draft.destinationId) {
+          setVoiceStatus((prev) =>
+            prev ? `${prev} Boutique non reconnue : choisissez-la manuellement.` : 'Boutique non reconnue : choisissez-la manuellement.',
+          );
+        }
+        return;
+      }
+      if (result.clarification) {
+        setVoiceClarification(result.clarification);
+      }
+    } catch {
+      setVoiceStatus('Assistant vocal indisponible. Utilisez le formulaire manuel.');
+    } finally {
+      setVoiceLoading(false);
+    }
+  }
+
+  /** Résout la clarification en ouvrant le formulaire avec l'unique produit choisi. */
+  function pickVoiceCandidate(candidate: VoiceProductCandidate) {
+    if (!voiceClarification) return;
+    openWithDraft({
+      items: [{ productId: candidate.productId, nom: candidate.nom, quantite: voiceClarification.quantity ?? 1 }],
+    });
+    setVoiceClarification(null);
   }
 
   async function save() {
@@ -160,6 +239,20 @@ export default function DispatchPage() {
               { title: 'Hors-ligne', description: 'La création et la validation d\'un dispatch nécessitent une connexion internet.' },
             ]}
           />
+          {!voice.disabled && (
+            <button
+              type="button"
+              disabled={offline}
+              onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleVoiceTranscript))}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+                voice.isRecording ? 'animate-pulse bg-red-500 text-white' : 'bg-brand text-white hover:bg-brand/90'
+              } disabled:opacity-40`}
+              aria-label="Commande vocale : pré-remplir un dispatch"
+              title="Commande vocale (ex. « Envoie 50 Coca-Cola à la Boutique B »)"
+            >
+              {voiceLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
           <div id="tour-dispatch-new">
             <Button onClick={openCreate} disabled={offline}>
               <Plus className="h-4 w-4" /> Nouveau dispatch
@@ -171,6 +264,28 @@ export default function DispatchPage() {
       <div className="mt-4">
         <OfflineBanner message="Mode hors-ligne : la création et la validation d'un dispatch nécessitent une connexion." />
       </div>
+
+      {voice.isRecording && <p className="mt-2 text-sm text-slate-500">Je vous écoute…</p>}
+      {voiceStatus && <p className="mt-2 text-sm font-medium text-amber-600">{voiceStatus}</p>}
+      {voiceClarification && (
+        <div className="mt-2 rounded-xl border border-brand/20 bg-brand/5 p-3">
+          <p className="text-sm font-medium text-slate-700">{voiceClarification.question}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {voiceClarification.candidates.map((c) => (
+              <button
+                key={c.productId}
+                onClick={() => pickVoiceCandidate(c)}
+                className="rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
+              >
+                {c.nom}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setVoiceClarification(null)}>
+            Annuler
+          </Button>
+        </div>
+      )}
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 

@@ -5,10 +5,10 @@
  * déléguée à Gemini), résolution du panier vocal sans jamais deviner en cas
  * d'ambiguïté (Phase 1), et résistance aux tentatives d'injection de prompt.
  */
-import { NotImplementedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { AuthContextSchema, type AuthContext, type ProductDto, type Role } from '@wilinwi/types';
+import { AuthContextSchema, type AuthContext, type EtablissementDto, type ProductDto, type Role } from '@wilinwi/types';
 import type { AnalyticsService } from '../analytics/analytics.service';
+import type { EtablissementService } from '../etablissement/etablissement.service';
 import type { StockService } from '../stock/stock.service';
 import { AiService } from './ai.service';
 import { AiUnavailableError, type GeminiClient } from './gemini.client';
@@ -59,6 +59,7 @@ type ServiceOptions = {
     nombreVentes: number;
     depenses: number;
   }>;
+  etablissements?: EtablissementDto[];
 };
 
 function makeService(opts: ServiceOptions): AiService {
@@ -78,11 +79,19 @@ function makeService(opts: ServiceOptions): AiService {
     ),
     report: vi.fn(async () => ({ parEtablissement: opts.parEtablissement ?? [] }) as never),
   };
+  const etablissements: Pick<EtablissementService, 'listAccessible'> = {
+    listAccessible: vi.fn(async () => opts.etablissements ?? []),
+  };
   return new AiService(
     gemini as GeminiClient,
     stock as StockService,
     analytics as AnalyticsService,
+    etablissements as EtablissementService,
   );
+}
+
+function etablissement(overrides: Partial<EtablissementDto> & { id: string; nom: string }): EtablissementDto {
+  return { type: 'BOUTIQUE', ville: null, adresse: null, telephone: null, actif: true, ...overrides };
 }
 
 describe('AiService.interpret — dégradation & fiabilité', () => {
@@ -203,20 +212,75 @@ describe('AiService.interpret — permissions appliquées en code, jamais délé
   });
 
   it('MANAGER (avec supplier:manage) peut demander un brouillon de réapprovisionnement', async () => {
+    const coca = product({ id: 'p-coca', nom: 'Coca-Cola' });
+    const boutiqueB = etablissement({ id: 'e-b', nom: 'Boutique B' });
     const service = makeService({
       geminiRaw: JSON.stringify({
         intent: 'CREATE_REPLENISHMENT_DRAFT',
         destinationQuery: 'Boutique B',
         items: [{ query: 'Coca-Cola', quantity: 50 }],
       }),
+      searchResults: { 'Coca-Cola': [coca] },
+      etablissements: [etablissement({ id: 'e-a', nom: 'Boutique A' }), boutiqueB],
     });
-    // Pas encore câblé (Phase 4) : la capacité passe, DispatchService n'est jamais appelé.
-    await expect(
-      service.interpret(ctxFor('MANAGER'), {
-        transcript: 'crée une demande pour la boutique B, 50 Coca-Cola',
-        context: 'pos',
+    const result = await service.interpret(ctxFor('MANAGER'), {
+      transcript: 'crée une demande pour la boutique B, 50 Coca-Cola',
+      context: 'pos',
+    });
+    expect(result).toEqual({
+      ok: true,
+      draft: {
+        destinationId: 'e-b',
+        destinationNom: 'Boutique B',
+        items: [{ productId: 'p-coca', nom: 'Coca-Cola', quantite: 50 }],
+      },
+    });
+  });
+
+  it('brouillon de réapprovisionnement : boutique ambiguë → destination absente, le responsable la choisit lui-même', async () => {
+    const coca = product({ id: 'p-coca', nom: 'Coca-Cola' });
+    const service = makeService({
+      geminiRaw: JSON.stringify({
+        intent: 'CREATE_REPLENISHMENT_DRAFT',
+        destinationQuery: 'Boutique',
+        items: [{ query: 'Coca-Cola', quantity: 50 }],
       }),
-    ).rejects.toBeInstanceOf(NotImplementedException);
+      searchResults: { 'Coca-Cola': [coca] },
+      etablissements: [
+        etablissement({ id: 'e-a', nom: 'Boutique Akpakpa' }),
+        etablissement({ id: 'e-b', nom: 'Boutique Bidossessi' }),
+      ],
+    });
+    const result = await service.interpret(ctxFor('MANAGER'), {
+      transcript: 'crée une demande pour la boutique, 50 Coca-Cola',
+      context: 'pos',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.draft?.destinationId).toBeUndefined();
+    expect(result.draft?.items).toEqual([{ productId: 'p-coca', nom: 'Coca-Cola', quantite: 50 }]);
+  });
+
+  it("brouillon de réapprovisionnement : n'appelle jamais DispatchService (pas d'écriture DB) — critère bloquant", async () => {
+    // AiModule n'importe même pas DispatchModule : ce test documente la
+    // garantie architecturale (aucune dépendance vers DispatchService).
+    const service = makeService({
+      geminiRaw: JSON.stringify({
+        intent: 'CREATE_REPLENISHMENT_DRAFT',
+        destinationQuery: 'Boutique B',
+        items: [{ query: 'Coca-Cola', quantity: 50 }],
+      }),
+      searchResults: { 'Coca-Cola': [product({ id: 'p-coca', nom: 'Coca-Cola' })] },
+      etablissements: [etablissement({ id: 'e-b', nom: 'Boutique B' })],
+    });
+    const result = await service.interpret(ctxFor('MANAGER'), {
+      transcript: 'crée une demande pour la boutique B, 50 Coca-Cola',
+      context: 'pos',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.draft).toBeDefined();
+    // Aucune propriété "created"/"dispatchId" — seulement des données de pré-remplissage.
+    expect(Object.keys(result)).toEqual(expect.arrayContaining(['ok', 'draft']));
+    expect((result as Record<string, unknown>).dispatchId).toBeUndefined();
   });
 
   it('CASHIER (sans supplier:manage) ne peut pas demander un réapprovisionnement → FORBIDDEN', async () => {

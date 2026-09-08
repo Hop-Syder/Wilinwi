@@ -16,7 +16,7 @@
  */
 // ──────────────────────────────────
 
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   VoiceIntentSchema,
   hasCapability,
@@ -28,6 +28,8 @@ import {
   type VoiceIntentType,
 } from '@wilinwi/types';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { EtablissementService } from '../etablissement/etablissement.service';
+import { matchProducts } from '../stock/product-search';
 import { StockService } from '../stock/stock.service';
 import { buildSystemPrompt } from './ai.mapper';
 import { AiUnavailableError, GeminiClient } from './gemini.client';
@@ -59,6 +61,7 @@ export class AiService {
     private readonly gemini: GeminiClient,
     private readonly stock: StockService,
     private readonly analytics: AnalyticsService,
+    private readonly etablissements: EtablissementService,
   ) {}
 
   async interpret(ctx: AuthContext, req: VoiceInterpretRequest): Promise<VoiceInterpretResult> {
@@ -117,24 +120,27 @@ export class AiService {
         return this.answerStockLow(ctx);
 
       case 'CREATE_REPLENISHMENT_DRAFT':
-        throw new NotImplementedException(
-          'Brouillon de réapprovisionnement vocal pas encore disponible (Phase 4).',
-        );
+        return this.resolveReplenishmentDraft(ctx, intent.destinationQuery, intent.items);
     }
   }
 
   /**
-   * Résout chaque `{query, quantity}` contre le catalogue réel (Phase 1) :
-   * 0 correspondance → signalé "introuvable" (jamais silencieusement ignoré) ;
-   * 1 correspondance → résolue directement ; ≥2 correspondances → seule une
-   * égalité EXACTE de nom tranche, sinon on ne devine jamais (§29) et on
-   * demande une précision — traitement au premier item ambigu rencontré.
-   * Ne décrémente jamais le stock : seul POST /pos/sales le fait, inchangé.
+   * Résout chaque `{query, quantity}` contre le catalogue réel (Phase 1),
+   * partagé par le panier vocal (brique 1) et le brouillon de
+   * réapprovisionnement (brique 3, Phase 4) : 0 correspondance → signalé
+   * "introuvable" (jamais silencieusement ignoré) ; 1 correspondance →
+   * résolue directement ; ≥2 correspondances → seule une égalité EXACTE de
+   * nom tranche, sinon on ne devine jamais (§29) et on s'arrête sur une
+   * clarification portant sur l'item ambigu courant.
    */
-  private async resolveCart(
+  private async resolveItems(
     ctx: AuthContext,
     items: readonly CartItemInput[],
-  ): Promise<VoiceInterpretResult> {
+  ): Promise<{
+    resolved: ResolvedCartItem[];
+    unresolved: string[];
+    clarification?: NonNullable<VoiceInterpretResult['clarification']>;
+  }> {
     const resolved: ResolvedCartItem[] = [];
     const unresolved: string[] = [];
 
@@ -161,8 +167,8 @@ export class AiService {
       // clarification ne porte que sur l'item courant — le reste de la
       // phrase est abandonné, l'utilisateur peut le redire après avoir précisé.
       return {
-        ok: true,
-        ...(resolved.length > 0 ? { resolvedCartItems: resolved } : {}),
+        resolved,
+        unresolved,
         clarification: {
           question: `Plusieurs produits correspondent à « ${item.query} ». Lequel voulez-vous ?`,
           quantity: item.quantity,
@@ -171,9 +177,62 @@ export class AiService {
       };
     }
 
+    return { resolved, unresolved };
+  }
+
+  /**
+   * Panier vocal (brique 1) : ne décrémente jamais le stock — seul
+   * POST /pos/sales le fait, inchangé.
+   */
+  private async resolveCart(
+    ctx: AuthContext,
+    items: readonly CartItemInput[],
+  ): Promise<VoiceInterpretResult> {
+    const { resolved, unresolved, clarification } = await this.resolveItems(ctx, items);
+    if (clarification) {
+      return { ok: true, ...(resolved.length > 0 ? { resolvedCartItems: resolved } : {}), clarification };
+    }
     return {
       ok: true,
       resolvedCartItems: resolved,
+      ...(unresolved.length > 0 ? { unresolvedQueries: unresolved } : {}),
+    };
+  }
+
+  /**
+   * Brouillon de réapprovisionnement/transfert (brique 3, Phase 4) : résout
+   * les produits (même discipline que le panier vocal) et la boutique
+   * destinataire, puis renvoie un `draft` pré-formaté pour le formulaire de
+   * dispatch EXISTANT — n'appelle JAMAIS `DispatchService.create()`. Si la
+   * boutique n'est pas résolue sans ambiguïté (aucune ou plusieurs
+   * correspondances), `destinationId` reste absent : le responsable la
+   * choisit manuellement dans le formulaire, comme il le fait déjà
+   * systématiquement pour la source.
+   */
+  private async resolveReplenishmentDraft(
+    ctx: AuthContext,
+    destinationQuery: string,
+    items: readonly CartItemInput[],
+  ): Promise<VoiceInterpretResult> {
+    const [{ resolved, unresolved, clarification }, etablissements] = await Promise.all([
+      this.resolveItems(ctx, items),
+      this.etablissements.listAccessible(ctx),
+    ]);
+
+    if (clarification) {
+      return { ok: true, clarification };
+    }
+
+    const destMatches = matchProducts(etablissements, destinationQuery, 5);
+    const exactDest = destMatches.filter((e) => sameName(e.nom, destinationQuery));
+    const destination = destMatches.length === 1 ? destMatches[0] : exactDest.length === 1 ? exactDest[0] : undefined;
+
+    return {
+      ok: true,
+      draft: {
+        ...(destination ? { destinationId: destination.id, destinationNom: destination.nom } : {}),
+        items: resolved.map((r) => ({ productId: r.productId, nom: r.nom, quantite: r.quantite })),
+      },
       ...(unresolved.length > 0 ? { unresolvedQueries: unresolved } : {}),
     };
   }
