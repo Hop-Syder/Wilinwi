@@ -52,6 +52,13 @@ describe('capacités par rôle', () => {
     expect(hasCapability('CASHIER', 'sale:cancel')).toBe(false);
     expect(hasCapability('SELLER', 'sale:return')).toBe(false);
   });
+
+  it('le caissier peut vendre (manuellement ou vocalement), sans voir les prix sensibles', () => {
+    expect(hasCapability('CASHIER', 'sale:create')).toBe(true);
+    // Le gain de `sale:create` n'élargit pas la sécurité au niveau champ :
+    // les deux garanties sont gouvernées par des fonctions indépendantes.
+    expect(canSeeSensitivePricing('CASHIER')).toBe(false);
+  });
 });
 
 describe('gating des modules par plan', () => {
