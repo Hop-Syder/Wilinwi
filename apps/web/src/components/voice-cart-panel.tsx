@@ -17,11 +17,11 @@
 // ──────────────────────────────────
 
 import { useState } from 'react';
-import { Mic, Loader2 } from 'lucide-react';
 import type { ProductDto, VoiceInterpretResult, VoiceProductCandidate } from '@wilinwi/types';
-import { Button } from '@wilinwi/ui';
+import { Button, BottomSheet, VoiceButton } from '@wilinwi/ui';
 import { apiPost } from '@/lib/api';
 import { useVoiceCapture } from '@/lib/use-voice-capture';
+import { useMinWidth } from '@/lib/use-min-width';
 
 interface VoiceCartPanelProps {
   products: ProductDto[];
@@ -38,6 +38,7 @@ type PendingClarification = {
 
 export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCartPanelProps) {
   const voice = useVoiceCapture();
+  const isDesktop = useMinWidth(640);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [clarification, setClarification] = useState<PendingClarification | null>(null);
@@ -112,22 +113,29 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
     return null;
   }
 
+  const candidateChips = clarification && (
+    <div className="flex flex-wrap gap-2">
+      {clarification.candidates.map((c) => (
+        <button
+          key={c.productId}
+          onClick={() => pickCandidate(c)}
+          className="rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
+        >
+          {c.nom}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <VoiceButton
+          state={loading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
           disabled={disabled || loading}
           onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleTranscript))}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
-            voice.isRecording
-              ? 'animate-pulse bg-red-500 text-white'
-              : 'bg-brand text-white hover:bg-brand/90'
-          } disabled:opacity-40`}
           aria-label={voice.isRecording ? 'Arrêter le micro' : 'Parler pour ajouter au panier'}
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-        </button>
+        />
         <span className="text-sm text-slate-500">
           {voice.isRecording
             ? 'Je vous écoute…'
@@ -145,24 +153,25 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
         </p>
       )}
 
-      {clarification && (
+      {/* Ambiguïté produit : carte en ligne desktop (rendu existant, inchangé),
+          bottom sheet en dessous de 640px (§19) — jamais de choix automatique
+          silencieux dans les deux cas. */}
+      {clarification && isDesktop && (
         <div className="mt-2 rounded-xl border border-brand/20 bg-brand/5 p-3">
           <p className="text-sm font-medium text-slate-700">{clarification.question}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {clarification.candidates.map((c) => (
-              <button
-                key={c.productId}
-                onClick={() => pickCandidate(c)}
-                className="rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
-              >
-                {c.nom}
-              </button>
-            ))}
-          </div>
+          <div className="mt-2">{candidateChips}</div>
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setClarification(null)}>
             Annuler
           </Button>
         </div>
+      )}
+      {clarification && !isDesktop && (
+        <BottomSheet open onClose={() => setClarification(null)} title={clarification.question}>
+          {candidateChips}
+          <Button variant="ghost" size="sm" className="mt-3" onClick={() => setClarification(null)}>
+            Annuler
+          </Button>
+        </BottomSheet>
       )}
     </div>
   );

@@ -16,8 +16,9 @@
 // ──────────────────────────────────
 
 import { useState } from 'react';
-import { Mic, Loader2, Volume2 } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
 import type { VoiceInterpretResult } from '@wilinwi/types';
+import { IconButton, VoiceButton } from '@wilinwi/ui';
 import { apiPost } from '@/lib/api';
 import { useVoiceCapture } from '@/lib/use-voice-capture';
 import { useTts } from '@/lib/use-tts';
@@ -70,16 +71,12 @@ export function VoiceDashboardPanel() {
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-brand/20 bg-brand/5 p-3">
-      <button
-        type="button"
+      <VoiceButton
+        size="md"
+        state={loading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
         onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleTranscript))}
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
-          voice.isRecording ? 'animate-pulse bg-red-500 text-white' : 'bg-brand text-white hover:bg-brand/90'
-        }`}
         aria-label={voice.isRecording ? 'Arrêter le micro' : "Poser une question à l'assistant"}
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-      </button>
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
@@ -91,15 +88,18 @@ export function VoiceDashboardPanel() {
                 : "Demandez « Combien avons-nous vendu aujourd'hui ? »"}
           </span>
           {tts.supported && (
-            <button
-              type="button"
+            <IconButton
+              icon={<Volume2 className="h-4 w-4" />}
+              size="sm"
               onClick={() => setTtsEnabled((v) => !v)}
-              className={`shrink-0 rounded-full p-1.5 ${ttsEnabled ? 'text-brand' : 'text-slate-300'}`}
-              aria-label="Activer la lecture vocale des réponses"
+              className={ttsEnabled ? 'text-brand' : 'text-slate-300'}
+              aria-label={
+                ttsEnabled
+                  ? 'Désactiver la lecture vocale des réponses'
+                  : 'Activer la lecture vocale des réponses'
+              }
               title="Lecture vocale des réponses"
-            >
-              <Volume2 className="h-4 w-4" />
-            </button>
+            />
           )}
         </div>
 

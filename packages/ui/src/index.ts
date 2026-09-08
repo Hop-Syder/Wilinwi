@@ -30,3 +30,4 @@ export { EmptyState, type EmptyStateProps } from './components/empty-state.js';
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog.js';
 export { SearchInput, type SearchInputProps } from './components/search-input.js';
 export { Toaster, toast } from './components/toast.js';
+export { VoiceButton, voiceButtonVariants, type VoiceButtonProps } from './components/voice-button.js';

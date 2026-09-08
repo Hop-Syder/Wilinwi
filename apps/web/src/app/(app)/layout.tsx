@@ -43,6 +43,15 @@ import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { NotificationBell } from '@/components/notification-bell';
 
+/**
+ * Curation des 4 emplacements de la barre d'onglets mobile (§10 : Accueil/
+ * Caisse/Stock/Entrepôt). Filtré par les modules réellement accessibles,
+ * puis complété par l'ordre général de NAV si l'un des 4 préférés manque —
+ * jamais moins de 4 onglets pour un utilisateur ayant ≥4 modules
+ * accessibles, jamais d'onglet mort affiché.
+ */
+const MOBILE_TAB_HREFS = ['/', '/pos', '/stock', '/entrepot'];
+
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; module?: ModuleKey | 'ADMIN' }[] = [
   { href: '/', label: 'Hub', icon: LayoutGrid },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3, module: 'ANALYTICS' },
@@ -134,6 +143,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return <DunningBlock />;
   }
 
+  const accessibleItems = menuItems.filter((item) => canSee(item.module, item.href));
+  const preferredTabs = MOBILE_TAB_HREFS.map((href) =>
+    accessibleItems.find((item) => item.href === href),
+  ).filter((item): item is (typeof accessibleItems)[number] => Boolean(item));
+  const backfillTabs = accessibleItems.filter((item) => !MOBILE_TAB_HREFS.includes(item.href));
+  const mobileTabItems = [...preferredTabs, ...backfillTabs].slice(0, 4);
+
   return (
     // Pas d'overflow-hidden ici : il neutraliserait le `sticky` du header
     // (les halos décoratifs sont rognés par leur propre conteneur ci-dessous).
@@ -146,7 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Header / Navbar */}
         <header className="w-full border-b border-border bg-surface/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-app items-center justify-between px-4">
           <div className="flex items-center gap-3">
             {/* Navigation mobile */}
             <Link href="/" className="font-display text-xl font-black tracking-tight text-primary flex items-center gap-2 shrink-0" title="Wilinwi">
@@ -316,7 +332,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Layout Container */}
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 pt-6 pb-24 sm:pb-6">
+      <div className="mx-auto flex max-w-app gap-6 px-4 pt-6 pb-24 sm:pb-6">
         {/* Floating Sidebar (Desktop) */}
         <nav className="hidden w-52 shrink-0 sm:block">
           <div className="sticky top-20 flex flex-col gap-4 rounded border border-border bg-surface p-4 shadow-sm">
@@ -360,24 +376,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {menuItems.filter((item) => canSee(item.module, item.href))
-            .slice(0, 4)
-            .map(({ href, label, icon: Icon }) => {
-              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn(
-                    'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
-                    active ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
-                  )}
-                >
-                  <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
-                  <span className="max-w-[64px] truncate">{label}</span>
-                </Link>
-              );
-            })}
+          {mobileTabItems.map(({ href, label, icon: Icon }) => {
+            const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition-colors',
+                  active ? 'text-primary' : 'text-text-secondary hover:text-text-primary',
+                )}
+              >
+                <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
+                <span className="max-w-[64px] truncate">{label}</span>
+              </Link>
+            );
+          })}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-text-secondary transition-colors hover:text-text-primary"

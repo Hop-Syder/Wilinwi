@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Truck, X, Trash2, CheckCircle2, Ban, ArrowRight, Mic, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, X, Trash2, CheckCircle2, Ban, ArrowRight } from 'lucide-react';
 import {
   DISPATCH_STATUS_LABELS,
   type DispatchOrderDto,
@@ -19,10 +19,11 @@ import {
   type VoiceInterpretResult,
   type VoiceProductCandidate,
 } from '@wilinwi/types';
-import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
+import { Button, Card, Badge, Input, Select, BottomSheet, VoiceButton } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useSync } from '@/lib/use-sync';
 import { useVoiceCapture } from '@/lib/use-voice-capture';
+import { useMinWidth } from '@/lib/use-min-width';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -55,6 +56,7 @@ export default function DispatchPage() {
   // Commande vocale : ne fait QUE pré-remplir ce même formulaire — la
   // création reste déclenchée uniquement par le clic manuel sur "Créer".
   const voice = useVoiceCapture();
+  const isDesktop = useMinWidth(640);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [voiceClarification, setVoiceClarification] = useState<{
@@ -240,18 +242,13 @@ export default function DispatchPage() {
             ]}
           />
           {!voice.disabled && (
-            <button
-              type="button"
+            <VoiceButton
               disabled={offline}
+              state={voiceLoading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
               onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleVoiceTranscript))}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
-                voice.isRecording ? 'animate-pulse bg-red-500 text-white' : 'bg-brand text-white hover:bg-brand/90'
-              } disabled:opacity-40`}
               aria-label="Commande vocale : pré-remplir un dispatch"
               title="Commande vocale (ex. « Envoie 50 Coca-Cola à la Boutique B »)"
-            >
-              {voiceLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-            </button>
+            />
           )}
           <div id="tour-dispatch-new">
             <Button onClick={openCreate} disabled={offline}>
@@ -267,7 +264,9 @@ export default function DispatchPage() {
 
       {voice.isRecording && <p className="mt-2 text-sm text-slate-500">Je vous écoute…</p>}
       {voiceStatus && <p className="mt-2 text-sm font-medium text-amber-600">{voiceStatus}</p>}
-      {voiceClarification && (
+      {/* Ambiguïté produit : carte en ligne desktop (rendu existant, inchangé),
+          bottom sheet en dessous de 640px (§19) — jamais de choix automatique. */}
+      {voiceClarification && isDesktop && (
         <div className="mt-2 rounded-xl border border-brand/20 bg-brand/5 p-3">
           <p className="text-sm font-medium text-slate-700">{voiceClarification.question}</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -285,6 +284,28 @@ export default function DispatchPage() {
             Annuler
           </Button>
         </div>
+      )}
+      {voiceClarification && !isDesktop && (
+        <BottomSheet
+          open
+          onClose={() => setVoiceClarification(null)}
+          title={voiceClarification.question}
+        >
+          <div className="flex flex-wrap gap-2">
+            {voiceClarification.candidates.map((c) => (
+              <button
+                key={c.productId}
+                onClick={() => pickVoiceCandidate(c)}
+                className="rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
+              >
+                {c.nom}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" className="mt-3" onClick={() => setVoiceClarification(null)}>
+            Annuler
+          </Button>
+        </BottomSheet>
       )}
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
