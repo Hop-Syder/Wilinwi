@@ -66,6 +66,24 @@ packages:
      de l'API garde `DATABASE_URL` (`PrismaService`, RLS). Exception : `app.current_tenant_id()` (helper
      RLS) reste exécutable par tous. Tarifs/limites pilotables → table `plan_configs` (lue par
      `PlanConfigService`, cache) ; modules « à la carte » par entreprise → `Tenant.moduleAddons`.
+- **Authentification (double mécanisme)** : `AuthGuard` vérifie d'abord les tokens Supabase
+  (**ES256**, clés asymétriques via le **JWKS distant** du projet — `createRemoteJWKSet`,
+  rotation native) ; en cas d'échec il retombe sur **HS256** (`SUPABASE_JWT_SECRET`) — le chemin
+  des tokens **PIN** mintés par `AuthService.pinLogin()` (bascule de profil sur poste partagé,
+  jamais émis par Supabase donc jamais dans son JWKS). Voir
+  [jwt-verifier.ts](apps/api/src/common/jwt-verifier.ts). Anti-bruteforce PIN **persistant en
+  base** (`User.pinFailCount`/`pinLockedUntil`, pas en mémoire) via
+  [pin-lock.ts](apps/api/src/auth/pin-lock.ts) — 5 échecs → verrou 60s.
+- **Gating numérique & grand-père** : les limites par plan (`maxUsers`, `maxEtablissements`,
+  `maxProducts`, `maxPhotos`) sont enforced côté serveur (services `auth`, `users`,
+  `etablissement`, `stock`), sauf pour les tenants **grand-père** — `ctx.isGrandfathered`
+  (calculé dans `AuthGuard` via [grandfather.ts](apps/api/src/common/grandfather.ts)) : vrai si
+  le gating n'a jamais été activé globalement (`plan_configs.activated_at` NULL), si le tenant a
+  été créé avant cette activation, ou si `Tenant.grandfatheredUntil` (override individuel) est
+  dans le futur. Activation globale → `app.platform_set_gating_activated()` (SQL, synchronise
+  `activated_at` sur les 4 plans en une transaction — ne jamais poser la date plan par plan).
+  Cron horaire `BillingCronService` (`ENABLE_BILLING_CRON=true`) relance les impayés via
+  `app.billing_run_overdue()`.
 
 ## Démarrer
 
@@ -137,6 +155,10 @@ approvisionnement (fournisseurs/dette, commandes, réception, **Dispatch**), sto
 emplacement (`ProductStock`), livraisons, **centre de notifications** in-app, et toute la
 **console super-admin** : entreprises, facturation manuelle (échéances, dunning, paiement),
 plans/tarifs/limites éditables (`plan_configs`), modules à la carte, métriques & audit cross-tenant.
+**Gating numérique par plan + grand-père**, cron de relance d'impayés, et anti-bruteforce PIN
+persistant (voir § Concepts clés). Backend déployé sur **Render** (Blueprint
+[render.yaml](render.yaml)), frontends sur **Vercel** — voir [README.md](README.md#☁️-déploiement)
+pour la configuration détaillée.
 
 ## Hors périmètre (à venir)
 

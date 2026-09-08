@@ -50,6 +50,21 @@ graph TD
 - **Offline-first abouti.** Le POS écrit en IndexedDB et synchronise via
   `POST /api/sync/sales`, idempotent par `clientGeneratedId`
   ([sales.service.ts:48-73](apps/api/src/pos/sales.service.ts#L48-L73)).
+- **Authentification à double mécanisme, sans secret partagé pour le cas nominal.**
+  `AuthGuard` vérifie les tokens Supabase via **JWKS distant** (ES256, rotation de clé
+  native) et ne retombe sur un secret HS256 interne que pour le token PIN (poste
+  partagé, jamais émis par Supabase) — voir
+  [jwt-verifier.ts](apps/api/src/common/jwt-verifier.ts). Anti-bruteforce PIN
+  **persistant en base** (`User.pinFailCount`/`pinLockedUntil`), pas en mémoire : ne
+  se réinitialise pas à chaque redeploy et fonctionne à N instances.
+- **Gating numérique par plan avec grand-père, pas un simple plafond binaire.**
+  Les limites (`maxUsers`, `maxEtablissements`, `maxProducts`, `maxPhotos`) sont
+  enforced serveur avec un bypass pour les tenants antérieurs à l'activation globale
+  du gating (`ctx.isGrandfathered`,
+  [grandfather.ts](apps/api/src/common/grandfather.ts)) — évite de casser des clients
+  existants au moment d'activer la fonctionnalité. Activation globale atomique sur
+  les 4 plans via `app.platform_set_gating_activated()` (SQL), plutôt qu'un champ par
+  plan qui risquerait de diverger silencieusement.
 
 ### Verdict sur le choix d'architecture
 
