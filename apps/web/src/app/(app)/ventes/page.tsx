@@ -32,7 +32,7 @@ import {
   Store,
 } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod, type ClientDto } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+import { Button, Card, Badge, formatFCFA, IconButton } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
@@ -593,20 +593,19 @@ export default function VentesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
+                        <IconButton
+                          icon={<Eye className="h-4 w-4" />}
                           onClick={() => setDetail(s)}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                          aria-label="Voir le détail"
                           title="Voir le détail"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
+                        />
+                        <IconButton
+                          icon={<ReceiptIcon className="h-4 w-4" />}
                           onClick={() => setReceipt(s)}
-                          className="rounded-lg p-1.5 text-brand hover:bg-blue-50 transition-colors"
+                          className="text-brand hover:bg-blue-50"
+                          aria-label="Voir le reçu"
                           title="Voir le reçu"
-                        >
-                          <ReceiptIcon className="h-4 w-4" />
-                        </button>
+                        />
                         {s.status === 'PENDING_PAYMENT' && (
                           <button
                             onClick={() => setPaymentSale(s)}

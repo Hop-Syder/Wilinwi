@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA, formatQty } from '@wilinwi/ui';
+import { Button, Card, Badge, IconButton, formatFCFA, formatQty, iconButtonVariants } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
@@ -179,153 +179,286 @@ export default function StockPage() {
         </div>
       </div>
 
-      {/* Tableau */}
-      <Card className="mt-6 overflow-x-auto p-0" id="tour-stock-list">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-left text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Produit</th>
-              <th className="px-4 py-3 font-medium">Catégorie</th>
-              <th className="px-4 py-3 font-medium">Catalogue</th>
-              {canSeeCost && <th className="px-4 py-3 font-medium">Achat</th>}
-              <th className="px-4 py-3 font-medium">Stock total</th>
-              <th className="px-4 py-3 font-medium text-right" id="tour-stock-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.map((p) => {
-              const isExpanded = expandedRows.has(p.id);
-              const breakdown = p.stockParEtablissement;
-              const hasBreakdown = canSeeBreakdown && breakdown && Object.keys(breakdown).length > 1;
-              return [
-                <tr
-                  key={p.id}
-                  className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/50 ${hasBreakdown ? 'cursor-pointer' : ''}`}
+      {/* Catalogue */}
+      <Card className="mt-6 overflow-hidden p-0" id="tour-stock-list">
+        {/* 📱 Mobile : cartes empilées */}
+        <div className="divide-y divide-slate-100 md:hidden">
+          {filteredProducts.map((p) => {
+            const isExpanded = expandedRows.has(p.id);
+            const breakdown = p.stockParEtablissement;
+            const hasBreakdown = canSeeBreakdown && breakdown && Object.keys(breakdown).length > 1;
+            return (
+              <div key={p.id} className="p-4">
+                <div
+                  className={`flex items-start justify-between gap-3 ${hasBreakdown ? 'cursor-pointer' : ''}`}
                   onClick={hasBreakdown ? () => toggleRow(p.id) : undefined}
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {p.photos && p.photos.length > 0 ? (
-                        <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-slate-200">
-                          <Image src={p.photos[0]} alt={p.nom} fill sizes="36px" className="object-cover" unoptimized />
-                        </span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {p.photos && p.photos.length > 0 ? (
+                      <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                        <Image src={p.photos[0]} alt={p.nom} fill sizes="40px" className="object-cover" unoptimized />
+                      </span>
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+                        <Package className="h-5 w-5" />
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium text-slate-900">{p.nom}</span>
+                        {p.variants && p.variants.length > 0 && (
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            {p.variants.length} var.
+                          </span>
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-slate-400">
+                        {p.sku ? `${p.sku} · ` : ''}{p.categorie || 'Sans catégorie'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Badge tone={p.stock <= (p.seuilAlerte ?? 5) ? 'danger' : 'success'}>
+                      {formatQty(p.stock)}
+                    </Badge>
+                    {hasBreakdown &&
+                      (isExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
                       ) : (
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
-                          <Package className="h-4 w-4" />
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900">{p.nom}</span>
-                          {p.variants && p.variants.length > 0 && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                              {p.variants.length} var.
-                            </span>
-                          )}
-                        </div>
-                        {p.sku && <div className="text-xs text-slate-400">{p.sku}</div>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">{p.categorie || '—'}</td>
-                  <td className="tabular px-4 py-3">{formatFCFA(p.prixCatalogue)}</td>
-                  {canSeeCost && (
-                    <td className="tabular px-4 py-3 text-slate-600">
-                      {p.prixAchat !== undefined ? formatFCFA(p.prixAchat) : '—'}
-                    </td>
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                      ))}
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="tabular font-semibold text-slate-800">
+                    {formatFCFA(p.prixCatalogue)}
+                  </span>
+                  {canSeeCost && p.prixAchat !== undefined && (
+                    <span className="tabular text-xs text-slate-400">
+                      Achat : {formatFCFA(p.prixAchat)}
+                    </span>
                   )}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <Badge tone={p.stock <= (p.seuilAlerte ?? 5) ? 'danger' : 'success'}>
-                        {formatQty(p.stock)}
-                      </Badge>
-                      {hasBreakdown && (
-                        isExpanded
-                          ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-                          : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2">
-                      {canWrite && (
-                        <>
-                          <button
-                            onClick={() => setMovementProduct(p)}
-                            className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors"
-                            title="Mouvement de stock"
-                          >
-                            <ArrowRightLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-                            title="Modifier le produit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      <Link
-                        href={`/stock/${p.id}`}
-                        className="p-1.5 text-slate-400 hover:text-brand rounded-md hover:bg-brand/10 transition-colors"
-                        title="Historique"
-                      >
-                        <Clock className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>,
-                // Ligne de breakdown par boutique (expandable)
-                isExpanded && hasBreakdown && (
-                  <tr key={`${p.id}-breakdown`} className="bg-slate-50/70 border-b border-slate-100">
-                    <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-3 pl-12">
-                        {Object.entries(breakdown!).map(([etabId, qty]) => (
-                          <div key={etabId} className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <Store className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="font-medium">
-                              {etablissementNames[etabId] ?? etabId}
-                            </span>
-                            <span className="text-slate-400">·</span>
-                            <Badge tone={qty <= (p.seuilAlerte ?? 5) ? 'danger' : 'neutral'}>
-                              {formatQty(qty)}
-                            </Badge>
-                          </div>
-                        ))}
+                </div>
+
+                {isExpanded && hasBreakdown && (
+                  <div className="mt-2 flex flex-wrap gap-3 rounded-lg bg-slate-50/70 p-2.5">
+                    {Object.entries(breakdown!).map(([etabId, qty]) => (
+                      <div key={etabId} className="flex items-center gap-1.5 text-xs text-slate-600">
+                        <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <span className="font-medium">{etablissementNames[etabId] ?? etabId}</span>
+                        <span className="text-slate-400">·</span>
+                        <Badge tone={qty <= (p.seuilAlerte ?? 5) ? 'danger' : 'neutral'}>
+                          {formatQty(qty)}
+                        </Badge>
                       </div>
-                    </td>
-                  </tr>
-                ),
-              ];
-            })}
-            {filteredProducts.length === 0 && (
-              <tr>
-                <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-12 text-center">
-                  <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                  {products.length === 0 ? (
+                    ))}
+                  </div>
+                )}
+
+                <div
+                  className="mt-3 flex items-center justify-end gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {canWrite && (
                     <>
-                      <p className="font-medium text-slate-700">Votre catalogue est vide</p>
-                      <p className="mt-1 text-sm text-slate-400">
-                        Ajoutez votre premier produit pour commencer à vendre.
-                      </p>
-                      {canWrite && (
-                        <Button
-                          className="mt-4"
-                          onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}
-                        >
-                          <Plus className="h-4 w-4" /> Ajouter un produit
-                        </Button>
-                      )}
+                      <IconButton
+                        icon={<ArrowRightLeft className="h-4 w-4" />}
+                        onClick={() => setMovementProduct(p)}
+                        aria-label="Mouvement de stock"
+                        title="Mouvement de stock"
+                      />
+                      <IconButton
+                        icon={<Edit className="h-4 w-4" />}
+                        onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                        aria-label="Modifier le produit"
+                        title="Modifier le produit"
+                      />
                     </>
-                  ) : (
-                    <p className="text-sm text-slate-400">Aucun produit ne correspond à votre recherche.</p>
                   )}
-                </td>
+                  <Link href={`/stock/${p.id}`} className={iconButtonVariants()} aria-label="Historique" title="Historique">
+                    <Clock className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+          {filteredProducts.length === 0 && (
+            <div className="p-12 text-center text-slate-400">
+              <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              {products.length === 0 ? (
+                <>
+                  <p className="font-medium text-slate-700">Votre catalogue est vide</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Ajoutez votre premier produit pour commencer à vendre.
+                  </p>
+                  {canWrite && (
+                    <Button
+                      className="mt-4"
+                      onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}
+                    >
+                      <Plus className="h-4 w-4" /> Ajouter un produit
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-400">Aucun produit ne correspond à votre recherche.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 🖥️ Desktop : tableau */}
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 text-left text-slate-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Produit</th>
+                <th className="px-4 py-3 font-medium">Catégorie</th>
+                <th className="px-4 py-3 font-medium">Catalogue</th>
+                {canSeeCost && <th className="px-4 py-3 font-medium">Achat</th>}
+                <th className="px-4 py-3 font-medium">Stock total</th>
+                <th className="px-4 py-3 font-medium text-right" id="tour-stock-actions">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredProducts.map((p) => {
+                const isExpanded = expandedRows.has(p.id);
+                const breakdown = p.stockParEtablissement;
+                const hasBreakdown = canSeeBreakdown && breakdown && Object.keys(breakdown).length > 1;
+                return [
+                  <tr
+                    key={p.id}
+                    className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/50 ${hasBreakdown ? 'cursor-pointer' : ''}`}
+                    onClick={hasBreakdown ? () => toggleRow(p.id) : undefined}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {p.photos && p.photos.length > 0 ? (
+                          <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-slate-200">
+                            <Image src={p.photos[0]} alt={p.nom} fill sizes="36px" className="object-cover" unoptimized />
+                          </span>
+                        ) : (
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+                            <Package className="h-4 w-4" />
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-slate-900">{p.nom}</span>
+                            {p.variants && p.variants.length > 0 && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {p.variants.length} var.
+                              </span>
+                            )}
+                          </div>
+                          {p.sku && <div className="text-xs text-slate-400">{p.sku}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{p.categorie || '—'}</td>
+                    <td className="tabular px-4 py-3">{formatFCFA(p.prixCatalogue)}</td>
+                    {canSeeCost && (
+                      <td className="tabular px-4 py-3 text-slate-600">
+                        {p.prixAchat !== undefined ? formatFCFA(p.prixAchat) : '—'}
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Badge tone={p.stock <= (p.seuilAlerte ?? 5) ? 'danger' : 'success'}>
+                          {formatQty(p.stock)}
+                        </Badge>
+                        {hasBreakdown && (
+                          isExpanded
+                            ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {canWrite && (
+                          <>
+                            <IconButton
+                              size="sm"
+                              icon={<ArrowRightLeft className="h-4 w-4" />}
+                              onClick={() => setMovementProduct(p)}
+                              className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                              aria-label="Mouvement de stock"
+                              title="Mouvement de stock"
+                            />
+                            <IconButton
+                              size="sm"
+                              icon={<Edit className="h-4 w-4" />}
+                              onClick={() => { setEditingProduct(p); setShowProductModal(true); }}
+                              className="text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                              aria-label="Modifier le produit"
+                              title="Modifier le produit"
+                            />
+                          </>
+                        )}
+                        <Link
+                          href={`/stock/${p.id}`}
+                          className={iconButtonVariants({ size: 'sm', className: 'text-slate-400 hover:text-brand hover:bg-brand/10' })}
+                          aria-label="Historique"
+                          title="Historique"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>,
+                  // Ligne de breakdown par boutique (expandable)
+                  isExpanded && hasBreakdown && (
+                    <tr key={`${p.id}-breakdown`} className="bg-slate-50/70 border-b border-slate-100">
+                      <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-3 pl-12">
+                          {Object.entries(breakdown!).map(([etabId, qty]) => (
+                            <div key={etabId} className="flex items-center gap-1.5 text-xs text-slate-600">
+                              <Store className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span className="font-medium">
+                                {etablissementNames[etabId] ?? etabId}
+                              </span>
+                              <span className="text-slate-400">·</span>
+                              <Badge tone={qty <= (p.seuilAlerte ?? 5) ? 'danger' : 'neutral'}>
+                                {formatQty(qty)}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ),
+                ];
+              })}
+              {filteredProducts.length === 0 && (
+                <tr>
+                  <td colSpan={canSeeCost ? 6 : 5} className="px-4 py-12 text-center">
+                    <Package className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                    {products.length === 0 ? (
+                      <>
+                        <p className="font-medium text-slate-700">Votre catalogue est vide</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          Ajoutez votre premier produit pour commencer à vendre.
+                        </p>
+                        {canWrite && (
+                          <Button
+                            className="mt-4"
+                            onClick={() => { setEditingProduct(undefined); setShowProductModal(true); }}
+                          >
+                            <Plus className="h-4 w-4" /> Ajouter un produit
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-400">Aucun produit ne correspond à votre recherche.</p>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       {/* Modales */}

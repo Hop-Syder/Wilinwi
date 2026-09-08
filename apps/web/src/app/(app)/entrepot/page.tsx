@@ -12,7 +12,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Truck, Plus, CheckCircle, Clock, Ban, DollarSign, Search, Eye, AlertTriangle, FileDown } from 'lucide-react';
-import { Button, Card, Badge } from '@wilinwi/ui';
+import { Button, Card, Badge, IconButton } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -310,8 +310,51 @@ export default function EntrepotPage() {
           <p className="text-sm text-slate-500">Chargement des données...</p>
         </div>
       ) : (
-        <Card className="overflow-x-auto p-0 border border-slate-100 shadow-sm">
+        <Card className="overflow-hidden p-0 border border-slate-100 shadow-sm">
           {activeTab === 'suppliers' && (
+          <>
+            {/* 📱 Mobile : cartes empilées */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filteredSuppliers.length === 0 ? (
+                <div className="px-4 py-8 text-center text-slate-400">Aucun fournisseur trouvé.</div>
+              ) : (
+                filteredSuppliers.map((s) => (
+                  <div key={s.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900">{s.nom}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {[s.telephone, s.contact].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                        {s.adresse && <p className="truncate text-xs text-slate-400">{s.adresse}</p>}
+                      </div>
+                      <span className="tabular shrink-0 text-sm font-bold text-red-600">
+                        {s.soldeDette.toLocaleString('fr-FR')} FCFA
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      {s.soldeDette > 0 && (
+                        <button
+                          onClick={() => setShowPaymentModal(s)}
+                          className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand/30 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand/5"
+                        >
+                          Régler dette
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setSelectedSupplier(s); setShowSupplierModal(true); }}
+                        className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        Modifier
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 🖥️ Desktop : tableau */}
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
                 <tr>
@@ -355,9 +398,70 @@ export default function EntrepotPage() {
                 )}
               </tbody>
             </table>
+            </div>
+          </>
           )}
 
           {activeTab === 'orders' && (
+          <>
+            {/* 📱 Mobile : cartes empilées */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filteredOrders.length === 0 ? (
+                <div className="px-4 py-8 text-center text-slate-400">Aucun bon de commande trouvé.</div>
+              ) : (
+                filteredOrders.map((o) => (
+                  <div key={o.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm font-bold text-slate-900">{o.reference}</p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {o.fournisseurNom ?? '—'} · {o.etablissementNom ?? '—'}
+                        </p>
+                      </div>
+                      <Badge tone={STATUS_TONES[o.statut]}>{STATUS_LABELS[o.statut]}</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="tabular font-bold text-slate-900">
+                        {o.montantTotal.toLocaleString('fr-FR')} FCFA
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Reçu {o.montantRecu.toLocaleString('fr-FR')} · Payé {o.montantPaye.toLocaleString('fr-FR')}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+                      <IconButton
+                        icon={<Eye className="h-4 w-4" />}
+                        onClick={() => setViewPoInvoice(o)}
+                        aria-label="Voir la facture"
+                        title="Voir la facture"
+                      />
+                      <IconButton
+                        icon={<FileDown className="h-4 w-4" />}
+                        onClick={() => void handleDownloadPoPdf(o)}
+                        disabled={downloadingPoId === o.id}
+                        aria-label="Télécharger la facture PDF"
+                        title="Télécharger la facture PDF"
+                      />
+                      {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
+                        <Link href={`/entrepot/reception/${o.id}`}>
+                          <Button size="sm" className="text-xs bg-brand hover:bg-brand/90 text-white">
+                            Réceptionner
+                          </Button>
+                        </Link>
+                      )}
+                      {(o.statut === 'DRAFT' || o.statut === 'ORDERED') && (
+                        <Button size="sm" variant="outline" onClick={() => handleCancelOrder(o.id)} className="text-xs border-red-200 text-red-500 hover:bg-red-50">
+                          Annuler
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 🖥️ Desktop : tableau */}
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
                 <tr>
@@ -392,21 +496,21 @@ export default function EntrepotPage() {
                         <div>Payé: {o.montantPaye.toLocaleString('fr-FR')}</div>
                       </td>
                       <td className="px-4 py-3 text-right flex justify-end gap-2 items-center">
-                        <button
+                        <IconButton
+                          icon={<Eye className="h-4 w-4" />}
                           onClick={() => setViewPoInvoice(o)}
-                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors"
+                          className="text-slate-400 hover:text-brand hover:bg-brand/10"
+                          aria-label="Voir la facture"
                           title="Voir la facture"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
+                        />
+                        <IconButton
+                          icon={<FileDown className="h-4 w-4" />}
                           onClick={() => void handleDownloadPoPdf(o)}
                           disabled={downloadingPoId === o.id}
-                          className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors disabled:opacity-50"
+                          className="text-slate-400 hover:text-brand hover:bg-brand/10"
+                          aria-label="Télécharger la facture PDF"
                           title="Télécharger la facture PDF"
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </button>
+                        />
                         {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
                           <Link href={`/entrepot/reception/${o.id}`}>
                             <Button size="sm" className="text-xs bg-brand hover:bg-brand/90 text-white">
@@ -425,9 +529,41 @@ export default function EntrepotPage() {
                 )}
               </tbody>
             </table>
+            </div>
+          </>
           )}
 
           {activeTab === 'payments' && (
+          <>
+            {/* 📱 Mobile : cartes empilées */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filteredPayments.length === 0 ? (
+                <div className="px-4 py-8 text-center text-slate-400">Aucun règlement trouvé.</div>
+              ) : (
+                filteredPayments.map((p) => {
+                  const supplier = suppliers.find((s) => s.id === p.fournisseurId);
+                  return (
+                    <div key={p.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{supplier?.nom ?? 'Fournisseur inconnu'}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {new Date(p.createdAt).toLocaleString('fr-FR')} · {p.methode}
+                          </p>
+                          {p.note && <p className="truncate text-xs text-slate-400">{p.note}</p>}
+                        </div>
+                        <span className="tabular shrink-0 text-sm font-bold text-emerald-600">
+                          {p.montant.toLocaleString('fr-FR')} FCFA
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 🖥️ Desktop : tableau */}
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-left font-medium">
                 <tr>
@@ -461,6 +597,8 @@ export default function EntrepotPage() {
                 )}
               </tbody>
             </table>
+            </div>
+          </>
           )}
         </Card>
       )}

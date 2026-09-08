@@ -266,7 +266,7 @@ export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoi
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 mb-8 text-sm">
           <div>
             <h3 className="font-semibold text-slate-400 uppercase tracking-wider mb-2">Informations</h3>
             <div className="space-y-1">

@@ -19,7 +19,7 @@ import {
   type VoiceInterpretResult,
   type VoiceProductCandidate,
 } from '@wilinwi/types';
-import { Button, Card, Badge, Input, Select, BottomSheet, VoiceButton } from '@wilinwi/ui';
+import { Button, Card, Badge, Input, Select, BottomSheet, VoiceButton, IconButton } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useSync } from '@/lib/use-sync';
 import { useVoiceCapture } from '@/lib/use-voice-capture';
@@ -419,9 +419,12 @@ export default function DispatchPage() {
                       onChange={(e) => { const n = [...rows]; n[idx].quantite = e.target.value; setRows(n); }}
                       className="w-24"
                     />
-                    <button type="button" onClick={() => setRows(rows.filter((_, i) => i !== idx))} className="p-1.5 text-red-500 hover:text-red-700">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <IconButton
+                      icon={<Trash2 className="h-4 w-4" />}
+                      tone="danger"
+                      onClick={() => setRows(rows.filter((_, i) => i !== idx))}
+                      aria-label="Retirer cette ligne"
+                    />
                   </div>
                 ))}
               </div>

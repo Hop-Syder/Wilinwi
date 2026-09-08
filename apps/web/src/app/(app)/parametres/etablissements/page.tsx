@@ -17,7 +17,7 @@ import {
   type EtablissementDto,
   type EtablissementType,
 } from '@wilinwi/types';
-import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
+import { Button, Card, Badge, Input, Select, IconButton } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -189,15 +189,27 @@ export default function EtablissementsPage() {
               </div>
             </div>
             <div className="flex shrink-0 gap-1">
-              <button onClick={() => openEdit(e)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="Modifier">
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button onClick={() => toggleActif(e)} disabled={busy} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title={e.actif ? 'Désactiver' : 'Activer'}>
-                <Power className={`h-4 w-4 ${e.actif ? 'text-emerald-600' : 'text-red-500'}`} />
-              </button>
-              <button onClick={() => remove(e)} disabled={busy} className="rounded-lg p-1.5 text-slate-500 hover:bg-danger/10 hover:text-danger" title="Supprimer">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <IconButton
+                icon={<Pencil className="h-4 w-4" />}
+                onClick={() => openEdit(e)}
+                aria-label="Modifier"
+                title="Modifier"
+              />
+              <IconButton
+                icon={<Power className={`h-4 w-4 ${e.actif ? 'text-emerald-600' : 'text-red-500'}`} />}
+                onClick={() => toggleActif(e)}
+                disabled={busy}
+                aria-label={e.actif ? 'Désactiver' : 'Activer'}
+                title={e.actif ? 'Désactiver' : 'Activer'}
+              />
+              <IconButton
+                icon={<Trash2 className="h-4 w-4" />}
+                tone="danger"
+                onClick={() => remove(e)}
+                disabled={busy}
+                aria-label="Supprimer"
+                title="Supprimer"
+              />
             </div>
           </Card>
         ))}

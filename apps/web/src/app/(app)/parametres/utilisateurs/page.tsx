@@ -19,7 +19,7 @@ import {
   type UserDto,
   type EtablissementDto,
 } from '@wilinwi/types';
-import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
+import { Button, Card, Badge, Input, Select, IconButton } from '@wilinwi/ui';
 import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
@@ -334,16 +334,27 @@ export default function UtilisateursPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    <button onClick={() => openEdit(u)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="Éditer">
-                      <ShieldCheck className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => resetPin(u)} className="rounded-lg p-1.5 text-brand hover:bg-brand-50" title="Définir le PIN">
-                      <KeyRound className="h-4 w-4" />
-                    </button>
+                    <IconButton
+                      icon={<ShieldCheck className="h-4 w-4" />}
+                      onClick={() => openEdit(u)}
+                      aria-label="Éditer"
+                      title="Éditer"
+                    />
+                    <IconButton
+                      icon={<KeyRound className="h-4 w-4" />}
+                      onClick={() => resetPin(u)}
+                      className="text-brand"
+                      aria-label="Définir le PIN"
+                      title="Définir le PIN"
+                    />
                     {u.role !== 'OWNER' && (
-                      <button onClick={() => toggleActif(u)} disabled={busy} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title={u.actif ? 'Désactiver' : 'Activer'}>
-                        <Power className={`h-4 w-4 ${u.actif ? 'text-emerald-600' : 'text-red-500'}`} />
-                      </button>
+                      <IconButton
+                        icon={<Power className={`h-4 w-4 ${u.actif ? 'text-emerald-600' : 'text-red-500'}`} />}
+                        onClick={() => toggleActif(u)}
+                        disabled={busy}
+                        aria-label={u.actif ? 'Désactiver' : 'Activer'}
+                        title={u.actif ? 'Désactiver' : 'Activer'}
+                      />
                     )}
                   </div>
                 </td>
