@@ -82,7 +82,7 @@
 ├── design-system/    # MASTER.md
 ├── scripts/          # add-headers.js, test-addons.ts, upgrade-to-business.mjs
 ├── .github/workflows/ci.yml
-└── README.md, CLAUDE.md, AGENTS.md, buinessplan.md, raisonnement.md,
+└── README.md, CLAUDE.md, AGENTS.md, businessplan.md, raisonnement.md,
     dexty.config.yaml, railway.toml, .env.example</pre>
 
 <h2>4. Architecture</h2>
@@ -130,7 +130,7 @@ PostgreSQL/Supabase — schéma multi-tenant (Tenant + tables à tenantId)</div>
 <table>
 <tr><th>#</th><th>Risque</th><th>Détail</th></tr>
 <tr><td>1</td><td><code>pnpm lint</code> inopérant</td><td>ESLint absent des dépendances + aucune config. La qualité statique repose uniquement sur <code>typecheck</code> ; la CI ne lance pas lint et ne détecte donc pas le problème.</td></tr>
-<tr><td>2</td><td>Monétisation neutralisée</td><td>Les audits internes (<code>docs/audit-report-independant.md</code>) confirment : gating des plans désactivé, facturation inexistante, alors que <code>buinessplan.md</code> définit STARTER/PRO/BUSINESS/ENTERPRISE. Angle mort n°1 selon l'auditeur.</td></tr>
+<tr><td>2</td><td>Monétisation neutralisée</td><td>Les audits internes (<code>docs/audit-report-independant.md</code>) confirment : gating des plans désactivé, facturation inexistante, alors que <code>businessplan.md</code> définit STARTER/PRO/BUSINESS/ENTERPRISE. Angle mort n°1 selon l'auditeur.</td></tr>
 <tr><td>3</td><td>Vecteur de fraude offline</td><td>Les ventes IndexedDB hors-ligne sont manipulables côté client avant synchro (documenté dans les audits).</td></tr>
 </table>
 <h3><span class="tag imp">Importants</span></h3>
@@ -144,7 +144,7 @@ PostgreSQL/Supabase — schéma multi-tenant (Tenant + tables à tenantId)</div>
 <h3><span class="tag min">Mineurs</span></h3>
 <ul>
   <li>Suppression non commitée de <code>Wilinwi_Plan_Projet.docx</code>.</li>
-  <li>Typo de nom de fichier <code>buinessplan.md</code> (→ <code>businessplan.md</code>).</li>
+  <li>Typo de nom de fichier <code>businessplan.md</code> (→ <code>businessplan.md</code>).</li>
   <li>Pas de <code>LICENSE</code>, pas de <code>CONTRIBUTING</code>, pas de <code>docs/adr/</code> (alors qu'AGENTS.md demande d'y persister les décisions), pas de <code>.nvmrc</code>.</li>
   <li>CORS ouvert à toutes origines si <code>CORS_ORIGINS</code> absent (choix conscient avec alerte log — <code>main.ts:31-46</code>).</li>
   <li><code>apps/web</code> et <code>apps/admin-web</code> sans script <code>test</code> (skippés par turbo) — légitime mais à expliciter.</li>
@@ -162,7 +162,7 @@ PostgreSQL/Supabase — schéma multi-tenant (Tenant + tables à tenantId)</div>
 </div>
 
 <h2>9. Documentation</h2>
-<p><strong>Existante</strong> : README (stack, sécurité plateforme, déploiements Vercel/Railway, CI) · CLAUDE.md (conventions, RLS/rôles) · 2 audits produit/architecture (juin 2026) · <code>docs/cadrage-roles.md</code> · <code>docs/pilotage-admin.md</code> · <code>docs/plan-projet-admin.md</code> · <code>architecture/evaluation_architecture.md</code> · <code>buinessplan.md</code> · <code>design-system/MASTER.md</code>.</p>
+<p><strong>Existante</strong> : README (stack, sécurité plateforme, déploiements Vercel/Railway, CI) · CLAUDE.md (conventions, RLS/rôles) · 2 audits produit/architecture (juin 2026) · <code>docs/cadrage-roles.md</code> · <code>docs/pilotage-admin.md</code> · <code>docs/plan-projet-admin.md</code> · <code>architecture/evaluation_architecture.md</code> · <code>businessplan.md</code> · <code>design-system/MASTER.md</code>.</p>
 <p><strong>Manquante</strong> : ADR formalisés (<code>docs/adr/</code>), guide de contribution, licence, doc d'API (OpenAPI/Swagger), diagrammes à jour.</p>
 
 <h2>10. Non vérifié dans cette session</h2>

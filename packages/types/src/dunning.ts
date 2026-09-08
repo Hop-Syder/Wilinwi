@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Logique de relance progressive des impayés (PAST_DUE).
- *   Cf. buinessplan.md §4 : J+0 (avertissement) → J+3 (restriction du non-vital)
+ *   Cf. businessplan.md §4 : J+0 (avertissement) → J+3 (restriction du non-vital)
  *   → J+7 (rétrogradation Starter, non bloquante) → J+30 (blocage, dernier recours).
  *   Tout est dérivé d'une date `pastDueSince` → aucun cron nécessaire pour les effets.
  * @created 2026-06-27
@@ -24,7 +24,7 @@ export const DUNNING_DAYS = { restricted: 3, downgraded: 7, blocked: 30 } as con
 /**
  * Catalogue bridé aux N articles les plus anciens lors de la rétrogradation
  * Starter (J+7). Les articles au-delà sont **masqués, jamais supprimés** ;
- * restauration instantanée au paiement (cf. buinessplan.md §4).
+ * restauration instantanée au paiement (cf. businessplan.md §4).
  */
 export const DOWNGRADE_MAX_PRODUCTS = 50;
 

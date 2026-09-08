@@ -20,7 +20,7 @@ export const MoneySchema = z.number().int().nonnegative();
 /** Quantité de stock — peut être négative en ajustement, entière. */
 export const QuantitySchema = z.number().int();
 
-/** Plans d'abonnement (cf. buinessplan.md). */
+/** Plans d'abonnement (cf. businessplan.md). */
 export const PLANS = ['STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE'] as const;
 export type Plan = (typeof PLANS)[number];
 export const PlanSchema = z.enum(PLANS);
@@ -35,7 +35,7 @@ export const ModuleKeySchema = z.enum(MODULES);
 
 /**
  * Modules inclus par plan — pilote le gating premium du Hub.
- * Échelle de valeur (cf. buinessplan.md §3) :
+ * Échelle de valeur (cf. businessplan.md §3) :
  *   STARTER  : vendre + stock + tableau de bord de base.
  *   PRO      : + trésorerie (dépenses/créances), ardoise client (CRM), livraisons.
  *   BUSINESS : + marketing (relances, fidélité).
@@ -54,7 +54,7 @@ export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {
 }
 
 /**
- * Limites par plan (cf. buinessplan.md §3). `UNLIMITED` = pas de plafond.
+ * Limites par plan (cf. businessplan.md §3). `UNLIMITED` = pas de plafond.
  * `maxDevices` défini ; enforcement appareils ultérieur.
  */
 export const PLAN_LIMITS: Record<
@@ -62,7 +62,7 @@ export const PLAN_LIMITS: Record<
   { maxUsers: number; maxEtablissements: number; maxDevices: number; maxPhotos: number }
 > = {
   // `maxPhotos` = nombre de photos par produit (galerie). 0 = images désactivées
-  // (réservées à Business+, cf. buinessplan.md §3).
+  // (réservées à Business+, cf. businessplan.md §3).
   STARTER: { maxUsers: 1, maxEtablissements: 1, maxDevices: 1, maxPhotos: 0 },
   PRO: { maxUsers: UNLIMITED, maxEtablissements: 2, maxDevices: 5, maxPhotos: 0 },
   BUSINESS: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: 30, maxPhotos: 6 },

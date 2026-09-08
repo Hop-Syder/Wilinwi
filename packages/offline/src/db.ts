@@ -3,14 +3,14 @@
  * @organization Nexus Partners
  * @description Gestionnaire de mode offline PWA : db.ts
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-09-08
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
 import Dexie, { type Table } from 'dexie';
-import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
+import type { CreateSaleInput, ProductDto, SaleRejectionKind } from '@wilinwi/types';
 
 /** Vente enregistrée localement, en attente de synchronisation. */
 export interface PendingSale {
@@ -24,6 +24,8 @@ export interface PendingSale {
    */
   status: 'pending' | 'syncing' | 'synced' | 'error' | 'rejected';
   error?: string;
+  /** Motif structuré du rejet serveur (protocole de sync) — présent si rejected. */
+  kind?: SaleRejectionKind;
   serverId?: string;
 }
 

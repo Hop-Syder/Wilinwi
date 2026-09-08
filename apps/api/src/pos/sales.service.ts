@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Service de gestion des ventes, implémentant la logique métier des 4 prix, du POS offline-first et des validations de gérant
  * @created 2026-06-19
- * @updated 2026-06-19
+ * @updated 2026-09-08
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -12,6 +12,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,13 +28,19 @@ import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
 import { toSaleDto, toSaleDtoList } from './sale.mapper';
 import {
-  exceedsCreditLimit,
   installmentStatus,
-  projectedCreditDebt,
-  resolveAcompte,
   resolvePayment,
   splitMixedPayment,
 } from './sales-logic';
+import {
+  aggregateDemand,
+  assertAcompteCoherent,
+  assertCreditWithinLimit,
+  assertDemandWithinStock,
+  SaleValidationError,
+  validateSaleLine,
+  type ValidatedLine,
+} from './sale-validation';
 
 @Injectable()
 export class SalesService {
@@ -83,63 +90,45 @@ export class SalesService {
       }
 
       let total = 0;
-      const lines: {
-        productId: string;
-        variantId: string | null;
-        quantite: number;
-        prixReel: number;
-        coutUnitaire: number;
-      }[] = [];
+      const lines: ValidatedLine[] = [];
 
       for (const item of input.items) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, tenantId: ctx.tenantId },
           include: { variants: true },
         });
-        if (!product) throw new NotFoundException(`Produit ${item.productId} introuvable`);
-
-        const variant = item.variantId ? product.variants.find(v => v.id === item.variantId) : null;
-        if (item.variantId && !variant) {
-          throw new BadRequestException(`Variante introuvable pour le produit "${product.nom}"`);
-        }
-
-        // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock).
-        // Pas de repli sur le stock global : sans établissement courant la vente
-        // est déjà refusée en amont (assertConcreteEtablissement) — on garde un
-        // refus explicite plutôt qu'un fallback silencieux si ce chemin changeait.
-        if (!ctx.etablissementId) {
-          throw new BadRequestException(
-            'Vente impossible sans établissement courant : sélectionnez une boutique.',
-          );
-        }
-        const availableStock = await readStockAt(
-          tx,
-          ctx.etablissementId,
-          product.id,
-          item.variantId ?? null,
-        );
-        if (item.quantite > availableStock) {
-          throw new BadRequestException(
-            `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite}, Disponible : ${availableStock}`
-          );
-        }
-
-        // Anti-fraude absolu : vente sous le prix plancher strictement refusée.
-        if (item.prixReel < product.prixPlancher) {
-          throw new BadRequestException(
-            `Opération refusée : le prix de vente de "${product.nom}" (${item.prixReel}) est inférieur au prix plancher fixe (${product.prixPlancher}).`,
-          );
-        }
-
-        total += item.prixReel * item.quantite;
-        lines.push({
-          productId: product.id,
-          variantId: item.variantId ?? null,
-          quantite: item.quantite,
-          prixReel: item.prixReel,
-          coutUnitaire: product.prixAchat,
+        // Validation contre les données serveur ACTUELLES (jamais celles embarquées
+        // hors-ligne) : existence, statut actif, variante, stock et plancher.
+        // Partagée par le chemin online et le chemin sync (sale-validation.ts).
+        const line = await validateSaleLine(item, {
+          product: product
+            ? {
+                id: product.id,
+                nom: product.nom,
+                prixAchat: product.prixAchat,
+                prixPlancher: product.prixPlancher,
+                actif: product.actif,
+                variantIds: product.variants.map((v) => v.id),
+              }
+            : null,
+          hasEtablissement: Boolean(ctx.etablissementId),
+          availableStock: () =>
+            product && ctx.etablissementId
+              ? readStockAt(tx, ctx.etablissementId, product.id, item.variantId ?? null)
+              : Promise.resolve(0),
         });
+        total += item.prixReel * item.quantite;
+        lines.push(line);
       }
+
+      // Contrôle agrégé du stock : des lignes dupliquées (même produit × variante,
+      // p.ex. payload hors-ligne manipulé) passeraient le contrôle unitaire ligne à
+      // ligne tout en dépassant le stock à elles deux — on borne la somme.
+      await assertDemandWithinStock(aggregateDemand(lines), (productId, variantId) =>
+        ctx.etablissementId
+          ? readStockAt(tx, ctx.etablissementId, productId, variantId)
+          : Promise.resolve(0),
+      );
 
       // Résolution / création automatique du client si nécessaire
       let finalClientId = input.clientId ?? null;
@@ -170,13 +159,26 @@ export class SalesService {
         const livreur = await tx.user.findFirst({
           where: { id: input.livreurId, tenantId: ctx.tenantId },
         });
-        if (!livreur) throw new NotFoundException('Livreur introuvable');
+        if (!livreur) {
+          throw new SaleValidationError('LIVREUR_NOT_FOUND', 'Livreur introuvable', HttpStatus.NOT_FOUND);
+        }
       }
 
       // Acompte : validé tôt (échoue vite) pour les deux flux.
-      const intendedAcompte = resolveAcompte(input.paymentMethod, input.montantVerse, total);
-      // Crédit client : vérifier le plafond avant de créer la vente.
-      await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
+      const intendedAcompte = assertAcompteCoherent(input.paymentMethod, input.montantVerse, total);
+      // Crédit client : vérifier le plafond avant de créer la vente. La décision
+      // est portée par le module pur (sale-validation) ; ici, seule la lecture reste.
+      if (input.clientId && (input.paymentMethod === 'CREDIT' || input.paymentMethod === 'INSTALLMENT')) {
+        const client = await tx.client.findFirst({
+          where: { id: input.clientId, tenantId: ctx.tenantId },
+        });
+        assertCreditWithinLimit(
+          client ? { soldeCredit: client.soldeCredit, plafondCredit: client.plafondCredit } : null,
+          input.paymentMethod,
+          total,
+          intendedAcompte,
+        );
+      }
       
       // Création de la vente + lignes. Le prix plancher est un blocage strict en
       // amont : aucune vente n'atteint ce point sous le plancher (pas d'approbation).
@@ -826,32 +828,5 @@ export class SalesService {
     );
     if (!sale) throw new NotFoundException('Vente introuvable');
     return toSaleDto(sale, ctx.role);
-  }
-
-  /**
-   * Refuse une vente à crédit qui ferait dépasser le plafond du client (§6.2).
-   * `plafondCredit = null` → illimité.
-   */
-  private async assertCreditWithinLimit(
-    tx: TenantTx,
-    ctx: AuthContext,
-    input: CreateSaleInput,
-    total: number,
-    intendedAcompte: number,
-  ): Promise<void> {
-    if (!input.clientId) return;
-    if (input.paymentMethod !== 'CREDIT' && input.paymentMethod !== 'INSTALLMENT') return;
-
-    const client = await tx.client.findFirst({
-      where: { id: input.clientId, tenantId: ctx.tenantId },
-    });
-    if (!client) throw new NotFoundException('Client introuvable');
-
-    const detteProjetee = projectedCreditDebt(input.paymentMethod, total, intendedAcompte);
-    if (exceedsCreditLimit(client.soldeCredit, client.plafondCredit, detteProjetee)) {
-      throw new BadRequestException(
-        `Plafond de crédit dépassé : dette ${client.soldeCredit} + ${detteProjetee} > plafond ${client.plafondCredit}`,
-      );
-    }
   }
 }

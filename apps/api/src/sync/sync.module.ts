@@ -3,19 +3,20 @@
  * @organization Nexus Partners
  * @description Module d'injection de dépendances NestJS pour sync
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-09-08
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
-import { Body, Controller, HttpException, Module, Post } from '@nestjs/common';
+import { Body, Controller, Module, Post } from '@nestjs/common';
 import { z } from 'zod';
-import { CreateSaleSchema, type AuthContext } from '@wilinwi/types';
+import { CreateSaleSchema, type AuthContext, type SyncSaleResultRow } from '@wilinwi/types';
 import { CurrentUser, RequireCapabilities } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { SalesModule } from '../pos/sales.module';
 import { SalesService } from '../pos/sales.service';
+import { classifySyncError } from './sync-logic';
 
 // Lot de ventes créées hors-ligne ; chaque vente porte un clientGeneratedId.
 const SyncBatchSchema = z.object({
@@ -37,21 +38,25 @@ class SyncController {
     @CurrentUser() user: AuthContext,
     @Body(new ZodValidationPipe(SyncBatchSchema)) dto: SyncBatchInput,
   ) {
-    const results = [];
+    const results: SyncSaleResultRow[] = [];
     for (const sale of dto.sales) {
       try {
         const created = await this.sales.create(user, sale);
-        results.push({ clientGeneratedId: sale.clientGeneratedId, ok: true, id: created?.id });
+        results.push({ clientGeneratedId: sale.clientGeneratedId ?? null, ok: true, id: created?.id });
       } catch (err) {
+        // Une vente rejetée n'abîme ni le lot ni l'état serveur : elle est renvoyée
+        // avec sa raison structurée (motif `kind` + détail), le reste du lot
+        // continue et le rejeu reste idempotent (clientGeneratedId).
         // Échec permanent (validation métier 4xx : stock insuffisant, produit
         // introuvable, plancher…) → inutile de re-tenter. Échec transitoire
         // (5xx / réseau) → l'auto-retry finira par passer.
-        const permanent = err instanceof HttpException && err.getStatus() < 500;
+        const { permanent, kind, error } = classifySyncError(err);
         results.push({
-          clientGeneratedId: sale.clientGeneratedId,
+          clientGeneratedId: sale.clientGeneratedId ?? null,
           ok: false,
           permanent,
-          error: err instanceof Error ? err.message : 'Erreur inconnue',
+          kind,
+          error,
         });
       }
     }

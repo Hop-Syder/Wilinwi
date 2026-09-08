@@ -3,13 +3,14 @@
  * @organization Nexus Partners
  * @description Gestionnaire de mode offline PWA : sync.ts
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-09-08
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
 
-import type { CreateSaleInput } from '@wilinwi/types';
+import type { Table } from 'dexie';
+import type { CreateSaleInput, SyncSaleResultRow } from '@wilinwi/types';
 import { getDB, type CachedProduct, type PendingSale } from './db.js';
 
 export interface SyncResult {
@@ -19,6 +20,56 @@ export interface SyncResult {
 }
 
 type Poster = (path: string, body: unknown) => Promise<unknown>;
+
+/** Taille max d'un lot accepté par POST /api/sync/sales (SyncBatchSchema côté API). */
+export const MAX_SYNC_BATCH = 200;
+
+/**
+ * Découpe la file en lots acceptables par le serveur. Au-delà de la limite, la
+ * validation du lot entier échouerait en bloc et bloquerait TOUTE la file en
+ * re-tentes infinies — chaque tranche vit et échoue indépendamment.
+ */
+export function chunkForSync<T>(items: T[], max: number = MAX_SYNC_BATCH): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += max) chunks.push(items.slice(i, i + max));
+  return chunks;
+}
+
+/**
+ * Applique les résultats serveur à la file locale (sémantique du protocole de sync) :
+ *  - ok          → 'synced' + serverId ;
+ *  - permanent   → 'rejected' + raison (error, kind) : exclu de l'auto-retry, demande
+ *                  une action de l'utilisateur (écarter / corriger) ;
+ *  - transitoire → 'error' : re-tenté au prochain flush.
+ * Idempotent : rejouer les mêmes résultats ne change pas l'état déjà posé, et les
+ * ventes inconnues (id absent du lot) ou sans clientGeneratedId sont ignorées.
+ * Aucune vente n'est supprimée : un rejet reste consultable et corrigeable.
+ */
+export async function applySyncResults(
+  table: Table<PendingSale, string>,
+  pending: PendingSale[],
+  results: SyncSaleResultRow[],
+): Promise<{ synced: number; failed: number }> {
+  let synced = 0;
+  let failed = 0;
+  for (const r of results) {
+    if (!r.clientGeneratedId) continue;
+    const local = pending.find((s) => s.id === r.clientGeneratedId);
+    if (!local) continue;
+    if (r.ok) {
+      await table.update(local.id, { status: 'synced', serverId: r.id });
+      synced++;
+    } else {
+      await table.update(local.id, {
+        status: r.permanent ? 'rejected' : 'error',
+        error: r.error,
+        kind: r.kind,
+      });
+      failed++;
+    }
+  }
+  return { synced, failed };
+}
 
 /**
  * Moteur de synchronisation offline. Met en file les ventes créées hors-ligne
@@ -87,44 +138,24 @@ export class SyncEngine {
     const pending = await db.pendingSales.where('status').anyOf('pending', 'error').toArray();
     if (pending.length === 0) return { synced: 0, failed: 0, remaining: 0 };
 
-    await db.pendingSales.bulkPut(pending.map((s) => ({ ...s, status: 'syncing' as const })));
-
     let synced = 0;
     let failed = 0;
-    try {
-      const res = (await this.post('/api/sync/sales', {
-        sales: pending.map((s) => s.payload),
-      })) as {
-        results: {
-          clientGeneratedId?: string;
-          ok: boolean;
-          id?: string;
-          error?: string;
-          permanent?: boolean;
-        }[];
-      };
-
-      for (const r of res.results) {
-        const local = pending.find((s) => s.id === r.clientGeneratedId);
-        if (!local) continue;
-        if (r.ok) {
-          await db.pendingSales.update(local.id, { status: 'synced', serverId: r.id });
-          synced++;
-        } else {
-          // Échec permanent (validation serveur) → 'rejected' : exclu de l'auto-retry,
-          // demande une action de l'utilisateur (écarter / corriger).
-          await db.pendingSales.update(local.id, {
-            status: r.permanent ? 'rejected' : 'error',
-            error: r.error,
-          });
-          failed++;
-        }
+    for (const chunk of chunkForSync(pending)) {
+      await db.pendingSales.bulkPut(chunk.map((s) => ({ ...s, status: 'syncing' as const })));
+      try {
+        const res = (await this.post('/api/sync/sales', {
+          sales: chunk.map((s) => s.payload),
+        })) as { results?: SyncSaleResultRow[] };
+        if (!res.results) throw new Error('Réponse de synchronisation invalide');
+        const applied = await applySyncResults(db.pendingSales, chunk, res.results);
+        synced += applied.synced;
+        failed += applied.failed;
+      } catch {
+        // Réseau toujours indisponible (ou réponse invalide) : on remet CE lot en
+        // attente pour réessayer ; les lots déjà confirmés restent 'synced'.
+        await db.pendingSales.bulkPut(chunk.map((s) => ({ ...s, status: 'pending' as const })));
+        failed += chunk.length;
       }
-    } catch (err) {
-      // Réseau toujours indisponible : on remet en attente pour réessayer.
-      await db.pendingSales.bulkPut(pending.map((s) => ({ ...s, status: 'pending' as const })));
-      failed = pending.length;
-      void err;
     }
 
     return { synced, failed, remaining: await this.pendingCount() };

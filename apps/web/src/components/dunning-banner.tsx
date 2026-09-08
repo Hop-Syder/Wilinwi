@@ -7,7 +7,7 @@
  *   - <DunningBanner/> : bannière persistante NON bloquante (OWNER/MANAGER only),
  *     affichée à J+0/J+3/J+7 — jamais sur l'écran du caissier.
  *   - <DunningBlock/> : écran de régularisation BLOQUANT (J+30, dernier recours).
- *   Cf. buinessplan.md §4.
+ *   Cf. businessplan.md §4.
  */
 
 import Link from 'next/link';
