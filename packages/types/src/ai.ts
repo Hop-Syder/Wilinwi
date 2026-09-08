@@ -95,6 +95,10 @@ export const VoiceInterpretResultSchema = z.object({
   clarification: z
     .object({
       question: z.string(),
+      // Présent uniquement pour une clarification de résolution produit
+      // (Phase 1) — absent pour un NEEDS_CLARIFICATION générique de Gemini,
+      // qui n'a pas de quantité associée.
+      quantity: z.number().positive().optional(),
       candidates: z.array(VoiceProductCandidateSchema),
     })
     .optional(),

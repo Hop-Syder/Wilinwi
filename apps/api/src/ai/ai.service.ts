@@ -149,10 +149,16 @@ export class AiService {
         continue;
       }
 
+      // Ambigu : on n'invente rien (§29). Les items déjà résolus avant
+      // celui-ci sont conservés (pas de perte d'information) ; la
+      // clarification ne porte que sur l'item courant — le reste de la
+      // phrase est abandonné, l'utilisateur peut le redire après avoir précisé.
       return {
         ok: true,
+        ...(resolved.length > 0 ? { resolvedCartItems: resolved } : {}),
         clarification: {
           question: `Plusieurs produits correspondent à « ${item.query} ». Lequel voulez-vous ?`,
+          quantity: item.quantity,
           candidates: matches.map((m) => ({ productId: m.id, nom: m.nom, sku: m.sku })),
         },
       };

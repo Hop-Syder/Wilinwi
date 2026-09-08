@@ -23,6 +23,7 @@ import type { PendingSale as PendingSyncSale } from '@wilinwi/offline';
 import { useSync } from '@/lib/use-sync';
 import { useAuth } from '@/lib/auth-context';
 import { CheckoutModal, SaleSuccessModal, type CheckoutResult, type SaleSyncStatus } from '@/components/pos-checkout';
+import { VoiceCartPanel } from '@/components/voice-cart-panel';
 import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { RotateCcw } from 'lucide-react';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -475,6 +476,10 @@ export default function PosPage() {
             <Command className="h-3 w-3" /> K
           </div>
         </div>
+
+        {/* Panier vocal Wilinwi AI : alimente le panier via addToCart(), rien
+            d'autre — le checkout ci-dessous reste seul à valider la vente. */}
+        <VoiceCartPanel products={products} onResolvedItem={addToCart} disabled={isGlobalView} />
 
         {showHistory ? (
           <TodaySalesPanel onClose={() => setShowHistory(false)} />

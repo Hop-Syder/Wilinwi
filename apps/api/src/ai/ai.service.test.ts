@@ -267,6 +267,7 @@ describe('AiService.interpret — ADD_PRODUCTS_TO_CART (Phase 1 : résolution pr
     });
     expect(result.ok).toBe(true);
     expect(result.clarification?.candidates).toHaveLength(3);
+    expect(result.clarification?.quantity).toBe(3);
     expect(result.resolvedCartItems).toBeUndefined();
   });
 
@@ -315,9 +316,20 @@ describe('AiService.interpret — ADD_PRODUCTS_TO_CART (Phase 1 : résolution pr
       transcript: 'une eau et deux Coca-Cola',
       context: 'pos',
     });
-    // L'item ambigu interrompt la résolution : pas de panier partiel renvoyé ici,
-    // la clarification prime (évite de valider un panier à moitié deviné).
+    // L'item déjà résolu (eau) est conservé ; seul l'item ambigu (Coca-Cola)
+    // déclenche une clarification — rien n'est deviné, rien n'est perdu.
     expect(result.ok).toBe(true);
+    expect(result.resolvedCartItems).toEqual([
+      {
+        productId: 'p-eau',
+        sku: undefined,
+        nom: 'Eau',
+        quantite: 1,
+        prixReel: 1000,
+        matchedQuery: 'eau',
+      },
+    ]);
+    expect(result.clarification?.quantity).toBe(2);
     expect(result.clarification?.candidates.map((c) => c.productId)).toEqual(['p1', 'p2']);
   });
 });
