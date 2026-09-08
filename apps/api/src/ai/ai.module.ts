@@ -11,11 +11,13 @@
 // ──────────────────────────────────
 
 import { Module } from '@nestjs/common';
+import { StockModule } from '../stock/stock.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { GeminiClient } from './gemini.client';
 
 @Module({
+  imports: [StockModule],
   controllers: [AiController],
   providers: [AiService, GeminiClient],
   exports: [AiService],

@@ -22,12 +22,17 @@ import {
   hasCapability,
   type AuthContext,
   type Capability,
+  type ProductDto,
   type VoiceInterpretRequest,
   type VoiceInterpretResult,
   type VoiceIntentType,
 } from '@wilinwi/types';
+import { StockService } from '../stock/stock.service';
 import { buildSystemPrompt } from './ai.mapper';
 import { AiUnavailableError, GeminiClient } from './gemini.client';
+
+type CartItemInput = { query: string; quantity: number };
+type ResolvedCartItem = NonNullable<VoiceInterpretResult['resolvedCartItems']>[number];
 
 /**
  * Capacité minimale requise pour chaque intention, en plus de `ai:use` (déjà
@@ -46,7 +51,10 @@ const INTENT_CAPABILITY: Partial<Record<VoiceIntentType, Capability>> = {
 
 @Injectable()
 export class AiService {
-  constructor(private readonly gemini: GeminiClient) {}
+  constructor(
+    private readonly gemini: GeminiClient,
+    private readonly stock: StockService,
+  ) {}
 
   async interpret(ctx: AuthContext, req: VoiceInterpretRequest): Promise<VoiceInterpretResult> {
     const systemPrompt = buildSystemPrompt(req.context);
@@ -92,9 +100,7 @@ export class AiService {
         return { ok: false, error: 'AI_UNAVAILABLE' };
 
       case 'ADD_PRODUCTS_TO_CART':
-        throw new NotImplementedException(
-          'Résolution du panier vocal pas encore disponible (Phase 1 — recherche produit).',
-        );
+        return this.resolveCart(ctx, intent.items);
 
       case 'QUERY_SALES_TODAY':
       case 'QUERY_TOP_SHOP':
@@ -109,4 +115,68 @@ export class AiService {
         );
     }
   }
+
+  /**
+   * Résout chaque `{query, quantity}` contre le catalogue réel (Phase 1) :
+   * 0 correspondance → signalé "introuvable" (jamais silencieusement ignoré) ;
+   * 1 correspondance → résolue directement ; ≥2 correspondances → seule une
+   * égalité EXACTE de nom tranche, sinon on ne devine jamais (§29) et on
+   * demande une précision — traitement au premier item ambigu rencontré.
+   * Ne décrémente jamais le stock : seul POST /pos/sales le fait, inchangé.
+   */
+  private async resolveCart(
+    ctx: AuthContext,
+    items: readonly CartItemInput[],
+  ): Promise<VoiceInterpretResult> {
+    const resolved: ResolvedCartItem[] = [];
+    const unresolved: string[] = [];
+
+    for (const item of items) {
+      const matches = await this.stock.search(ctx, item.query, 5);
+
+      if (matches.length === 0) {
+        unresolved.push(item.query);
+        continue;
+      }
+      if (matches.length === 1) {
+        resolved.push(toCartItem(matches[0]!, item));
+        continue;
+      }
+
+      const exact = matches.filter((m) => sameName(m.nom, item.query));
+      if (exact.length === 1) {
+        resolved.push(toCartItem(exact[0]!, item));
+        continue;
+      }
+
+      return {
+        ok: true,
+        clarification: {
+          question: `Plusieurs produits correspondent à « ${item.query} ». Lequel voulez-vous ?`,
+          candidates: matches.map((m) => ({ productId: m.id, nom: m.nom, sku: m.sku })),
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      resolvedCartItems: resolved,
+      ...(unresolved.length > 0 ? { unresolvedQueries: unresolved } : {}),
+    };
+  }
+}
+
+function sameName(nom: string, query: string): boolean {
+  return nom.trim().toLowerCase() === query.trim().toLowerCase();
+}
+
+function toCartItem(product: ProductDto, item: CartItemInput): ResolvedCartItem {
+  return {
+    productId: product.id,
+    sku: product.sku ?? undefined,
+    nom: product.nom,
+    quantite: item.quantity,
+    prixReel: product.prixCatalogue,
+    matchedQuery: item.query,
+  };
 }

@@ -31,6 +31,7 @@ import { PlanConfigService } from '../common/plan-config.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta } from '../common/product-stock';
 import { toProductDto } from './product.mapper';
+import { matchProducts } from './product-search';
 
 @Injectable()
 export class StockService {
@@ -90,6 +91,42 @@ export class StockService {
     const sorted = downgraded ? [...products].sort((a, b) => a.nom.localeCompare(b.nom)) : products;
 
     return sorted.map((p) => toProductDto(p, ctx.role, breakdownByProduct.get(p.id)));
+  }
+
+  /**
+   * Recherche floue par nom/référence, limitée aux produits actifs du tenant.
+   * Réutilisée par la recherche manuelle serveur et par la résolution du
+   * panier vocal Wilinwi AI (AiService) — un seul algorithme, deux usages.
+   * Stock scopé à l'établissement courant comme les autres lectures (pas de
+   * décrémentation ici : une recherche ne modifie jamais le stock).
+   */
+  async search(ctx: AuthContext, q: string, limit = 5) {
+    const query = q.trim();
+    if (!query) return [];
+
+    const matched = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const products = await tx.product.findMany({
+        where: { tenantId: ctx.tenantId, actif: true },
+        include: { variants: true },
+      });
+      const results = matchProducts(products, query, limit);
+      if (ctx.etablissementId && results.length > 0) {
+        const { byProduct, byVariant } = await this.scopedStockMaps(
+          tx,
+          ctx.tenantId,
+          ctx.etablissementId,
+        );
+        for (const p of results) {
+          p.stock = byProduct.get(p.id) ?? 0;
+          for (const v of p.variants) {
+            v.stock = byVariant.get(v.id) ?? 0;
+          }
+        }
+      }
+      return results;
+    });
+
+    return matched.map((p) => toProductDto(p, ctx.role));
   }
 
   async getProduct(ctx: AuthContext, id: string) {

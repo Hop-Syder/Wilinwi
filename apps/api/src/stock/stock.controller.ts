@@ -47,6 +47,13 @@ export class StockController {
     return this.stock.alerts(user);
   }
 
+  /** Recherche floue par nom/référence (avant :id). Réutilisée par l'assistant vocal. */
+  @RequireCapabilities('stock:read')
+  @Get('products/search')
+  search(@CurrentUser() user: AuthContext, @Query('q') q?: string) {
+    return this.stock.search(user, q ?? '');
+  }
+
   @RequireCapabilities('stock:read')
   @Get('products/:id')
   getProduct(@CurrentUser() user: AuthContext, @Param('id') id: string) {
