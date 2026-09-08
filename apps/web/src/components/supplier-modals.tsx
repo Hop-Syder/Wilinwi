@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Printer, FileDown } from 'lucide-react';
-import { Button, Input } from '@wilinwi/ui';
+import { Button, Input, Modal } from '@wilinwi/ui';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { generatePurchaseOrderPdf } from '@/lib/purchase-order-pdf';
@@ -48,17 +48,13 @@ export function SupplierFormModal({ supplier, onClose, onSuccess }: SupplierForm
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">
-            {supplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
-          </h2>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-
+    <Modal
+      open
+      onClose={onClose}
+      title={supplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
+      size="md"
+      closeOnBackdrop={false}
+    >
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
         <form onSubmit={submit} className="space-y-4">
@@ -96,8 +92,7 @@ export function SupplierFormModal({ supplier, onClose, onSuccess }: SupplierForm
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -141,15 +136,7 @@ export function RecordSupplierPaymentModal({ supplier, onClose, onSuccess }: Rec
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Enregistrer un règlement</h2>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-
+    <Modal open onClose={onClose} title="Enregistrer un règlement" size="md" closeOnBackdrop={false}>
         <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
           <p>Fournisseur : <span className="font-semibold text-slate-900">{supplier.nom}</span></p>
           <p>Dette courante : <span className="font-semibold text-brand">{supplier.soldeDette.toLocaleString('fr-FR')} FCFA</span></p>
@@ -214,8 +201,7 @@ export function RecordSupplierPaymentModal({ supplier, onClose, onSuccess }: Rec
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -246,8 +232,7 @@ export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-3xl rounded-2xl bg-white p-8 shadow-xl max-h-[90vh] overflow-y-auto">
+    <Modal open onClose={onClose} size="lg" className="max-w-3xl p-8" closeOnBackdrop={false}>
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Bon de Commande</h2>
@@ -329,7 +314,6 @@ export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoi
             {order.notes}
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

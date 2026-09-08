@@ -18,10 +18,9 @@
 
 import { useState } from 'react';
 import type { ProductDto, VoiceInterpretResult, VoiceProductCandidate } from '@wilinwi/types';
-import { Button, BottomSheet, VoiceButton } from '@wilinwi/ui';
+import { ClarificationPanel, VoiceButton, type ClarificationCandidate } from '@wilinwi/ui';
 import { apiPost } from '@/lib/api';
 import { useVoiceCapture } from '@/lib/use-voice-capture';
-import { useMinWidth } from '@/lib/use-min-width';
 
 interface VoiceCartPanelProps {
   products: ProductDto[];
@@ -38,7 +37,6 @@ type PendingClarification = {
 
 export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCartPanelProps) {
   const voice = useVoiceCapture();
-  const isDesktop = useMinWidth(640);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [clarification, setClarification] = useState<PendingClarification | null>(null);
@@ -102,9 +100,9 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
     }
   }
 
-  function pickCandidate(candidate: VoiceProductCandidate) {
+  function pickCandidate(candidate: ClarificationCandidate) {
     if (!clarification) return;
-    resolveOne(candidate.productId, clarification.quantity ?? 1);
+    resolveOne(candidate.id, clarification.quantity ?? 1);
     setClarification(null);
   }
 
@@ -112,20 +110,6 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
     // Non supporté ou hors-ligne : le micro disparaît, jamais de bouton mort.
     return null;
   }
-
-  const candidateChips = clarification && (
-    <div className="flex flex-wrap gap-2">
-      {clarification.candidates.map((c) => (
-        <button
-          key={c.productId}
-          onClick={() => pickCandidate(c)}
-          className="rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
-        >
-          {c.nom}
-        </button>
-      ))}
-    </div>
-  );
 
   return (
     <div className="mt-3">
@@ -153,25 +137,13 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
         </p>
       )}
 
-      {/* Ambiguïté produit : carte en ligne desktop (rendu existant, inchangé),
-          bottom sheet en dessous de 640px (§19) — jamais de choix automatique
-          silencieux dans les deux cas. */}
-      {clarification && isDesktop && (
-        <div className="mt-2 rounded-xl border border-brand/20 bg-brand/5 p-3">
-          <p className="text-sm font-medium text-slate-700">{clarification.question}</p>
-          <div className="mt-2">{candidateChips}</div>
-          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setClarification(null)}>
-            Annuler
-          </Button>
-        </div>
-      )}
-      {clarification && !isDesktop && (
-        <BottomSheet open onClose={() => setClarification(null)} title={clarification.question}>
-          {candidateChips}
-          <Button variant="ghost" size="sm" className="mt-3" onClick={() => setClarification(null)}>
-            Annuler
-          </Button>
-        </BottomSheet>
+      {clarification && (
+        <ClarificationPanel
+          question={clarification.question}
+          candidates={clarification.candidates.map((c) => ({ id: c.productId, label: c.nom }))}
+          onPick={pickCandidate}
+          onCancel={() => setClarification(null)}
+        />
       )}
     </div>
   );

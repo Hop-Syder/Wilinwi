@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { X, Plus, Trash2, Sparkles } from 'lucide-react';
-import { Button, Input, Select } from '@wilinwi/ui';
+import { Plus, Trash2, Sparkles } from 'lucide-react';
+import { Button, Input, Select, Modal } from '@wilinwi/ui';
 import { maxProductPhotos, planAllowsProductImages, type ProductDto } from '@wilinwi/types';
 import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -42,15 +42,7 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Mouvement de stock</h2>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-
+    <Modal open onClose={onClose} title="Mouvement de stock" size="md" closeOnBackdrop={false}>
         <p className="mb-4 text-sm text-slate-600">
           Produit : <span className="font-semibold text-brand">{product.nom}</span> (Stock actuel: {product.stock})
         </p>
@@ -126,8 +118,7 @@ export function StockMovementModal({ product, onClose, onSuccess }: StockMovemen
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -207,15 +198,13 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="my-4 sm:my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900">{isEditing ? 'Modifier le produit' : 'Nouveau produit'}</h2>
-          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-
+    <Modal
+      open
+      onClose={onClose}
+      title={isEditing ? 'Modifier le produit' : 'Nouveau produit'}
+      size="lg"
+      closeOnBackdrop={false}
+    >
         <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="col-span-full">
             <span className="mb-1 block text-xs font-medium text-slate-600">Nom du produit</span>
@@ -338,8 +327,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -385,15 +373,7 @@ export function StockTransferModal({ products, onClose, onSuccess, initialProduc
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Transfert de stock</h2>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
-
+    <Modal open onClose={onClose} title="Transfert de stock" size="md" closeOnBackdrop={false}>
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600">Produit</label>
@@ -493,7 +473,6 @@ export function StockTransferModal({ products, onClose, onSuccess, initialProduc
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

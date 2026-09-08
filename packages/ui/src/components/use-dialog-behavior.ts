@@ -5,7 +5,12 @@
  * @organization Nexus Partners
  * @description Comportement partagé Modal/BottomSheet (interne, non exporté) :
  *   focus initial sur le premier élément focusable, restauration du focus au
- *   déclencheur à la fermeture, fermeture sur Échap, verrou du scroll de fond.
+ *   déclencheur à la fermeture, fermeture sur Échap, verrou du scroll de fond,
+ *   focus trap (Tab/Shift+Tab bouclent à l'intérieur du dialogue ouvert). Gère
+ *   aussi l'imbrication (ex. modale QR dans SaleSuccessModal) : si le focus
+ *   est actuellement dans une boîte de dialogue plus profondément imbriquée,
+ *   cette instance ne traite ni Échap ni Tab — un seul piège de focus actif
+ *   à la fois, le plus interne.
  * @created 2026-09-08
  * @updated 2026-09-08
  * 🌐 ceo.nexuspartners.xyz
@@ -35,7 +40,39 @@ export function useDialogBehavior(
     focusable?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape' && e.key !== 'Tab') return;
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Dialogue imbriqué (ex. modale QR dans SaleSuccessModal) : si le focus
+      // est actuellement dans une boîte [role="dialog"] plus profondément
+      // imbriquée que la nôtre, on ne traite ni Échap ni Tab ici — sinon les
+      // deux instances de ce hook réagiraient au même événement.
+      const active = document.activeElement;
+      if (active && active !== container) {
+        const nestedDialogs = container.querySelectorAll<HTMLElement>('[role="dialog"]');
+        for (const nested of nestedDialogs) {
+          if (nested.contains(active)) return;
+        }
+      }
+
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener('keydown', onKeyDown);
 

@@ -31,3 +31,8 @@ export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dia
 export { SearchInput, type SearchInputProps } from './components/search-input.js';
 export { Toaster, toast } from './components/toast.js';
 export { VoiceButton, voiceButtonVariants, type VoiceButtonProps } from './components/voice-button.js';
+export {
+  ClarificationPanel,
+  type ClarificationPanelProps,
+  type ClarificationCandidate,
+} from './components/clarification-panel.js';

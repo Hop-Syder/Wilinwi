@@ -10,7 +10,7 @@
 // ──────────────────────────────────
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Select } from '@wilinwi/ui';
+import { Button, Input, Select, Modal } from '@wilinwi/ui';
 import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
 import { CheckCircle2, Receipt, Share2, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -137,18 +137,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
     { label: 'Acompte', value: 'INSTALLMENT' },
   ];
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-        <div className="text-xl font-bold mb-4 flex justify-between items-center">
-          <span>Encaissement</span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+    <Modal open={isOpen} onClose={onClose} title="Encaissement" size="md" closeOnBackdrop={false}>
         <div className="mb-6 rounded-lg bg-slate-50 p-4 text-center">
           <span className="block text-sm text-slate-500 mb-1">Total à payer</span>
           <span className="text-3xl font-black text-brand">{cartTotal.toLocaleString()} F</span>
@@ -363,16 +353,15 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, o
 
         <div className="mt-8 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onClose}>Annuler</Button>
-          <Button 
-            className="flex-1" 
+          <Button
+            className="flex-1"
             onClick={handleConfirm}
             disabled={!isValid()}
           >
             Confirmer l'encaissement
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -415,8 +404,6 @@ export function SaleSuccessModal({
 }: SaleSuccessModalProps) {
   const [showQrModal, setShowQrModal] = useState(false);
 
-  if (!isOpen) return null;
-
   // En-tête + bandeau selon le statut RÉEL : on n'annonce « synchronisée »
   // que lorsque le serveur a confirmé. La vente est toujours enregistrée localement.
   const head = {
@@ -448,8 +435,13 @@ export function SaleSuccessModal({
   }[syncStatus];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-xl bg-surface p-6 shadow-2xl text-center border border-border animate-in fade-in zoom-in-95 duration-150 text-text-primary">
+    <Modal
+      open={isOpen}
+      onClose={() => {}}
+      closeOnBackdrop={false}
+      size="sm"
+      className="border border-border bg-surface text-center text-text-primary"
+    >
         <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full mb-4 ${head.ring}`}>
           {head.icon}
         </div>
@@ -570,37 +562,31 @@ export function SaleSuccessModal({
         </div>
         )}
 
-        {/* Modal QR Code de téléchargement de la facture PDF */}
-        {showQrModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-100" onClick={() => setShowQrModal(false)}>
-            <div className="w-[320px] rounded-xl bg-surface border border-border p-6 shadow-xl text-center animate-in zoom-in-95 duration-150 text-text-primary" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-semibold text-text-secondary">Télécharger la facture</span>
-                <button onClick={() => setShowQrModal(false)} className="text-text-secondary hover:text-text-primary transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="bg-white p-4 rounded-lg inline-block border border-border shadow-inner mb-4">
-                <QRCodeSVG value={receiptCode ? `${window.location.origin}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`} size={180} />
-              </div>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                Scannez ce QR Code avec un smartphone pour télécharger le reçu directement en format PDF.
-              </p>
-              {receiptCode && (
-                <Button
-                  className="w-full mt-4 justify-center gap-2"
-                  onClick={() => {
-                    window.open(`/r/${receiptCode}?download=true`, '_blank');
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Télécharger en direct
-                </Button>
-              )}
-            </div>
+        <Modal
+          open={showQrModal}
+          onClose={() => setShowQrModal(false)}
+          title="Télécharger la facture"
+          size="sm"
+          className="border border-border bg-surface text-center text-text-primary"
+        >
+          <div className="bg-white p-4 rounded-lg inline-block border border-border shadow-inner mb-4">
+            <QRCodeSVG value={receiptCode ? `${window.location.origin}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`} size={180} />
           </div>
-        )}
-      </div>
-    </div>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Scannez ce QR Code avec un smartphone pour télécharger le reçu directement en format PDF.
+          </p>
+          {receiptCode && (
+            <Button
+              className="w-full mt-4 justify-center gap-2"
+              onClick={() => {
+                window.open(`/r/${receiptCode}?download=true`, '_blank');
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Télécharger en direct
+            </Button>
+          )}
+        </Modal>
+    </Modal>
   );
 }
