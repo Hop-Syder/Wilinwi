@@ -59,6 +59,13 @@ describe('capacités par rôle', () => {
     // les deux garanties sont gouvernées par des fonctions indépendantes.
     expect(canSeeSensitivePricing('CASHIER')).toBe(false);
   });
+
+  it('le caissier peut charger/chercher le catalogue produit (régression BUG-001, audit indépendant)', () => {
+    // Sans stock:read, la caisse manuelle (page POS classique) ne peut pas
+    // charger son catalogue — voir apps/api/src/stock/stock.controller.test.ts
+    // pour la vérification côté route/capacité réellement exigée.
+    expect(hasCapability('CASHIER', 'stock:read')).toBe(true);
+  });
 });
 
 describe('gating des modules par plan', () => {

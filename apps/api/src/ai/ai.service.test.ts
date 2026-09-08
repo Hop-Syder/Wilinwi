@@ -512,7 +512,12 @@ describe('AiService.interpret — QUERY_* (Phase 3 : Q&A dashboard, jamais de ch
     expect(result.answer?.text).toContain('Coca-Cola');
   });
 
-  it('QUERY_STOCK_LOW : SELLER (stock:read) autorisé, CASHIER (sans stock:read) refusé', async () => {
+  it('QUERY_STOCK_LOW : SELLER/CASHIER (stock:read) autorisés, DELIVERY (sans stock:read) refusé', async () => {
+    // CASHIER a stock:read depuis le fix BUG-001 (audit indépendant) — cette
+    // intention lui est donc désormais accessible, cohérent avec la règle
+    // « même capacité que la page Stock » (voir le commentaire sur
+    // INTENT_CAPABILITY.QUERY_STOCK_LOW). DELIVERY reste le rôle témoin sans
+    // stock:read.
     const service = makeService({ geminiRaw: JSON.stringify({ intent: 'QUERY_STOCK_LOW' }) });
     const seller = await service.interpret(ctxFor('SELLER'), {
       transcript: 'stock faible',
@@ -524,6 +529,12 @@ describe('AiService.interpret — QUERY_* (Phase 3 : Q&A dashboard, jamais de ch
       transcript: 'stock faible',
       context: 'dashboard',
     });
-    expect(cashier).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(cashier.ok).toBe(true);
+
+    const delivery = await service.interpret(ctxFor('DELIVERY'), {
+      transcript: 'stock faible',
+      context: 'dashboard',
+    });
+    expect(delivery).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 });

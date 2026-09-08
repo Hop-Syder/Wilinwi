@@ -111,6 +111,8 @@ export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   SELLER: ['stock:read', 'sale:create', 'sale:read', 'client:read', 'ai:use'],
   CASHIER: [
     'sale:create', // Wilinwi AI §21/§3 : la caissière vend elle-même (manuellement ou vocalement)
+    'stock:read', // Fix BUG-001 (audit indépendant) : sans ça, la caisse manuelle ne peut pas
+    // charger son catalogue — symétrique à sale:create ci-dessus, cohérent avec SELLER.
     'sale:read',
     'sale:return',
     'cash:collect',

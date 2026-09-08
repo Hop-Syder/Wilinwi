@@ -44,14 +44,25 @@ type ResolvedCartItem = NonNullable<VoiceInterpretResult['resolvedCartItems']>[n
  * via un unique `@RequireCapabilities` sur la route.
  */
 const INTENT_CAPABILITY: Partial<Record<VoiceIntentType, Capability>> = {
+  // Intentionnellement `sale:create`, pas `stock:read` : `resolveItems()`
+  // (→ StockService.search()) reste accessible à quiconque peut vendre,
+  // même sans vision large du stock — `interpret()` a déjà vérifié cette
+  // capacité avant tout dispatch, donc l'appel interne à StockService n'a
+  // pas besoin d'un second garde-fou redondant (audit indépendant, réf.
+  // recommandation Priorité 1.2 : ceci est la trace de traçabilité demandée,
+  // pas un chemin non gardé).
   ADD_PRODUCTS_TO_CART: 'sale:create',
   QUERY_SALES_TODAY: 'reports:read',
   // Expose des chiffres d'autres boutiques → exigence renforcée (cf. plan Phase 3).
   QUERY_TOP_SHOP: 'reports:read_full',
   // Même source et même capacité que la page Stock (StockService.alerts) —
-  // pas reports:read : un SELLER qui voit les alertes de stock dans l'UI doit
-  // pouvoir les demander à la voix, un CASHIER (sans stock:read) non.
+  // CASHIER a désormais stock:read (fix BUG-001, audit indépendant), donc
+  // cette question vocale lui est accessible aussi, cohérent avec la règle
+  // énoncée ici (« même capacité que la page Stock »).
   QUERY_STOCK_LOW: 'stock:read',
+  // Même raisonnement que ADD_PRODUCTS_TO_CART ci-dessus : `supplier:manage`
+  // gouverne déjà l'accès à cette intention avant tout appel à
+  // `resolveItems()`, intentionnellement découplé de `stock:read`.
   CREATE_REPLENISHMENT_DRAFT: 'supplier:manage',
 };
 
