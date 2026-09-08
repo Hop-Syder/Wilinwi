@@ -32,7 +32,7 @@ import {
   Store,
 } from 'lucide-react';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod, type ClientDto } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA, IconButton } from '@wilinwi/ui';
+import { Button, Card, Badge, formatFCFA, IconButton, EmptyState } from '@wilinwi/ui';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { readCache, writeCache } from '@wilinwi/offline';
@@ -521,10 +521,11 @@ export default function VentesPage() {
             );
           })}
           {sales.length === 0 && (
-            <div className="p-12 text-center text-slate-400">
-              <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-              Aucune vente trouvée avec ces filtres.
-            </div>
+            <EmptyState
+              className="border-none"
+              icon={<CheckCircle2 className="h-8 w-8" />}
+              title="Aucune vente trouvée avec ces filtres."
+            />
           )}
         </div>
 

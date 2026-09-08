@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ProductDto } from '@wilinwi/types';
-import { Button, Card, Badge, IconButton, formatFCFA, formatQty, iconButtonVariants } from '@wilinwi/ui';
+import { Button, Card, Badge, IconButton, Skeleton, formatFCFA, formatQty, iconButtonVariants } from '@wilinwi/ui';
 import { apiGet } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
@@ -34,11 +34,14 @@ export default function StockPage() {
   const canSeeCost = canWrite;
   const canSeeBreakdown = user?.role === 'OWNER'; // Uniquement le propriétaire
 
-  const { data, error, refetch } = useCachedQuery<ProductDto[]>(
+  const { data, loading, error, refetch } = useCachedQuery<ProductDto[]>(
     'stock/products-global',
     () => apiGet<ProductDto[]>('/api/stock/products?global=true'),
   );
   const products = data ?? [];
+  // Chargement initial (pas encore de données, même en cache) : squelette plutôt
+  // qu'un « catalogue vide » trompeur pendant la première requête.
+  const isInitialLoading = loading && products.length === 0;
 
   // UI State
   const [showProductModal, setShowProductModal] = useState(false);
@@ -181,6 +184,20 @@ export default function StockPage() {
 
       {/* Catalogue */}
       <Card className="mt-6 overflow-hidden p-0" id="tour-stock-list">
+        {isInitialLoading ? (
+          <div className="space-y-4 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton variant="block" className="h-10 w-10" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton variant="text" className="w-1/3" />
+                  <Skeleton variant="text" className="w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
         {/* 📱 Mobile : cartes empilées */}
         <div className="divide-y divide-slate-100 md:hidden">
           {filteredProducts.map((p) => {
@@ -459,6 +476,8 @@ export default function StockPage() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </Card>
 
       {/* Modales */}

@@ -12,8 +12,8 @@
 // ──────────────────────────────────
 
 import { useState } from 'react';
-import { Lock, Unlock, User as UserIcon, ArrowLeft } from 'lucide-react';
-import { Button } from '@wilinwi/ui';
+import { ArrowLeft } from 'lucide-react';
+import { Button, Modal } from '@wilinwi/ui';
 
 export interface PinUser {
   id: string;
@@ -61,10 +61,12 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
     setError('');
   };
 
+  // Verrou obligatoire (pas de onCancel, ex. premier chargement sans session
+  // PIN active) : ni Échap ni clic sur le fond ne doivent fermer l'écran —
+  // onClose devient un no-op, exactement le comportement actuel (aucun geste
+  // de fermeture n'existait déjà dans ce cas).
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl">
-        
+    <Modal open onClose={onCancel ?? (() => {})} closeOnBackdrop={Boolean(onCancel)} size="md">
         {/* ÉTAPE 1 : CHOIX DE L'UTILISATEUR */}
         {!selectedUser ? (
           <div className="flex flex-col">
@@ -171,7 +173,6 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

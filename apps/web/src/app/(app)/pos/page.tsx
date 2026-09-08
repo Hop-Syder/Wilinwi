@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle, Lock, Star, Command } from 'lucide-react';
 import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
-import { Button, Card, Badge, formatFCFA } from '@wilinwi/ui';
+import { Button, Card, Badge, formatFCFA, toast, BottomSheet } from '@wilinwi/ui';
 import Link from 'next/link';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
@@ -48,9 +48,6 @@ export default function PosPage() {
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [message, setMessage] = useState<{ tone: 'ok' | 'offline' | 'err'; text: string } | null>(
-    null,
-  );
   const [busy, setBusy] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [livreurs, setLivreurs] = useState<{ id: string; nom: string }[]>([]);
@@ -241,14 +238,14 @@ export default function PosPage() {
   function addToCart(product: ProductDto, quantite: number = 1, prixReel: number = product.prixCatalogue, variantId?: string, variantLabel?: string) {
     const stockToCheck = variantId ? product.variants?.find(v => v.id === variantId)?.stock || 0 : product.stock;
     if (stockToCheck <= 0) {
-      setMessage({ tone: 'err', text: 'Opération refusée : produit en rupture de stock.' });
+      toast.error('Opération refusée : produit en rupture de stock.');
       return;
     }
     setCart((c) => {
       const existing = c.find((l) => l.product.id === product.id && l.variantId === variantId);
       const newQuantite = existing ? existing.quantite + quantite : quantite;
       if (newQuantite > stockToCheck) {
-        setMessage({ tone: 'err', text: `Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}.` });
+        toast.error(`Stock maximum atteint pour ${product.nom}${variantLabel ? ' ('+variantLabel+')' : ''}.`);
         return c;
       }
       if (existing)
@@ -274,7 +271,7 @@ export default function PosPage() {
     if (newQ <= 0) return;
     const stockToCheck = line.variantId ? line.product.variants?.find(v => v.id === line.variantId)?.stock || 0 : line.product.stock;
     if (newQ > stockToCheck) {
-      setMessage({ tone: 'err', text: `Stock maximum atteint pour ${line.product.nom}.` });
+      toast.error(`Stock maximum atteint pour ${line.product.nom}.`);
       newQ = stockToCheck;
     }
     setCart(c => c.map(l => l === line ? { ...l, quantite: newQ } : l));
@@ -293,7 +290,6 @@ export default function PosPage() {
   async function handleConfirmCheckout(result: CheckoutResult) {
     setShowCheckoutModal(false);
     setBusy(true);
-    setMessage(null);
 
     const payload: CreateSaleInput = {
       clientGeneratedId: crypto.randomUUID(),
@@ -359,7 +355,7 @@ export default function PosPage() {
       await refreshPending();
       await syncSale(payload.clientGeneratedId!);
     } catch (e) {
-      setMessage({ tone: 'err', text: "Erreur lors de l'enregistrement local." });
+      toast.error("Erreur lors de l'enregistrement local.");
     } finally {
       setBusy(false);
     }
@@ -647,37 +643,38 @@ export default function PosPage() {
       </Card>
 
       {/* ContextualHelp gère le composant TourGuide en interne */}
-      {/* Modale de sélection de variante */}
+      {/* Sélection de variante — bottom sheet mobile / dialogue centré desktop (§19) */}
       {variantSelectionProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Choisir une variante</h3>
-            <p className="mb-4 text-sm text-slate-600">{variantSelectionProduct.nom}</p>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-              {variantSelectionProduct.variants?.map(v => {
-                const label = Object.entries(v.attributs).map(([k, val]) => `${val}`).join(', ');
-                const isOos = v.stock <= 0;
-                return (
-                  <button 
-                    key={v.id} 
-                    disabled={isOos}
-                    onClick={() => {
-                      addToCart(variantSelectionProduct, 1, variantSelectionProduct.prixCatalogue, v.id, label);
-                      setVariantSelectionProduct(null);
-                    }}
-                    className={`w-full flex justify-between items-center p-3 rounded-lg border ${isOos ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:border-brand hover:bg-brand/5 transition-colors'} text-left`}
-                  >
-                    <span className="font-medium text-sm">{label}</span>
-                    <span className="text-xs text-slate-500">{v.stock} en stock</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button variant="outline" onClick={() => setVariantSelectionProduct(null)}>Annuler</Button>
-            </div>
+        <BottomSheet
+          open
+          onClose={() => setVariantSelectionProduct(null)}
+          title="Choisir une variante"
+        >
+          <p className="mb-4 text-sm text-slate-600">{variantSelectionProduct.nom}</p>
+          <div className="space-y-2">
+            {variantSelectionProduct.variants?.map(v => {
+              const label = Object.entries(v.attributs).map(([k, val]) => `${val}`).join(', ');
+              const isOos = v.stock <= 0;
+              return (
+                <button
+                  key={v.id}
+                  disabled={isOos}
+                  onClick={() => {
+                    addToCart(variantSelectionProduct, 1, variantSelectionProduct.prixCatalogue, v.id, label);
+                    setVariantSelectionProduct(null);
+                  }}
+                  className={`w-full flex justify-between items-center p-3 rounded-lg border ${isOos ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:border-brand hover:bg-brand/5 transition-colors'} text-left`}
+                >
+                  <span className="font-medium text-sm">{label}</span>
+                  <span className="text-xs text-slate-500">{v.stock} en stock</span>
+                </button>
+              );
+            })}
           </div>
-        </div>
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" onClick={() => setVariantSelectionProduct(null)}>Annuler</Button>
+          </div>
+        </BottomSheet>
       )}
 
       {/* Modale d'encaissement (ouverte par le bouton « Encaisser ») */}
