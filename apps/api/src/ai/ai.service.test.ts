@@ -442,7 +442,7 @@ describe('AiService.interpret — QUERY_* (Phase 3 : Q&A dashboard, jamais de ch
     expect(result.ok).toBe(true);
     expect(result.answer?.data).toEqual({ ventesDuJour: 12345, articlesVendus: 7 });
     // toLocaleString('fr-FR') sépare les milliers par une espace insécable
-    // ( ), pas une espace classique.
+    // (espace fine insécable U+202F), pas une espace classique.
     expect(result.answer?.text).toMatch(/12\s345 FCFA/);
   });
 

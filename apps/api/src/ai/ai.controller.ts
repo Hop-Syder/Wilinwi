@@ -29,6 +29,13 @@ export class AiController {
   @RequireCapabilities('ai:use')
   // Les appels Gemini coûtent plus cher qu'un CRUD classique — plafond dédié
   // sous le ThrottlerGuard global (budget latence/coût, plan Phase 5).
+  // Tracker par défaut de NestJS Throttler = par IP (aucun `getTracker`
+  // personnalisé dans ThrottlerModule.forRoot(), apps/api/src/app.module.ts) :
+  // plusieurs caissières derrière une même IP sortante boutique (NAT partagé)
+  // se partagent ce budget de 20/60s. Constaté par l'audit indépendant —
+  // décision de politique de rate-limit délibérément non tranchée ici
+  // (basculer sur un tracker par utilisateur serait un changement de
+  // comportement à valider séparément, pas un correctif silencieux).
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('voice/interpret')
   interpret(

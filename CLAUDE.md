@@ -16,7 +16,7 @@ le SaaS client (Hub + un onglet par module) et la **console super-admin séparé
 ```
 apps/
   api/        NestJS — modules: auth, etablissement, stock, inventory, pos, crm, treasury,
-              analytics, sync, admin, warehouse, notifications, plans, platform
+              analytics, ai, sync, admin, warehouse, notifications, plans, platform
   web/        Next.js (App Router) :3000 — Hub + /pos /stock /dashboard /ventes /clients
               /tresorerie /entrepot /parametres  (SaaS client ; AUCUN code admin)
   admin-web/  Next.js (App Router) :3001 — console super-admin Nexus (/platform) + login dédié
@@ -52,6 +52,17 @@ packages:
 - **Offline-first** : le POS enregistre en IndexedDB et synchronise via
   `POST /api/sync/sales` (idempotent par `clientGeneratedId`). Le serveur reste la
   source de vérité finale.
+- **Assistant vocal Wilinwi AI** : couche d'interface au-dessus du système existant, jamais
+  un accès direct — principe non négociable « Gemini propose, Wilinwi vérifie ». Chaîne :
+  voix → transcription → Gemini (interprétation en intention structurée, schéma Zod
+  **fermé** — [packages/types/src/ai.ts](packages/types/src/ai.ts)) → backend résout contre
+  les données/permissions réelles → confirmation utilisateur explicite → seulement alors
+  l'opération est enregistrée. Gemini n'écrit **jamais** en base lui-même ; `AiService`
+  ([apps/api/src/ai/](apps/api/src/ai/)) ne fait que dispatcher vers les services de domaine
+  existants (stock, ventes, dispatch), chacun avec sa propre vérification de capacité par
+  intention (pas seulement au niveau de la route — plusieurs intentions partagent une même
+  route). Capacité `ai:use`, module `AI` (réservé au plan ENTERPRISE ou add-on) — voir
+  `ROLE_MODULES`/`CAP_MODULE` dans [roles.ts](packages/types/src/roles.ts).
 - **Console plateforme (super-admin) + séparation** : l'exploitation du SaaS (entreprises,
   facturation, plans/tarifs, modules à la carte, métriques) vit dans `apps/admin-web` (app
   séparée) et le module `apps/api/src/platform`. Trois barrières **indépendantes** :
@@ -156,7 +167,9 @@ emplacement (`ProductStock`), livraisons, **centre de notifications** in-app, et
 **console super-admin** : entreprises, facturation manuelle (échéances, dunning, paiement),
 plans/tarifs/limites éditables (`plan_configs`), modules à la carte, métriques & audit cross-tenant.
 **Gating numérique par plan + grand-père**, cron de relance d'impayés, et anti-bruteforce PIN
-persistant (voir § Concepts clés). Backend déployé sur **Render** (Blueprint
+persistant (voir § Concepts clés), ainsi que l'**assistant vocal Wilinwi AI** (panier vocal en
+caisse, questions vocales au dashboard, brouillons de réapprovisionnement — voir § Concepts
+clés). Backend déployé sur **Render** (Blueprint
 [render.yaml](render.yaml)), frontends sur **Vercel** — voir [README.md](README.md#☁️-déploiement)
 pour la configuration détaillée.
 
@@ -164,4 +177,4 @@ pour la configuration détaillée.
 
 **Passerelle de paiement** réelle pour les abonnements (FedaPay/Wave/CB + webhooks + cron
 `PAST_DUE`) — différée, en attente de l'arbitrage prestataire. Market WhatsApp, fidélité,
-app Flutter, IA. Le découpage modulaire les anticipe sans réécriture.
+app Flutter. Le découpage modulaire les anticipe sans réécriture.
