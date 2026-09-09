@@ -28,6 +28,22 @@ describe('scoreProductMatch', () => {
   it('aucune correspondance → 0', () => {
     expect(scoreProductMatch(CATALOGUE[3]!, 'biscuit')).toBe(0);
   });
+
+  it('tolère le pluriel/singulier mot-à-mot (cas réel observé en direct avec Gemini)', () => {
+    // "pagnes wax" (pluriel) ne correspond pas à "Pagne Wax 6 yards" via une
+    // simple sous-chaîne — confirmé en test live le 2026-09-09.
+    const produit = { nom: 'Pagne Wax 6 yards', sku: 'WAX-6Y' };
+    expect(scoreProductMatch(produit, 'pagnes wax')).toBeGreaterThan(0);
+    expect(scoreProductMatch(produit, 'pagne wax')).toBeGreaterThan(0);
+    // Score de secours, jamais prioritaire sur une vraie sous-chaîne (includes()).
+    expect(scoreProductMatch(produit, 'pagnes wax')).toBeLessThan(scoreProductMatch(produit, 'pagne wax 6 yards'));
+  });
+
+  it('la tolérance mot-à-mot exige que CHAQUE mot de la requête corresponde', () => {
+    // "pagnes savon" : "pagnes"→"pagne" ok, mais "savon" n'existe pas dans le
+    // nom → aucune correspondance partielle silencieuse.
+    expect(scoreProductMatch({ nom: 'Pagne Wax 6 yards', sku: 'WAX-6Y' }, 'pagnes savon')).toBe(0);
+  });
 });
 
 describe('matchProducts — résolution d\'ambiguïté (§29 du cahier des charges)', () => {

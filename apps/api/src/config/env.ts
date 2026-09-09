@@ -36,7 +36,11 @@ export const EnvSchema = z.object({
    *  démarre normalement et l'assistant se dégrade en "indisponible" (fallback
    *  manuel) — l'IA ne doit jamais bloquer le boot ni le reste du produit. */
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  // gemini-2.0-flash répond 404 (retiré côté Google, vérifié en direct le
+  // 2026-09-09) — gemini-3.6-flash confirmé fonctionnel. Nom de version épinglé
+  // plutôt que l'alias gemini-flash-latest (qui peut changer de modèle sous-jacent
+  // sans préavis côté Google) pour un comportement stable et reproductible.
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   GEMINI_TIMEOUT_MS: z.coerce.number().default(8000),
 });
 

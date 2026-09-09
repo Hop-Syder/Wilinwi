@@ -22,6 +22,17 @@ function normalize(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/** Retire un 's' de pluriel final (français) — heuristique légère, pas un stemmer complet. */
+function stripTrailingS(token: string): string {
+  return token.length > 3 && token.endsWith('s') && !token.endsWith('ss') ? token.slice(0, -1) : token;
+}
+
+/** Deux mots se correspondent : égalité, tolérance singulier/pluriel, ou préfixe (≥3 lettres). */
+function tokensMatch(a: string, b: string): boolean {
+  if (a === b || stripTrailingS(a) === stripTrailingS(b)) return true;
+  return a.length >= 3 && b.length >= 3 && (a.startsWith(b) || b.startsWith(a));
+}
+
 /** Score de pertinence d'un produit pour une requête ; 0 = aucune correspondance. */
 export function scoreProductMatch(product: SearchableProduct, query: string): number {
   const q = normalize(query);
@@ -35,6 +46,19 @@ export function scoreProductMatch(product: SearchableProduct, query: string): nu
   if (nom.startsWith(q)) return 60;
   if (sku && sku.includes(q)) return 40;
   if (nom.includes(q)) return 30;
+
+  // Tolérance mot-à-mot (ordre libre, singulier/pluriel) : capture des cas
+  // réels observés en direct avec Gemini — "pagnes wax" (pluriel) ne
+  // correspondait pas à "Pagne Wax 6 yards" (singulier) via includes() seul,
+  // alors que chaque mot de la requête a bien un équivalent dans le nom.
+  // Score volontairement sous celui de includes() : ne devance jamais une
+  // vraie sous-chaîne.
+  const queryTokens = q.split(/\s+/).filter(Boolean);
+  const nomTokens = nom.split(/\s+/).filter(Boolean);
+  if (queryTokens.length > 0 && queryTokens.every((qt) => nomTokens.some((nt) => tokensMatch(qt, nt)))) {
+    return 20;
+  }
+
   return 0;
 }
 

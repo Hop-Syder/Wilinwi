@@ -50,7 +50,7 @@ export class GeminiClient {
     if (!apiKey) {
       throw new AiUnavailableError('GEMINI_API_KEY non configurée');
     }
-    const model = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.0-flash';
+    const model = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-3.6-flash';
     const timeoutMs = this.config.get<number>('GEMINI_TIMEOUT_MS') ?? 8000;
 
     try {
