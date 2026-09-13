@@ -64,15 +64,15 @@ function describeSpeechError(code: string): string | null {
       return null;
     case 'not-allowed':
     case 'service-not-allowed':
-      return "Micro refusé — autorisez l'accès au microphone dans les réglages du navigateur.";
+      return "Microphone bloqué — Cliquez sur l'icône 🔒 (ou paramètres du site) à gauche de la barre d'adresse en haut, activez 'Microphone' sur Autoriser, puis réessayez.";
     case 'no-speech':
-      return "Rien entendu — réessayez en parlant juste après avoir appuyé sur le micro.";
+      return "Rien entendu — parlez distinctement juste après avoir cliqué sur le micro.";
     case 'audio-capture':
-      return 'Aucun microphone détecté sur cet appareil.';
+      return 'Aucun microphone physique détecté sur cet appareil.';
     case 'network':
       return 'Connexion réseau requise pour la reconnaissance vocale.';
     default:
-      return 'Micro indisponible pour le moment. Utilisez la recherche manuelle.';
+      return 'Micro indisponible. Utilisez la recherche manuelle.';
   }
 }
 
@@ -137,17 +137,41 @@ export function useVoiceCapture(lang = 'fr-FR') {
     };
   }, [lang]);
 
-  const start = useCallback((onResult: (transcript: string) => void) => {
+  const start = useCallback(async (onResult: (transcript: string) => void) => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
     onResultRef.current = onResult;
     setTranscript('');
     setError(null);
+
+    // 1. Déclencher la demande d'autorisation native du navigateur si nécessaire via getUserMedia
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Libération immédiate du flux une fois l'accès accordé par l'utilisateur
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (mediaErr: unknown) {
+        const err = mediaErr as { name?: string };
+        if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+          setIsRecording(false);
+          setError(
+            "Microphone bloqué — Cliquez sur l'icône 🔒 à gauche de l'adresse en haut, passez Microphone sur 'Autoriser', puis rechargez la page.",
+          );
+          return;
+        }
+        if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+          setIsRecording(false);
+          setError('Aucun microphone physique détecté sur cet appareil.');
+          return;
+        }
+      }
+    }
+
     setIsRecording(true);
     try {
       recognition.start();
     } catch {
-      // Déjà démarrée ou permission refusée — état cohérent, pas de crash.
+      // Déjà démarrée ou erreur immédiate
       setIsRecording(false);
       setError('Impossible de démarrer le micro. Réessayez, ou utilisez la recherche manuelle.');
     }
