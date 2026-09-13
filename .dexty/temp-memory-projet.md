@@ -8,7 +8,7 @@
 - **Nom** : Wilinwi
 - **Type** : SaaS multi-tenant (POS · Stock · Pay · CRM · Analytics)
 - **Initialisé le** : 2026-06-19
-- **Dernière mise à jour** : 2026-06-19
+- **Dernière mise à jour** : 2026-09-13
 
 ## 🛠️ Stack détectée
 
@@ -118,3 +118,4 @@ packages/
 - **[AUDIT CRM - 2026-06-20]** : Refonte complète du module CRM client et de la gestion des dettes. Intégration d'un encaissement ciblé / FIFO automatique mettant à jour `SaleInstallment`, `Sale`, `Client` et `CashMovement` au sein d'une même transaction Prisma isolée par tenant. KPIs financiers et historique de vente complet intégrés à l'UI double-colonne.
 - **[DEXTY RULES]** : Les signatures Dexty sont désormais présentes sur les fichiers critiques (`prisma.service.ts`, `sale.mapper.ts`, `sales.service.ts`, `roles.ts`, `schema.prisma`, `clients.service.ts`, `client.mapper.ts`).
 - **[2026-09-13] [BDD & Relance]** : Nouvelle base Supabase initialisée avec succès : migrations Prisma appliquées (3/3), `rls.sql`, `platform.sql`, `plan-configs.sql` exécutés. `DATABASE_URL` ajustée sur le port session 5432. Seeds démo et prestige générés dans Supabase Auth et Postgres. Services dev opérationnels (:4000, :3000, :3001).
+- **[2026-09-13] [Durcissement Sécurité & RLS]** : Création du rôle applicatif PostgreSQL `wilinwi_app` (`NOBYPASSRLS`). `DATABASE_URL` basculée sur ce rôle via le pooler session 5432 (`wilinwi_app.nifewhtiqyajztwsegxc`). Isolation RLS testée et validée par `verify-isolation.ts` (« ✅ RLS ENFORCÉE au niveau base »). Protection contre toute élévation de privilèges ou fuite inter-tenants.

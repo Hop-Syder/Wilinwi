@@ -20,6 +20,7 @@ build/
 
 # prisma
 packages/db/prisma/*.db
+packages/db/prisma/*-role.sql
 
 # logs
 *.log
