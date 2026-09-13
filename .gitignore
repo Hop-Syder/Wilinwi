@@ -14,8 +14,9 @@ build/
 
 # env
 .env
-.env.local
-.env.*.local
+.env*
+!.env.example
+!**/.env.example
 
 # prisma
 packages/db/prisma/*.db

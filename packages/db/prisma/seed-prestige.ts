@@ -75,7 +75,9 @@ async function main() {
   });
   console.log(`   Compte auth propriétaire: ${OWNER_EMAIL} (${ownerId})`);
 
-  await withTenant(TENANT_ID, async (tx) => {
+  await withTenant(
+    TENANT_ID,
+    async (tx) => {
     // `internal: false` → visible dans la console plateforme comme un vrai client.
     await tx.tenant.upsert({
       where: { id: TENANT_ID },
@@ -169,7 +171,7 @@ async function main() {
       }
       console.log(`   🏪 ${boutique.nom}: ${boutique.produits.length} produits OK`);
     }
-  });
+  }, { timeout: 60_000, maxWait: 15_000 });
 
   console.log('✅ Seed Prestige terminé.');
   console.log(`   Connexion: ${OWNER_EMAIL} / ${OWNER_PASSWORD} — tenant ${TENANT_ID}`);

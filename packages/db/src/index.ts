@@ -41,13 +41,20 @@ export type TenantTx = Prisma.TransactionClient;
  * les données au tenant courant. C'est le point d'entrée standard de toute
  * opération applicative.
  */
-export function withTenant<T>(tenantId: string, fn: (tx: TenantTx) => Promise<T>): Promise<T> {
+export function withTenant<T>(
+  tenantId: string,
+  fn: (tx: TenantTx) => Promise<T>,
+  options?: { maxWait?: number; timeout?: number },
+): Promise<T> {
   return prisma.$transaction(
     async (tx) => {
       // set_config(..., true) = local à la transaction (réinitialisé au commit).
       await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
-    { maxWait: 10_000, timeout: 20_000 },
+    {
+      maxWait: options?.maxWait ?? 10_000,
+      timeout: options?.timeout ?? 20_000,
+    },
   );
 }
