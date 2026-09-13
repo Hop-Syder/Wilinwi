@@ -69,10 +69,12 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   // Priorité au jeton PIN (poste partagé) ; sinon session Supabase.
   let token = getPinToken();
   if (!token) {
-    const {
-      data: { session },
-    } = await getSupabase().auth.getSession();
-    token = session?.access_token ?? null;
+    try {
+      const { data } = await getSupabase().auth.getSession();
+      token = data?.session?.access_token ?? null;
+    } catch {
+      token = null;
+    }
   }
 
   const headers = new Headers(options.headers);

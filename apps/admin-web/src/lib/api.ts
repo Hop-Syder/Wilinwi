@@ -25,10 +25,13 @@ export class ApiError extends Error {
 
 /** Appel à l'API Wilinwi avec le JWT Supabase courant en Authorization. */
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const {
-    data: { session },
-  } = await getSupabase().auth.getSession();
-  const token = session?.access_token ?? null;
+  let token: string | null = null;
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    token = data?.session?.access_token ?? null;
+  } catch {
+    token = null;
+  }
 
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');

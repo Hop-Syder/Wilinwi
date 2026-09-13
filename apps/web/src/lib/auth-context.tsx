@@ -103,17 +103,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Résout l'utilisateur courant depuis /api/auth/me (rôle + modules frais). */
   const resolve = useCallback(async () => {
-    let hasSession = !!getPinToken();
-    if (!hasSession) {
-      const { data } = await getSupabase().auth.getSession();
-      hasSession = !!data.session;
-    }
-    if (!hasSession) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
     try {
+      let hasSession = !!getPinToken();
+      if (!hasSession) {
+        try {
+          const { data } = await getSupabase().auth.getSession();
+          hasSession = !!data?.session;
+        } catch {
+          hasSession = false;
+        }
+      }
+      if (!hasSession) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       const me = await apiGet<MeResponse>('/api/auth/me');
       // Synchronise le localStorage avec l'établissement résolu côté serveur
       // (1ʳᵉ visite, ou si l'établissement stocké n'est plus accessible).
@@ -152,15 +157,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void resolve();
-    const { data: sub } = getSupabase().auth.onAuthStateChange(() => {
-      void resolve();
-    });
-    return () => sub.subscription.unsubscribe();
+    try {
+      const { data: sub } = getSupabase().auth.onAuthStateChange(() => {
+        void resolve();
+      });
+      return () => sub?.subscription?.unsubscribe();
+    } catch {
+      return () => {};
+    }
   }, [resolve]);
 
   const signOut = async () => {
     clearPinToken();
-    await getSupabase().auth.signOut();
+    try {
+      await getSupabase().auth.signOut();
+    } catch {
+      // Ignorer l'échec si le réseau ou la session est déjà invalidée
+    }
     setUser(null);
   };
 
