@@ -52,6 +52,30 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | undefined {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
+/**
+ * Traduit les codes d'erreur bruts de la Web Speech API en message
+ * compréhensible (§33 du cahier des charges UI/UX : jamais de code technique
+ * brut). `null` = pas une vraie erreur à afficher (arrêt volontaire par
+ * l'utilisateur via `stop()`).
+ */
+function describeSpeechError(code: string): string | null {
+  switch (code) {
+    case 'aborted':
+      return null;
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return "Micro refusé — autorisez l'accès au microphone dans les réglages du navigateur.";
+    case 'no-speech':
+      return "Rien entendu — réessayez en parlant juste après avoir appuyé sur le micro.";
+    case 'audio-capture':
+      return 'Aucun microphone détecté sur cet appareil.';
+    case 'network':
+      return 'Connexion réseau requise pour la reconnaissance vocale.';
+    default:
+      return 'Micro indisponible pour le moment. Utilisez la recherche manuelle.';
+  }
+}
+
 export interface VoiceCaptureState {
   /** Reconnaissance vocale disponible dans ce navigateur. */
   supported: boolean;
@@ -102,7 +126,7 @@ export function useVoiceCapture(lang = 'fr-FR') {
     };
     recognition.onerror = (event) => {
       setIsRecording(false);
-      setError(event.error || 'erreur inconnue');
+      setError(describeSpeechError(event.error));
     };
     recognition.onend = () => setIsRecording(false);
     recognitionRef.current = recognition;
@@ -125,7 +149,7 @@ export function useVoiceCapture(lang = 'fr-FR') {
     } catch {
       // Déjà démarrée ou permission refusée — état cohérent, pas de crash.
       setIsRecording(false);
-      setError('démarrage impossible');
+      setError('Impossible de démarrer le micro. Réessayez, ou utilisez la recherche manuelle.');
     }
   }, []);
 

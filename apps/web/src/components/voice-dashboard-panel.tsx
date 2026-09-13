@@ -108,6 +108,7 @@ export function VoiceDashboardPanel() {
         )}
         {answer && <p className="mt-1 text-sm font-medium text-slate-800">{answer}</p>}
         {errorText && <p className="mt-1 text-xs font-medium text-red-600">{errorText}</p>}
+        {voice.error && <p className="mt-1 text-xs font-medium text-red-600">{voice.error}</p>}
       </div>
     </div>
   );

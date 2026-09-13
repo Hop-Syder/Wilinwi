@@ -136,6 +136,7 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
           {status.text}
         </p>
       )}
+      {voice.error && <p className="mt-2 text-xs font-medium text-red-600">{voice.error}</p>}
 
       {clarification && (
         <ClarificationPanel

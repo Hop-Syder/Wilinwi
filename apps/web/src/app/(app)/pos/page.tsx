@@ -12,6 +12,7 @@
 // ──────────────────────────────────
 
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Trash2, ShoppingCart, CloudOff, AlertTriangle, Lock, Star, Command } from 'lucide-react';
 import type { CreateSaleInput, ProductDto } from '@wilinwi/types';
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@wilinwi/types';
@@ -38,6 +39,7 @@ interface CartLine {
 }
 
 export default function PosPage() {
+  const router = useRouter();
   const { refreshPending } = useSync();
   const { user } = useAuth();
   const isManager = user?.role === 'OWNER' || user?.role === 'MANAGER';
@@ -177,6 +179,10 @@ export default function PosPage() {
 
   // Catalogue : depuis l'API si en ligne, sinon depuis le cache offline.
   useEffect(() => {
+    if (user?.role === 'DELIVERY') {
+      router.replace('/livraisons');
+      return;
+    }
     apiGet<ProductDto[]>('/api/stock/products')
       .then((p) => {
         setProducts(p);

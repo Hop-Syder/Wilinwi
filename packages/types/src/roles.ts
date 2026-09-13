@@ -190,7 +190,7 @@ export const ROLE_MODULES: Record<Role, readonly ModuleKey[]> = {
   OWNER: [...MODULES],
   MANAGER: ['POS', 'STOCK', 'PAY', 'CRM', 'ANALYTICS', 'DELIVERY', 'AI'],
   SELLER: ['POS', 'STOCK', 'AI'],
-  CASHIER: ['POS', 'CRM', 'AI'],
+  CASHIER: ['POS', 'STOCK', 'CRM', 'AI'],
   DELIVERY: ['DELIVERY'],
 };
 

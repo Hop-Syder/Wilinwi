@@ -56,7 +56,11 @@ class HealthController {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', '../../.env'],
+      validate: validateEnv,
+    }),
     // Rate-limiting global (anti-abus / DoS) : 300 requêtes / minute / IP.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     // Cron scheduler (billing overdue, etc.) — runs every hour.

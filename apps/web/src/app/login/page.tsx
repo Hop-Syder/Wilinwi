@@ -58,7 +58,12 @@ export default function LoginPage() {
     // Charge le profil AVANT de naviguer → le Hub trouve `user` prêt (plus de
     // redirection intempestive vers /login). Le préloader du bouton reste affiché.
     await refreshUser();
-    router.push('/');
+    const session = (await getSupabase().auth.getSession()).data.session;
+    if (session?.user?.app_metadata?.role === 'DELIVERY') {
+      router.push('/livraisons');
+    } else {
+      router.push('/');
+    }
   }
 
   return (

@@ -262,6 +262,7 @@ export default function DispatchPage() {
 
       {voice.isRecording && <p className="mt-2 text-sm text-slate-500">Je vous écoute…</p>}
       {voiceStatus && <p className="mt-2 text-sm font-medium text-amber-600">{voiceStatus}</p>}
+      {voice.error && <p className="mt-2 text-sm font-medium text-red-600">{voice.error}</p>}
       {voiceClarification && (
         <ClarificationPanel
           question={voiceClarification.question}

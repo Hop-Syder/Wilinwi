@@ -16,7 +16,10 @@
     "WEB_BASE_URL",
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "NEXT_PUBLIC_API_URL"
+    "NEXT_PUBLIC_API_URL",
+    "GEMINI_API_KEY",
+    "GEMINI_MODEL",
+    "GEMINI_TIMEOUT_MS"
   ],
   "tasks": {
     "build": {
