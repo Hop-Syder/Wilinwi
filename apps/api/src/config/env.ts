@@ -41,7 +41,10 @@ export const EnvSchema = z.object({
   // plutôt que l'alias gemini-flash-latest (qui peut changer de modèle sous-jacent
   // sans préavis côté Google) pour un comportement stable et reproductible.
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
-  GEMINI_TIMEOUT_MS: z.coerce.number().default(8000),
+  // 12s (au lieu de 8s) : l'assistant envoie désormais l'audio brut à transcrire
+  // (Gemini fait transcription + interprétation en un seul appel), un traitement
+  // plus long qu'une simple classification de texte.
+  GEMINI_TIMEOUT_MS: z.coerce.number().default(12000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

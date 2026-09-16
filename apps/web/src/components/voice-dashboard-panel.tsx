@@ -4,12 +4,13 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Composant Frontend : assistant vocal du directeur (dashboard).
- *   Micro → transcription (client) → POST /api/ai/voice/interpret → réponse
+ *   Micro → audio brut (WAV, ré-encodé côté client) → POST /api/ai/voice/interpret
+ *   → Gemini transcrit ET interprète en un seul appel côté serveur → réponse
  *   affichée telle quelle. Le texte provient exclusivement du backend
  *   (AnalyticsService/StockService) : ce composant ne fait qu'afficher —
  *   il n'invente jamais de chiffre et n'écrit jamais rien.
  * @created 2026-09-08
- * @updated 2026-09-08
+ * @updated 2026-09-16
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -28,16 +29,19 @@ export function VoiceDashboardPanel() {
   const tts = useTts();
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  async function handleTranscript(transcript: string) {
+  async function handleAudio(audioBase64: string, mimeType: string) {
     setAnswer(null);
     setErrorText(null);
+    setTranscript(null);
     setLoading(true);
     try {
       const result = await apiPost<VoiceInterpretResult>('/api/ai/voice/interpret', {
-        transcript,
+        audio: audioBase64,
+        mimeType,
         context: 'dashboard',
       });
       applyResult(result);
@@ -49,11 +53,15 @@ export function VoiceDashboardPanel() {
   }
 
   function applyResult(result: VoiceInterpretResult) {
+    if (result.transcript) setTranscript(result.transcript);
+
     if (!result.ok) {
       setErrorText(
         result.error === 'FORBIDDEN'
           ? "Vous n'avez pas la permission de poser cette question à l'assistant vocal."
-          : 'Assistant vocal indisponible pour le moment.',
+          : result.error === 'TRANSCRIPT_EMPTY'
+            ? 'Rien entendu — parlez distinctement juste après avoir cliqué sur le micro.'
+            : 'Assistant vocal indisponible pour le moment.',
       );
       return;
     }
@@ -69,12 +77,14 @@ export function VoiceDashboardPanel() {
 
   if (voice.disabled) return null;
 
+  const busy = loading || voice.processing;
+
   return (
     <div className="flex items-start gap-3 rounded-xl border border-brand/20 bg-brand/5 p-3">
       <VoiceButton
         size="md"
-        state={loading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
-        onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleTranscript))}
+        state={voice.isRecording ? 'listening' : busy ? 'loading' : 'idle'}
+        onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleAudio))}
         aria-label={voice.isRecording ? 'Arrêter le micro' : "Poser une question à l'assistant"}
       />
 
@@ -83,9 +93,11 @@ export function VoiceDashboardPanel() {
           <span className="text-sm font-medium text-slate-600">
             {voice.isRecording
               ? 'Je vous écoute…'
-              : loading
-                ? 'Analyse en cours…'
-                : "Demandez « Combien avons-nous vendu aujourd'hui ? »"}
+              : voice.processing
+                ? 'Conversion…'
+                : loading
+                  ? 'Analyse en cours…'
+                  : "Demandez « Combien avons-nous vendu aujourd'hui ? »"}
           </span>
           {tts.supported && (
             <IconButton
@@ -103,8 +115,8 @@ export function VoiceDashboardPanel() {
           )}
         </div>
 
-        {voice.transcript && !loading && !answer && !errorText && (
-          <p className="mt-1 text-xs text-slate-400">« {voice.transcript} »</p>
+        {transcript && !busy && !answer && !errorText && (
+          <p className="mt-1 text-xs text-slate-400">« {transcript} »</p>
         )}
         {answer && <p className="mt-1 text-sm font-medium text-slate-800">{answer}</p>}
         {errorText && <p className="mt-1 text-xs font-medium text-red-600">{errorText}</p>}

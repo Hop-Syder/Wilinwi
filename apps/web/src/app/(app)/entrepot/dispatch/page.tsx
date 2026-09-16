@@ -128,20 +128,23 @@ export default function DispatchPage() {
     setOpen(true);
   }
 
-  async function handleVoiceTranscript(transcript: string) {
+  async function handleVoiceAudio(audioBase64: string, mimeType: string) {
     setVoiceStatus(null);
     setVoiceClarification(null);
     setVoiceLoading(true);
     try {
       const result = await apiPost<VoiceInterpretResult>('/api/ai/voice/interpret', {
-        transcript,
+        audio: audioBase64,
+        mimeType,
         context: 'pos',
       });
       if (!result.ok) {
         setVoiceStatus(
           result.error === 'FORBIDDEN'
             ? "Vous n'avez pas la permission d'utiliser l'assistant vocal pour cette action."
-            : 'Assistant vocal indisponible. Utilisez le formulaire manuel.',
+            : result.error === 'TRANSCRIPT_EMPTY'
+              ? 'Rien entendu — parlez distinctement juste après avoir cliqué sur le micro.'
+              : 'Assistant vocal indisponible. Utilisez le formulaire manuel.',
         );
         return;
       }
@@ -241,9 +244,9 @@ export default function DispatchPage() {
           />
           {!voice.disabled && (
             <VoiceButton
-              disabled={offline}
-              state={voiceLoading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
-              onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleVoiceTranscript))}
+              disabled={offline || voice.processing}
+              state={voice.isRecording ? 'listening' : voiceLoading || voice.processing ? 'loading' : 'idle'}
+              onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleVoiceAudio))}
               aria-label="Commande vocale : pré-remplir un dispatch"
               title="Commande vocale (ex. « Envoie 50 Coca-Cola à la Boutique B »)"
             />
@@ -261,6 +264,7 @@ export default function DispatchPage() {
       </div>
 
       {voice.isRecording && <p className="mt-2 text-sm text-slate-500">Je vous écoute…</p>}
+      {voice.processing && <p className="mt-2 text-sm text-slate-500">Conversion…</p>}
       {voiceStatus && <p className="mt-2 text-sm font-medium text-amber-600">{voiceStatus}</p>}
       {voice.error && <p className="mt-2 text-sm font-medium text-red-600">{voice.error}</p>}
       {voiceClarification && (

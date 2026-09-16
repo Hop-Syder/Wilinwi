@@ -4,13 +4,14 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Composant Frontend : panier vocal Wilinwi AI (POS).
- *   Micro → transcription (client) → POST /api/ai/voice/interpret → panier
+ *   Micro → audio brut (WAV, ré-encodé côté client) → POST /api/ai/voice/interpret
+ *   → Gemini transcrit ET interprète en un seul appel côté serveur → panier
  *   proposé. Le résultat alimente le panier existant via `onResolvedItem`
  *   (même chemin que les clics manuels — `addToCart` côté page) : ce
  *   composant ne crée JAMAIS de vente lui-même, il ne fait qu'ajouter des
  *   lignes au panier local que le checkout existant confirmera ensuite.
  * @created 2026-09-08
- * @updated 2026-09-08
+ * @updated 2026-09-16
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -38,6 +39,7 @@ type PendingClarification = {
 export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCartPanelProps) {
   const voice = useVoiceCapture();
   const [loading, setLoading] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
   const [status, setStatus] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [clarification, setClarification] = useState<PendingClarification | null>(null);
 
@@ -50,13 +52,15 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
     onResolvedItem(product, quantite, product.prixCatalogue);
   }
 
-  async function handleTranscript(transcript: string) {
+  async function handleAudio(audioBase64: string, mimeType: string) {
     setStatus(null);
     setClarification(null);
+    setTranscript(null);
     setLoading(true);
     try {
       const result = await apiPost<VoiceInterpretResult>('/api/ai/voice/interpret', {
-        transcript,
+        audio: audioBase64,
+        mimeType,
         context: 'pos',
       });
       applyResult(result);
@@ -69,11 +73,15 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
   }
 
   function applyResult(result: VoiceInterpretResult) {
+    if (result.transcript) setTranscript(result.transcript);
+
     if (!result.ok) {
       const text =
         result.error === 'FORBIDDEN'
           ? "Vous n'avez pas la permission d'utiliser l'assistant vocal pour cette action."
-          : 'Assistant vocal indisponible. Utilisez la recherche.';
+          : result.error === 'TRANSCRIPT_EMPTY'
+            ? 'Rien entendu — parlez distinctement juste après avoir cliqué sur le micro.'
+            : 'Assistant vocal indisponible. Utilisez la recherche.';
       setStatus({ tone: 'err', text });
       return;
     }
@@ -111,23 +119,27 @@ export function VoiceCartPanel({ products, onResolvedItem, disabled }: VoiceCart
     return null;
   }
 
+  const busy = loading || voice.processing;
+
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
         <VoiceButton
-          state={loading ? 'loading' : voice.isRecording ? 'listening' : 'idle'}
-          disabled={disabled || loading}
-          onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleTranscript))}
+          state={voice.isRecording ? 'listening' : busy ? 'loading' : 'idle'}
+          disabled={disabled || busy}
+          onClick={() => (voice.isRecording ? voice.stop() : voice.start(handleAudio))}
           aria-label={voice.isRecording ? 'Arrêter le micro' : 'Parler pour ajouter au panier'}
         />
         <span className="text-sm text-slate-500">
           {voice.isRecording
             ? 'Je vous écoute…'
-            : loading
-              ? 'Analyse en cours…'
-              : voice.transcript
-                ? `« ${voice.transcript} »`
-                : 'Parler pour ajouter des produits'}
+            : voice.processing
+              ? 'Conversion…'
+              : loading
+                ? 'Analyse en cours…'
+                : transcript
+                  ? `« ${transcript} »`
+                  : 'Parler pour ajouter des produits'}
         </span>
       </div>
 

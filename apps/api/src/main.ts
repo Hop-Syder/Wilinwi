@@ -12,11 +12,19 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `bodyParser: false` + `useBodyParser(...)` manuel ci-dessous : la limite Express
+  // par défaut (100kb) est trop stricte pour l'assistant vocal Wilinwi AI, qui envoie
+  // l'audio capturé (MediaRecorder) en base64 dans le corps JSON — jusqu'à ~4 Mo de
+  // caractères, cf. VOICE_MAX_AUDIO_BASE64_LENGTH (packages/types/src/ai.ts), qui
+  // reste la limite faisant foi (Zod) ; celle-ci n'est qu'un plafond bas niveau.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  app.useBodyParser('json', { limit: '6mb' });
+  app.useBodyParser('urlencoded', { extended: true, limit: '6mb' });
 
   // Derrière le proxy de la plateforme d'hébergement (Render, etc.) : faire confiance au
   // 1er hop pour que `req.ip` reflète l'IP réelle du client (X-Forwarded-For) → rate-limiting

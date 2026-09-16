@@ -54,10 +54,15 @@ packages:
   source de vérité finale.
 - **Assistant vocal Wilinwi AI** : couche d'interface au-dessus du système existant, jamais
   un accès direct — principe non négociable « Gemini propose, Wilinwi vérifie ». Chaîne :
-  voix → transcription → Gemini (interprétation en intention structurée, schéma Zod
-  **fermé** — [packages/types/src/ai.ts](packages/types/src/ai.ts)) → backend résout contre
-  les données/permissions réelles → confirmation utilisateur explicite → seulement alors
-  l'opération est enregistrée. Gemini n'écrit **jamais** en base lui-même ; `AiService`
+  voix (`getUserMedia`/`MediaRecorder` côté navigateur, ré-encodée en WAV mono 16 kHz —
+  [use-voice-capture.ts](apps/web/src/lib/use-voice-capture.ts)) → Gemini (transcription
+  **et** interprétation en une seule intention structurée en un seul appel multimodal,
+  schéma Zod **fermé** — [packages/types/src/ai.ts](packages/types/src/ai.ts)) → backend
+  résout contre les données/permissions réelles → confirmation utilisateur explicite →
+  seulement alors l'opération est enregistrée. Aucune transcription n'est faite dans le
+  navigateur (Web Speech API abandonnée : support incohérent selon navigateurs/régions —
+  le moteur de Chrome dépend d'un serveur de reconnaissance Google externe, indisponible
+  dans de nombreux pays). Gemini n'écrit **jamais** en base lui-même ; `AiService`
   ([apps/api/src/ai/](apps/api/src/ai/)) ne fait que dispatcher vers les services de domaine
   existants (stock, ventes, dispatch), chacun avec sa propre vérification de capacité par
   intention (pas seulement au niveau de la route — plusieurs intentions partagent une même

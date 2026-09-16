@@ -2,15 +2,15 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Service métier pour l'assistant vocal Wilinwi AI. Orchestre :
- *   transcript → Gemini → validation Zod (schéma d'intention FERMÉ) →
- *   vérification de capacité propre à l'intention → dispatch vers les
- *   services de domaine existants. Principe non négociable : « Gemini
- *   propose, Wilinwi vérifie » — aucune sortie de Gemini n'est jamais
+ *   audio → Gemini (transcription + intention) → validation Zod (schéma
+ *   d'intention FERMÉ) → vérification de capacité propre à l'intention →
+ *   dispatch vers les services de domaine existants. Principe non négociable :
+ *   « Gemini propose, Wilinwi vérifie » — aucune sortie de Gemini n'est jamais
  *   traitée comme une autorisation ou une instruction d'exécution ; seule la
  *   capacité réelle de l'utilisateur (vérifiée ici, en code) autorise quoi
  *   que ce soit. Ce service n'écrit jamais lui-même en base.
  * @created 2026-09-08
- * @updated 2026-09-08
+ * @updated 2026-09-16
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -80,7 +80,7 @@ export class AiService {
 
     let raw: string;
     try {
-      raw = await this.gemini.interpret(systemPrompt, req.transcript);
+      raw = await this.gemini.interpret(systemPrompt, { data: req.audio, mimeType: req.mimeType });
     } catch (err) {
       if (err instanceof AiUnavailableError) {
         return { ok: false, error: 'AI_UNAVAILABLE' };
@@ -101,37 +101,51 @@ export class AiService {
       return { ok: false, error: 'AI_UNAVAILABLE' };
     }
     const intent = parsed.data;
+    // Simple écho de ce que Gemini a compris de l'audio — jamais un critère de
+    // décision (cf. doc VoiceIntentSchema). Absent (undefined) si vide, pour
+    // ne pas afficher de guillemets vides côté UI.
+    const transcript = intent.transcript || undefined;
 
     // Le rôle effectif est celui de la session authentifiée (AuthContext),
-    // jamais celui que le transcript prétendrait imposer.
+    // jamais celui que l'audio prétendrait imposer.
     const requiredCapability = INTENT_CAPABILITY[intent.intent];
     if (requiredCapability && !hasCapability(ctx.role, requiredCapability)) {
-      return { ok: false, error: 'FORBIDDEN' };
+      return { ok: false, error: 'FORBIDDEN', transcript };
     }
 
     switch (intent.intent) {
       case 'NEEDS_CLARIFICATION':
-        return { ok: true, clarification: { question: intent.question, candidates: [] } };
+        return { ok: true, transcript, clarification: { question: intent.question, candidates: [] } };
 
       case 'UNKNOWN':
         // Puits mort : `intent.raw` n'est utilisé qu'à des fins de diagnostic
         // (journalisation future), jamais réexécuté ni réinjecté en prompt.
-        return { ok: false, error: 'AI_UNAVAILABLE' };
+        // Audio sans parole détectable (silence, bruit) → erreur dédiée, pour
+        // que l'UI invite à réessayer plutôt qu'à afficher "assistant indisponible".
+        // Le transcript est tout de même renvoyé sur AI_UNAVAILABLE (parole
+        // entendue mais non classifiable) pour que l'UI montre ce qui a été
+        // compris — jamais sur TRANSCRIPT_EMPTY, où il n'y a rien à montrer.
+        return transcript
+          ? { ok: false, error: 'AI_UNAVAILABLE', transcript }
+          : { ok: false, error: 'TRANSCRIPT_EMPTY' };
 
       case 'ADD_PRODUCTS_TO_CART':
-        return this.resolveCart(ctx, intent.items);
+        return { ...(await this.resolveCart(ctx, intent.items)), transcript };
 
       case 'QUERY_SALES_TODAY':
-        return this.answerSalesToday(ctx);
+        return { ...(await this.answerSalesToday(ctx)), transcript };
 
       case 'QUERY_TOP_SHOP':
-        return this.answerTopShop(ctx);
+        return { ...(await this.answerTopShop(ctx)), transcript };
 
       case 'QUERY_STOCK_LOW':
-        return this.answerStockLow(ctx);
+        return { ...(await this.answerStockLow(ctx)), transcript };
 
       case 'CREATE_REPLENISHMENT_DRAFT':
-        return this.resolveReplenishmentDraft(ctx, intent.destinationQuery, intent.items);
+        return {
+          ...(await this.resolveReplenishmentDraft(ctx, intent.destinationQuery, intent.items)),
+          transcript,
+        };
     }
   }
 
