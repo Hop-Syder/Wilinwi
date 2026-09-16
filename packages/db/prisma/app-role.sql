@@ -1,0 +1,21 @@
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'wilinwi_app') THEN
+    CREATE ROLE wilinwi_app LOGIN PASSWORD '03a09e0ae0d5152dd9c094f55dc43def' NOBYPASSRLS;
+  ELSE
+    ALTER ROLE wilinwi_app WITH PASSWORD '03a09e0ae0d5152dd9c094f55dc43def' NOBYPASSRLS;
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA public TO wilinwi_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO wilinwi_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO wilinwi_app;
+GRANT USAGE ON SCHEMA app TO wilinwi_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO wilinwi_app;
+
+-- Tables/séquences créées plus tard par les migrations (rôle postgres) :
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO wilinwi_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO wilinwi_app;
