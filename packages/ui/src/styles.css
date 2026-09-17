@@ -84,3 +84,14 @@
     }
   }
 }
+
+@layer utilities {
+  /* Masquage propre des scrollbars pour les barres de défilement horizontales (mobile/touch) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

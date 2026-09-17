@@ -12,7 +12,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, RefreshCw } from 'lucide-react';
+import { Calendar, RefreshCw, Check } from 'lucide-react';
 
 export type PeriodPreset = 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'custom';
 
@@ -29,12 +29,12 @@ interface PeriodSelectorProps {
   hideCompareAndRefresh?: boolean;
 }
 
-const PRESET_LABELS: Record<PeriodPreset, string> = {
-  today: "Aujourd'hui",
-  yesterday: 'Hier',
-  last7: '7 derniers jours',
-  thisMonth: 'Ce mois',
-  custom: 'Personnalisé',
+const PRESET_CONFIG: Record<PeriodPreset, { label: string; shortLabel: string }> = {
+  today: { label: "Aujourd'hui", shortLabel: "Aujourd'hui" },
+  yesterday: { label: 'Hier', shortLabel: 'Hier' },
+  last7: { label: '7 derniers jours', shortLabel: '7 jours' },
+  thisMonth: { label: 'Ce mois', shortLabel: 'Ce mois' },
+  custom: { label: 'Personnalisé', shortLabel: 'Perso' },
 };
 
 export function PeriodSelector({
@@ -50,9 +50,9 @@ export function PeriodSelector({
   hideCompareAndRefresh = false,
 }: PeriodSelectorProps) {
   return (
-    <div className="inline-flex items-center gap-2 flex-nowrap max-w-full overflow-x-auto">
-      {/* Groupe des boutons de préconfiguration */}
-      <div className="inline-flex items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/80 shadow-2xs">
+    <div className="inline-flex items-center gap-2 flex-nowrap max-w-full overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5">
+      {/* Groupe des boutons de préconfiguration (Segmented Control) */}
+      <div className="inline-flex items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/80 shadow-2xs shrink-0">
         {(['today', 'yesterday', 'last7', 'thisMonth', 'custom'] as PeriodPreset[]).map((p) => {
           const active = preset === p;
           return (
@@ -62,11 +62,12 @@ export function PeriodSelector({
               onClick={() => onPresetChange(p)}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
                 active
-                  ? 'bg-indigo-600 text-white shadow-xs font-extrabold border border-indigo-700'
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold border border-blue-700'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
-              {PRESET_LABELS[p]}
+              <span className="hidden sm:inline">{PRESET_CONFIG[p].label}</span>
+              <span className="sm:hidden">{PRESET_CONFIG[p].shortLabel}</span>
             </button>
           );
         })}
@@ -74,36 +75,45 @@ export function PeriodSelector({
 
       {/* Champs de sélection de date personnalisée */}
       {preset === 'custom' && onCustomDateChange && (
-        <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-2xs whitespace-nowrap">
-          <Calendar className="h-3.5 w-3.5 text-slate-500" />
+        <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-2xs whitespace-nowrap shrink-0">
+          <Calendar className="h-3.5 w-3.5 text-slate-500 shrink-0" />
           <span className="text-[11px] font-semibold text-slate-500">Du</span>
           <input
             type="date"
             value={customFrom}
             onChange={(e) => onCustomDateChange(e.target.value, customTo)}
-            className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <span className="text-[11px] font-semibold text-slate-500">au</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => onCustomDateChange(customFrom, e.target.value)}
-            className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
       )}
 
-      {/* Switch de comparaison relative vs période précédente */}
+      {/* Switch moderne de comparaison relative vs période précédente */}
       {!hideCompareAndRefresh && (
-        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none rounded-xl border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={compare}
-            onChange={(e) => onCompareToggle(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
-          />
+        <button
+          type="button"
+          onClick={() => onCompareToggle(!compare)}
+          className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs select-none whitespace-nowrap active:scale-95 shrink-0 ${
+            compare
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500/20'
+              : 'border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors ${
+              compare ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
+            }`}
+          >
+            {compare && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+          </span>
           <span>vs période précédente</span>
-        </label>
+        </button>
       )}
 
       {/* Bouton d'actualisation manuelle */}
@@ -113,9 +123,9 @@ export function PeriodSelector({
           onClick={onRefresh}
           disabled={isRefreshing}
           title="Actualiser les données"
-          className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 shrink-0"
+          className="inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50 shrink-0 active:scale-95"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : ''}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`} />
         </button>
       )}
     </div>
