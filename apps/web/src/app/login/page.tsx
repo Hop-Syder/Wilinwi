@@ -88,7 +88,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex h-screen h-[100dvh] w-screen bg-background text-text-primary font-sans antialiased overflow-hidden">
+    <main className="flex min-h-screen min-h-[100dvh] w-screen bg-background text-text-primary font-sans antialiased">
 
       {/* ═══════════════════════════════════════
           PANNEAU GAUCHE — Branding & Démo Live
@@ -216,7 +216,7 @@ export default function LoginPage() {
       {/* ═══════════════════════════════════════
           PANNEAU DROIT — Formulaire Connexion
           ═══════════════════════════════════════ */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 h-full bg-slate-50/60 overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 min-h-full bg-slate-50/60">
 
         {/* Logo mobile only */}
         <div className="lg:hidden flex items-center justify-center w-full mb-4 shrink-0">

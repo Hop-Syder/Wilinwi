@@ -104,7 +104,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="flex h-screen h-[100dvh] w-screen bg-background text-text-primary font-sans antialiased overflow-hidden">
+    <main className="flex min-h-screen min-h-[100dvh] w-screen bg-background text-text-primary font-sans antialiased">
       
       {/* ═══════════════════════════════════════
           PANNEAU GAUCHE — Branding & Offre
@@ -192,7 +192,7 @@ export default function SignupPage() {
       {/* ═══════════════════════════════════════
           PANNEAU DROIT — Wizard d'inscription
           ═══════════════════════════════════════ */}
-      <div className="w-full lg:w-1/2 flex flex-col p-6 sm:p-10 h-full bg-slate-50/60 overflow-hidden relative">
+      <div className="w-full lg:w-1/2 flex flex-col p-6 sm:p-10 min-h-full bg-slate-50/60 relative">
         
         {/* Header & Logo mobile */}
         <div className="flex items-center justify-between shrink-0 mb-6 lg:mb-0">
