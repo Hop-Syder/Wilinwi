@@ -10,17 +10,17 @@
 // ──────────────────────────────────
 
 import { Body, Controller, Get, Patch, ForbiddenException } from '@nestjs/common';
-import { TenantLocalisationSchema, type AuthContext } from '@wilinwi/types';
+import { TenantLocalisationSchema, UpdateTenantProfileSchema, type AuthContext } from '@wilinwi/types';
 import { CurrentUser, Public, RequireCapabilities } from '../common/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PrismaService } from '../common/prisma.service';
-import type { TenantLocalisationInput } from '@wilinwi/types';
+import type { TenantLocalisationInput, UpdateTenantProfileInput } from '@wilinwi/types';
 
 @Controller('admin')
 export class AdminController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** GET /api/admin/tenant — Infos du tenant courant (plan, statut). */
+  /** GET /api/admin/tenant — Infos du tenant courant (plan, statut, profil reçu). */
   @RequireCapabilities('users:manage')
   @Get('tenant')
   async getTenant(@CurrentUser() ctx: AuthContext) {
@@ -32,10 +32,45 @@ export class AdminController {
           nom: true,
           pays: true,
           ville: true,
+          telephone: true,
+          ifu: true,
+          receiptHeader: true,
+          receiptFooter: true,
+          receiptPaperFormat: true,
           plan: true,
           subscriptionStatus: true,
           pastDueSince: true,
           createdAt: true,
+        },
+      }),
+    );
+  }
+
+  /**
+   * PATCH /api/admin/tenant — Profil entreprise affiché sur les reçus
+   * (raison sociale, téléphone, IFU, en-tête/pied de ticket, format papier).
+   * Chaque champ est optionnel : seuls ceux fournis sont modifiés.
+   */
+  @RequireCapabilities('users:manage')
+  @Patch('tenant')
+  async updateProfile(
+    @CurrentUser() ctx: AuthContext,
+    @Body(new ZodValidationPipe(UpdateTenantProfileSchema)) body: UpdateTenantProfileInput,
+  ) {
+    return this.prisma.forTenant(ctx.tenantId, (tx) =>
+      tx.tenant.update({
+        where: { id: ctx.tenantId },
+        data: body,
+        select: {
+          id: true,
+          nom: true,
+          pays: true,
+          ville: true,
+          telephone: true,
+          ifu: true,
+          receiptHeader: true,
+          receiptFooter: true,
+          receiptPaperFormat: true,
         },
       }),
     );

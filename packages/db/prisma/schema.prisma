@@ -45,6 +45,11 @@ enum BillingCycle {
   YEARLY
 }
 
+enum ReceiptPaperFormat {
+  MM80
+  MM58
+}
+
 /// Configuration tarifaire & limites par plan, pilotable depuis la console super-admin
 /// (Lot 2.3). Table de RÉFÉRENCE globale (non multi-tenant) : lue au runtime par tous,
 /// écrite uniquement par le super-admin via une fonction SECURITY DEFINER.
@@ -180,6 +185,13 @@ model Tenant {
   /// le pop-up bloquant « Pays & Ville » au propriétaire.
   pays               String?
   ville              String?
+  /// Profil affiché sur les reçus/factures (/parametres/entreprise) — distinct
+  /// de pays/ville (siège, onboarding) et de nom (raison sociale, déjà existant).
+  telephone          String?
+  ifu                String?
+  receiptHeader      String?            @map("receipt_header")
+  receiptFooter      String?            @map("receipt_footer")
+  receiptPaperFormat ReceiptPaperFormat @default(MM80) @map("receipt_paper_format")
   plan               Plan               @default(STARTER)
   subscriptionStatus SubscriptionStatus @default(TRIALING) @map("subscription_status")
   /// Date de passage en impayé (PAST_DUE) → pilote la relance progressive (J+0/J+3/J+7/J+30).

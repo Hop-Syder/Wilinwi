@@ -4,9 +4,13 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Page Paramètres → Entreprise & Reçu (/parametres/entreprise)
- *   Configuration de l'identité légale de l'entreprise, personnalisation
- *   du reçu thermique (en-tête, pied de page, papier 58/80mm) et devises.
- *   Single Source of Truth connectée aux APIs réelles.
+ *   Configuration de l'identité légale de l'entreprise et personnalisation
+ *   du reçu thermique (en-tête, pied de page, papier 58/80mm) — persistées
+ *   réellement côté serveur (Tenant.telephone/ifu/receiptHeader/receiptFooter/
+ *   receiptPaperFormat, apps/api/src/admin/admin.controller.ts PATCH /tenant).
+ *   Auparavant ces champs n'existaient qu'en localStorage : aucune donnée
+ *   n'était partagée entre appareils, et rien n'indiquait un échec réel de
+ *   sauvegarde. Les devises restent en localStorage (hors périmètre ici).
  *
  *   Déplacée depuis /parametres (racine) : la racine est désormais le menu
  *   liste mobile façon WhatsApp (voir ../page.tsx) — chaque section, y
@@ -23,27 +27,37 @@ import { apiGet, apiPatch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
+import type { ReceiptPaperFormat, TenantProfileDto } from '@wilinwi/types';
 
 import { CompanyReceiptSettings, type CompanyReceiptData } from '@/components/parametres/company-receipt-settings';
 import { PreferencesSettings, type CurrencyConfig } from '@/components/parametres/preferences-settings';
 
-const STORAGE_RECEIPT_KEY = 'wilinwi_receipt_settings';
 const STORAGE_CURRENCY_KEY = 'wilinwi_currency_config';
+
+/** MM80/MM58 (base, enum Prisma) ↔ '80mm'/'58mm' (formulaire, déjà utilisé par le composant). */
+function toFormFormat(f: ReceiptPaperFormat): CompanyReceiptData['paperFormat'] {
+  return f === 'MM58' ? '58mm' : '80mm';
+}
+function toApiFormat(f: CompanyReceiptData['paperFormat']): ReceiptPaperFormat {
+  return f === '58mm' ? 'MM58' : 'MM80';
+}
+
+function toCompanyData(tenant: TenantProfileDto): CompanyReceiptData {
+  return {
+    raisonSociale: tenant.nom,
+    nouveauIfu: tenant.ifu ?? '',
+    telephone: tenant.telephone ?? '',
+    adresse: tenant.ville ? `${tenant.ville}, ${tenant.pays || ''}`.trim() : '',
+    receiptHeader: tenant.receiptHeader ?? '',
+    receiptFooter: tenant.receiptFooter ?? '',
+    paperFormat: toFormFormat(tenant.receiptPaperFormat),
+  };
+}
 
 export default function ParametresEntreprisePage() {
   const { user, refreshUser } = useAuth();
-  const [, setLoading] = useState(true);
-
-  // Données de reçu thermique (chargées depuis localStorage puis fusionnées avec le profil)
-  const [companyData, setCompanyData] = useState<CompanyReceiptData>({
-    raisonSociale: user?.etablissements?.[0]?.nom || 'Mon Entreprise Wilinwi',
-    nouveauIfu: '',
-    telephone: '+229 97 00 00 00',
-    adresse: user?.ville || 'Cotonou, Bénin',
-    receiptHeader: 'Commerce Général & Détail',
-    receiptFooter: 'Merci de votre fidélité ! Les marchandises vendues ne sont ni reprises ni échangées.',
-    paperFormat: '80mm',
-  });
+  const [companyData, setCompanyData] = useState<CompanyReceiptData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({
     primaryCurrency: 'FCFA',
@@ -51,40 +65,24 @@ export default function ParametresEntreprisePage() {
   });
 
   useEffect(() => {
-    // 1. Chargement des préférences locales de reçu
+    // Devises : préférence locale à l'appareil, hors périmètre de ce correctif.
     try {
-      const savedReceipt = localStorage.getItem(STORAGE_RECEIPT_KEY);
-      if (savedReceipt) {
-        setCompanyData((prev) => ({ ...prev, ...JSON.parse(savedReceipt) }));
-      }
       const savedCurrency = localStorage.getItem(STORAGE_CURRENCY_KEY);
-      if (savedCurrency) {
-        setCurrencyConfig(JSON.parse(savedCurrency));
-      }
+      if (savedCurrency) setCurrencyConfig(JSON.parse(savedCurrency));
     } catch {
       // Ignorer les erreurs de parsing
     }
 
-    // 2. Chargement des infos réelles du tenant
     async function loadTenant() {
       try {
-        const tenant = await apiGet<{ nom: string; pays?: string | null; ville?: string | null }>('/api/admin/tenant');
-        if (tenant) {
-          setCompanyData((prev) => ({
-            ...prev,
-            raisonSociale: tenant.nom || prev.raisonSociale,
-            adresse: tenant.ville ? `${tenant.ville}, ${tenant.pays || ''}`.trim() : prev.adresse,
-          }));
-        }
-      } catch {
-        // En cas d'absence de droit, conservation des valeurs actuelles
-      } finally {
-        setLoading(false);
+        const tenant = await apiGet<TenantProfileDto>('/api/admin/tenant');
+        setCompanyData(toCompanyData(tenant));
+      } catch (err) {
+        setLoadError((err as Error).message || "Impossible de charger le profil de l'entreprise.");
       }
     }
-
     void loadTenant();
-  }, [user]);
+  }, []);
 
   const tourSteps: TourStep[] = [
     {
@@ -95,25 +93,32 @@ export default function ParametresEntreprisePage() {
     },
   ];
 
-  // Sauvegarde Profil & Reçus
+  // Sauvegarde Profil & Reçus — persistée réellement (PATCH /api/admin/tenant).
+  // Laisse volontairement remonter l'erreur : CompanyReceiptSettings affiche
+  // déjà une alerte si `onSave` rejette, ne pas l'avaler ici la rendrait muette.
   const handleSaveCompany = async (data: CompanyReceiptData) => {
-    setCompanyData(data);
-    try {
-      localStorage.setItem(STORAGE_RECEIPT_KEY, JSON.stringify(data));
-      // Si OWNER, mise à jour de la localisation si précisée
-      if (user?.role === 'OWNER' && data.adresse.includes(',')) {
-        const [ville, pays] = data.adresse.split(',').map((s) => s.trim());
-        if (ville && pays) {
-          await apiPatch('/api/admin/tenant/localisation', { pays, ville }).catch(() => {});
-          await refreshUser();
-        }
+    const updated = await apiPatch<TenantProfileDto>('/api/admin/tenant', {
+      nom: data.raisonSociale,
+      telephone: data.telephone || null,
+      ifu: data.nouveauIfu || null,
+      receiptHeader: data.receiptHeader || null,
+      receiptFooter: data.receiptFooter || null,
+      receiptPaperFormat: toApiFormat(data.paperFormat),
+    });
+    setCompanyData(toCompanyData(updated));
+
+    // Adresse (ville, pays) : validée séparément (la ville doit appartenir au
+    // pays) — réservé à l'OWNER, comme lors de l'onboarding.
+    if (user?.role === 'OWNER' && data.adresse.includes(',')) {
+      const [ville, pays] = data.adresse.split(',').map((s) => s.trim());
+      if (ville && pays) {
+        await apiPatch('/api/admin/tenant/localisation', { pays, ville }).catch(() => {});
+        await refreshUser();
       }
-    } catch {
-      // Erreur de persistance silencieuse
     }
   };
 
-  // Sauvegarde Devises
+  // Sauvegarde Devises (locale à l'appareil — hors périmètre de ce correctif).
   const handleSaveCurrencies = async (cfg: CurrencyConfig) => {
     setCurrencyConfig(cfg);
     try {
@@ -144,8 +149,18 @@ export default function ParametresEntreprisePage() {
         />
       </div>
 
-      {/* Éditeur de Reçu Thermique avec Live Preview */}
-      <CompanyReceiptSettings initialData={companyData} onSave={handleSaveCompany} />
+      {loadError && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{loadError}</p>
+      )}
+
+      {/* Éditeur de Reçu Thermique avec Live Preview — remonté une fois le
+          vrai profil chargé pour que le formulaire parte des bonnes valeurs
+          (CompanyReceiptSettings ne lit `initialData` qu'à son montage). */}
+      {companyData ? (
+        <CompanyReceiptSettings key="loaded" initialData={companyData} onSave={handleSaveCompany} />
+      ) : (
+        !loadError && <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
+      )}
 
       {/* Préférences Monétaires & Sécurité du Mot de Passe */}
       <div className="pt-4 border-t border-slate-200/80">
