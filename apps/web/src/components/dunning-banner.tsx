@@ -41,7 +41,7 @@ export function DunningBanner() {
       </div>
       {user.role === 'OWNER' && (
         <Link
-          href="/parametres"
+          href="/parametres/abonnement"
           className="shrink-0 self-center rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
         >
           Régulariser
@@ -68,7 +68,7 @@ export function DunningBlock() {
 
         {isOwner ? (
           <Link
-            href="/parametres"
+            href="/parametres/abonnement"
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald py-3 text-sm font-bold text-white shadow-md shadow-emerald/25 hover:opacity-95"
           >
             Régulariser mon abonnement <ArrowRight className="h-4 w-4" />

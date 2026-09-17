@@ -236,7 +236,7 @@ export default function RapportsPage() {
             suspendus. Le tableau de bord reste accessible. Régularisez pour tout réactiver.
           </p>
           <Link
-            href="/parametres"
+            href="/parametres/abonnement"
             className="mt-1 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
           >
             Régulariser l'abonnement

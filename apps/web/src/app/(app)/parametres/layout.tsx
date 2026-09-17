@@ -4,14 +4,17 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Layout partagé pour la section Paramètres (/parametres)
- *   Offre une barre de navigation par onglets unifiée (Single Source of Truth UX)
- *   desservant toutes les sous-sections :
- *   1. Entreprise & Reçus (/parametres)
- *   2. Collaborateurs & PIN (/parametres/utilisateurs)
- *   3. Établissements & Dépôts (/parametres/etablissements)
- *   4. Appareils Connectés (/parametres/appareils)
- *   5. Abonnement & Quotas (/parametres/abonnement)
- *   6. Journal d'Audit (/parametres/journal — OWNER uniquement)
+ *
+ *   Desktop (sm: et plus) : barre d'onglets horizontale persistante,
+ *   inchangée — toutes les sections restent à un clic, en permanence.
+ *
+ *   Mobile (< sm) : plus de barre d'onglets qui défile horizontalement.
+ *   Écran racine (/parametres) : uniquement le titre — le menu liste façon
+ *   WhatsApp est le contenu de page.tsx lui-même (chaque section = 1 ligne
+ *   tap-through vers sa propre route). Sous-écran (/parametres/xxx) :
+ *   en-tête compact « ← Paramètres » + libellé de la section active,
+ *   façon écran de détail WhatsApp — jamais la liste ET le contenu en
+ *   même temps sur petit écran.
  * @created 2026-09-17
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
@@ -21,120 +24,55 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Settings,
-  Building2,
-  Users,
-  Store,
-  MonitorSmartphone,
-  CreditCard,
-  ShieldCheck,
-} from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-
-interface TabItem {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
-  ownerOnly?: boolean;
-}
-
-const TABS: TabItem[] = [
-  {
-    href: '/parametres',
-    label: 'Entreprise & Reçu',
-    icon: Building2,
-  },
-  {
-    href: '/parametres/utilisateurs',
-    label: 'Équipe & PIN',
-    icon: Users,
-  },
-  {
-    href: '/parametres/etablissements',
-    label: 'Établissements',
-    icon: Store,
-  },
-  {
-    href: '/parametres/appareils',
-    label: 'Appareils',
-    icon: MonitorSmartphone,
-  },
-  {
-    href: '/parametres/abonnement',
-    label: 'Abonnement & Plan',
-    icon: CreditCard,
-  },
-  {
-    href: '/parametres/journal',
-    label: 'Journal d’Audit',
-    icon: ShieldCheck,
-    ownerOnly: true,
-  },
-];
+import { PARAMETRES_TABS } from './tabs';
 
 export default function ParametresLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
 
   const isOwner = user?.role === 'OWNER';
-  const visibleTabs = TABS.filter((tab) => !tab.ownerOnly || isOwner);
+  const visibleTabs = PARAMETRES_TABS.filter((tab) => !tab.ownerOnly || isOwner);
+  const isMenuRoot = pathname === '/parametres';
+  const activeTab = isMenuRoot ? undefined : visibleTabs.find((tab) => pathname.startsWith(tab.href));
 
   return (
     <div className="space-y-6">
-      {/* En-tête Paramètres & Navigation par Onglets */}
-      <div className="border-b border-slate-200/80 pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-200/70 text-indigo-700 flex items-center justify-center shrink-0 shadow-xs">
-              <Settings className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display flex items-center gap-2">
-                Paramètres & Configuration
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Centre de contrôle de votre entreprise, de vos collaborateurs et de vos postes de vente.
-              </p>
-            </div>
+      {/* ── En-tête desktop (toujours visible) + barre d'onglets (sm: et plus) ── */}
+      <div className="hidden border-b border-slate-200/80 pb-4 sm:block">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/70 bg-indigo-50 text-indigo-700 shadow-xs">
+            <Settings className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Paramètres & Configuration
+            </h1>
+            <p className="text-xs font-medium text-slate-500">
+              Centre de contrôle de votre entreprise, de vos collaborateurs et de vos postes de vente.
+            </p>
           </div>
         </div>
 
-        {/* Barre d'onglets persistante et scrollable sur mobile */}
-        <nav
-          className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-none"
-          aria-label="Onglets Paramètres"
-        >
+        <nav className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-none" aria-label="Onglets Paramètres">
           {visibleTabs.map((tab) => {
-            // Correspondance stricte pour la racine /parametres, startsWith pour les sous-routes
-            const isActive =
-              tab.href === '/parametres'
-                ? pathname === '/parametres'
-                : pathname.startsWith(tab.href);
-
+            const isActive = pathname.startsWith(tab.href);
             const Icon = tab.icon;
-
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 prefetch
-                className={`group inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all duration-150 ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                className={`group inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-150 ${
+                  isActive ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <Icon
-                  className={`h-4 w-4 shrink-0 transition-colors ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'
-                  }`}
-                />
+                <Icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'}`} />
                 <span>{tab.label}</span>
                 {tab.ownerOnly && (
                   <span
-                    className={`ml-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                    className={`ml-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
                       isActive ? 'bg-indigo-700/80 text-white' : 'bg-slate-200/80 text-slate-600'
                     }`}
                   >
@@ -147,8 +85,27 @@ export default function ParametresLayout({ children }: { children: React.ReactNo
         </nav>
       </div>
 
-      {/* Contenu de la sous-page active */}
-      <div>{children}</div>
+      {/* ── Mobile : titre seul sur l'écran menu, en-tête retour sur un sous-écran ── */}
+      <div className="sm:hidden">
+        {isMenuRoot ? (
+          <h1 className="font-display text-xl font-bold tracking-tight text-slate-900">Paramètres</h1>
+        ) : (
+          <div className="-mx-4 -mt-4 flex items-center gap-2 border-b border-slate-100 bg-white px-4 py-3">
+            <Link
+              href="/parametres"
+              aria-label="Retour aux paramètres"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 active:bg-slate-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="truncate text-base font-bold text-slate-900">{activeTab?.label ?? 'Paramètres'}</h1>
+          </div>
+        )}
+      </div>
+
+      {/* Contenu de la sous-page active — page.tsx (écran racine) gère lui-même
+          son propre affichage conditionnel mobile/desktop, rien à ajouter ici. */}
+      {children}
     </div>
   );
 }

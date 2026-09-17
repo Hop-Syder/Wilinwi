@@ -452,7 +452,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
                   <span>Les photos produits (galerie) sont incluses dès le plan <strong>Business</strong>.</span>
                 </div>
                 <Link
-                  href="/parametres"
+                  href="/parametres/abonnement"
                   className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
                 >
                   Passer à Business
