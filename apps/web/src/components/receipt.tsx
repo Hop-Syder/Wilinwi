@@ -29,13 +29,6 @@ export interface ReceiptSale {
   client?: { nom: string; telephone?: string | null } | null;
 }
 
-/** Base de l'URL publique du reçu (domaine court configurable, sinon origine courante). */
-function receiptBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_WEB_BASE_URL) return process.env.NEXT_PUBLIC_WEB_BASE_URL;
-  if (process.env.NEXT_PUBLIC_RECEIPT_BASE_URL) return process.env.NEXT_PUBLIC_RECEIPT_BASE_URL;
-  if (typeof window !== 'undefined' && window.location.origin) return window.location.origin;
-  return 'https://wilinwi.nexus-partners.xyz';
-}
 
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */
 function _receiptText(sale: ReceiptSale): string {
@@ -64,8 +57,9 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
   const shortCode = sale.receiptCode || sale.id.slice(0, 8).toUpperCase();
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  // QR → URL courte absolue aérée pour scannabilité optimale
-  const qrValue = `${receiptBaseUrl()}/r/${shortCode}`;
+  // URL publique exacte pour le reçu numérique
+  const receiptId = sale.receiptCode || sale.id;
+  const publicReceiptUrl = `https://wilinwi.nexus-partners.xyz/${receiptId}`;
   const reste = sale.total - sale.montantVerse;
 
   const handleDownloadInvoicePdf = async () => {
@@ -102,16 +96,20 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
 
         {/* Zone imprimable 80mm */}
         <div id="receipt-print" className="px-5 py-4 font-mono text-[12px] text-slate-900">
-          <div className="text-center">
-            <div className="mb-1 flex items-center justify-center gap-2">
-              <Image src="/logo.png" alt="Wilinwi Logo" width={28} height={28} className="object-contain" />
-              <span className="font-display text-lg font-bold">{entreprise}</span>
+          <div className="text-center space-y-1">
+            {/* Logo Wilinwi EN HAUT du nom de la boutique */}
+            <div className="flex justify-center mb-1">
+              <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain" />
+            </div>
+            {/* Nom de la boutique à taille diminuée */}
+            <div className="font-display text-[13px] font-black tracking-tight text-slate-900 leading-tight">
+              {entreprise}
             </div>
             <div className="text-[11px] text-slate-500">Reçu de caisse</div>
-            <div className="mt-1 tabular text-[11px] font-bold">
+            <div className="mt-0.5 tabular text-[11px] font-bold text-slate-800">
               N° {shortCode}
             </div>
-            <div className="tabular text-[11px] text-slate-500">
+            <div className="tabular text-[10.5px] text-slate-400">
               {new Date(sale.createdAt).toLocaleString('fr-FR')}
             </div>
           </div>
@@ -150,27 +148,39 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
           )}
           {sale.client && <div className="mt-1 text-[11px]">Client : {sale.client.nom}</div>}
 
-          {/* QR Code Compact & Discret (84px) adapté au ticket thermique sans déborder */}
-          <div className="mt-3 flex flex-col items-center space-y-1 print:page-break-inside-avoid">
-            <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          {/* Bloc QR Code & Message en 1 ligne / 2 colonnes */}
+          <div className="mt-3.5 flex items-center gap-3 pt-3 border-t border-dashed border-slate-300 print:page-break-inside-avoid">
+            {/* Colonne 1 : QR Code Compact (68px) */}
+            <div className="shrink-0 p-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
               <QRCodeSVG
-                value={qrValue}
-                size={84}
+                value={publicReceiptUrl}
+                size={68}
                 level="M"
-                includeMargin={true}
+                includeMargin={false}
                 fgColor="#000000"
                 bgColor="#FFFFFF"
               />
             </div>
-            <div className="text-center font-mono text-[9px] font-bold text-slate-700 tracking-tight">
-              wilinwi.com/r/{shortCode}
-            </div>
-            <div className="text-center text-[9px] text-slate-500">
-              Scannez pour votre reçu numérique
+
+            {/* Colonne 2 : Lien + Message numérique + Remerciement */}
+            <div className="flex-1 flex flex-col justify-center min-w-0 text-left space-y-0.5">
+              <a
+                href={publicReceiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[8.5px] font-bold text-blue-700 hover:underline break-all tracking-tight leading-tight line-clamp-2"
+                title={publicReceiptUrl}
+              >
+                {publicReceiptUrl.replace(/^https?:\/\//, '')}
+              </a>
+              <p className="text-[9px] font-medium text-slate-500 leading-tight">
+                Scannez pour votre reçu numérique
+              </p>
+              <p className="text-[10px] font-extrabold text-slate-900 pt-0.5 leading-tight">
+                Merci de votre achat ! 🙏
+              </p>
             </div>
           </div>
-
-          <div className="mt-2 text-center text-[10px] text-slate-600">Merci de votre achat ! 🙏</div>
         </div>
 
         <div className="no-print flex items-center gap-1.5 border-t border-slate-200 p-3 bg-slate-50/50 rounded-b-2xl">

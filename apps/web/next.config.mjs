@@ -11,6 +11,17 @@ const nextConfig = {
     };
     return config;
   },
+  async rewrites() {
+    return {
+      afterFiles: [
+        // Redirige les accès directs /:code vers /r/:code si aucune page statique/dynamique n'existe
+        {
+          source: '/:code([a-zA-Z0-9_-]{5,})',
+          destination: '/r/:code',
+        },
+      ],
+    };
+  },
 };
 
 export default nextConfig;
