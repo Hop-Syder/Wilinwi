@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Le Hub — Launchpad & Centre de Commande Rapide (Antigravity Design Expert & UI/UX Pro Max)
  * @created 2026-06-20
- * @updated 2026-08-04
+ * @updated 2026-09-17
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -314,35 +314,36 @@ export default function HubPage() {
       <ActivationChecklist />
 
       {/* ──────────────── 1. EN-TÊTE CONTEXTUEL (HEADER LE HUB) ──────────────── */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50/70 p-4.5 sm:p-6 shadow-xs">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-slate-50/80 px-6 py-6 sm:px-8 sm:py-7 lg:py-8 shadow-xs hover:shadow-sm transition-shadow">
         {/* Glow discret d'ambiance */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-emerald-500/5 blur-3xl" />
 
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          {/* Gauche : Salutation + Métadonnées boutique & date */}
-          <div className="space-y-2.5 min-w-0">
+        <div className="relative flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between min-h-[110px]">
+          {/* Gauche : Salutation + Métadonnées boutique & date avec espaces aérés */}
+          <div className="space-y-3.5 sm:space-y-4 min-w-0">
             {/* Ligne 1 : Titre + Badge statut réseau */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="font-display text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="font-display text-xl sm:text-2xl lg:text-[26px] font-black tracking-tight text-slate-900 leading-snug pt-0.5">
                 {getGreeting()}, {getUserDisplayName()} 👋
               </h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-extrabold text-emerald-700 border border-emerald-200/90 whitespace-nowrap shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/90 px-3 py-1 text-xs font-extrabold text-emerald-700 border border-emerald-200 whitespace-nowrap shadow-2xs">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 En ligne
               </span>
             </div>
 
-            {/* Ligne 2 : Chips propres Boutique & Date (responsive sans cassure) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100/90 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200/80 shadow-2xs min-w-0 max-w-full">
+            {/* Ligne 2 : Chips aérées Boutique & Date */}
+            <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
+              <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100/90 px-3.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200/80 shadow-2xs min-w-0 max-w-full">
                 <Store className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                 <span className="text-slate-500 font-normal">Boutique :</span>
-                <strong className="text-slate-900 font-extrabold truncate max-w-[200px] sm:max-w-[280px]">
+                <strong className="text-slate-900 font-extrabold truncate max-w-[200px] sm:max-w-[300px]">
                   {user.boutiqueNom || 'Wilinwi Siège'}
                 </strong>
               </span>
 
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200/70 shadow-2xs capitalize">
+              <span className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200/70 shadow-2xs capitalize">
                 <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                 <span>
                   {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -351,20 +352,20 @@ export default function HubPage() {
             </div>
           </div>
 
-          {/* Droite : Widget Statut Caisse Interactif & Rapide */}
-          <div className="shrink-0 w-full sm:w-auto">
+          {/* Droite : Widget Statut Caisse Interactif avec belle respiration */}
+          <div className="shrink-0 w-full sm:w-auto pt-1 sm:pt-0">
             {liveStats.sessionOpen ? (
               <Link
                 href="/pos"
                 title="Accéder directement au Point de Vente"
-                className="group flex items-center justify-between sm:justify-start gap-3 rounded-2xl border border-emerald-300/80 bg-emerald-50/90 hover:bg-emerald-100/90 hover:border-emerald-400/90 px-4 py-2.5 text-emerald-900 shadow-2xs transition-all active:scale-[0.98]"
+                className="group flex items-center justify-between sm:justify-start gap-4 rounded-2xl border border-emerald-300/90 bg-emerald-50/90 hover:bg-emerald-100/90 hover:border-emerald-400 px-5 py-3.5 text-emerald-900 shadow-2xs transition-all active:scale-[0.98]"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="relative flex h-3 w-3 shrink-0">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-600" />
                   </span>
-                  <div className="min-w-0 text-left">
+                  <div className="min-w-0 text-left space-y-0.5">
                     <p className="text-xs font-extrabold text-emerald-950 truncate">
                       Caisse #1 — Ouverte
                     </p>
@@ -373,7 +374,7 @@ export default function HubPage() {
                     </p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-700 group-hover:text-emerald-900 transition-colors shrink-0 pl-1">
+                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 group-hover:text-emerald-900 transition-colors shrink-0 pl-2">
                   Ouvrir POS <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
@@ -381,13 +382,13 @@ export default function HubPage() {
               <Link
                 href="/pos"
                 title="Ouvrir une nouvelle session de caisse"
-                className="group flex items-center justify-between sm:justify-start gap-2.5 rounded-2xl border border-slate-200/90 bg-white hover:bg-slate-50 px-3.5 py-2 text-slate-700 shadow-2xs transition-all active:scale-[0.98]"
+                className="group flex items-center justify-between sm:justify-start gap-3 rounded-2xl border border-slate-200/90 bg-white hover:bg-slate-50 px-4 py-3 text-slate-700 shadow-2xs transition-all active:scale-[0.98]"
               >
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-slate-300 shrink-0" />
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300 shrink-0" />
                   <span className="text-xs font-semibold text-slate-700">Caisse fermée</span>
                 </div>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:text-blue-700 shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover:text-blue-700 shrink-0">
                   Démarrer <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
