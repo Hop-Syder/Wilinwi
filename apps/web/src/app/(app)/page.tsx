@@ -331,7 +331,7 @@ export default function HubPage() {
         <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 pl-1">
           Actions Rapides & Raccourcis
         </span>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           <Link
             href="/pos"
             className="group flex items-center justify-between rounded-2xl bg-emerald-600 p-3.5 text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:shadow-lg active:scale-95"
