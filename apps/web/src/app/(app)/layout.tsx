@@ -26,7 +26,6 @@ import {
   LogOut,
   Settings,
   Lock,
-  Menu,
   X,
   Truck,
   Warehouse,
@@ -44,6 +43,7 @@ import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { CollapsibleSidebar } from '@/components/collapsible-sidebar';
 import { AppTopbar } from '@/components/app-topbar';
+import { MobileDock } from '@/components/mobile-dock';
 import { SyncConflictsModal } from '@/components/sync-conflicts-modal';
 
 // `infraCap` (optionnel) : capacité d'infrastructure requise pour voir l'entrée
@@ -305,40 +305,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Barre d'onglets mobile (BottomNav) */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-30 h-16 border-t border-slate-200/90 bg-white/95 backdrop-blur-md sm:hidden shadow-lg"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="mx-auto flex h-full max-w-md items-center justify-around">
-          {menuItems.filter((item) => canSee(item))
-            .slice(0, 4)
-            .map(({ href, label, icon: Icon }) => {
-              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn(
-                    'flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold transition-colors min-h-[48px]',
-                    active ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-900',
-                  )}
-                >
-                  <Icon className={cn('h-5 w-5', active && 'scale-110 transition-transform')} />
-                  <span className="max-w-[64px] truncate">{label}</span>
-                </Link>
-              );
-            })}
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-bold text-slate-500 transition-colors hover:text-slate-900 min-h-[48px]"
-          >
-            <Menu className="h-5 w-5" />
-            <span>Plus</span>
-          </button>
-        </div>
-      </nav>
+      {/* Dock de navigation mobile ultra-pro (Floating Dynamic Island) */}
+      <MobileDock
+        onOpenMore={() => setIsMobileMenuOpen(true)}
+        canAccessPos={canSee({ href: '/pos', label: 'Caisse', icon: ShoppingCart, module: 'POS' })}
+      />
 
       {/* Centre de Résolution des Conflits Hors-Ligne */}
       <SyncConflictsModal
