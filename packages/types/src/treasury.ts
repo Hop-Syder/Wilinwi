@@ -55,12 +55,17 @@ export const RecordExpenseSchema = z.object({
 });
 export type RecordExpenseInput = z.infer<typeof RecordExpenseSchema>;
 
-/** Mouvement manuel : ajustement ou solde d'ouverture (entrée ou sortie). */
+/**
+ * Mouvement manuel : ajustement, solde d'ouverture, ou remboursement reçu
+ * hors d'un flux dédié (ex. fonds COD reversés par un livreur en fin de
+ * tournée — packages/db/prisma/schema.prisma `CashMovementSource` autorise
+ * déjà REPAYMENT au niveau base, ce schéma doit rester en phase).
+ */
 export const RecordCashMovementSchema = z.object({
   type: z.enum(['IN', 'OUT']),
   compte: CashAccountSchema,
   montant: PositiveMoney,
-  source: z.enum(['ADJUSTMENT', 'OPENING']).default('ADJUSTMENT'),
+  source: z.enum(['ADJUSTMENT', 'OPENING', 'REPAYMENT']).default('ADJUSTMENT'),
   note: z.string().optional(),
 });
 export type RecordCashMovementInput = z.infer<typeof RecordCashMovementSchema>;
