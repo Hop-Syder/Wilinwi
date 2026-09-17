@@ -305,10 +305,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Dock de navigation mobile ultra-pro (Floating Dynamic Island) */}
+      {/* Dock de navigation mobile adaptatif par profil (Floating Dynamic Island) */}
       <MobileDock
         onOpenMore={() => setIsMobileMenuOpen(true)}
-        canAccessPos={canSee({ href: '/pos', label: 'Caisse', icon: ShoppingCart, module: 'POS' })}
+        userRole={user.role}
+        userModules={user.modules}
+        canSeeItem={canSee}
       />
 
       {/* Centre de Résolution des Conflits Hors-Ligne */}

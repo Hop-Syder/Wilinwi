@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Plus, Search, AlertTriangle, ArrowRightLeft,
-  Warehouse, FileSpreadsheet, Camera
+  Warehouse, FileSpreadsheet, Camera, Package
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
@@ -38,9 +38,14 @@ export default function StockPage() {
   const canWrite = user?.role === 'OWNER' || user?.role === 'MANAGER';
   const canSeeCost = canWrite;
   const canSeeBreakdown = user?.role === 'OWNER';
+  const canReadStock =
+    user?.role === 'OWNER' ||
+    user?.role === 'MANAGER' ||
+    user?.role === 'SELLER' ||
+    (user?.modules?.includes('STOCK') ?? false);
 
   const { data, refetch } = useCachedQuery<ProductDto[]>(
-    'stock/products-global',
+    canReadStock ? 'stock/products-global' : null,
     () => apiGet<ProductDto[]>('/api/stock/products?global=true'),
   );
   const products = data ?? [];
@@ -131,6 +136,28 @@ export default function StockPage() {
       position: 'bottom',
     },
   ];
+
+  if (!canReadStock) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center space-y-4">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-50 text-amber-600 border border-amber-200 shadow-xs">
+          <Package className="h-7 w-7" />
+        </div>
+        <h2 className="font-display text-lg font-black text-slate-900">
+          Module Stock restreint
+        </h2>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          Votre profil ne dispose pas des droits d'accès à l'inventaire et au catalogue complet de stock.
+        </p>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
+        >
+          Retour à l'accueil
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-16">

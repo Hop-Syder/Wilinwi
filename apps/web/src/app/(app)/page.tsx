@@ -95,10 +95,33 @@ export default function HubPage() {
 
     async function fetchStats() {
       try {
-        // Session caisse & ventes du jour
-        const activeSession = await apiGet<{ id: string; openedAt: string; openedBy?: { nom?: string } } | null>('/api/pos/sessions/active').catch(() => null);
-        // Dashboard summary (Analytics)
-        const summaryRes = await apiGet<{ chiffreAffaires?: number; nombreVentes?: number; alertes?: { outOfStockProducts?: number } }>('/api/analytics/reports/dashboard').catch(() => null);
+        const canAccessPos =
+          user?.role === 'OWNER' ||
+          user?.role === 'MANAGER' ||
+          user?.role === 'CASHIER' ||
+          user?.role === 'SELLER' ||
+          (user?.modules?.includes('POS') ?? false);
+
+        const canReadReports =
+          user?.role === 'OWNER' ||
+          user?.role === 'MANAGER' ||
+          (user?.modules?.includes('ANALYTICS') ?? false);
+
+        // Session caisse active (si l'utilisateur a accès au module POS)
+        const activeSession = canAccessPos
+          ? await apiGet<{ id: string; openedAt: string; openedBy?: { nom?: string } } | null>(
+              '/api/pos/sessions/active',
+            ).catch(() => null)
+          : null;
+
+        // Dashboard summary (uniquement si l'utilisateur a accès aux rapports financiers)
+        const summaryRes = canReadReports
+          ? await apiGet<{
+              chiffreAffaires?: number;
+              nombreVentes?: number;
+              alertes?: { outOfStockProducts?: number };
+            }>('/api/analytics/reports/dashboard').catch(() => null)
+          : null;
 
         if (isMounted) {
           setLiveStats({

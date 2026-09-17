@@ -18,7 +18,14 @@ export function StockAlertsBanner() {
   const [alerts, setAlerts] = useState<StockAlertDto[]>([]);
   const [open, setOpen] = useState(false);
 
+  const canReadStock =
+    user?.role === 'OWNER' ||
+    user?.role === 'MANAGER' ||
+    user?.role === 'SELLER' ||
+    (user?.modules?.includes('STOCK') ?? false);
+
   useEffect(() => {
+    if (!canReadStock) return;
     let cancelled = false;
     apiGet<StockAlertDto[]>('/api/stock/products/alerts')
       .then((a) => {
@@ -30,7 +37,7 @@ export function StockAlertsBanner() {
     return () => {
       cancelled = true;
     };
-  }, [user?.etablissementId]);
+  }, [user?.etablissementId, canReadStock]);
 
   if (alerts.length === 0) return null;
   const showEtab = user?.etablissementId === 'ALL';
