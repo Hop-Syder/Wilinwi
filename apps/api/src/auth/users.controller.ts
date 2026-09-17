@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   CreateUserSchema,
   SetPinSchema,
@@ -65,5 +65,11 @@ export class UsersController {
     @Body(new ZodValidationPipe(SetPinSchema)) dto: SetPinInput,
   ) {
     return this.users.setPin(user, id, dto.pin);
+  }
+
+  @RequireCapabilities('users:manage')
+  @Delete(':id')
+  remove(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.users.remove(user, id);
   }
 }

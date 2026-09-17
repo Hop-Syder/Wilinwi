@@ -269,4 +269,92 @@ export class UsersService {
     });
     return { ok: true };
   }
+
+  /**
+   * Supprime un collaborateur :
+   * - Si aucun historique de vente / caisse : suppression définitive physique (DB + Supabase).
+   * - Si historique présent : révocation totale des accès (actif=false, PIN effacé, détachement boutiques)
+   *   pour préserver l'intégrité comptable et la traçabilité légale.
+   */
+  async remove(
+    ctx: AuthContext,
+    id: string,
+  ): Promise<{ ok: true; action: 'DELETED' | 'REVOKED'; message: string }> {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const existing = await tx.user.findFirst({
+        where: { id, tenantId: ctx.tenantId },
+        include: {
+          _count: {
+            select: {
+              ventesEffectuees: true,
+              openedPosSessions: true,
+              closedPosSessions: true,
+              inventoriesValid: true,
+            },
+          },
+        },
+      });
+      if (!existing) throw new NotFoundException('Collaborateur introuvable');
+
+      if (existing.role === 'OWNER') {
+        throw new BadRequestException('Le propriétaire principal ne peut pas être supprimé.');
+      }
+      if (ctx.userId === id) {
+        throw new BadRequestException('Vous ne pouvez pas supprimer votre propre compte connecté.');
+      }
+      if (ctx.role !== 'OWNER') {
+        throw new ForbiddenException('Seul le propriétaire peut supprimer un collaborateur.');
+      }
+
+      const hasHistory =
+        existing._count.ventesEffectuees > 0 ||
+        existing._count.openedPosSessions > 0 ||
+        existing._count.closedPosSessions > 0 ||
+        existing._count.inventoriesValid > 0;
+
+      let action: 'DELETED' | 'REVOKED';
+      let message: string;
+
+      if (hasHistory) {
+        // Intégrité comptable : le collaborateur a des opérations tracées.
+        // On révoque totalement son accès (inactif, PIN effacé, détachement boutiques)
+        // et suppression Supabase Auth si présent pour empêcher toute reconnexion.
+        await tx.userEtablissement.deleteMany({ where: { userId: id } });
+        await tx.user.update({
+          where: { id },
+          data: {
+            actif: false,
+            pinCode: null,
+            customPermissions: true,
+            permissions: [],
+          },
+        });
+        if (existing.email && !existing.email.endsWith(PIN_PLACEHOLDER_DOMAIN)) {
+          await this.supabase.deleteUser(id).catch(() => undefined);
+        }
+        action = 'REVOKED';
+        message = `Les accès de ${existing.nom} ont été révoqués et son compte a été désactivé (son historique de vente reste préservé pour la conformité comptable).`;
+      } else {
+        // Aucun historique comptable : suppression définitive et propre
+        await tx.userEtablissement.deleteMany({ where: { userId: id } });
+        await tx.user.delete({ where: { id } });
+        if (existing.email && !existing.email.endsWith(PIN_PLACEHOLDER_DOMAIN)) {
+          await this.supabase.deleteUser(id).catch(() => undefined);
+        }
+        action = 'DELETED';
+        message = `Le collaborateur ${existing.nom} a été définitivement supprimé.`;
+      }
+
+      await this.activity.log({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: 'USER_DELETE',
+        entity: 'user',
+        entityId: id,
+        metadata: { nom: existing.nom, email: existing.email, action },
+      });
+
+      return { ok: true, action, message };
+    });
+  }
 }

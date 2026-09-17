@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { UserPlus, KeyRound, Power, ShieldCheck, Store } from 'lucide-react';
+import { UserPlus, KeyRound, Power, ShieldCheck, Store, Trash2, AlertTriangle } from 'lucide-react';
 import {
   MODULES,
   ROLES,
@@ -19,7 +19,7 @@ import {
   type EtablissementDto,
 } from '@wilinwi/types';
 import { Button, Card, Badge, Input, Select } from '@wilinwi/ui';
-import { apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from '@/lib/api';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 
@@ -64,7 +64,9 @@ export default function UtilisateursPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserDto | null>(null);
   const [busy, setBusy] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const etabNameById = (id: string) => etablissements.find((e) => e.id === id)?.nom ?? '—';
 
@@ -182,6 +184,25 @@ export default function UtilisateursPage() {
       await load();
     } catch (e) {
       alert((e as ApiError).message);
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (!confirmDeleteUser) return;
+    setIsDeleting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await apiDelete<{ ok: boolean; action: 'DELETED' | 'REVOKED'; message: string }>(
+        `/api/users/${confirmDeleteUser.id}`,
+      );
+      setConfirmDeleteUser(null);
+      setNotice(res.message || 'Action exécutée avec succès.');
+      await load();
+    } catch (e) {
+      setError((e as ApiError).message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -343,16 +364,27 @@ export default function UtilisateursPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    <button onClick={() => openEdit(u)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="Éditer">
+                    <button onClick={() => openEdit(u)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors" title="Éditer">
                       <ShieldCheck className="h-4 w-4" />
                     </button>
-                    <button onClick={() => resetPin(u)} className="rounded-lg p-1.5 text-brand hover:bg-brand-50" title="Définir le PIN">
+                    <button onClick={() => resetPin(u)} className="rounded-lg p-1.5 text-brand hover:bg-brand-50 transition-colors" title="Définir le PIN">
                       <KeyRound className="h-4 w-4" />
                     </button>
                     {u.role !== 'OWNER' && (
-                      <button onClick={() => toggleActif(u)} disabled={busy} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title={u.actif ? 'Désactiver' : 'Activer'}>
-                        <Power className={`h-4 w-4 ${u.actif ? 'text-emerald-600' : 'text-red-500'}`} />
-                      </button>
+                      <>
+                        <button onClick={() => toggleActif(u)} disabled={busy} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors" title={u.actif ? 'Désactiver' : 'Activer'}>
+                          <Power className={`h-4 w-4 ${u.actif ? 'text-emerald-600' : 'text-red-500'}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteUser(u)}
+                          disabled={busy || isDeleting}
+                          className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Supprimer ce collaborateur"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </td>
@@ -444,6 +476,78 @@ export default function UtilisateursPage() {
               <Button variant="outline" onClick={() => setDraft(null)}>Annuler</Button>
               <Button variant="emerald" disabled={busy || !draft.nom} onClick={save}>
                 {busy ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Modale de confirmation de suppression d'un collaborateur */}
+      {confirmDeleteUser && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-2xs"
+          onClick={() => !isDeleting && setConfirmDeleteUser(null)}
+        >
+          <Card
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Supprimer le collaborateur
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Action irréversible sur les accès de ce compte
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 text-xs text-slate-600">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Nom :</span>
+                <strong className="text-slate-900 font-bold">{confirmDeleteUser.nom}</strong>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Rôle :</span>
+                <Badge tone="brand">{ROLE_LABELS[confirmDeleteUser.role]}</Badge>
+              </div>
+              {confirmDeleteUser.email && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Email :</span>
+                  <span className="text-slate-700 font-medium">{confirmDeleteUser.email}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50/80 p-3 text-xs text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+              <p className="leading-relaxed text-[11px]">
+                Ses accès et son code PIN seront immédiatement révoqués. Si ce collaborateur a déjà enregistré des ventes ou des encaissements, son historique sera préservé pour l'intégrité comptable et fiscale.
+              </p>
+            </div>
+
+            {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <Button
+                variant="outline"
+                disabled={isDeleting}
+                onClick={() => setConfirmDeleteUser(null)}
+                className="rounded-xl text-xs font-bold"
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="danger"
+                disabled={isDeleting}
+                onClick={handleDeleteUser}
+                className="rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold shadow-sm active:scale-95"
+              >
+                {isDeleting ? 'Suppression en cours…' : 'Confirmer la suppression'}
               </Button>
             </div>
           </Card>
