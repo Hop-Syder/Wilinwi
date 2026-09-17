@@ -104,12 +104,10 @@ export class UsersService {
     // lien reçu) ; sinon utilisateur PIN-only (id applicatif, login sur poste partagé).
     let userId: string;
     let email: string;
-    let invitationLink: string | undefined;
     if (input.email) {
       const res = await this.supabase.inviteByEmail(input.email);
       userId = res.id;
       email = input.email;
-      invitationLink = res.link;
     } else {
       userId = randomUUID();
       email = `pin_${userId}${PIN_PLACEHOLDER_DOMAIN}`;
@@ -165,7 +163,7 @@ export class UsersService {
         entityId: userId,
         metadata: { nom: input.nom, role: input.role },
       });
-      return toUserDto(user, etablissementIds, invitationLink);
+      return toUserDto(user, etablissementIds);
     } catch (err) {
       if (input.email) await this.supabase.deleteUser(userId).catch(() => undefined);
       throw err;

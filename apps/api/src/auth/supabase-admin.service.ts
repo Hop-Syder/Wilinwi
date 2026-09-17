@@ -48,9 +48,13 @@ export class SupabaseAdminService {
   /**
    * Invite un collaborateur par email : Supabase crée le compte (sans mot de passe)
    * et envoie un email d'invitation pointant vers la page `/set-password` où le
-   * collaborateur définit son mot de passe à la 1ʳᵉ connexion. Renvoie son id et le lien.
+   * collaborateur définit son mot de passe à la 1ʳᵉ connexion. Renvoie son id.
+   *
+   * NB : on n'appelle PAS `generateLink()` en plus — chez Supabase, chaque génération
+   * de lien de confirmation écrase la précédente pour cet utilisateur, ce qui
+   * invaliderait le lien qui vient d'être envoyé dans l'email par `inviteUserByEmail`.
    */
-  async inviteByEmail(email: string): Promise<{ id: string; link?: string }> {
+  async inviteByEmail(email: string): Promise<{ id: string }> {
     const base = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(
       /\/$/,
       '',
@@ -62,23 +66,7 @@ export class SupabaseAdminService {
       throw new Error(`Invitation par email échouée: ${inviteError?.message ?? 'inconnue'}`);
     }
 
-    let link: string | undefined;
-    try {
-      const { data: linkData, error: linkError } = await this.client.auth.admin.generateLink({
-        type: 'invite',
-        email,
-        options: {
-          redirectTo: `${base}/set-password`,
-        },
-      });
-      if (!linkError && linkData?.properties?.action_link) {
-        link = linkData.properties.action_link;
-      }
-    } catch {
-      // Ignorer si la génération échoue
-    }
-
-    return { id: inviteData.user.id, link };
+    return { id: inviteData.user.id };
   }
 
   /** Injecte tenant_id/role/plan dans app_metadata → présents dans le JWT (SSO). */

@@ -55,26 +55,37 @@ export function planIncludesModule(plan: Plan, module: ModuleKey): boolean {
 
 /**
  * Limites par plan (cf. buinessplan.md §3). `UNLIMITED` = pas de plafond.
- * `maxDevices` défini ; enforcement appareils ultérieur.
+ * Grille tarifaire entrée de gamme dès 10 000 FCFA/mois.
  */
 export const PLAN_LIMITS: Record<
   Plan,
   { maxUsers: number; maxEtablissements: number; maxDevices: number; maxPhotos: number }
 > = {
-  // `maxPhotos` = nombre de photos par produit (galerie). 0 = images désactivées
-  // (réservées à Business+, cf. buinessplan.md §3).
-  STARTER: { maxUsers: 1, maxEtablissements: 1, maxDevices: 1, maxPhotos: 0 },
-  PRO: { maxUsers: UNLIMITED, maxEtablissements: 2, maxDevices: 5, maxPhotos: 0 },
-  BUSINESS: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: 30, maxPhotos: 6 },
-  ENTERPRISE: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: UNLIMITED, maxPhotos: 12 },
+  STARTER: { maxUsers: 2, maxEtablissements: 1, maxDevices: 1, maxPhotos: 1 },
+  PRO: { maxUsers: 5, maxEtablissements: 2, maxDevices: 3, maxPhotos: 5 },
+  BUSINESS: { maxUsers: 15, maxEtablissements: UNLIMITED, maxDevices: 10, maxPhotos: UNLIMITED },
+  ENTERPRISE: { maxUsers: UNLIMITED, maxEtablissements: UNLIMITED, maxDevices: UNLIMITED, maxPhotos: UNLIMITED },
 };
 
-/** Nombre de photos par produit autorisé par le plan (0 = images désactivées). */
+/**
+ * Tarifs par défaut des forfaits en FCFA (mensuel & annuel avec 2 mois offerts).
+ */
+export const DEFAULT_PLAN_PRICING: Record<
+  Plan,
+  { label: string; priceMonthly: number | null; priceYearly: number | null }
+> = {
+  STARTER: { label: 'Starter (Boutique Solo)', priceMonthly: 10_000, priceYearly: 100_000 },
+  PRO: { label: 'Professionnel (Croissance)', priceMonthly: 25_000, priceYearly: 250_000 },
+  BUSINESS: { label: 'Business (Réseau & Entrepôt)', priceMonthly: 50_000, priceYearly: 500_000 },
+  ENTERPRISE: { label: 'Entreprise (Sur-mesure & Réseau)', priceMonthly: null, priceYearly: null },
+};
+
+/** Nombre de photos par produit autorisé par le plan. */
 export function maxProductPhotos(plan: Plan): number {
   return PLAN_LIMITS[plan].maxPhotos;
 }
 
-/** Le plan autorise-t-il les images produits (galerie) ? (Business+) */
+/** Le plan autorise-t-il les images produits ? (Au moins 1 photo autorisée dès Starter) */
 export function planAllowsProductImages(plan: Plan): boolean {
   return PLAN_LIMITS[plan].maxPhotos > 0;
 }

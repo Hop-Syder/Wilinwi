@@ -43,62 +43,66 @@ propres moyens. Wilinwi vend l'outil, pas une part du chiffre d'affaires.
 
 ## 3. Abonnements SaaS
 
-Quatre paliers, du gratuit au sur-mesure.
+Quatre paliers calibrés pour le marché africain, dès 10 000 FCFA/mois, avec 14 jours d'essai gratuit.
 
 ### Tableau comparatif
 
-| Palier | Cible | Établissements | Utilisateurs | Inclus (clés) | Mensuel | Annuel |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Starter** | Entrepreneurs, petites boutiques | 1 | 1 | Essentiels, ventes illimitées, hors-ligne, dashboard de base | **Gratuit** | — |
-| **Pro** | PME | 2 | Illimité | + Rapports avancés, dépenses, créances, sauvegardes auto, support prioritaire | **7 500 FCFA** | **75 000 FCFA** |
-| **Business** | Entreprises en croissance | Illimité | Illimité | + Multi-établissements, transferts de stock, CRM, **images produits**, API, intégrations | **20 000 FCFA** | **200 000 FCFA** |
-| **Enterprise** | Grandes entreprises / réseaux | Illimité | Illimité | + **Site e-commerce personnalisé**, personnalisation, intégrations spécifiques, SLA, accompagnement dédié | **Sur devis** | **Sur devis** |
+| Palier | Cible | Établissements | Collaborateurs | Caisses (Devices) | Inclus (clés) | Mensuel | Annuel *(2 mois offerts)* |
+| --- | --- | :---: | :---: | :---: | --- | :---: | :---: |
+| **Starter** | Commerces solos, boutiques indépendantes | 1 Boutique | 2 collaborateurs | 1 caisse | Caisse POS illimitée, hors-ligne, stock simple, ardoise dettes, 1 photo produit | **10 000 FCFA** | **100 000 FCFA** |
+| **Pro** | PME & commerces en croissance | 2 Boutiques | 5 collaborateurs | 3 caisses | + Système 4 prix anti-fraude, trésorerie multi-comptes, alertes stock, galerie (5 photos) | **25 000 FCFA** | **250 000 FCFA** |
+| **Business** | Réseaux & distributeurs | Illimité *(Boutiques + Dépôt)* | 15 collaborateurs | 10 caisses | + **Entrepôt Central & Dispatch**, CRM WhatsApp, exports comptables, photos illimitées | **50 000 FCFA** | **500 000 FCFA** |
+| **Enterprise** | Grandes enseignes & franchises | Illimité | Illimité | Illimité | + Site e-commerce, API ouverte, intégrations ERP, SLA 24/7, formation sur site | **Sur devis** *(dès 100k)* | **Sur devis** |
 
 ### Détail des paliers
 
-**Starter — Gratuit**
-Destiné aux entrepreneurs et petites boutiques. *Objectif : permettre de découvrir Wilinwi sans
-friction.*
+**Starter — 10 000 FCFA/mois (ou 100 000 FCFA/an)**
+Destiné aux entrepreneurs individuels et petites boutiques indépendantes.
+*Objectif : Remplacer le cahier papier par une caisse certifiée et sécuriser chaque vente.*
 
-- 1 entreprise, 1 établissement
-- Fonctionnalités essentielles
-- Ventes illimitées
-- Mode hors-ligne
-- Tableau de bord de base
+- 1 boutique physique
+- 2 collaborateurs inclus (1 Propriétaire + 1 Caissier/Vendeur)
+- 1 poste de caisse actif
+- Ventes POS illimitées (Espèces, Wave, MTN, Moov)
+- Reçus thermiques (80mm/58mm) et QR reçu numérique
+- Mode 100% hors-ligne garanti
+- Gestion des dépenses courantes & carnet de dettes clients (ardoise)
+- 1 photo par produit
 
-**Pro — 7 500 FCFA/mois (ou 75 000 FCFA/an)**
-Destiné aux PME.
+**Pro — 25 000 FCFA/mois (ou 250 000 FCFA/an)**
+Destiné aux commerces établis ou ouvrant un second point de vente.
+*Objectif : Éliminer la démarque inconnue, piloter ses marges et gérer 2 boutiques depuis son mobile.*
 
-- 2 établissements
-- Utilisateurs illimités
-- Produits illimités
-- Rapports avancés
-- Gestion des dépenses
-- Gestion des créances
-- Sauvegardes automatiques
-- Assistance prioritaire
+- Jusqu'à 2 établissements
+- Jusqu'à 5 collaborateurs avec rôles étanches (Manager, Caissier, Vendeur)
+- Jusqu'à 3 postes de caisse actifs
+- Système anti-fraude à 4 prix (`prixAchat ≤ prixPlancher ≤ prixCatalogue`)
+- Trésorerie multi-comptes (distinction Espèces, MoMo, Banque)
+- Galerie photos (jusqu'à 5 photos par article)
+- Rapports avancés de marges et performances vendeurs
+- Assistance prioritaire WhatsApp
 
-**Business — 20 000 FCFA/mois (ou 200 000 FCFA/an)**
-Pour les entreprises en croissance.
+**Business — 50 000 FCFA/mois (ou 500 000 FCFA/an)**
+Destiné aux grossistes, demi-grossistes et réseaux de distribution.
+*Objectif : Déployer l'architecture Hub & Spoke (Entrepôt central vers boutiques).*
 
-- Multi-établissements
-- Utilisateurs illimités
-- Transferts de stock
-- CRM
-- Images produits
-- Tableaux de bord avancés
-- API
-- Intégrations
+- Établissements illimités (Boutiques physiques + Entrepôt central)
+- Jusqu'à 15 collaborateurs (Gestionnaire de stock, Livreur, etc.)
+- Jusqu'à 10 postes de caisse actifs
+- Module complet **Entrepôt & Logistique** (`/entrepot`) : réceptions commandes fournisseurs, bordereaux de dispatch inter-boutiques
+- CRM relationnel & relances de dettes semi-automatiques via WhatsApp
+- Photos produits illimitées
+- Exports comptables complets (Excel, CSV, PDF)
+- Journal d'audit d'intégrité
 
-**Enterprise — sur devis**
-Pour les grandes entreprises.
+**Enterprise — Sur devis (dès 100 000 FCFA/mois)**
+Pour les grandes chaînes et réseaux franchisés.
 
-- Établissements illimités
-- Site e-commerce personnalisé
-- Personnalisation
-- Intégrations spécifiques
-- SLA
-- Accompagnement dédié
+- Établissements, utilisateurs et caisses illimités
+- Site web e-commerce personnalisé synchronisé avec les stocks
+- Accès API ouverte & connecteurs ERP/comptables
+- Formation des équipes sur site
+- SLA garanti avec interlocuteur dédié 24/7
 
 ### Créances (Pro) vs CRM (Business) — où tracer la ligne
 

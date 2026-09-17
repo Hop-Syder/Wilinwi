@@ -11,22 +11,17 @@ const PinSchema = z
  * - `email` optionnel : si absent → utilisateur **PIN-only** (pas de compte Supabase).
  * - `customPermissions` + `permissions` : overrides de modules (sinon défauts du rôle).
  */
-export const CreateUserSchema = z
-  .object({
-    nom: z.string().min(1),
-    role: RoleSchema,
-    poste: z.string().min(1).optional(),
-    email: z.string().email().optional(),
-    pin: PinSchema.optional(),
-    customPermissions: z.boolean().default(false),
-    permissions: z.array(z.enum(MODULES)).default([]),
-    /** Établissements auxquels l'employé a accès. */
-    etablissementIds: z.array(IdSchema).default([]),
-  })
-  .refine((u) => u.email || u.pin, {
-    message: 'Un email (mot de passe) ou un PIN est requis pour la connexion',
-    path: ['pin'],
-  });
+export const CreateUserSchema = z.object({
+  nom: z.string().min(1),
+  role: RoleSchema,
+  poste: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  pin: PinSchema,
+  customPermissions: z.boolean().default(false),
+  permissions: z.array(z.enum(MODULES)).default([]),
+  /** Établissements auxquels l'employé a accès. */
+  etablissementIds: z.array(IdSchema).default([]),
+});
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
 export const UpdateUserSchema = z.object({

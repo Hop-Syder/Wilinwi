@@ -116,6 +116,11 @@ export default function UtilisateursPage() {
     setError(null);
     setNotice(null);
     setCreatedInviteLink(null);
+    if (!draft.id && !draft.pin) {
+      setError("Le code PIN est obligatoire.");
+      setBusy(false);
+      return;
+    }
     if (draft.pin && !/^\d{4}$/.test(draft.pin)) {
       setError("Le code PIN doit comporter exactement 4 chiffres.");
       setBusy(false);
@@ -418,7 +423,7 @@ export default function UtilisateursPage() {
               {!draft.id && (
                 <Field label="Email (optionnel)"><Input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
               )}
-              <Field label={draft.id ? 'Nouveau PIN (optionnel)' : 'Code PIN (optionnel)'}>
+              <Field label={draft.id ? 'Nouveau PIN (optionnel)' : 'Code PIN'}>
                 <Input inputMode="numeric" value={draft.pin} onChange={(e) => setDraft({ ...draft, pin: e.target.value })} placeholder="4 chiffres" />
               </Field>
             </div>

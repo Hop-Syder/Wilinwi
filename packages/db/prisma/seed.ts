@@ -184,7 +184,67 @@ async function main() {
     }
   });
 
-  console.log('✅ Seed terminé. Tenant démo:', DEMO_TENANT_ID);
+  // Seeding de la table globale des configurations de plans d'abonnement (dès 10 000 FCFA/mois)
+  const defaultPlans = [
+    {
+      plan: 'STARTER' as const,
+      label: 'Starter (Boutique Solo)',
+      priceMonthly: 10_000,
+      priceYearly: 100_000,
+      maxUsers: 2,
+      maxEtablissements: 1,
+      maxDevices: 1,
+      maxPhotos: 1,
+    },
+    {
+      plan: 'PRO' as const,
+      label: 'Professionnel (Croissance)',
+      priceMonthly: 25_000,
+      priceYearly: 250_000,
+      maxUsers: 5,
+      maxEtablissements: 2,
+      maxDevices: 3,
+      maxPhotos: 5,
+    },
+    {
+      plan: 'BUSINESS' as const,
+      label: 'Business (Réseau & Entrepôt)',
+      priceMonthly: 50_000,
+      priceYearly: 500_000,
+      maxUsers: 15,
+      maxEtablissements: -1,
+      maxDevices: 10,
+      maxPhotos: -1,
+    },
+    {
+      plan: 'ENTERPRISE' as const,
+      label: 'Entreprise (Sur-mesure & Réseau)',
+      priceMonthly: null,
+      priceYearly: null,
+      maxUsers: -1,
+      maxEtablissements: -1,
+      maxDevices: -1,
+      maxPhotos: -1,
+    },
+  ];
+
+  for (const p of defaultPlans) {
+    await prisma.planConfig.upsert({
+      where: { plan: p.plan },
+      update: {
+        label: p.label,
+        priceMonthly: p.priceMonthly,
+        priceYearly: p.priceYearly,
+        maxUsers: p.maxUsers,
+        maxEtablissements: p.maxEtablissements,
+        maxDevices: p.maxDevices,
+        maxPhotos: p.maxPhotos,
+      },
+      create: p,
+    });
+  }
+
+  console.log('✅ Seed terminé. Plans d’abonnement & Tenant démo initialisés.');
 }
 
 main()
