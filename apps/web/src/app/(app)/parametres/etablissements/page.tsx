@@ -151,15 +151,12 @@ export default function EtablissementsPage() {
   ];
 
   return (
-    <div>
-      <Link href="/parametres" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
-        <ArrowLeft className="h-4 w-4" /> Paramètres
-      </Link>
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-brand">Établissements</h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Vos boutiques, points de vente, entrepôts… Chaque vente et chaque mouvement appartient à un établissement.
+          <h2 className="text-base font-extrabold text-slate-900">Boutiques, Points de Vente & Entrepôts</h2>
+          <p className="mt-0.5 text-xs text-slate-500 font-medium">
+            Chaque vente et chaque mouvement de stock est rattaché à un établissement physique ou logistique.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -172,8 +169,8 @@ export default function EtablissementsPage() {
             ]}
           />
           <div id="tour-etablissements-new">
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" /> Nouvel établissement
+            <Button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+              <Plus className="h-4 w-4 mr-1.5" /> Nouvel établissement
             </Button>
           </div>
         </div>

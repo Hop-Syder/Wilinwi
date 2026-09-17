@@ -48,6 +48,15 @@ export class UsersController {
     return this.users.update(user, id, dto);
   }
 
+  /** Permet à l'utilisateur connecté de définir ou modifier son propre code PIN. */
+  @Post('me/pin')
+  setMyPin(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(SetPinSchema)) dto: SetPinInput,
+  ) {
+    return this.users.setPin(user, user.userId, dto.pin);
+  }
+
   @RequireCapabilities('users:manage')
   @Post(':id/pin')
   setPin(

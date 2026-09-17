@@ -45,6 +45,8 @@ export interface AppTopbarProps {
   user: SessionUser;
   syncState: 'online' | 'offline' | 'syncing';
   syncPending?: number;
+  syncRejected?: number;
+  onOpenConflicts?: () => void;
   onLock: () => Promise<void>;
   onSignOut: () => void;
   onOpenMobileMenu: () => void;
@@ -288,6 +290,8 @@ export function AppTopbar({
   user,
   syncState,
   syncPending = 0,
+  syncRejected = 0,
+  onOpenConflicts,
   onLock,
   onSignOut,
   onOpenMobileMenu,
@@ -394,8 +398,18 @@ export function AppTopbar({
                 <Search className="h-4 w-4" />
               </button>
 
-              {/* Télémétrie Connectivité / Synchronisation */}
-              {syncState === 'online' ? (
+              {/* Télémétrie Connectivité & Alerte Conflits */}
+              {syncRejected > 0 ? (
+                <button
+                  type="button"
+                  onClick={onOpenConflicts}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[11px] font-extrabold text-red-700 hover:bg-red-100 transition-colors shadow-2xs animate-pulse cursor-pointer"
+                  title="Vente(s) hors-ligne rejetée(s) par le serveur — Cliquez pour résoudre"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600" />
+                  <span>Conflit ({syncRejected})</span>
+                </button>
+              ) : syncState === 'online' ? (
                 <div
                   className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/70 px-2.5 py-1 text-[11px] font-extrabold text-emerald-800 shadow-2xs"
                   title="Système opérationnel et synchronisé en temps réel"

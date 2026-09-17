@@ -154,19 +154,13 @@ export default function JournalPage() {
   ];
 
   return (
-    <div>
-      <Link
-        href="/parametres"
-        className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand"
-      >
-        <ArrowLeft className="h-4 w-4" /> Paramètres
-      </Link>
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-brand">
-            <History className="h-6 w-6" /> Journal d&apos;activité
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">Historique des actions de votre équipe.</p>
+          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <History className="h-4 w-4 text-indigo-600" /> Journal d&apos;Activité & Audit Trail
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 font-medium">Historique exhaustif et horodaté des actions sensibles effectuées par votre équipe.</p>
         </div>
         <ContextualHelp
           storageKey="wilinwi_journal_tour_done"

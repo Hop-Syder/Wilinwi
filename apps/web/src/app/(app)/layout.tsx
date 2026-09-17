@@ -44,6 +44,7 @@ import { DunningBanner, DunningBlock } from '@/components/dunning-banner';
 import { OnboardingLocalisationModal } from '@/components/onboarding-localisation-modal';
 import { CollapsibleSidebar } from '@/components/collapsible-sidebar';
 import { AppTopbar } from '@/components/app-topbar';
+import { SyncConflictsModal } from '@/components/sync-conflicts-modal';
 
 // `infraCap` (optionnel) : capacité d'infrastructure requise pour voir l'entrée
 // (TDR v2) — les entrées verticales (Food, Santé…) se brancheront ici.
@@ -72,7 +73,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut, loginWithPin, refreshUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { state, pending } = useSync();
+  const {
+    state,
+    pending,
+    rejected,
+    rejectedSales,
+    discardSale,
+    retrySale,
+  } = useSync();
+  const [isConflictsModalOpen, setIsConflictsModalOpen] = useState(false);
   const [locked, setLocked] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return !getPinToken();
@@ -162,6 +171,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         user={user}
         syncState={state}
         syncPending={pending}
+        syncRejected={rejected}
+        onOpenConflicts={() => setIsConflictsModalOpen(true)}
         onLock={lock}
         onSignOut={signOut}
         onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
@@ -328,6 +339,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </nav>
+
+      {/* Centre de Résolution des Conflits Hors-Ligne */}
+      <SyncConflictsModal
+        isOpen={isConflictsModalOpen}
+        onClose={() => setIsConflictsModalOpen(false)}
+        rejectedSales={rejectedSales}
+        onDiscard={discardSale}
+        onRetry={retrySale}
+      />
     </div>
   );
 }

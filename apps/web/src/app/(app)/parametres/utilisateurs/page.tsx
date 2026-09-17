@@ -222,14 +222,11 @@ export default function UtilisateursPage() {
   ];
 
   return (
-    <div>
-      <Link href="/parametres" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
-        <ArrowLeft className="h-4 w-4" /> Paramètres
-      </Link>
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-brand">Utilisateurs</h1>
-          <p className="mt-1 text-sm text-slate-500">Collaborateurs, rôles, permissions et codes PIN.</p>
+          <h2 className="text-base font-extrabold text-slate-900">Collaborateurs & Codes PIN</h2>
+          <p className="mt-0.5 text-xs text-slate-500 font-medium">Gestion des utilisateurs, attributions des rôles, permissions et codes secrets de caisse.</p>
         </div>
         <div className="flex items-center gap-2">
           <ContextualHelp
@@ -242,52 +239,65 @@ export default function UtilisateursPage() {
             ]}
           />
           <div id="tour-utilisateurs-new">
-            <Button onClick={openCreate}>
-              <UserPlus className="h-4 w-4" /> Nouveau collaborateur
+            <Button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+              <UserPlus className="h-4 w-4 mr-1.5" /> Nouveau collaborateur
             </Button>
           </div>
         </div>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">{error}</p>}
       {notice && (
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {notice}
         </div>
       )}
       {createdInviteLink && (
-        <div className="mt-4 rounded-lg border border-brand/20 bg-brand/5 p-4 text-sm text-brand">
-          <p className="font-semibold mb-1">🎉 Collaborateur invité avec succès !</p>
-          <p className="text-xs text-slate-500 mb-3">
-            L&apos;invitation a été initiée. Si le collaborateur ne reçoit pas l&apos;email (SMTP non configuré ou spam), vous pouvez copier ce lien et lui envoyer manuellement :
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 max-w-xl">
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 text-sm text-indigo-950 shadow-xs">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-extrabold text-indigo-950 flex items-center gap-2">
+                🎉 Collaborateur invité avec succès !
+              </p>
+              <p className="text-xs text-indigo-800/80 mt-1 mb-3">
+                Un email d'activation a été envoyé. Vous pouvez également copier le lien sécurisé ci-dessous ou le transmettre directement sur WhatsApp à votre collaborateur :
+              </p>
+            </div>
+            <button
+              onClick={() => setCreatedInviteLink(null)}
+              className="text-xs font-bold text-slate-400 hover:text-slate-600 px-2 py-1 rounded-md"
+            >
+              Fermer
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
             <input
               type="text"
               readOnly
-              value={createdInviteLink}
-              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 outline-none"
+              value={createdInviteLink ?? ''}
+              className="flex-1 rounded-xl border border-indigo-200/80 bg-white px-3.5 py-2 text-xs text-slate-700 outline-none select-all font-mono shadow-inner"
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
-            <div className="flex gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
                 onClick={() => {
-                  void navigator.clipboard.writeText(createdInviteLink);
-                  alert("Lien d'invitation copié !");
+                  if (createdInviteLink) void navigator.clipboard.writeText(createdInviteLink);
+                  alert("Lien d'invitation copié dans le presse-papier !");
                 }}
-                className="text-xs py-1 px-3 bg-brand text-white hover:bg-brand/90 transition-colors"
+                className="text-xs py-2 px-3 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs"
               >
-                Copier
+                Copier le lien
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setCreatedInviteLink(null)}
-                className="text-xs py-1 px-3 border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Bonjour ! Voici votre lien d'invitation personnel pour activer votre compte Wilinwi et configurer votre mot de passe et code PIN : ${createdInviteLink ?? ''}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs py-2 px-3.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors shadow-xs"
               >
-                Fermer
-              </Button>
+                💬 WhatsApp
+              </a>
             </div>
           </div>
         </div>

@@ -75,18 +75,12 @@ export default function AppareilsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4">
-      <div className="flex items-center gap-3">
-        <Link href="/parametres" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="font-display text-xl font-black tracking-tight text-slate-900">Appareils</h1>
-          <p className="text-sm text-slate-500">
-            Navigateurs et postes connectés à votre entreprise. La limite dépend de votre plan ;
-            un appareil inactif depuis {DEVICE_ACTIVE_DAYS} jours libère sa place automatiquement.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-base font-extrabold text-slate-900">Postes & Navigateurs Connectés</h2>
+        <p className="mt-0.5 text-xs text-slate-500 font-medium">
+          Registre des appareils autorisés à utiliser la caisse et l'application. Un appareil inactif depuis {DEVICE_ACTIVE_DAYS} jours libère automatiquement son emplacement.
+        </p>
       </div>
 
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
