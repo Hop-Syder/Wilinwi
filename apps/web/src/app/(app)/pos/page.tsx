@@ -12,7 +12,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, ArrowUpRight } from 'lucide-react';
 import type { CreateSaleInput, ProductDto, ClientDto, PosSessionDto } from '@wilinwi/types';
 import { apiGet } from '@/lib/api';
 import { syncEngine } from '@/lib/sync';
@@ -24,6 +24,7 @@ import { ReceiptModal, type ReceiptSale } from '@/components/receipt';
 import { ContextualHelp } from '@/components/contextual-help';
 import { PosCloseSessionModal } from '@/components/pos-close-session-modal';
 import { PosOpenSessionModal } from '@/components/pos-open-session-modal';
+import { PosDisburseModal } from '@/components/pos-disburse-modal';
 import type { TourStep } from '@/components/tour-guide';
 import { PosCatalogZone } from '@/components/pos/pos-catalog-zone';
 import { PosCartZone, type CartLine, type OrderMode } from '@/components/pos/pos-cart-zone';
@@ -60,6 +61,7 @@ export default function PosPage() {
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showDisburseModal, setShowDisburseModal] = useState(false);
   const [showMobileCartDrawer, setShowMobileCartDrawer] = useState(false);
   
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
@@ -114,7 +116,7 @@ export default function PosPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Éviter de déclencher si une modale est ouverte
-      if (showCheckoutModal || showSuccessModal || showCloseModal || showScannerModal) {
+      if (showCheckoutModal || showSuccessModal || showCloseModal || showScannerModal || showDisburseModal) {
         return;
       }
 
@@ -145,7 +147,7 @@ export default function PosPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, isGlobalView, showCheckoutModal, showSuccessModal, showCloseModal, showScannerModal]);
+  }, [cart, isGlobalView, showCheckoutModal, showSuccessModal, showCloseModal, showScannerModal, showDisburseModal]);
 
   // Ajout au Panier
   const handleSelectProduct = (product: ProductDto) => {
@@ -324,15 +326,28 @@ export default function PosPage() {
 
           {!isGlobalView && (
             activeSession ? (
-              <button
-                type="button"
-                onClick={() => setShowCloseModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
-              >
-                <Lock className="w-3.5 h-3.5 text-rose-600" />
-                <span className="hidden sm:inline">Clôturer Caisse</span>
-                <span className="sm:hidden">Clôturer</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDisburseModal(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 text-amber-800 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
+                  title="Enregistrer une sortie d'espèces (Petty cash)"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="hidden sm:inline">Décaissement</span>
+                  <span className="sm:hidden">Sortie</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCloseModal(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
+                >
+                  <Lock className="w-3.5 h-3.5 text-rose-600" />
+                  <span className="hidden sm:inline">Clôturer Caisse</span>
+                  <span className="sm:hidden">Clôturer</span>
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -455,6 +470,19 @@ export default function PosPage() {
           onClose={() => setShowCloseModal(false)}
           onSuccess={() => {
             setActiveSession(null);
+            void fetchActiveSession();
+          }}
+        />
+      )}
+
+      {/* Modale Décaissement d'Espèces (Petty Cash) */}
+      {showDisburseModal && activeSession && (
+        <PosDisburseModal
+          isOpen={showDisburseModal}
+          onClose={() => setShowDisburseModal(false)}
+          activeSession={activeSession}
+          onSuccess={(session) => {
+            setActiveSession(session);
             void fetchActiveSession();
           }}
         />

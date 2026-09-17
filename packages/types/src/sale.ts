@@ -120,6 +120,14 @@ export const ClosePosSessionSchema = z.object({
 });
 export type ClosePosSessionInput = z.infer<typeof ClosePosSessionSchema>;
 
+export const DisbursePosSessionSchema = z.object({
+  montant: z.number().int().positive('Le montant doit être supérieur à zéro'),
+  motif: z.string().min(2, 'Veuillez préciser le motif de la dépense'),
+  categorie: z.string().default('AUTRE'),
+  posSessionId: IdSchema.optional(),
+});
+export type DisbursePosSessionInput = z.infer<typeof DisbursePosSessionSchema>;
+
 export interface PosSessionDto {
   id: string;
   tenantId: string;
@@ -131,6 +139,7 @@ export interface PosSessionDto {
   closedAt?: Date | string | null;
   fondInitial: number;
   totalEspeces: number;
+  totalDecaissements?: number;
   totalMoMo: number;
   totalBanque: number;
   totalCredit: number;

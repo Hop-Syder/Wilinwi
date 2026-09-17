@@ -837,16 +837,19 @@ model CashMovement {
   momoOperator String?         @map("momo_operator")
   momoReference String?        @map("momo_reference")
   saleId    String?            @map("sale_id") @db.Uuid
+  posSessionId String?         @map("pos_session_id") @db.Uuid
   createdBy String             @map("created_by") @db.Uuid
   createdAt DateTime           @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   etablissement Etablissement? @relation(fields: [etablissementId], references: [id])
+  posSession PosSession?       @relation(fields: [posSessionId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, compte])
   @@index([tenantId, createdAt])
   @@index([tenantId, etablissementId])
+  @@index([tenantId, posSessionId])
   @@map("cash_movements")
 }
 
@@ -885,6 +888,7 @@ model PosSession {
   closedAt        DateTime?        @map("closed_at")
   fondInitial     Int              @default(0) @map("fond_initial")
   totalEspeces    Int              @default(0) @map("total_especes")
+  totalDecaissements Int           @default(0) @map("total_decaissements")
   totalMoMo       Int              @default(0) @map("total_momo")
   totalBanque     Int              @default(0) @map("total_banque")
   totalCredit     Int              @default(0) @map("total_credit")
@@ -900,6 +904,7 @@ model PosSession {
   openedBy      User          @relation("OpenedPosSessions", fields: [openedById], references: [id])
   closedBy      User?         @relation("ClosedPosSessions", fields: [closedById], references: [id])
   sales         Sale[]
+  cashMovements CashMovement[]
 
   @@index([tenantId])
   @@index([tenantId, etablissementId])

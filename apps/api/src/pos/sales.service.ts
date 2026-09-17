@@ -1424,6 +1424,63 @@ export class SalesService {
     });
   }
 
+  async disbursePosSession(
+    ctx: AuthContext,
+    input: { montant: number; motif: string; categorie?: string; posSessionId?: string },
+  ) {
+    if (!ctx.etablissementId) {
+      throw new BadRequestException('Aucun établissement sélectionné');
+    }
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const active = await tx.posSession.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          ...(input.posSessionId ? { id: input.posSessionId } : { status: 'OPEN' }),
+        },
+      });
+      if (!active || active.status !== 'OPEN') {
+        throw new NotFoundException('Aucune session POS ouverte trouvée pour ce décaissement.');
+      }
+
+      // 1. Créer le mouvement de décaissement (sortie d'espèces de la caisse)
+      const movement = await tx.cashMovement.create({
+        data: {
+          tenantId: ctx.tenantId,
+          etablissementId: ctx.etablissementId!,
+          type: 'OUT',
+          compte: 'CAISSE',
+          montant: input.montant,
+          source: 'EXPENSE',
+          categorie: input.categorie ?? 'AUTRE',
+          note: input.motif,
+          posSessionId: active.id,
+          createdBy: ctx.userId,
+        },
+      });
+
+      // 2. Mettre à jour en direct la session POS
+      const nextDecaissements = (active.totalDecaissements ?? 0) + input.montant;
+      const nextSoldeTheorique = active.fondInitial + active.totalEspeces - nextDecaissements;
+
+      const updatedSession = await tx.posSession.update({
+        where: { id: active.id },
+        data: {
+          totalDecaissements: nextDecaissements,
+          soldeTheorique: nextSoldeTheorique,
+        },
+        include: {
+          openedBy: { select: { id: true, nom: true, email: true } },
+        },
+      });
+
+      return {
+        movement,
+        session: updatedSession,
+      };
+    });
+  }
+
   async closePosSession(ctx: AuthContext, soldeReel: number, note?: string) {
     if (!ctx.etablissementId) {
       throw new BadRequestException('Aucun établissement sélectionné');
@@ -1476,7 +1533,20 @@ export class SalesService {
         }
       }
 
-      const soldeTheorique = active.fondInitial + totalEspeces;
+      // Calcul des décaissements d'espèces réalisés durant cette session
+      const decaissements = await tx.cashMovement.aggregate({
+        where: {
+          tenantId: ctx.tenantId,
+          posSessionId: active.id,
+          type: 'OUT',
+          compte: 'CAISSE',
+        },
+        _sum: { montant: true },
+      });
+      const totalDecaissements = decaissements._sum.montant ?? active.totalDecaissements ?? 0;
+
+      // Solde théorique = Fond initial + Espèces encaissées - Décaissements effectués
+      const soldeTheorique = active.fondInitial + totalEspeces - totalDecaissements;
       const ecart = soldeReel - soldeTheorique;
 
       const closed = await tx.posSession.update({
@@ -1487,6 +1557,7 @@ export class SalesService {
           closedById: ctx.userId,
           totalVentes,
           totalEspeces,
+          totalDecaissements,
           totalMoMo,
           totalBanque,
           totalCredit,

@@ -16,10 +16,12 @@ import {
   MoneySchema,
   OpenPosSessionSchema,
   ClosePosSessionSchema,
+  DisbursePosSessionSchema,
   type AuthContext,
   type CreateSaleInput,
   type OpenPosSessionInput,
   type ClosePosSessionInput,
+  type DisbursePosSessionInput,
 } from '@wilinwi/types';
 import {
   ANY_POS_CAPABILITY,
@@ -104,6 +106,15 @@ export class SalesController {
     @Body(new ZodValidationPipe(ClosePosSessionSchema)) dto: ClosePosSessionInput,
   ) {
     return this.sales.closePosSession(user, dto.soldeReel, dto.note);
+  }
+
+  @RequireCapabilities('cash:disburse')
+  @Post('sessions/disburse')
+  disburse(
+    @CurrentUser() user: AuthContext,
+    @Body(new ZodValidationPipe(DisbursePosSessionSchema)) dto: DisbursePosSessionInput,
+  ) {
+    return this.sales.disbursePosSession(user, dto);
   }
 
   @RequireCapabilities('sale:read')

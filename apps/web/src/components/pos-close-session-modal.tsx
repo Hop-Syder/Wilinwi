@@ -25,9 +25,14 @@ import {
   Wallet,
   Coins,
   Receipt,
+  RefreshCw,
+  Loader2,
+  AlertOctagon,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Button, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost } from '@/lib/api';
+import { useSync } from '@/lib/use-sync';
 
 interface PosCloseSessionModalProps {
   isOpen: boolean;
@@ -72,11 +77,15 @@ function parsePositiveInteger(value: string): number {
 }
 
 export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSessionModalProps) {
+  const { state, pending, flush } = useSync();
+  const online = state !== 'offline';
+  const syncing = state === 'syncing';
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Comptage/Saisie, 2: Motif/Confirmation, 3: Bilan Z
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Données théoriques
+  const [activeSessionData, setActiveSessionData] = useState<any>(null);
   const [soldeTheorique, setSoldeTheorique] = useState(0);
   const [salesBreakdown, setSalesBreakdown] = useState({
     cash: 0,
@@ -113,6 +122,7 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
   const resetState = () => {
     setStep(1);
     setErrorMsg(null);
+    setActiveSessionData(null);
     setSoldeTheorique(0);
     setSalesBreakdown({
       cash: 0,
@@ -142,9 +152,13 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
     onClose();
   };
 
-  // Charger le solde et les ventes du jour
+  // Charger le solde et les ventes du jour + déclencher flush si ventes en attente
   useEffect(() => {
     if (!isOpen) return;
+
+    if (online && pending > 0) {
+      void flush();
+    }
 
     setIsLoading(true);
     setErrorMsg(null);
@@ -152,9 +166,13 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
     Promise.all([
       apiGet<TreasuryStatsResponse>('/api/treasury/stats').catch(() => null),
       apiGet<SaleItemSummary[]>('/api/pos/sales/today').catch(() => []),
+      apiGet<any>('/api/pos/sessions/active').catch(() => null),
     ])
-      .then(([treasuryStats, todaySales]) => {
-        if (treasuryStats) {
+      .then(([treasuryStats, todaySales, session]) => {
+        setActiveSessionData(session);
+        if (session) {
+          setSoldeTheorique(session.soldeTheorique);
+        } else if (treasuryStats) {
           setSoldeTheorique(treasuryStats.balances.CAISSE ?? 0);
         }
 
@@ -236,12 +254,19 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
     setErrorMsg(null);
 
     try {
-      // 1. Purge préalable forcée des ventes hors-ligne dans IndexedDB
-      try {
-        const { syncEngine } = await import('@/lib/sync');
-        await syncEngine.flush();
-      } catch (e) {
-        console.warn('Avertissement : échec ou absence du moteur de synchronisation offline', e);
+      // 1. Synchronisation obligatoire préalable et vérification stricte de la file Dexie
+      if (online) {
+        await flush();
+      }
+
+      const { syncEngine } = await import('@/lib/sync');
+      const remainingPending = await syncEngine.pendingCount();
+      if (remainingPending > 0) {
+        setErrorMsg(
+          `Clôture bloquée : ${remainingPending} vente(s) sont encore stockées localement sur cet appareil. Veuillez vous connecter à Internet et synchroniser toutes vos ventes avant de clôturer pour garantir l'exactitude du Rapport Z.`,
+        );
+        setIsLoading(false);
+        return;
       }
 
       // 2. Clôture officielle de la Session POS sur le serveur
@@ -324,6 +349,35 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
           <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Alerte Ventes Hors-Ligne en Attente */}
+        {pending > 0 && (
+          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-800">
+              {syncing ? (
+                <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
+              ) : (
+                <AlertOctagon className="w-4 h-4 text-amber-600 shrink-0" />
+              )}
+              <div>
+                <span className="font-bold">{pending} vente(s) hors-ligne en attente de synchronisation</span>
+                <p className="text-[11px] text-amber-700">
+                  La transmission au serveur est obligatoire avant la clôture pour garantir l'exactitude du Rapport Z.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={syncing || !online}
+              onClick={() => void flush()}
+              className="text-xs shrink-0 gap-1 bg-white hover:bg-amber-100"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Synchronisation…' : 'Synchroniser'}
+            </Button>
           </div>
         )}
 
@@ -453,10 +507,24 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
           {step === 2 && (
             <div className="space-y-5">
               {/* Carte Bilan Comparatif */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200">
+                  <span className="text-slate-600 font-medium">Fond initial de caisse</span>
+                  <span className="font-semibold text-slate-800">{formatFCFA(activeSessionData?.fondInitial ?? 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200">
+                  <span className="text-slate-600 font-medium">+ Ventes Espèces encaissées</span>
+                  <span className="font-semibold text-emerald-700">+{formatFCFA(salesBreakdown.cash)}</span>
+                </div>
+                {(activeSessionData?.totalDecaissements ?? 0) > 0 && (
+                  <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200">
+                    <span className="text-amber-700 font-medium">- Décaissements effectués</span>
+                    <span className="font-semibold text-amber-700">-{formatFCFA(activeSessionData.totalDecaissements)}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200">
-                  <span className="text-slate-600 font-medium">Solde Théorique Caisse</span>
-                  <span className="font-bold text-slate-900">{formatFCFA(soldeTheorique)}</span>
+                  <span className="text-slate-900 font-bold">Solde Théorique Attendu</span>
+                  <span className="font-extrabold text-slate-900">{formatFCFA(soldeTheorique)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-200">
                   <span className="text-slate-600 font-medium">Solde Réel Compté</span>
@@ -572,12 +640,22 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
 
                 <div className="pt-2 border-t border-dashed border-slate-300 space-y-1.5 text-[11px]">
                   <div className="flex justify-between">
-                    <span>Solde Théorique :</span>
+                    <span>Fond initial :</span>
+                    <span>{formatFCFA(activeSessionData?.fondInitial ?? 0)}</span>
+                  </div>
+                  {(activeSessionData?.totalDecaissements ?? 0) > 0 && (
+                    <div className="flex justify-between text-amber-800">
+                      <span>- Décaissements effectués :</span>
+                      <span>-{formatFCFA(activeSessionData.totalDecaissements)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold">
+                    <span>Solde Théorique Net :</span>
                     <span>{formatFCFA(closeResult.soldeTheorique)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between font-bold">
                     <span>Solde Réel Compté :</span>
-                    <span className="font-bold">{formatFCFA(closeResult.soldeReel)}</span>
+                    <span>{formatFCFA(closeResult.soldeReel)}</span>
                   </div>
                   <div className="flex justify-between font-bold">
                     <span>Écart Constaté :</span>
@@ -603,8 +681,13 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
               <Button variant="outline" size="sm" onClick={handleClose}>
                 Annuler
               </Button>
-              <Button variant="primary" size="sm" onClick={() => setStep(2)}>
-                Vérifier l'Écart
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setStep(2)}
+                disabled={pending > 0}
+              >
+                {pending > 0 ? 'Synchronisation requise' : "Vérifier l'Écart"}
               </Button>
             </>
           )}
@@ -618,9 +701,17 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
                 variant="emerald"
                 size="sm"
                 onClick={handleCloseSessionSubmit}
-                disabled={isLoading}
+                disabled={isLoading || pending > 0}
               >
-                {isLoading ? 'Clôture en cours...' : 'Valider & Clôturer la Session'}
+                {isLoading ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Clôture en cours...
+                  </span>
+                ) : pending > 0 ? (
+                  'Synchronisation requise avant clôture'
+                ) : (
+                  'Valider & Clôturer la Session'
+                )}
               </Button>
             </>
           )}
