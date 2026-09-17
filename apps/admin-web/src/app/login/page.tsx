@@ -62,7 +62,7 @@ export default function AdminLoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@nexus-partners.xyz"
+              placeholder="admin124588452@nexus-partners.xyz"
               required
               autoComplete="email"
               className="h-10 w-full text-sm text-slate-900"
