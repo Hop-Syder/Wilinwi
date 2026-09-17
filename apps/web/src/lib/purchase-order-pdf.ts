@@ -109,21 +109,18 @@ export async function generatePurchaseOrderPdf(
 
   // ── 2. EN-TÊTE OFFICIEL ──
   const logo = await loadLogo();
-  let brandX = margin;
+  const brandX = margin + 19;
 
   if (logo) {
     try {
       doc.addImage(logo, 'PNG', margin, 10, 15, 15);
-      brandX = margin + 19;
     } catch {
       // Fallback au monogramme si l'image est corrompue
       drawBrandMonogram(doc, margin, 10, 15, 15, entrepriseNom);
-      brandX = margin + 19;
     }
   } else {
     // Monogramme stylisé par défaut
     drawBrandMonogram(doc, margin, 10, 15, 15, entrepriseNom);
-    brandX = margin + 19;
   }
 
   // Nom de l'entreprise émettrice

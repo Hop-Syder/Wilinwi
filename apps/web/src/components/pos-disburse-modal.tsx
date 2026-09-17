@@ -13,8 +13,8 @@
 // ──────────────────────────────────
 
 import { useState } from 'react';
-import { ArrowUpRight, X, Wallet, AlertTriangle, CheckCircle2, Tag, FileText } from 'lucide-react';
-import { Button, Card, formatFCFA, Input } from '@wilinwi/ui';
+import { ArrowUpRight, X, Wallet, AlertTriangle, Tag, FileText } from 'lucide-react';
+import { Button, Card, formatFCFA } from '@wilinwi/ui';
 import { apiPost, ApiError } from '@/lib/api';
 import type { PosSessionDto } from '@wilinwi/types';
 

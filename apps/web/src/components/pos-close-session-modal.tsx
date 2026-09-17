@@ -28,7 +28,6 @@ import {
   RefreshCw,
   Loader2,
   AlertOctagon,
-  ArrowUpRight,
 } from 'lucide-react';
 import { Button, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost } from '@/lib/api';
