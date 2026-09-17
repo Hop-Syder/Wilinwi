@@ -190,17 +190,17 @@ export default function ParametresPage() {
       {/* En-tête de page avec Thème Indigo/Violet Contextuel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-display flex items-center gap-2">
-              <Settings className="h-6 w-6 text-indigo-600" /> Paramètres & Configuration
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mb-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-display flex items-center gap-2">
+              <Settings className="h-5 sm:h-6 w-5 sm:w-6 text-indigo-600 shrink-0" /> Paramètres & Configuration
             </h1>
 
-            {/* Menu d'Onglets Fluides (Tabs UI) */}
-            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/80" id="tour-parametres-tabs">
+            {/* Menu d'Onglets Fluides (Tabs UI) scrollables sur mobile */}
+            <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-slate-100 p-1 border border-slate-200/80 shrink-0" id="tour-parametres-tabs">
               <button
                 type="button"
                 onClick={() => setActiveTab('COMPANY')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'COMPANY' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -209,7 +209,7 @@ export default function ParametresPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('TEAM')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'TEAM' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -218,7 +218,7 @@ export default function ParametresPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('STORES')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'STORES' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -227,7 +227,7 @@ export default function ParametresPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('AUDIT')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'AUDIT' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -236,7 +236,7 @@ export default function ParametresPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('PREFERENCES')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'PREFERENCES' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >

@@ -137,16 +137,16 @@ export default function DispatchPage() {
       <Link href="/entrepot" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
         <ArrowLeft className="h-4 w-4" /> Entrepôt
       </Link>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold text-teal-950">
-            <Truck className="h-6 w-6 text-teal-600" /> Dispatch
+          <h1 className="flex items-center gap-2 font-display text-xl sm:text-2xl font-extrabold text-teal-950">
+            <Truck className="h-5 sm:h-6 w-5 sm:w-6 text-teal-600 shrink-0" /> Dispatch
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
             Transférez la marchandise de l'entrepôt vers une boutique. La validation déplace le stock.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <ContextualHelp
             storageKey="wilinwi_dispatch_tour_done"
             tourSteps={tourSteps}

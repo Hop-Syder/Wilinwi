@@ -181,9 +181,9 @@ export default function ReceptionPage() {
       </Card>
 
       <form onSubmit={submit} className="space-y-6">
-        {/* Table of items */}
-        <Card id="tour-reception-items" className="overflow-hidden p-0 border border-slate-100">
-          <table className="w-full text-sm text-left">
+        {/* Table of items scrollable horizontalement sur mobile */}
+        <Card id="tour-reception-items" className="overflow-x-auto p-0 border border-slate-100">
+          <table className="w-full text-sm text-left min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium">
               <tr>
                 <th className="px-4 py-3">Produit</th>
