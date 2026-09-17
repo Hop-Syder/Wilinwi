@@ -373,31 +373,34 @@ export default function VentesPage() {
       <VentesKpis kpis={kpis} />
 
       {/* Filtres de recherche */}
-      <VentesFilters
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filterPeriod={filterPeriod}
-        setFilterPeriod={setFilterPeriod}
-        filterStatus={filterStatus}
-        setFilterStatus={setFilterStatus}
-        filterClientId={filterClientId}
-        setFilterClientId={setFilterClientId}
-        filterEtablissementId={filterEtablissementId}
-        setFilterEtablissementId={setFilterEtablissementId}
-        customFrom={customFrom}
-        setCustomFrom={setCustomFrom}
-        customTo={customTo}
-        setCustomTo={setCustomTo}
-        isGlobalView={isGlobalView}
-        etablissements={user?.etablissements ?? []}
-        clients={clients}
-        busy={busy}
-        onSearch={fetchSales}
-      />
+      <div id="tour-ventes-filters">
+        <VentesFilters
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filterPeriod={filterPeriod}
+          setFilterPeriod={setFilterPeriod}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          filterClientId={filterClientId}
+          setFilterClientId={setFilterClientId}
+          filterEtablissementId={filterEtablissementId}
+          setFilterEtablissementId={setFilterEtablissementId}
+          customFrom={customFrom}
+          setCustomFrom={setCustomFrom}
+          customTo={customTo}
+          setCustomTo={setCustomTo}
+          isGlobalView={isGlobalView}
+          etablissements={user?.etablissements ?? []}
+          clients={clients}
+          busy={busy}
+          onSearch={fetchSales}
+        />
+      </div>
 
       {error && <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
       {/* Contenu principal Onglet 1 vs Onglet 2 */}
+      <div id="tour-ventes-table">
       {activeTab === 'SALES' ? (
         <VentesTable
           sales={sales}
@@ -416,6 +419,7 @@ export default function VentesPage() {
           onSelectReportZ={(sess) => setReportZSession(sess)}
         />
       )}
+      </div>
 
       {/* Modale Reçu */}
       {receipt && <ReceiptModal sale={receipt} onClose={() => setReceipt(null)} />}

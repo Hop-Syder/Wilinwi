@@ -320,6 +320,7 @@ export default function PosPage() {
             tourSteps={tourSteps}
             useCases={[
               { title: 'Raccourcis Clavier POS', description: 'F2 (Recherche), F4 (Sélection client), Entrée/Espace (Encaissement), Échap (Vider le panier).' },
+              { title: 'Décaissement rapide', description: 'Sortez une petite dépense (livraison, achat urgent) directement de la caisse en cours, sans passer par la Trésorerie.' },
               { title: 'Clôture de caisse', description: 'Comptage physique guidé par coupures avec calcul des écarts transmis au journal d\'audit.' },
             ]}
           />
