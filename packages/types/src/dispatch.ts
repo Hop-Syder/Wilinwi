@@ -12,13 +12,14 @@
 import { z } from 'zod';
 import { IdSchema, QuantitySchema } from './common.js';
 
-export const DISPATCH_STATUSES = ['DRAFT', 'VALIDATED', 'CANCELLED'] as const;
+export const DISPATCH_STATUSES = ['DRAFT', 'SHIPPED', 'VALIDATED', 'CANCELLED'] as const;
 export type DispatchStatus = (typeof DISPATCH_STATUSES)[number];
 export const DispatchStatusSchema = z.enum(DISPATCH_STATUSES);
 
 export const DISPATCH_STATUS_LABELS: Record<DispatchStatus, string> = {
   DRAFT: 'Brouillon',
-  VALIDATED: 'Validé',
+  SHIPPED: 'En transit',
+  VALIDATED: 'Réceptionné',
   CANCELLED: 'Annulé',
 };
 
@@ -65,6 +66,7 @@ export interface DispatchOrderDto {
   statut: DispatchStatus;
   note: string | null;
   createdAt: string;
+  shippedAt?: string | null;
   validatedAt: string | null;
   items: DispatchOrderItemDto[];
 }

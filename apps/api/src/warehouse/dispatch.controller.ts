@@ -45,6 +45,18 @@ export class DispatchController {
   }
 
   @RequireCapabilities('supplier:manage')
+  @Post(':id/ship')
+  ship(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.dispatch.ship(user, id);
+  }
+
+  @RequireCapabilities('supplier:manage')
+  @Post(':id/receive')
+  receive(@CurrentUser() user: AuthContext, @Param('id') id: string) {
+    return this.dispatch.receive(user, id);
+  }
+
+  @RequireCapabilities('supplier:manage')
   @Post(':id/validate')
   validate(@CurrentUser() user: AuthContext, @Param('id') id: string) {
     return this.dispatch.validate(user, id);

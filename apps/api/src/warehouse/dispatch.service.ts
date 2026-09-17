@@ -32,6 +32,7 @@ type DispatchRow = {
   statut: string;
   note: string | null;
   createdAt: Date;
+  shippedAt: Date | null;
   validatedAt: Date | null;
   source: { nom: string } | null;
   destination: { nom: string } | null;
@@ -55,6 +56,7 @@ function toDto(d: DispatchRow): DispatchOrderDto {
     statut: d.statut as DispatchOrderDto['statut'],
     note: d.note,
     createdAt: d.createdAt.toISOString(),
+    shippedAt: d.shippedAt ? d.shippedAt.toISOString() : null,
     validatedAt: d.validatedAt ? d.validatedAt.toISOString() : null,
     items: d.items.map(
       (i): DispatchOrderItemDto => ({
@@ -139,7 +141,7 @@ export class DispatchService {
       });
 
       if (input.validate) {
-        return this.applyValidation(tx, ctx, created.id);
+        return this.applyFullValidation(tx, ctx, created.id);
       }
       return created;
     });
@@ -156,14 +158,141 @@ export class DispatchService {
     return toDto(result as DispatchRow);
   }
 
-  /** Validation : déplace le stock source → destination (idempotence par statut). */
-  async validate(ctx: AuthContext, id: string) {
-    const result = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      this.applyValidation(tx, ctx, id),
-    );
+  /** Expédition (Source) : déduit le stock de la source et passe en SHIPPED (En transit). */
+  async ship(ctx: AuthContext, id: string) {
+    const result = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const d = await this.ensure(tx, ctx.tenantId, id);
+      if (d.statut !== 'DRAFT') {
+        throw new BadRequestException('Seul un dispatch en brouillon peut être expédié.');
+      }
+      if (!ctx.etablissementIds.includes(d.sourceId)) {
+        throw new ForbiddenException(
+          "Vous n'avez pas accès à l'établissement source de ce dispatch.",
+        );
+      }
+
+      // Opt-Out : on ne livre pas un produit EXCLU de l'établissement de destination.
+      const exclusions = await tx.productExclusion.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          etablissementId: d.destinationId,
+          productId: { in: d.items.map((i) => i.productId) },
+        },
+        include: { product: { select: { nom: true } } },
+      });
+      if (exclusions.length > 0) {
+        throw new BadRequestException(
+          `Dispatch refusé : produit(s) non disponible(s) à destination — ${exclusions
+            .map((e) => e.product.nom)
+            .join(', ')}.`,
+        );
+      }
+
+      for (const item of d.items) {
+        const dispo = await readStockAt(tx, d.sourceId, item.productId, item.variantId);
+        if (dispo < item.quantite) {
+          throw new BadRequestException(
+            `Stock insuffisant à la source pour « ${item.product.nom} » (disponible ${dispo}, demandé ${item.quantite}).`,
+          );
+        }
+
+        // Décrémenter le stock de la source
+        await applyStockDelta(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId: d.sourceId,
+          productId: item.productId,
+          variantId: item.variantId,
+          delta: -item.quantite,
+        });
+
+        // Grand livre : mouvement OUT
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: d.sourceId,
+            productId: item.productId,
+            variantId: item.variantId,
+            type: 'OUT',
+            quantite: -item.quantite,
+            motif: `Expédition dispatch ${d.reference} vers ${d.destination?.nom ?? 'boutique'}`,
+          },
+        });
+      }
+
+      return tx.dispatchOrder.update({
+        where: { id },
+        data: {
+          statut: 'SHIPPED',
+          shippedBy: ctx.userId,
+          shippedAt: new Date(),
+        },
+        include: INCLUDE,
+      });
+    });
+
     await this.activity.log({
       tenantId: ctx.tenantId,
       etablissementId: result.sourceId,
+      userId: ctx.userId,
+      action: 'DISPATCH_SHIP',
+      entity: 'dispatch_order',
+      entityId: id,
+      metadata: { reference: result.reference },
+    });
+    return toDto(result as DispatchRow);
+  }
+
+  /** Réception (Destination) : crédite le stock à la destination et passe en VALIDATED. */
+  async receive(ctx: AuthContext, id: string) {
+    const result = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const d = await this.ensure(tx, ctx.tenantId, id);
+      if (d.statut !== 'SHIPPED') {
+        throw new BadRequestException('Seul un dispatch expédié (en transit) peut être réceptionné.');
+      }
+      if (!ctx.etablissementIds.includes(d.destinationId)) {
+        throw new ForbiddenException(
+          "Vous n'avez pas accès à l'établissement destinataire de ce dispatch.",
+        );
+      }
+
+      for (const item of d.items) {
+        // Incrémenter le stock de destination
+        await applyStockDelta(tx, {
+          tenantId: ctx.tenantId,
+          etablissementId: d.destinationId,
+          productId: item.productId,
+          variantId: item.variantId,
+          delta: item.quantite,
+        });
+
+        // Grand livre : mouvement IN
+        await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            etablissementId: d.destinationId,
+            productId: item.productId,
+            variantId: item.variantId,
+            type: 'IN',
+            quantite: item.quantite,
+            motif: `Réception dispatch ${d.reference} depuis ${d.source?.nom ?? 'entrepôt'}`,
+          },
+        });
+      }
+
+      return tx.dispatchOrder.update({
+        where: { id },
+        data: {
+          statut: 'VALIDATED',
+          validatedBy: ctx.userId,
+          validatedAt: new Date(),
+        },
+        include: INCLUDE,
+      });
+    });
+
+    await this.activity.log({
+      tenantId: ctx.tenantId,
+      etablissementId: result.destinationId,
       userId: ctx.userId,
       action: 'DISPATCH_VALIDATE',
       entity: 'dispatch_order',
@@ -173,12 +302,63 @@ export class DispatchService {
     return toDto(result as DispatchRow);
   }
 
+  /** Validation directe : réceptionne si SHIPPED, ou valide d'un coup (expédition + réception) si DRAFT. */
+  async validate(ctx: AuthContext, id: string) {
+    const existing = await this.prisma.forTenant(ctx.tenantId, (tx) => this.ensure(tx, ctx.tenantId, id));
+    if (existing.statut === 'SHIPPED') {
+      return this.receive(ctx, id);
+    }
+    if (existing.statut === 'DRAFT') {
+      const result = await this.prisma.forTenant(ctx.tenantId, (tx) =>
+        this.applyFullValidation(tx, ctx, id),
+      );
+      await this.activity.log({
+        tenantId: ctx.tenantId,
+        etablissementId: result.sourceId,
+        userId: ctx.userId,
+        action: 'DISPATCH_VALIDATE',
+        entity: 'dispatch_order',
+        entityId: id,
+        metadata: { reference: result.reference },
+      });
+      return toDto(result as DispatchRow);
+    }
+    throw new BadRequestException('Ce dispatch a déjà été traité ou annulé.');
+  }
+
   async cancel(ctx: AuthContext, id: string) {
     const result = await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const d = await this.ensure(tx, ctx.tenantId, id);
-      if (d.statut !== 'DRAFT') {
-        throw new BadRequestException('Seul un dispatch en brouillon peut être annulé.');
+      if (d.statut !== 'DRAFT' && d.statut !== 'SHIPPED') {
+        throw new BadRequestException('Seul un dispatch en brouillon ou en transit peut être annulé.');
       }
+
+      // Si le dispatch a déjà été expédié (SHIPPED), le stock a quitté la source.
+      // L'annulation entraîne le retour / réintégration de la marchandise à la source.
+      if (d.statut === 'SHIPPED') {
+        for (const item of d.items) {
+          await applyStockDelta(tx, {
+            tenantId: ctx.tenantId,
+            etablissementId: d.sourceId,
+            productId: item.productId,
+            variantId: item.variantId,
+            delta: item.quantite,
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              tenantId: ctx.tenantId,
+              etablissementId: d.sourceId,
+              productId: item.productId,
+              variantId: item.variantId,
+              type: 'IN',
+              quantite: item.quantite,
+              motif: `Annulation / retour dispatch ${d.reference}`,
+            },
+          });
+        }
+      }
+
       return tx.dispatchOrder.update({
         where: { id },
         data: { statut: 'CANCELLED' },
@@ -195,7 +375,7 @@ export class DispatchService {
     return toDto(result as DispatchRow);
   }
 
-  private async applyValidation(tx: TenantTx, ctx: AuthContext, id: string) {
+  private async applyFullValidation(tx: TenantTx, ctx: AuthContext, id: string) {
     const d = await this.ensure(tx, ctx.tenantId, id);
     if (d.statut !== 'DRAFT') {
       throw new BadRequestException('Ce dispatch a déjà été traité.');
@@ -274,9 +454,16 @@ export class DispatchService {
       });
     }
 
+    const now = new Date();
     return tx.dispatchOrder.update({
       where: { id },
-      data: { statut: 'VALIDATED', validatedBy: ctx.userId, validatedAt: new Date() },
+      data: {
+        statut: 'VALIDATED',
+        shippedBy: ctx.userId,
+        shippedAt: now,
+        validatedBy: ctx.userId,
+        validatedAt: now,
+      },
       include: INCLUDE,
     });
   }

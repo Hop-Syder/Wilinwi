@@ -1036,9 +1036,10 @@ model ProductStock {
 // La validation déplace le stock des DEUX emplacements (ProductStock + mouvements).
 
 enum DispatchStatus {
-  DRAFT // créé, pas encore validé
-  VALIDATED // validé — le stock a bougé
-  CANCELLED // annulé avant validation
+  DRAFT // créé, pas encore expédié
+  SHIPPED // expédié / en transit (sorti de l'entrepôt source)
+  VALIDATED // réceptionné et validé à destination
+  CANCELLED // annulé
 }
 
 model DispatchOrder {
@@ -1050,6 +1051,8 @@ model DispatchOrder {
   statut        DispatchStatus @default(DRAFT)
   note          String?
   createdBy     String         @map("created_by") @db.Uuid
+  shippedBy     String?        @map("shipped_by") @db.Uuid
+  shippedAt     DateTime?      @map("shipped_at")
   validatedBy   String?        @map("validated_by") @db.Uuid
   validatedAt   DateTime?      @map("validated_at")
   createdAt     DateTime       @default(now()) @map("created_at")
