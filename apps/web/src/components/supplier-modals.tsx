@@ -284,8 +284,8 @@ export function PurchaseOrderInvoiceModal({ order, onClose }: PurchaseOrderInvoi
           </div>
         </div>
 
-        <div className="mb-8 border border-slate-200 rounded-lg overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[420px]">
+        <div className="mb-8 border border-slate-200 rounded-lg overflow-hidden">
+          <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium">
               <tr>
                 <th className="px-4 py-3">Produit</th>

@@ -235,16 +235,16 @@ export default function ClientsPage() {
       {/* En-tête de page avec Thème Violet Contextuel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-violet-950 font-display">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-violet-950 font-display">
               Clients & Carnet de Dettes
             </h1>
-            {/* Onglets Principaux (Tabs UI) scrollables sur mobile */}
-            <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-slate-100 p-1 border border-slate-200/80 shrink-0" id="tour-clients-tabs">
+            {/* Onglets Principaux (Tabs UI) */}
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/80" id="tour-clients-tabs">
               <button
                 type="button"
                 onClick={() => setActiveMainTab('DIRECTORY')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeMainTab === 'DIRECTORY'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
@@ -255,7 +255,7 @@ export default function ClientsPage() {
               <button
                 type="button"
                 onClick={() => setActiveMainTab('DEBT_LEDGER')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeMainTab === 'DEBT_LEDGER'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'

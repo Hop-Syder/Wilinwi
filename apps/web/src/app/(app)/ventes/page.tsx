@@ -296,13 +296,13 @@ export default function VentesPage() {
       {/* En-tête avec onglets */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Historique & Rapports</h1>
-            <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-slate-100 p-1 border border-slate-200 shrink-0">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Historique & Rapports</h1>
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveTab('SALES')}
-                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'SALES' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -311,7 +311,7 @@ export default function VentesPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('SESSIONS')}
-                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'SESSIONS' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >

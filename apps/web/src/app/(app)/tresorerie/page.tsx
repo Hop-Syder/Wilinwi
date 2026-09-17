@@ -202,17 +202,17 @@ export default function TresoreriePage() {
       {/* En-tête de page avec Thème Rose Contextuel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-rose-950 font-display">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-rose-950 font-display">
               Trésorerie & Caisses
             </h1>
 
-            {/* Structure Onglets Principaux (Tabs UI) scrollables sur mobile */}
-            <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-slate-100 p-1 border border-slate-200/80 shrink-0" id="tour-treso-tabs">
+            {/* Structure Onglets Principaux (Tabs UI) */}
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/80" id="tour-treso-tabs">
               <button
                 type="button"
                 onClick={() => setActiveTab('REGISTER')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'REGISTER'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
@@ -223,7 +223,7 @@ export default function TresoreriePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('TRANSFERS_AND_CLOSES')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === 'TRANSFERS_AND_CLOSES'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
