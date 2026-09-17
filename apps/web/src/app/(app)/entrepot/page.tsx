@@ -276,8 +276,8 @@ export default function EntrepotPage() {
               <p className="text-xs text-slate-500">Utilisez le bouton "Nouveau Dispatch" pour expédier du stock d'un dépôt vers une boutique.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-              <table className="w-full text-sm text-left min-w-[500px]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+              <table className="w-full text-sm text-left">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase font-bold">
                   <tr>
                     <th className="px-4 py-3.5">Référence</th>
@@ -323,9 +323,9 @@ export default function EntrepotPage() {
       {/* ── ONGLET 2 : Commandes & Réceptions Fournisseurs ── */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-slate-900">Bons de Commande Fournisseurs</h3>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => { setSelectedSupplier(null); setShowSupplierModal(true); }}
@@ -347,8 +347,8 @@ export default function EntrepotPage() {
               <p className="text-xs text-slate-500">Rédigez un nouveau bon de commande pour approvisionner vos réserves.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-              <table className="w-full text-sm text-left min-w-[450px]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+              <table className="w-full text-sm text-left">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 text-xs uppercase font-bold">
                   <tr>
                     <th className="px-4 py-3.5">Réf.</th>
