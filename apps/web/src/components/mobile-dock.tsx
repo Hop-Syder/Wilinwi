@@ -22,6 +22,7 @@ import {
   Users,
   BarChart3,
   Truck,
+  Wallet,
   MoreHorizontal,
   LucideIcon,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ export interface MobileDockItem {
   label: string;
   icon: LucideIcon;
   isHero?: boolean;
+  module?: ModuleKey | 'ADMIN';
 }
 
 interface MobileDockProps {
@@ -56,7 +58,7 @@ export function MobileDock({
     if (userRole === 'DELIVERY') {
       return [
         { href: '/', label: 'Hub', icon: LayoutGrid },
-        { href: '/livraisons', label: 'Livraisons', icon: Truck, isHero: true },
+        { href: '/livraisons', label: 'Livraisons', icon: Truck, isHero: true, module: 'DELIVERY' },
       ];
     }
 
@@ -64,14 +66,14 @@ export function MobileDock({
     if (userRole === 'CASHIER') {
       const slots: MobileDockItem[] = [
         { href: '/', label: 'Hub', icon: LayoutGrid },
-        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true },
-        { href: '/ventes', label: 'Ventes', icon: Receipt },
+        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true, module: 'POS' },
+        { href: '/ventes', label: 'Ventes', icon: Receipt, module: 'POS' },
       ];
       // Si module CRM / Clients autorisé, on l'ajoute
       if (userModules.includes('CRM')) {
-        slots.push({ href: '/clients', label: 'Clients', icon: Users });
+        slots.push({ href: '/clients', label: 'Clients', icon: Users, module: 'CRM' });
       } else if (userModules.includes('STOCK')) {
-        slots.push({ href: '/stock', label: 'Stock', icon: Package });
+        slots.push({ href: '/stock', label: 'Stock', icon: Package, module: 'STOCK' });
       }
       return slots;
     }
@@ -80,9 +82,9 @@ export function MobileDock({
     if (userRole === 'SELLER') {
       return [
         { href: '/', label: 'Hub', icon: LayoutGrid },
-        { href: '/stock', label: 'Stock', icon: Package },
-        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true },
-        { href: '/ventes', label: 'Ventes', icon: Receipt },
+        { href: '/stock', label: 'Stock', icon: Package, module: 'STOCK' },
+        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true, module: 'POS' },
+        { href: '/ventes', label: 'Ventes', icon: Receipt, module: 'POS' },
       ];
     }
 
@@ -90,25 +92,25 @@ export function MobileDock({
     if (userRole === 'MANAGER') {
       return [
         { href: '/', label: 'Hub', icon: LayoutGrid },
-        { href: '/dashboard', label: 'Bilan', icon: BarChart3 },
-        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true },
-        { href: '/stock', label: 'Stock', icon: Package },
+        { href: '/dashboard', label: 'Bilan', icon: BarChart3, module: 'ANALYTICS' },
+        { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true, module: 'POS' },
+        { href: '/stock', label: 'Stock', icon: Package, module: 'STOCK' },
       ];
     }
 
-    // 👑 5. Profil PROPRIÉTAIRE / OWNER (Vue d'ensemble)
+    // 👑 5. Profil PROPRIÉTAIRE / OWNER (Pilotage financier & stratégique : Hub, Bilan, Ventes, Trésorerie)
     return [
       { href: '/', label: 'Hub', icon: LayoutGrid },
-      { href: '/dashboard', label: 'Bilan', icon: BarChart3 },
-      { href: '/pos', label: 'Caisse', icon: ShoppingCart, isHero: true },
-      { href: '/stock', label: 'Stock', icon: Package },
+      { href: '/dashboard', label: 'Bilan', icon: BarChart3, module: 'ANALYTICS' },
+      { href: '/ventes', label: 'Ventes', icon: Receipt, isHero: true, module: 'POS' },
+      { href: '/tresorerie', label: 'Trésorerie', icon: Wallet, module: 'PAY' },
     ];
   };
 
   // Filtrage de sécurité avec canSeeItem si fourni
   const baseSlots = getDockSlots();
   const dockSlots = canSeeItem
-    ? baseSlots.filter((slot) => canSeeItem({ href: slot.href, label: slot.label, icon: slot.icon }))
+    ? baseSlots.filter((slot) => canSeeItem({ href: slot.href, label: slot.label, icon: slot.icon, module: slot.module }))
     : baseSlots;
 
   return (
