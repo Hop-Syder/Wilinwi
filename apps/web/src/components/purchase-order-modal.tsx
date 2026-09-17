@@ -300,9 +300,9 @@ export function PurchaseOrderModal({
           </div>
         </div>
 
-        {/* Liste des articles du bon */}
-        <div className="border border-slate-100 rounded-lg overflow-hidden mb-6">
-          <table className="w-full text-left text-xs">
+        {/* Liste des articles du bon scrollable horizontalement */}
+        <div className="border border-slate-100 rounded-lg overflow-x-auto mb-6">
+          <table className="w-full text-left text-xs min-w-[420px]">
             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-medium">
               <tr>
                 <th className="px-4 py-2">Article</th>

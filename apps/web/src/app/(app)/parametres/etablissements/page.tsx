@@ -155,14 +155,14 @@ export default function EtablissementsPage() {
       <Link href="/parametres" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand">
         <ArrowLeft className="h-4 w-4" /> Paramètres
       </Link>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-brand">Établissements</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-brand">Établissements</h1>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
             Vos boutiques, points de vente, entrepôts… Chaque vente et chaque mouvement appartient à un établissement.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <ContextualHelp
             storageKey="wilinwi_etablissements_tour_done"
             tourSteps={tourSteps}

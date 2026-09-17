@@ -3,9 +3,9 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Layout de l'application (Route: (app) — Conteneur élargi max-w-[1536px])
+ * @description Layout de l'application (Route: (app) — Conteneur élargi max-w-[1800px])
  * @created 2026-06-20
- * @updated 2026-08-03
+ * @updated 2026-09-17
  * 🌐 ceo.nexuspartners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -165,7 +165,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Header Floating Glass Navbar */}
         <header className="w-full border-b border-slate-200/80 bg-white/85 backdrop-blur-xl shadow-xs transition-all">
-          <div className="mx-auto flex h-16 max-w-[1536px] items-center justify-between px-3 sm:px-6">
+          <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-3 sm:px-6 lg:px-8">
             {/* Zone Gauche : Logo + Groupe/Entreprise + Switcher Boutique */}
             <div className="flex items-center gap-3">
               <Link
@@ -353,8 +353,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Main Layout Container */}
-      <div className="mx-auto flex max-w-[1536px] gap-4 px-3 sm:px-6 pt-6 pb-24 sm:pb-6">
+      {/* Main Layout Container (Élargi max-w-[1800px] pour plein étalement desktop) */}
+      <div className="mx-auto flex max-w-[1800px] gap-4 px-3 sm:px-6 lg:px-8 pt-6 pb-24 sm:pb-6">
         {/* Sidebar Collapsible (Desktop - Développable & Réductible) */}
         <CollapsibleSidebar items={menuItems.filter((item) => canSee(item))} />
 
