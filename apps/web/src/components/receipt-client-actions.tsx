@@ -10,9 +10,10 @@
  */
 // ──────────────────────────────────
 
-import { useEffect } from 'react';
-import { MessageCircle, Smartphone, Mail, Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MessageCircle, Smartphone, Mail, Printer, FileDown } from 'lucide-react';
 import { formatFCFA } from '@wilinwi/ui';
+import { generateSaleInvoicePdf } from '@/lib/invoice-pdf';
 
 export interface PublicReceiptItem {
   nom: string;
@@ -67,6 +68,34 @@ export function ReceiptClientActions({
     'Votre reçu ' + receipt.boutique
   )}&body=${encodeURIComponent(textLignes)}`;
 
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    setGeneratingPdf(true);
+    try {
+      await generateSaleInvoicePdf(
+        {
+          id: receipt.code,
+          receiptCode: receipt.code,
+          total: receipt.total,
+          montantVerse: receipt.montantVerse,
+          paymentMethod: 'CASH',
+          createdAt: receipt.date,
+          items: receipt.items.map((it) => ({
+            nom: it.nom,
+            quantite: it.quantite,
+            prixReel: it.prixReel,
+          })),
+        },
+        receipt.boutique,
+      );
+    } catch {
+      alert('Erreur lors de la génération de la facture PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   return (
     <div className="no-print mt-6 w-full max-w-sm space-y-2 select-none">
       <p className="text-center text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
@@ -98,10 +127,18 @@ export function ReceiptClientActions({
       </div>
 
       <button
-        onClick={() => window.print()}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-xs font-bold text-white shadow-md shadow-slate-900/10 transition-all hover:bg-slate-800 active:scale-[0.99] mt-2"
+        onClick={() => void handleDownloadInvoice()}
+        disabled={generatingPdf}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 py-3 text-xs font-bold text-white shadow-md shadow-teal-700/20 transition-all hover:bg-teal-800 active:scale-[0.99] mt-2"
       >
-        <Printer className="h-4 w-4" /> Télécharger PDF / Imprimer
+        <FileDown className="h-4 w-4" /> {generatingPdf ? 'Génération de la facture…' : 'Télécharger la Facture PDF (A4)'}
+      </button>
+
+      <button
+        onClick={() => window.print()}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-xs font-bold text-slate-700 border border-slate-200 transition-colors hover:bg-slate-50"
+      >
+        <Printer className="h-4 w-4 text-slate-500" /> Imprimer le ticket
       </button>
 
       <p className="pt-3 text-center text-[11px] text-slate-400 font-medium">

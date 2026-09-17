@@ -6,12 +6,14 @@
  * @description Reçu de caisse imprimable (thermique 80mm) + QR → WhatsApp
  */
 
+import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, FileDown } from 'lucide-react';
 import Image from 'next/image';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
+import { generateSaleInvoicePdf } from '@/lib/invoice-pdf';
 
 export interface ReceiptSale {
   id: string;
@@ -60,9 +62,22 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
   const { user } = useAuth();
   const entreprise = user?.boutiqueNom ?? 'Wilinwi';
   const shortCode = sale.receiptCode || sale.id.slice(0, 8).toUpperCase();
-  // QR → URL courte absolue aérée (ex: https://wilinwi.com/r/X7K9P2) pour gros motifs facilement scannables sur imprimante thermique
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // QR → URL courte absolue aérée pour scannabilité optimale
   const qrValue = `${receiptBaseUrl()}/r/${shortCode}`;
   const reste = sale.total - sale.montantVerse;
+
+  const handleDownloadInvoicePdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      await generateSaleInvoicePdf(sale, entreprise);
+    } catch {
+      alert('Erreur lors de la génération de la facture PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -135,35 +150,45 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
           )}
           {sale.client && <div className="mt-1 text-[11px]">Client : {sale.client.nom}</div>}
 
-          {/* Grand QR Code Aéré Grand Format (160px) pour Impression Thermique Net & Lisible */}
-          <div className="mt-4 flex flex-col items-center space-y-1 print:page-break-inside-avoid">
-            <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+          {/* QR Code Compact & Discret (84px) adapté au ticket thermique sans déborder */}
+          <div className="mt-3 flex flex-col items-center space-y-1 print:page-break-inside-avoid">
+            <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
               <QRCodeSVG
                 value={qrValue}
-                size={160}
+                size={84}
                 level="M"
                 includeMargin={true}
                 fgColor="#000000"
                 bgColor="#FFFFFF"
               />
             </div>
-            <div className="text-center font-mono text-[10px] font-bold text-slate-900 tracking-tight">
+            <div className="text-center font-mono text-[9px] font-bold text-slate-700 tracking-tight">
               wilinwi.com/r/{shortCode}
             </div>
-            <div className="text-center text-[10px] text-slate-500">
-              Scannez pour votre reçu numérique (PDF · WhatsApp · SMS)
+            <div className="text-center text-[9px] text-slate-500">
+              Scannez pour votre reçu numérique
             </div>
           </div>
 
-          <div className="mt-2 text-center text-[11px]">Merci de votre achat ! 🙏</div>
+          <div className="mt-2 text-center text-[10px] text-slate-600">Merci de votre achat ! 🙏</div>
         </div>
 
-        <div className="no-print flex gap-2 border-t border-slate-200 p-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
+        <div className="no-print flex items-center gap-1.5 border-t border-slate-200 p-3 bg-slate-50/50 rounded-b-2xl">
+          <Button variant="outline" size="sm" className="px-3 text-xs" onClick={onClose}>
             Fermer
           </Button>
-          <Button className="flex-1" onClick={() => window.print()}>
-            <Printer className="h-4 w-4" /> Imprimer
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs font-bold text-teal-700 border-teal-200 hover:bg-teal-50"
+            onClick={() => void handleDownloadInvoicePdf()}
+            disabled={generatingPdf}
+          >
+            <FileDown className="h-3.5 w-3.5 mr-1 text-teal-600" />
+            {generatingPdf ? 'Génération…' : 'Facture PDF'}
+          </Button>
+          <Button size="sm" className="flex-1 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> Ticket
           </Button>
         </div>
       </div>

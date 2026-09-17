@@ -699,20 +699,20 @@ export function SaleSuccessModal({
         {/* Modal QR Code de téléchargement de la facture PDF */}
         {showQrModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-100" onClick={() => setShowQrModal(false)}>
-            <div className="w-[320px] rounded-xl bg-surface border border-border p-6 shadow-xl text-center animate-in zoom-in-95 duration-150 text-text-primary" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4">
+            <div className="w-[280px] rounded-2xl bg-surface border border-border p-5 shadow-xl text-center animate-in zoom-in-95 duration-150 text-text-primary" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-semibold text-text-secondary">Télécharger la facture</span>
                 <button onClick={() => setShowQrModal(false)} className="text-text-secondary hover:text-text-primary transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="bg-white p-3 rounded-xl inline-block border border-border shadow-2xs mb-4">
+              <div className="bg-white p-2.5 rounded-xl inline-block border border-border shadow-2xs mb-3">
                 {(() => {
                   const webBase = process.env.NEXT_PUBLIC_WEB_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://wilinwi.nexus-partners.xyz');
                   return (
                     <QRCodeSVG
                       value={receiptCode ? `${webBase}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`}
-                      size={180}
+                      size={115}
                       level="M"
                       includeMargin={true}
                       fgColor="#000000"
@@ -721,8 +721,8 @@ export function SaleSuccessModal({
                   );
                 })()}
               </div>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                Scannez ce QR Code avec un smartphone pour télécharger le reçu directement en format PDF.
+              <p className="text-[11px] text-text-secondary leading-relaxed">
+                Scannez ce QR Code avec un smartphone pour ouvrir la facture numérique certifiée.
               </p>
               {receiptCode && (
                 <Button
