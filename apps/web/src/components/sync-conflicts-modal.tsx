@@ -25,7 +25,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from 'lucide-react';
-import { Card, Button, Badge } from '@wilinwi/ui';
+import { Card, Button } from '@wilinwi/ui';
 import type { PendingSale } from '@wilinwi/offline';
 
 interface SyncConflictsModalProps {

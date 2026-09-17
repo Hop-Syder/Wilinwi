@@ -17,14 +17,11 @@ import {
   CreditCard,
   CheckCircle2,
   AlertTriangle,
-  ShieldAlert,
   Zap,
-  Layers,
   ArrowUpRight,
-  Clock,
   Sparkles,
 } from 'lucide-react';
-import { Card, Badge, Button } from '@wilinwi/ui';
+import { Card } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
 import { apiGet, ApiError } from '@/lib/api';
 
@@ -96,8 +93,13 @@ export default function AbonnementPage() {
   const dunning = user?.dunning;
   const isPastDue = tenantInfo?.subscriptionStatus === 'PAST_DUE' || (dunning && dunning.stage !== 'ACTIVE');
 
+  if (loading) {
+    return <div className="max-w-5xl animate-pulse text-sm text-slate-400">Chargement de l'abonnement…</div>;
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
+      {error && <p className="text-sm text-red-600">{error}</p>}
       {/* Bannière d'Alerte Dunning si impayé */}
       {isPastDue && dunning && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-5 shadow-xs">

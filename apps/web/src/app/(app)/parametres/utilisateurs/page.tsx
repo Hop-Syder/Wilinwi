@@ -7,8 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { UserPlus, KeyRound, Power, ShieldCheck, ArrowLeft, Store } from 'lucide-react';
-import Link from 'next/link';
+import { UserPlus, KeyRound, Power, ShieldCheck, Store } from 'lucide-react';
 import {
   MODULES,
   ROLES,

@@ -14,8 +14,7 @@
 // ──────────────────────────────────
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, MonitorSmartphone, Ban, RotateCcw, Pencil } from 'lucide-react';
+import { MonitorSmartphone, Ban, RotateCcw, Pencil } from 'lucide-react';
 import { Button, Card, Badge } from '@wilinwi/ui';
 import { DEVICE_ACTIVE_DAYS, type DeviceDto } from '@wilinwi/types';
 import { apiGet, apiPatch, getDeviceId, ApiError } from '@/lib/api';

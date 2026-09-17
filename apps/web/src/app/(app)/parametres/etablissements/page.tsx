@@ -9,8 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Store, ArrowLeft, Plus, Pencil, Power, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { Store, Plus, Pencil, Power, Trash2 } from 'lucide-react';
 import {
   ETABLISSEMENT_TYPES,
   ETABLISSEMENT_TYPE_LABELS,

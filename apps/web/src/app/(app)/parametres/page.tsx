@@ -28,7 +28,7 @@ const STORAGE_CURRENCY_KEY = 'wilinwi_currency_config';
 
 export default function ParametresEntreprisePage() {
   const { user, refreshUser } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Données de reçu thermique (chargées depuis localStorage puis fusionnées avec le profil)
   const [companyData, setCompanyData] = useState<CompanyReceiptData>({
