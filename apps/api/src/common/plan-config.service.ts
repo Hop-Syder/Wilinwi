@@ -10,7 +10,14 @@
 // ──────────────────────────────────
 
 import { Injectable } from '@nestjs/common';
-import { resolveLimit, type Plan, type PlanConfigDto } from '@wilinwi/types';
+import {
+  PLANS,
+  DEFAULT_PLAN_PRICING,
+  PLAN_LIMITS,
+  resolveLimit,
+  type Plan,
+  type PlanConfigDto,
+} from '@wilinwi/types';
 import { PrismaService } from './prisma.service';
 
 /** Limites d'un plan résolues pour le runtime (`Infinity` = illimité). */
@@ -40,19 +47,41 @@ export class PlanConfigService {
       return this.cache;
     }
     const rows = await this.prisma.client.planConfig.findMany();
-    this.cache = rows.map((r) => ({
-      plan: r.plan as Plan,
-      label: r.label,
-      priceMonthly: r.priceMonthly,
-      priceYearly: r.priceYearly,
-      maxUsers: r.maxUsers,
-      maxEtablissements: r.maxEtablissements,
-      maxDevices: r.maxDevices,
-      maxPhotos: r.maxPhotos,
-      updatedAt: r.updatedAt,
-    }));
+    const map = new Map(rows.map((r) => [r.plan as Plan, r]));
+
+    const configs: PlanConfigDto[] = PLANS.map((plan) => {
+      const r = map.get(plan);
+      if (r) {
+        return {
+          plan: r.plan as Plan,
+          label: r.label,
+          priceMonthly: r.priceMonthly,
+          priceYearly: r.priceYearly,
+          maxUsers: r.maxUsers,
+          maxEtablissements: r.maxEtablissements,
+          maxDevices: r.maxDevices,
+          maxPhotos: r.maxPhotos,
+          updatedAt: r.updatedAt,
+        };
+      }
+      const p = DEFAULT_PLAN_PRICING[plan];
+      const l = PLAN_LIMITS[plan];
+      return {
+        plan,
+        label: p.label,
+        priceMonthly: p.priceMonthly,
+        priceYearly: p.priceYearly,
+        maxUsers: l.maxUsers,
+        maxEtablissements: l.maxEtablissements,
+        maxDevices: l.maxDevices,
+        maxPhotos: l.maxPhotos,
+        updatedAt: new Date(),
+      };
+    });
+
+    this.cache = configs;
     this.loadedAt = Date.now();
-    return this.cache;
+    return configs;
   }
 
   /** Configuration d'un plan donné (ou `undefined` si non configuré). */

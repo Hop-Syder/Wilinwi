@@ -44,13 +44,22 @@ AS $$
   WHERE plan = p_plan::"Plan";
 $$;
 
--- Valeurs par défaut = code actuel (PLAN_LIMITS) + tarifs réels du business plan.
--- ON CONFLICT DO NOTHING : ne réécrase jamais une édition faite depuis la console.
+-- Valeurs par défaut = code actuel (PLAN_LIMITS) + tarifs réels du nouveau business plan (dès 10 000 F/mois).
+-- ON CONFLICT DO UPDATE : synchronise automatiquement la table avec la grille tarifaire officielle.
 INSERT INTO public.plan_configs
   (plan, label, price_monthly, price_yearly, max_users, max_etablissements, max_devices, max_photos, updated_at)
 VALUES
-  ('STARTER',    'Starter',    0,     NULL,    1,  1,  1,  0,  now()),
-  ('PRO',        'Pro',        7500,  75000,  -1,  2,  5,  0,  now()),
-  ('BUSINESS',   'Business',   20000, 200000, -1, -1, 30,  6,  now()),
-  ('ENTERPRISE', 'Enterprise', NULL,  NULL,   -1, -1, -1, 12,  now())
-ON CONFLICT (plan) DO NOTHING;
+  ('STARTER',    'Starter (Boutique Solo)',          10000, 100000,  1,  1,  1,  1,  now()),
+  ('PRO',        'Professionnel (Croissance)',       25000, 250000,  5,  2,  3,  5,  now()),
+  ('BUSINESS',   'Business (Réseau & Entrepôt)',     50000, 500000, 15, -1, 10, -1,  now()),
+  ('ENTERPRISE', 'Entreprise (Sur-mesure & Réseau)', NULL,  NULL,   -1, -1, -1, -1,  now())
+ON CONFLICT (plan) DO UPDATE SET
+  label              = EXCLUDED.label,
+  price_monthly      = EXCLUDED.price_monthly,
+  price_yearly       = EXCLUDED.price_yearly,
+  max_users          = EXCLUDED.max_users,
+  max_etablissements = EXCLUDED.max_etablissements,
+  max_devices        = EXCLUDED.max_devices,
+  max_photos         = EXCLUDED.max_photos,
+  updated_at         = now();
+

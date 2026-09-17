@@ -33,6 +33,7 @@ import { Button, Card, Badge, Input } from '@wilinwi/ui';
 import { api, apiGet, apiPost, apiPatch, ApiError } from '@/lib/api';
 import {
   PLANS,
+  DEFAULT_PLAN_PRICING,
   MODULES,
   PLAN_MODULES,
   type Plan,
@@ -490,22 +491,29 @@ export default function EntreprisesPage() {
                   </Button>
 
                   <div className="space-y-1">
-                    <div className="text-[11px] font-medium text-text-secondary">Changer de plan</div>
+                    <div className="text-[11px] font-medium text-text-secondary">Changer de plan (Grille Business Plan)</div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {PLANS.map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => changePlan(selectedTenant, p)}
-                          disabled={actionBusy !== null || p === selectedTenant.plan}
-                          className={`rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-100 ${
-                            p === selectedTenant.plan
-                              ? 'cursor-default border-primary bg-primary/10 text-primary'
-                              : 'border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-text-primary disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-text-secondary'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                      {PLANS.map((p) => {
+                        const pricing = DEFAULT_PLAN_PRICING[p];
+                        const priceLabel = pricing?.priceMonthly
+                          ? `${(pricing.priceMonthly / 1000)}k /m`
+                          : 'Devis';
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => changePlan(selectedTenant, p)}
+                            disabled={actionBusy !== null || p === selectedTenant.plan}
+                            className={`flex flex-col items-center justify-center rounded-md border py-1.5 px-2 text-[11px] font-bold transition-colors disabled:opacity-100 ${
+                              p === selectedTenant.plan
+                                ? 'cursor-default border-primary bg-primary/10 text-primary'
+                                : 'border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-text-primary disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-text-secondary'
+                            }`}
+                          >
+                            <span>{p}</span>
+                            <span className="text-[9px] font-medium opacity-75">{priceLabel}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
