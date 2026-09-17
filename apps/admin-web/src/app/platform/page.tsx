@@ -109,7 +109,7 @@ export default function DashboardPage() {
           value={renderValue(revenue?.mrr, formatFCFA)}
           hint="Revenu récurrent"
           icon={<Wallet className="h-5 w-5" />}
-          accent="brand"
+          accent="emerald"
           className="lg:col-span-2"
         />
         <StatCard

@@ -75,7 +75,7 @@ export default function AbonnementsPage() {
         <Card className="p-3.5 border-l-4 border-l-emerald-600 bg-white/60 dark:bg-slate-900/60">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Enterprise</span>
-            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/50 px-1.5 py-0.5 rounded">Sur-mesure</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">Sur-mesure</span>
           </div>
           <div className="mt-2 font-black text-lg text-text-primary">Sur Devis</div>
           <p className="text-[11px] text-text-secondary mt-0.5">Facturation personnalisée</p>

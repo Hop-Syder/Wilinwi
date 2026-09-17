@@ -91,14 +91,14 @@ export function PlatformMetrics({ tenants }: { tenants: PlatformTenantDto[] }) {
             value={metrics ? `${formatFCFA(metrics.sales30dRevenue)}` : '…'}
             hint={metrics ? `${metrics.sales30dCount} ventes` : ''}
             icon={<Receipt className="h-4.5 w-4.5" />}
-            accent="brand"
+            accent="emerald"
           />
           <StatCard
             label="Nouvelles (30 j)"
             value={metrics ? `+${metrics.newTenants30d}` : '…'}
             hint="Entreprises inscrites"
             icon={<Sprout className="h-4.5 w-4.5" />}
-            accent="brand"
+            accent="emerald"
           />
           <StatCard
             label="Actives"
@@ -112,7 +112,7 @@ export function PlatformMetrics({ tenants }: { tenants: PlatformTenantDto[] }) {
             value={metrics ? metrics.tenantsPastDue.toString() : '…'}
             hint="À relancer"
             icon={<AlertTriangle className="h-4.5 w-4.5" />}
-            accent={metrics && metrics.tenantsPastDue > 0 ? 'gold' : 'brand'}
+            accent={metrics && metrics.tenantsPastDue > 0 ? 'red' : 'brand'}
           />
           <StatCard
             label="Collaborateurs"

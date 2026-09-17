@@ -57,14 +57,14 @@ export default function RevenusPage() {
             <StatCard label="MRR" value={formatFCFA(data.mrr)} hint="Revenu mensuel récurrent" icon={<Wallet className="h-4.5 w-4.5" />} accent="emerald" />
             <StatCard label="ARR" value={formatFCFA(data.arr)} hint="Revenu annuel (MRR × 12)" icon={<TrendingUp className="h-4.5 w-4.5" />} accent="emerald" />
             <StatCard label="ARPU" value={formatFCFA(data.arpu)} hint="Revenu moyen / entreprise active" icon={<Users className="h-4.5 w-4.5" />} accent="brand" />
-            <StatCard label="LTV" value={formatFCFA(data.ltv)} hint="Valeur vie client (estimée)" icon={<Repeat className="h-4.5 w-4.5" />} accent="gold" />
+            <StatCard label="LTV" value={formatFCFA(data.ltv)} hint="Valeur vie client (estimée)" icon={<Repeat className="h-4.5 w-4.5" />} accent="emerald" />
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Actifs" value={data.active.toString()} hint="Abonnements payés" icon={<TrendingUp className="h-4.5 w-4.5" />} accent="emerald" />
-            <StatCard label="En essai" value={data.trialing.toString()} hint="Comptes TRIALING" icon={<Users className="h-4.5 w-4.5" />} accent="brand" />
-            <StatCard label="Annulés" value={data.cancelled.toString()} hint="Abonnements résiliés" icon={<UserMinus className="h-4.5 w-4.5" />} accent={data.cancelled > 0 ? 'gold' : 'brand'} />
-            <StatCard label="Churn" value={`${(data.churnRate * 100).toFixed(1)} %`} hint="Taux de résiliation (proxy)" icon={<UserMinus className="h-4.5 w-4.5" />} accent={data.churnRate > 0.05 ? 'gold' : 'emerald'} />
+            <StatCard label="En essai" value={data.trialing.toString()} hint="Comptes TRIALING" icon={<Users className="h-4.5 w-4.5" />} accent="gold" />
+            <StatCard label="Annulés" value={data.cancelled.toString()} hint="Abonnements résiliés" icon={<UserMinus className="h-4.5 w-4.5" />} accent={data.cancelled > 0 ? 'red' : 'brand'} />
+            <StatCard label="Churn" value={`${(data.churnRate * 100).toFixed(1)} %`} hint="Taux de résiliation (proxy)" icon={<UserMinus className="h-4.5 w-4.5" />} accent={data.churnRate > 0.05 ? 'red' : 'emerald'} />
           </div>
 
           <Card className="p-4 text-xs text-text-secondary">
