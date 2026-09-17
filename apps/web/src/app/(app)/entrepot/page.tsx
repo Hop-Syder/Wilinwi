@@ -12,14 +12,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Truck, Plus, Search, FileDown, Warehouse, ShoppingBag, UserPlus } from 'lucide-react';
+import { Truck, Plus, Search, FileDown, Warehouse, ShoppingBag, UserPlus, Eye, CheckCircle2 } from 'lucide-react';
 import { Button, Badge } from '@wilinwi/ui';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ContextualHelp } from '@/components/contextual-help';
 import type { TourStep } from '@/components/tour-guide';
 import { apiGet, apiPost, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { SupplierFormModal, RecordSupplierPaymentModal } from '@/components/supplier-modals';
+import { SupplierFormModal, RecordSupplierPaymentModal, PurchaseOrderInvoiceModal } from '@/components/supplier-modals';
 import { PurchaseOrderModal } from '@/components/purchase-order-modal';
 import { generatePurchaseOrderPdf } from '@/lib/purchase-order-pdf';
 import { WarehouseKpiCards } from '@/components/entrepot/warehouse-kpi-cards';
@@ -62,6 +62,7 @@ export default function EntrepotPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierDto | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<SupplierDto | null>(null);
   const [showPoModal, setShowPoModal] = useState(false);
+  const [viewingOrder, setViewingOrder] = useState<PurchaseOrderDto | null>(null);
   const [downloadingPoId, setDownloadingPoId] = useState<string | null>(null);
 
   async function handleDownloadPoPdf(order: PurchaseOrderDto) {
@@ -367,20 +368,40 @@ export default function EntrepotPage() {
                           {STATUS_LABELS[o.statut as keyof typeof STATUS_LABELS] ?? o.statut}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right space-x-2">
+                      <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setViewingOrder(o)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-teal-700 shadow-2xs transition-all active:scale-95"
+                          title="Consulter le bon de commande"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-teal-600" />
+                          <span>Voir</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDownloadPoPdf(o)}
                           disabled={downloadingPoId === o.id}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition-all active:scale-95"
+                          title="Télécharger la version PDF officielle"
                         >
-                          <FileDown className="h-3.5 w-3.5 text-teal-600" /> PDF
+                          <FileDown className="h-3.5 w-3.5 text-slate-500" /> PDF
                         </button>
+                        {(o.statut === 'ORDERED' || o.statut === 'PARTIAL') && (
+                          <Link
+                            href={`/entrepot/reception/${o.id}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 shadow-2xs transition-all"
+                            title="Réceptionner la commande"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="hidden sm:inline">Réception</span>
+                          </Link>
+                        )}
                         {o.statut !== 'CANCELLED' && o.statut !== 'RECEIVED' && (
                           <button
                             type="button"
                             onClick={() => handleCancelOrder(o.id)}
-                            className="text-xs text-rose-600 font-bold hover:underline"
+                            className="text-xs text-rose-600 font-bold hover:underline px-1.5 py-1"
                           >
                             Annuler
                           </button>
@@ -429,6 +450,13 @@ export default function EntrepotPage() {
           currentEtablissementId={currentEtablissementId}
           onClose={() => setShowPoModal(false)}
           onSuccess={() => { setShowPoModal(false); void loadData(); }}
+        />
+      )}
+
+      {viewingOrder && (
+        <PurchaseOrderInvoiceModal
+          order={viewingOrder}
+          onClose={() => setViewingOrder(null)}
         />
       )}
     </div>
