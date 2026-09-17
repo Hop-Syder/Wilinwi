@@ -705,6 +705,7 @@ model Sale {
   @@index([tenantId, createdAt])
   @@index([tenantId, livreurId])
   @@index([tenantId, etablissementId])
+  @@index([tenantId, etablissementId, createdAt])
   @@index([tenantId, posSessionId])
   @@index([tenantId, vendeurId])
   @@map("sales")
