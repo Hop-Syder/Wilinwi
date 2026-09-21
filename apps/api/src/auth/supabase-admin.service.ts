@@ -69,6 +69,20 @@ export class SupabaseAdminService {
     return { id: inviteData.user.id };
   }
 
+  /** Recherche un compte auth par email (insensible à la casse, paginé). */
+  async findUserByEmail(email: string): Promise<{ id: string } | null> {
+    const target = email.trim().toLowerCase();
+    const perPage = 1000;
+    for (let page = 1; page <= 10; page++) {
+      const { data, error } = await this.client.auth.admin.listUsers({ page, perPage });
+      if (error || !data?.users) return null;
+      const found = data.users.find((u) => (u.email ?? '').toLowerCase() === target);
+      if (found) return { id: found.id };
+      if (data.users.length < perPage) break;
+    }
+    return null;
+  }
+
   /** Injecte tenant_id/role/plan dans app_metadata → présents dans le JWT (SSO). */
   async setClaims(
     userId: string,
@@ -78,6 +92,15 @@ export class SupabaseAdminService {
       app_metadata: { tenant_id: claims.tenantId, role: claims.role, plan: claims.plan },
     });
     if (error) throw new Error(`Mise à jour des claims échouée: ${error.message}`);
+  }
+
+  /** Redéfinit le mot de passe d'un compte auth existant (récupération doublon). */
+  async updatePassword(userId: string, password: string): Promise<void> {
+    const { error } = await this.client.auth.admin.updateUserById(userId, {
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(`Mise à jour du mot de passe échouée: ${error.message}`);
   }
 
   async deleteUser(userId: string): Promise<void> {

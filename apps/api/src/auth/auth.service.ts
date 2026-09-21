@@ -59,9 +59,33 @@ export class AuthService {
    * Inscription d'un propriétaire : crée le compte auth, la boutique (tenant)
    * et l'utilisateur OWNER, puis pose les claims SSO. Le tenant_id est généré
    * côté app pour satisfaire la RLS dès la première insertion.
+   *
+   * Cas « email déjà enregistré » (Supabase) : on mappe sur un 409 clair au
+   * lieu d'un 500, et on TENTE une récupération : si le compte auth existe
+   * MAIS qu'aucun utilisateur métier ne lui est rattaché (inscription orpheline
+   * après un rollback), on réutilise ce compte au lieu d'échouer.
    */
   async signUp(input: SignUpInput) {
-    const userId = await this.supabase.createUser(input.email, input.password);
+    let userId: string;
+    let freshlyCreated = true;
+    try {
+      userId = await this.supabase.createUser(input.email, input.password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (!message.includes('already been registered')) throw err;
+      // ── Récupération d'une inscription orpheline ──
+      const existing = await this.supabase.findUserByEmail(input.email);
+      if (!existing) {
+        throw new ConflictException('Cet email est déjà utilisé. Connectez-vous ou réinitialisez votre mot de passe.');
+      }
+      const orphan = await this.prisma.client.user.findFirst({ where: { id: existing.id } });
+      if (orphan) {
+        throw new ConflictException('Cet email est déjà utilisé. Connectez-vous ou réinitialisez votre mot de passe.');
+      }
+      userId = existing.id;
+      freshlyCreated = false;
+      this.logger.warn(`Inscription orpheline récupérée pour ${input.email} (auth id ${userId})`);
+    }
     const tenantId = randomUUID();
 
     try {
@@ -96,9 +120,18 @@ export class AuthService {
       });
 
       await this.supabase.setClaims(userId, { tenantId, role: 'OWNER', plan: 'STARTER' });
+      // Compte réutilisé : on synchronise le mot de passe saisi pour que le
+      // login immédiat (frontend) fonctionne avec les nouveaux identifiants.
+      if (!freshlyCreated) {
+        await this.supabase.updatePassword(userId, input.password);
+      }
     } catch (err) {
-      // Compensation : on supprime le compte auth si la transaction échoue.
-      await this.supabase.deleteUser(userId).catch(() => undefined);
+      // Compensation : on NE supprime le compte auth QUE si on vient de le
+      // créer — jamais un compte pré-existant (risque de détruire une boutique
+      // active en cas de doublon).
+      if (freshlyCreated) {
+        await this.supabase.deleteUser(userId).catch(() => undefined);
+      }
       this.logger.error('Échec inscription, rollback du compte auth', err as Error);
       throw err;
     }
