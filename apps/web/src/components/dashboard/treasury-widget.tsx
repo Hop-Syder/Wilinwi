@@ -12,7 +12,7 @@
 'use client';
 
 import React from 'react';
-import { Wallet, Smartphone, Landmark, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { Wallet, Smartphone, Landmark, ShieldCheck, ArrowUpRight, Receipt } from 'lucide-react';
 import { useCurrency } from '@/lib/currency-context';
 
 export interface TreasuryBalances {
@@ -24,10 +24,11 @@ export interface TreasuryBalances {
 
 interface TreasuryWidgetProps {
   balances?: TreasuryBalances;
+  totalDepenses?: number;
 }
 
-export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
-  const { formatAmount } = useCurrency();
+export function TreasuryWidget({ balances, totalDepenses = 0 }: TreasuryWidgetProps) {
+  const { formatAmount, convertAmount } = useCurrency();
   const fondDeCaisse = balances?.fondDeCaisse ?? 0;
   const mobileMoney = balances?.mobileMoney ?? 0;
   const banque = balances?.banque ?? 0;
@@ -40,10 +41,10 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-              Trésorerie & Solde des Caisses
+              Trésorerie — Argent Disponible
             </h3>
           </div>
-          <p className="text-xs text-slate-500 font-medium">Disponibilités liquides ventilées par canal</p>
+          <p className="text-xs text-slate-500 font-medium">Espèces, Mobile Money et Banque</p>
         </div>
 
         <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200/80 shadow-2xs">
@@ -57,69 +58,94 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
       </div>
 
       {/* Grille des 3 comptes de trésorerie */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        {/* Espèces / Fond de caisse */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/30 hover:shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 border border-emerald-200/60 shadow-2xs group-hover:scale-105 transition-transform">
-              <Wallet className="h-4.5 w-4.5" />
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Mon argent disponible (par compte)
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Espèces / Fond de caisse */}
+          <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/30 hover:shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 border border-emerald-200/60 shadow-2xs group-hover:scale-105 transition-transform">
+                <Wallet className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                Espèces
+              </span>
             </div>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-              Espèces
-            </span>
+
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Espèces en caisse
+              </span>
+              <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
+                {formatAmount(fondDeCaisse)}
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-0.5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Fond de Caisse
-            </span>
-            <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
-              {formatAmount(fondDeCaisse)}
-            </p>
+          {/* Mobile Money Merchant */}
+          <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/30 hover:shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100/80 text-amber-700 border border-amber-200/60 shadow-2xs group-hover:scale-105 transition-transform">
+                <Smartphone className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                Wave / MoMo
+              </span>
+            </div>
+
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Mobile Money (Wave / MoMo)
+              </span>
+              <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
+                {formatAmount(mobileMoney)}
+              </p>
+            </div>
+          </div>
+
+          {/* Banque / Virements */}
+          <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100/80 text-blue-700 border border-blue-200/60 shadow-2xs group-hover:scale-105 transition-transform">
+                <Landmark className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                Banque
+              </span>
+            </div>
+
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Compte Bancaire
+              </span>
+              <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
+                {formatAmount(banque)}
+              </p>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Money Merchant */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/30 hover:shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100/80 text-amber-700 border border-amber-200/60 shadow-2xs group-hover:scale-105 transition-transform">
-              <Smartphone className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-              Wave / MoMo
-            </span>
+      {/* Dépenses de la période (sorties d'argent) */}
+      <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-4 flex items-center justify-between gap-3 transition-all duration-200 hover:border-rose-300 hover:shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100/80 text-rose-700 border border-rose-200/60 shadow-2xs">
+            <Receipt className="h-4.5 w-4.5" />
           </div>
-
-          <div className="space-y-0.5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Comptes Marchands
+          <div>
+            <span className="block text-[11px] font-bold uppercase tracking-wider text-rose-700">
+              Dépenses de la période
             </span>
-            <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
-              {formatAmount(mobileMoney)}
-            </p>
+            <span className="block text-[11px] text-slate-500 font-medium">
+              Argent sorti (achats, charges, salaires…)
+            </span>
           </div>
         </div>
-
-        {/* Banque / Virements */}
-        <div className="group rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-slate-100/50 p-4 transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100/80 text-blue-700 border border-blue-200/60 shadow-2xs group-hover:scale-105 transition-transform">
-              <Landmark className="h-4.5 w-4.5" />
-            </div>
-            <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
-              Banque
-            </span>
-          </div>
-
-          <div className="space-y-0.5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Solde Bancaire
-            </span>
-            <p className="font-mono text-xl font-black text-slate-900 tabular-nums">
-              {formatAmount(banque)}
-            </p>
-          </div>
-        </div>
+        <span className="font-mono text-xl font-black text-rose-700 tabular-nums">
+          -{formatAmount(convertAmount(totalDepenses))}
+        </span>
       </div>
 
       {/* Bandeau de synthèse totale (Fintech Dark Banner) */}
@@ -130,9 +156,9 @@ export function TreasuryWidget({ balances }: TreasuryWidgetProps) {
           </div>
           <div>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Disponibilités Liquides Totales
+              Total Trésorerie Disponible
             </span>
-            <p className="text-xs text-slate-400 font-medium">Cumul actif caisse + comptes de réception</p>
+            <p className="text-xs text-slate-400 font-medium">Espèces + Mobile Money + Banque</p>
           </div>
         </div>
 

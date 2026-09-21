@@ -49,21 +49,33 @@ const fmtDate = (dStr: string) => {
 
 const fmtK = (n: number) => (Math.abs(n) >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
 
-export function HybridSalesChart({ data, canSeeProfit = true, compareActive = false }: HybridSalesChartProps) {
+export function HybridSalesChart({
+  data,
+  canSeeProfit = true,
+  compareActive = false,
+}: HybridSalesChartProps) {
   const { convertAmount, formatAmount } = useCurrency();
-  const hasData = data && data.some((d) => d.ca > 0 || (d.caPrev ?? 0) > 0 || (d.benefice ?? 0) > 0);
+  const hasData =
+    data &&
+    data.some(
+      (d) => d.ca > 0 || (d.caPrev ?? 0) > 0 || (d.benefice ?? 0) > 0 || (d.depenses ?? 0) > 0,
+    );
   const convertedData = data.map((point) => ({
     ...point,
     ca: convertAmount(point.ca),
     caPrev: point.caPrev === undefined ? undefined : convertAmount(point.caPrev),
     benefice: point.benefice === undefined ? undefined : convertAmount(point.benefice),
+    depenses: point.depenses === undefined ? undefined : convertAmount(point.depenses),
   }));
 
   if (!hasData) {
     return (
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm h-full flex flex-col justify-between">
-        <h3 className="text-base font-bold text-slate-900 mb-4">Évolution Ventes & Rentabilité</h3>
-        <DashboardEmptyState title="Aucune donnée sur la période" description="Enregistrez votre première vente pour visualiser les tendances." />
+        <h3 className="text-base font-bold text-slate-900 mb-4">Mes Ventes, Marge et Dépenses</h3>
+        <DashboardEmptyState
+          title="Aucune donnée sur la période"
+          description="Enregistrez votre première vente pour visualiser les tendances."
+        />
       </div>
     );
   }
@@ -72,9 +84,10 @@ export function HybridSalesChart({ data, canSeeProfit = true, compareActive = fa
     <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm h-full flex flex-col justify-between">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Évolution Ventes vs Rentabilité</h3>
+          <h3 className="text-base font-bold text-slate-900">Mes Ventes, Marge et Dépenses</h3>
           <p className="text-xs text-slate-600">
-            Volume de chiffre d'affaires {compareActive ? '(avec comparaison relative miroir)' : 'et marge brute estimée'}
+            Chiffre d'affaires et dépenses en barres, marge bénéficiaire en ligne{' '}
+            {compareActive ? '(avec comparaison miroir)' : ''}
           </p>
         </div>
       </div>
@@ -107,7 +120,11 @@ export function HybridSalesChart({ data, canSeeProfit = true, compareActive = fa
                 return (
                   <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm space-y-1.5 text-xs">
                     <p className="font-bold text-slate-900 border-b border-slate-100 pb-1">
-                      {new Date(label || Date.now()).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {new Date(label || Date.now()).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
                     </p>
                     <div className="space-y-1 font-mono">
                       <div className="flex items-center justify-between gap-4 text-emerald-700">
@@ -121,22 +138,42 @@ export function HybridSalesChart({ data, canSeeProfit = true, compareActive = fa
                             <span>Période Précédente :</span>
                             <strong className="font-bold">{formatAmount(caPrevious)}</strong>
                           </div>
-                          <div className={`flex items-center justify-between gap-4 font-bold border-t border-slate-100 pt-1 ${diffCa >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <div
+                            className={`flex items-center justify-between gap-4 font-bold border-t border-slate-100 pt-1 ${diffCa >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
+                          >
                             <span>Écart Comparatif :</span>
-                            <span>{diffCa >= 0 ? `+${formatAmount(diffCa)}` : formatAmount(diffCa)}</span>
+                            <span>
+                              {diffCa >= 0 ? `+${formatAmount(diffCa)}` : formatAmount(diffCa)}
+                            </span>
                           </div>
                         </>
                       )}
 
+                      {canSeeProfit && point.depenses !== undefined && (
+                        <div className="flex items-center justify-between gap-4 text-rose-600">
+                          <span>Dépenses :</span>
+                          <strong className="font-bold">
+                            {formatAmount(
+                              data.find((item) => item.date === point.date)?.depenses ?? 0,
+                            )}
+                          </strong>
+                        </div>
+                      )}
                       {canSeeProfit && point.benefice !== undefined && (
                         <div className="flex items-center justify-between gap-4 text-amber-700">
                           <span>Marge Brute :</span>
-                          <strong className="font-bold">{formatAmount(data.find((item) => item.date === point.date)?.benefice ?? 0)}</strong>
+                          <strong className="font-bold">
+                            {formatAmount(
+                              data.find((item) => item.date === point.date)?.benefice ?? 0,
+                            )}
+                          </strong>
                         </div>
                       )}
                       <div className="flex items-center justify-between gap-4 text-slate-600">
                         <span>Nombre de Ventes :</span>
-                        <strong>{point.ventes} vente{point.ventes > 1 ? 's' : ''}</strong>
+                        <strong>
+                          {point.ventes} vente{point.ventes > 1 ? 's' : ''}
+                        </strong>
                       </div>
                     </div>
                   </div>
@@ -165,6 +202,15 @@ export function HybridSalesChart({ data, canSeeProfit = true, compareActive = fa
                 strokeWidth={2}
                 dot={{ r: 3, fill: '#94A3B8' }}
                 activeDot={{ r: 5 }}
+              />
+            )}
+            {canSeeProfit && (
+              <Bar
+                dataKey="depenses"
+                name="Dépenses"
+                fill="#E53935"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={32}
               />
             )}
             {canSeeProfit && (

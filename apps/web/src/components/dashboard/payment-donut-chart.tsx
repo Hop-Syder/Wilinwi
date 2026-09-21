@@ -45,10 +45,15 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
     return (
       <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-full">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
-          <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
+          <h3 className="text-base font-bold text-slate-900">
+            Répartition des en-caissements par mode de paiement
+          </h3>
+          <p className="text-xs text-slate-500">Espèces, Mobile Money, Banque et crédits</p>
         </div>
-        <DashboardEmptyState title="Aucun règlement" description="Les encaissements s'afficheront par mode de paiement." />
+        <DashboardEmptyState
+          title="Aucun règlement"
+          description="Les encaissements s'afficheront par mode de paiement."
+        />
       </div>
     );
   }
@@ -56,8 +61,10 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
   return (
     <div className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-2xs flex flex-col justify-between h-full space-y-3">
       <div>
-        <h3 className="text-base font-bold text-slate-900">Répartition des Règlements</h3>
-        <p className="text-xs text-slate-500">Ventilation par canaux de paiement</p>
+        <h3 className="text-base font-bold text-slate-900">
+          Répartition des en-caissements par mode de paiement
+        </h3>
+        <p className="text-xs text-slate-500">Espèces, Mobile Money, Banque et crédits</p>
       </div>
 
       <div className="relative h-48 w-full flex items-center justify-center my-1">
@@ -100,8 +107,14 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
                   <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg text-xs space-y-1">
                     <p className="font-bold text-slate-900">{item.label}</p>
                     <div className="font-mono space-y-0.5">
-                      <p className="text-emerald-600 font-bold">{formatAmount(data.find((entry) => entry.methode === item.methode)?.montant ?? 0)}</p>
-                      <p className="text-slate-500">{item.pourcentage}% du total ({item.ventes} ventes)</p>
+                      <p className="text-emerald-600 font-bold">
+                        {formatAmount(
+                          data.find((entry) => entry.methode === item.methode)?.montant ?? 0,
+                        )}
+                      </p>
+                      <p className="text-slate-500">
+                        {item.pourcentage}% du total ({item.ventes} ventes)
+                      </p>
                     </div>
                   </div>
                 );
@@ -118,9 +131,13 @@ export function PaymentDonutChart({ data }: PaymentDonutChartProps) {
             <div className="flex items-center gap-2">
               <span
                 className="h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: item.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length] }}
+                style={{
+                  backgroundColor: item.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
+                }}
               />
-              <span className="text-slate-700 font-semibold truncate max-w-[120px]">{item.label}</span>
+              <span className="text-slate-700 font-semibold truncate max-w-[120px]">
+                {item.label}
+              </span>
             </div>
             <div className="flex items-center gap-2 font-mono">
               <span className="text-slate-900 font-bold">{formatAmount(item.montant)}</span>

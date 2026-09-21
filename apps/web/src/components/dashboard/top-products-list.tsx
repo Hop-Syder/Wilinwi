@@ -35,8 +35,11 @@ export function TopProductsList({ products }: TopProductsListProps) {
   if (!products || products.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm flex flex-col justify-between h-full">
-        <h3 className="text-base font-bold text-slate-900 mb-4">Top 5 Meilleurs Produits</h3>
-        <DashboardEmptyState title="Aucune vente enregistrée" description="Vos meilleures ventes s'afficheront ici." />
+        <h3 className="text-base font-bold text-slate-900 mb-4">Mes 5 meilleurs produits</h3>
+        <DashboardEmptyState
+          title="Aucune vente enregistrée"
+          description="Vos meilleures ventes s'afficheront ici."
+        />
       </div>
     );
   }
@@ -47,8 +50,10 @@ export function TopProductsList({ products }: TopProductsListProps) {
     <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm flex flex-col justify-between h-full space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Top 5 Meilleures Ventes</h3>
-          <p className="text-xs text-slate-600">Articles générant le plus de chiffre d'affaires</p>
+          <h3 className="text-base font-bold text-slate-900">Mes 5 meilleurs produits</h3>
+          <p className="text-xs text-slate-600">
+            Ceux qui rapportent le plus de chiffre d'affaires
+          </p>
         </div>
         <div className="rounded-xl bg-amber-50 p-2 text-amber-600 border border-amber-100">
           <Award className="h-5 w-5" />
@@ -80,7 +85,8 @@ export function TopProductsList({ products }: TopProductsListProps) {
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 truncate">{product.nom}</p>
                     <span className="text-[11px] text-slate-600 font-medium">
-                      {product.categorie || 'Général'} • {formatQty(product.quantite)} vendu{product.quantite > 1 ? 's' : ''}
+                      {product.categorie || 'Général'} • {formatQty(product.quantite)} vendu
+                      {product.quantite > 1 ? 's' : ''}
                     </span>
                   </div>
                 </div>

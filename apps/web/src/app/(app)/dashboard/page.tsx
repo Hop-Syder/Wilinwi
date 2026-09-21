@@ -12,7 +12,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, DollarSign, CreditCard } from 'lucide-react';
+import { TrendingUp, DollarSign, CreditCard, Wallet, Receipt } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { apiGet, apiPost } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
@@ -22,6 +22,8 @@ import { PeriodPreset } from '@/components/dashboard/period-selector';
 import { HeadsUpBanner } from '@/components/dashboard/heads-up-banner';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { HybridSalesChart } from '@/components/dashboard/hybrid-sales-chart';
+import { CashFlowChart } from '@/components/dashboard/cash-flow-chart';
+import { AlertsPanel } from '@/components/dashboard/alerts-panel';
 import { PaymentDonutChart } from '@/components/dashboard/payment-donut-chart';
 import { TopProductsList } from '@/components/dashboard/top-products-list';
 import { TreasuryWidget } from '@/components/dashboard/treasury-widget';
@@ -43,7 +45,8 @@ export default function DashboardPage() {
   const isGlobalView = user?.etablissementId === 'ALL';
   const activeEtablissementName = isGlobalView
     ? 'Tous les établissements'
-    : user?.etablissements.find((etablissement) => etablissement.id === user?.etablissementId)?.nom ?? 'Établissement actif';
+    : (user?.etablissements.find((etablissement) => etablissement.id === user?.etablissementId)
+        ?.nom ?? 'Établissement actif');
   const canSeeProfit = user?.role === 'OWNER' || user?.role === 'MANAGER';
 
   const { state: syncState, pending: pendingCount } = useSync();
@@ -90,9 +93,15 @@ export default function DashboardPage() {
     queryParams.set('etablissementId', user.etablissementId);
   }
 
-  const { data: report, loading, error, refetch } = useCachedQuery<DashboardReportResponse>(
+  const {
+    data: report,
+    loading,
+    error,
+    refetch,
+  } = useCachedQuery<DashboardReportResponse>(
     `analytics/reports/dashboard-${queryParams.toString()}`,
-    () => apiGet<DashboardReportResponse>(`/api/analytics/reports/dashboard?${queryParams.toString()}`),
+    () =>
+      apiGet<DashboardReportResponse>(`/api/analytics/reports/dashboard?${queryParams.toString()}`),
   );
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
@@ -123,13 +132,15 @@ export default function DashboardPage() {
     {
       targetId: 'tour-dashboard-stats',
       title: 'Hero KPIs & Variations',
-      content: 'Suivez en temps réel le chiffre d\'affaires brut, la marge brute estimée, le panier moyen et les crédits en encours.',
+      content:
+        "Suivez en temps réel le chiffre d'affaires brut, la marge brute estimée, le panier moyen et les crédits en encours.",
       position: 'bottom',
     },
     {
       targetId: 'tour-dashboard-charts',
       title: 'Visualisation de données (DataViz)',
-      content: 'Analysez le volume de vente et la rentabilité sur le graphique hybride, la répartition des règlements et le Top 5 produits.',
+      content:
+        'Analysez ventes, marge et dépenses sur le graphique hybride, le flux de caisse, la répartition des règlements et le Top 5 produits.',
       position: 'top',
     },
   ];
@@ -137,15 +148,18 @@ export default function DashboardPage() {
   const dashboardUseCases = [
     {
       title: 'Analyser les tendances de vente',
-      description: 'Choisissez la période souhaitée et cochez "vs période précédente" pour mesurer votre croissance relative.',
+      description:
+        'Choisissez la période souhaitée et cochez "vs période précédente" pour mesurer votre croissance relative.',
     },
     {
       title: 'Suivre la rentabilité et les crédits',
-      description: 'Consultez la marge brute estimée et surveillez le montant global des crédits clients en encours.',
+      description:
+        'Consultez la marge brute estimée et surveillez le montant global des crédits clients en encours.',
     },
     {
       title: 'Actionner les opérations courantes',
-      description: 'Utilisez la barre d\'actions rapides pour passer au POS, saisir une dépense ou clôturer la caisse.',
+      description:
+        "Utilisez la barre d'actions rapides pour passer au POS, saisir une dépense ou clôturer la caisse.",
     },
   ];
 
@@ -189,9 +203,12 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Section Hero KPIs */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-stretch" id="tour-dashboard-stats">
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 items-stretch"
+            id="tour-dashboard-stats"
+          >
             <KpiCard
-              title="Chiffre d'Affaires Brut"
+              title="Chiffre d'Affaires (Ventes)"
               value={report?.chiffreAffaires ?? 0}
               variationPercent={report?.variationCaPercent}
               previousValue={report?.chiffreAffairesPrev}
@@ -246,12 +263,39 @@ export default function DashboardPage() {
               icon={<CreditCard className="h-4 w-4" />}
               variant="amber"
             />
+
+            <KpiCard
+              title="Trésorerie Disponible"
+              value={report?.soldesTresorerie?.total ?? 0}
+              compareActive={false}
+              subtext="Caisses + MoMo + Banque"
+              icon={<Wallet className="h-4 w-4" />}
+              variant="indigo"
+              sensitive={!canSeeProfit}
+            />
+
+            <KpiCard
+              title="Dépenses (Période)"
+              value={report?.totalDepenses ?? 0}
+              compareActive={false}
+              subtext="Sorties enregistrées sur la période"
+              icon={<Receipt className="h-4 w-4" />}
+              variant="rose"
+              sensitive={!canSeeProfit}
+            />
           </div>
 
           {/* Section 1 : Graphiques Côte à Côte (Hauteurs Égales Exactes) */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-stretch" id="tour-dashboard-charts">
+          <div
+            className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-stretch"
+            id="tour-dashboard-charts"
+          >
             <div className="lg:col-span-2 flex flex-col">
-              <HybridSalesChart data={report?.serie ?? []} canSeeProfit={canSeeProfit} compareActive={compare} />
+              <HybridSalesChart
+                data={report?.serie ?? []}
+                canSeeProfit={canSeeProfit}
+                compareActive={compare}
+              />
             </div>
 
             <div className="lg:col-span-1 flex flex-col">
@@ -259,23 +303,41 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Section 2 : Trésorerie & Solde des Caisses */}
+          {/* Section 2 : Flux de Caisse (Cash Flow) */}
           <div>
-            <TreasuryWidget balances={report?.soldesTresorerie} />
+            <CashFlowChart data={report?.serie ?? []} />
           </div>
 
-          {/* Section 3 : Top 5 Meilleures Ventes & Actions Rapides (Même Ligne sur Desktop) */}
+          {/* Section 3 : Trésorerie & Solde des Caisses */}
+          <div>
+            <TreasuryWidget
+              balances={report?.soldesTresorerie}
+              totalDepenses={report?.totalDepenses}
+            />
+          </div>
+
+          {/* Section 4 : Top 5 Ventes & Alertes de Gestion (Même Ligne sur Desktop) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-stretch">
             <div className="flex flex-col">
               <TopProductsList products={report?.topProduits ?? []} />
             </div>
 
             <div className="flex flex-col">
-              <QuickActionsBar
-                onOpenExpenseModal={() => setExpenseModalOpen(true)}
-                onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
+              <AlertsPanel
+                ruptures={report?.alertes?.ruptures}
+                clientsEnDetteCount={report?.alertes?.clientsEnDetteCount}
+                dettesEchuesCount={report?.alertes?.dettesEchuesCount}
+                creditsEncours={report?.creditsEncours}
               />
             </div>
+          </div>
+
+          {/* Section 5 : Actions Rapides */}
+          <div>
+            <QuickActionsBar
+              onOpenExpenseModal={() => setExpenseModalOpen(true)}
+              onOpenCloseSessionModal={() => setCloseSessionModalOpen(true)}
+            />
           </div>
         </>
       )}
