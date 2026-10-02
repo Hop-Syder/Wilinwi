@@ -359,6 +359,42 @@ export function unitDefaultPrice(
   return unit.salePrice ?? prixCatalogue * unit.factorToBase;
 }
 
+/**
+ * Décompose une quantité d'unités de base en conditionnements pleins + surplus d'unités de base.
+ * Ex: 49 bouteilles avec un Casier de 24 -> { packs: 2, remainingUnits: 1, text: "2 Casier 24 + 1 btl" }
+ */
+export function formatPackBreakdown(
+  totalBaseQuantity: number,
+  unit?: Pick<ProductUnitDto, 'label' | 'factorToBase'> | null,
+  baseUnitLabel = 'btl',
+): { packs: number; remainingUnits: number; text: string } {
+  if (!unit || unit.factorToBase <= 1) {
+    return {
+      packs: 0,
+      remainingUnits: totalBaseQuantity,
+      text: `${totalBaseQuantity} ${baseUnitLabel}`.trim(),
+    };
+  }
+
+  const factor = unit.factorToBase;
+  const packs = Math.floor(totalBaseQuantity / factor);
+  const remaining = totalBaseQuantity % factor;
+
+  const parts: string[] = [];
+  if (packs > 0) {
+    parts.push(`${packs} ${unit.label}${packs > 1 && !unit.label.endsWith('s') ? 's' : ''}`);
+  }
+  if (remaining > 0 || packs === 0) {
+    parts.push(`${remaining} ${baseUnitLabel}${remaining > 1 && !baseUnitLabel.endsWith('s') ? 's' : ''}`);
+  }
+
+  return {
+    packs,
+    remainingUnits: remaining,
+    text: parts.join(' et '),
+  };
+}
+
 // ─────────────── Lots & péremption (Health — Milestone 4, §9.4) ───────────────
 
 export const CreateBatchSchema = z.object({

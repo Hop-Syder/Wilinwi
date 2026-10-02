@@ -31,6 +31,7 @@ import { PosCartZone, type CartLine, type OrderMode } from '@/components/pos/pos
 import { BarcodeScannerModal } from '@/components/stock/barcode-scanner-modal';
 import { FloatingCartButtons } from '@/components/pos/floating-cart-buttons';
 import { MobileCartDrawer } from '@/components/pos/mobile-cart-drawer';
+import { PosProductSelectModal } from '@/components/pos/product-select-modal';
 
 export default function PosPage() {
   const { refreshPending, state } = useSync();
@@ -63,6 +64,7 @@ export default function PosPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showDisburseModal, setShowDisburseModal] = useState(false);
   const [showMobileCartDrawer, setShowMobileCartDrawer] = useState(false);
+  const [selectedModalProduct, setSelectedModalProduct] = useState<ProductDto | null>(null);
   
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
   const [lastSale, setLastSale] = useState<ReceiptSale | null>(null);
@@ -116,7 +118,14 @@ export default function PosPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Éviter de déclencher si une modale est ouverte
-      if (showCheckoutModal || showSuccessModal || showCloseModal || showScannerModal || showDisburseModal) {
+      if (
+        showCheckoutModal ||
+        showSuccessModal ||
+        showCloseModal ||
+        showScannerModal ||
+        showDisburseModal ||
+        selectedModalProduct !== null
+      ) {
         return;
       }
 
@@ -147,12 +156,21 @@ export default function PosPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, isGlobalView, showCheckoutModal, showSuccessModal, showCloseModal, showScannerModal, showDisburseModal]);
+  }, [cart, isGlobalView, showCheckoutModal, showSuccessModal, showCloseModal, showScannerModal, showDisburseModal, selectedModalProduct]);
 
-  // Ajout au Panier
+  // Ajout au Panier depuis la Grille Catalogue
   const handleSelectProduct = (product: ProductDto) => {
+    // Si le produit possède des conditionnements (ex: Casier 24) ou des variantes,
+    // ouvrir directement la modale de sélection de conditionnement (Wholesale M5)
+    if ((product.units && product.units.length > 0) || (product.variants && product.variants.length > 0)) {
+      setSelectedModalProduct(product);
+      return;
+    }
+
     setCart((prev) => {
-      const existingIdx = prev.findIndex((line) => line.product.id === product.id);
+      const existingIdx = prev.findIndex(
+        (line) => line.product.id === product.id && !line.unitId && !line.variantId
+      );
       if (existingIdx >= 0) {
         const copy = [...prev];
         copy[existingIdx].quantite += 1;
@@ -170,11 +188,31 @@ export default function PosPage() {
     });
   };
 
+  // Ajout au Panier depuis la modale de conditionnement / variante
+  const handleAddToCartFromModal = (newLine: CartLine) => {
+    setCart((prev) => {
+      const existingIdx = prev.findIndex(
+        (line) =>
+          line.product.id === newLine.product.id &&
+          line.unitId === newLine.unitId &&
+          line.variantId === newLine.variantId
+      );
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        copy[existingIdx].quantite = Number((copy[existingIdx].quantite + newLine.quantite).toFixed(2));
+        return copy;
+      }
+      return [...prev, newLine];
+    });
+  };
+
   // Mise à jour Quantité
   const handleUpdateQuantity = (index: number, delta: number) => {
     setCart((prev) => {
       const copy = [...prev];
-      const newQty = copy[index].quantite + delta;
+      const line = copy[index];
+      if (!line) return prev;
+      const newQty = Number((line.quantite + delta).toFixed(2));
       if (newQty <= 0) {
         return copy.filter((_, i) => i !== index);
       }
@@ -243,7 +281,7 @@ export default function PosPage() {
           id: l.product.id,
           quantite: l.quantite,
           prixReel: l.prixReel,
-          product: { nom: l.product.nom },
+          product: { nom: l.unitLabel ? `${l.product.nom} (${l.unitLabel})` : l.product.nom },
         })),
         client: payload.clientNom ? { nom: payload.clientNom, telephone: payload.clientTelephone } : null,
       });
@@ -518,6 +556,15 @@ export default function PosPage() {
         }}
         disabled={isGlobalView || busy}
       />
+
+      {/* Modale Choix Conditionnement / Casier / Variantes (Wholesale M5) */}
+      {selectedModalProduct && (
+        <PosProductSelectModal
+          product={selectedModalProduct}
+          onClose={() => setSelectedModalProduct(null)}
+          onAddToCart={handleAddToCartFromModal}
+        />
+      )}
     </div>
   );
 }

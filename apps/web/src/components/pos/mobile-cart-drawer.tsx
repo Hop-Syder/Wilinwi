@@ -17,6 +17,7 @@ import {
   Store, ShoppingCart, AlertCircle, Truck
 } from 'lucide-react';
 import type { ClientDto } from '@wilinwi/types';
+import { formatQty } from '@wilinwi/ui';
 import { useCurrency } from '@/lib/currency-context';
 import type { CartLine, OrderMode } from './pos-cart-zone';
 
@@ -271,14 +272,14 @@ export function MobileCartDrawer({
                   <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-2xs p-1">
                     <button
                       type="button"
-                      onClick={() => onUpdateQuantity(idx, -1)}
+                      onClick={() => onUpdateQuantity(idx, item.quantite <= 1 && item.quantite > 0.5 ? -0.5 : -1)}
                       className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 transition-colors"
                       aria-label="Diminuer quantité"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-8 text-center text-xs font-extrabold text-slate-900">
-                      {item.quantite}
+                    <span className="w-9 text-center text-xs font-extrabold text-slate-900">
+                      {formatQty(item.quantite)}
                     </span>
                     <button
                       type="button"

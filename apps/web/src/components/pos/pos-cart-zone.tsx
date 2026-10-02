@@ -258,10 +258,17 @@ export function PosCartZone({
           >
             <div className="flex-1 min-w-0 pr-2">
               <p className="text-xs font-bold text-slate-900 truncate">{line.product.nom}</p>
-              {line.variantLabel && (
-                <p className="text-[10px] font-semibold text-emerald-600">{line.variantLabel}</p>
-              )}
-              <p className="font-mono text-xs font-black text-slate-700">
+              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                {line.unitLabel && (
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    {line.unitLabel}
+                  </span>
+                )}
+                {line.variantLabel && (
+                  <span className="text-[10px] font-semibold text-emerald-600">{line.variantLabel}</span>
+                )}
+              </div>
+              <p className="font-mono text-xs font-black text-slate-700 mt-0.5">
                 {formatFCFA(line.prixReel)}
               </p>
             </div>
@@ -271,12 +278,12 @@ export function PosCartZone({
               <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5">
                 <button
                   type="button"
-                  onClick={() => onUpdateQuantity(idx, -1)}
+                  onClick={() => onUpdateQuantity(idx, line.quantite <= 1 && line.quantite > 0.5 ? -0.5 : -1)}
                   className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-700 shadow-2xs hover:bg-slate-100 active:scale-95 transition-all"
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="w-8 text-center font-mono text-xs font-extrabold text-slate-900">
+                <span className="w-9 text-center font-mono text-xs font-extrabold text-slate-900">
                   {formatQty(line.quantite)}
                 </span>
                 <button

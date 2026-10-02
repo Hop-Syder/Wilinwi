@@ -274,30 +274,65 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
     setSaving(true);
     setError(null);
     try {
+      // Nettoyage et conversion robuste des nombres (supporte ',' et '.')
+      const parseNum = (val: string | number | undefined, defaultVal = 0): number => {
+        if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
+        if (!val) return defaultVal;
+        const cleaned = String(val).trim().replace(',', '.');
+        const n = parseFloat(cleaned);
+        return isNaN(n) ? defaultVal : n;
+      };
+
+      const prixAchat = Math.round(parseNum(form.prixAchat));
+      const prixPlancher = Math.round(parseNum(form.prixPlancher || form.prixAchat));
+      const prixCatalogue = Math.round(parseNum(form.prixCatalogue || form.prixPlancher));
+
+      // Vérification préventive pour éviter les rejets API
+      if (prixAchat > prixPlancher) {
+        setError('Le prix plancher (vente minimale) ne peut pas être inférieur au prix d’achat.');
+        setSaving(false);
+        return;
+      }
+      if (prixPlancher > prixCatalogue) {
+        setError('Le prix catalogue (prix public) ne peut pas être inférieur au prix plancher.');
+        setSaving(false);
+        return;
+      }
+
+      // Si selectedEtablissementIds est vide (nouveau compte sans boutique chargée ou multi-boutique non sélectionnée),
+      // on n'envoie pas etablissementIds ou on le laisse vide pour affecter toutes les boutiques par défaut.
+      const etablissementIdsToSend =
+        selectedEtablissementIds.length > 0 && selectedEtablissementIds.length < etablissements.length
+          ? selectedEtablissementIds
+          : undefined;
+
+      const rawStock = parseNum(form.stock, 0);
+      const rawSeuil = parseNum(form.seuilAlerte, 5);
+
       const payload = {
-        nom: form.nom,
-        sku: form.sku || undefined,
-        categorie: form.categorie || undefined,
+        nom: form.nom.trim(),
+        sku: form.sku.trim() || undefined,
+        categorie: form.categorie.trim() || undefined,
         type,
         vendablePos,
         unitKind,
         baseUnit: baseUnit.trim() || undefined,
         photos: imagesAllowed ? photos : undefined,
-        prixAchat: Number(form.prixAchat),
-        prixPlancher: Number(form.prixPlancher),
-        prixCatalogue: Number(form.prixCatalogue),
-        etablissementIds: selectedEtablissementIds,
+        prixAchat,
+        prixPlancher,
+        prixCatalogue,
+        etablissementIds: etablissementIdsToSend,
         stock: isEditing
           ? undefined
           : hasStock && !batched
-            ? toStoredQuantity(Number(form.stock || 0), unitKind)
+            ? toStoredQuantity(rawStock, unitKind)
             : 0,
-        seuilAlerte: toStoredQuantity(Number(form.seuilAlerte || 5), unitKind),
+        seuilAlerte: toStoredQuantity(rawSeuil, unitKind),
         variants: variants.map(v => ({
           id: v.id,
-          attributs: { [v.key || 'Variante']: v.val },
-          sku: v.sku || undefined,
-          stock: isEditing && v.id ? v.stock : Number(v.stock || 0) // En création on envoie le nombre
+          attributs: { [v.key || 'Variante']: v.val.trim() },
+          sku: v.sku.trim() || undefined,
+          stock: isEditing && v.id ? v.stock : Math.round(parseNum(v.stock, 0))
         }))
       };
 
@@ -402,16 +437,49 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             <h3 className="mb-3 text-sm font-semibold text-slate-700">Prix & Marges</h3>
           </div>
           <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Prix d'achat</span>
-            <input type="number" value={form.prixAchat} onChange={(e) => set('prixAchat')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+            <span className="mb-1 block text-xs font-medium text-slate-600">Prix d'achat (Coût)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.prixAchat}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  prixAchat: val,
+                  // Pré-remplissage intelligent si vides ou égaux pour accélérer la saisie
+                  prixPlancher: !f.prixPlancher || f.prixPlancher === f.prixAchat ? val : f.prixPlancher,
+                  prixCatalogue: !f.prixCatalogue || f.prixCatalogue === f.prixAchat ? val : f.prixCatalogue,
+                }));
+              }}
+              placeholder="Ex: 500"
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            />
           </label>
           <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Prix plancher</span>
-            <input type="number" value={form.prixPlancher} onChange={(e) => set('prixPlancher')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+            <span className="mb-1 block text-xs font-medium text-slate-600">Prix plancher (Min)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.prixPlancher}
+              onChange={(e) => set('prixPlancher')(e.target.value)}
+              placeholder="Ex: 600"
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            />
           </label>
           <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Prix catalogue</span>
-            <input type="number" value={form.prixCatalogue} onChange={(e) => set('prixCatalogue')(e.target.value)} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30" />
+            <span className="mb-1 block text-xs font-medium text-slate-600">Prix catalogue (Vente)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.prixCatalogue}
+              onChange={(e) => set('prixCatalogue')(e.target.value)}
+              placeholder="Ex: 800"
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
+            />
           </label>
 
           {hasStock && (

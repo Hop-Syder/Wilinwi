@@ -18,6 +18,7 @@ import {
   Package, Edit, ChevronDown, ChevronUp, ExternalLink, Store
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
+import { formatPackBreakdown } from '@wilinwi/types';
 import { formatFCFA, formatQty } from '@wilinwi/ui';
 import { StockLevelBar } from './stock-level-bar';
 
@@ -175,17 +176,22 @@ export function StockDataTable({
 
                       {/* Niveau de Stock avec Barre Visuelle */}
                       <td className="px-4 py-3">
-                        <div className="space-y-1 max-w-[170px]">
+                        <div className="space-y-1 max-w-[190px]">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-mono font-extrabold text-slate-900 tabular-nums">
-                              {formatQty(p.stock)}
+                              {formatQty(p.stock)} {p.baseUnit ? <span className="text-[10px] text-slate-500 font-sans">{p.baseUnit}</span> : null}
                             </span>
                             {hasBreakdown && (
                               <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5">
-                                Breakdown {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                Multi-sites {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                               </span>
                             )}
                           </div>
+                          {p.units && p.units.length > 0 && (
+                            <div className="text-[11px] font-bold text-amber-800 bg-amber-50/80 px-2 py-0.5 rounded-md border border-amber-200/60 inline-block">
+                              📦 {formatPackBreakdown(p.stock, p.units[0], p.baseUnit || 'btl').text}
+                            </div>
+                          )}
                           <StockLevelBar stock={p.stock} seuilAlerte={p.seuilAlerte ?? 5} />
                         </div>
                       </td>
@@ -360,6 +366,11 @@ export function StockDataTable({
                     <span className="text-lg font-black tabular-nums leading-none">
                       {formatQty(p.stock)}
                     </span>
+                    {p.units && p.units.length > 0 && (
+                      <span className="text-[9px] font-sans font-extrabold text-slate-700 mt-1 max-w-[85px] text-center leading-tight">
+                        {formatPackBreakdown(p.stock, p.units[0], p.baseUnit || 'btl').text}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

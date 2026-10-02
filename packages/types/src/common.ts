@@ -17,8 +17,8 @@ export const IdSchema = z.string().uuid();
 /** Montant en FCFA — entier positif (le franc CFA n'a pas de centimes). */
 export const MoneySchema = z.number().int().nonnegative();
 
-/** Quantité de stock — peut être négative en ajustement, entière. */
-export const QuantitySchema = z.number().int();
+/** Quantité de stock — peut être négative en ajustement, supporte les décimales. */
+export const QuantitySchema = z.number();
 
 /** Plans d'abonnement (cf. buinessplan.md). */
 export const PLANS = ['STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE'] as const;

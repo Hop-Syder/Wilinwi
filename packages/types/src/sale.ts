@@ -62,7 +62,7 @@ export const SaleItemInputSchema = z.object({
   /** Facteur du conditionnement, FOURNI PAR LE CLIENT pour le débit du snapshot
    *  offline uniquement — le serveur résout le facteur réel depuis la base. */
   unitFactor: z.number().int().min(1).optional(),
-  quantite: z.number().int().positive(),
+  quantite: z.number().positive(),
   prixReel: MoneySchema,
   /** Justification obligatoire quand on passe sous le prix plancher. */
   motifSousPlancher: z.string().min(1).optional(),

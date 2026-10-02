@@ -123,6 +123,11 @@ export function ProductGridCard({
             {product.variants.length} var.
           </span>
         )}
+        {product.units && product.units.length > 0 && (
+          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">
+            {product.units[0].label}
+          </span>
+        )}
       </div>
     </button>
   );

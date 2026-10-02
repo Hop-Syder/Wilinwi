@@ -157,6 +157,7 @@ export class SalesService {
         // bloquent pas (le stock négatif reste visible et alerté par les seuils).
         // BATCHED (Option B §18.2) : jamais bloqué serveur-side — le POS local
         // refuse déjà périmés/insuffisants ; un conflit devient une alerte CRITICAL.
+        const requiredBaseQty = Math.round(item.quantite * facteur);
         if (product.type !== 'BATCHED' && saleStockBehavior(product.type, product.stockPolicy).precheck) {
           const availableStock = await readStockAt(
             tx,
@@ -164,9 +165,9 @@ export class SalesService {
             product.id,
             item.variantId ?? null,
           );
-          if (item.quantite * facteur > availableStock) {
+          if (requiredBaseQty > availableStock) {
             throw new BadRequestException(
-              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${item.quantite * facteur}, Disponible : ${availableStock}`
+              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${requiredBaseQty}, Disponible : ${availableStock}`
             );
           }
         }
@@ -180,17 +181,53 @@ export class SalesService {
           );
         }
 
-        total += item.prixReel * item.quantite;
-        lines.push({
-          productId: product.id,
-          variantId: item.variantId ?? null,
-          quantite: item.quantite,
-          prixReel: item.prixReel,
-          coutUnitaire: product.prixAchat * facteur,
-          unitId: unit?.id ?? null,
-          unitLabel: unit?.label ?? null,
-          unitFactor: facteur,
-        });
+        total += Math.round(item.prixReel * item.quantite);
+
+        const wholeUnits = Math.floor(item.quantite);
+        const remainder = Number((item.quantite - wholeUnits).toFixed(4));
+
+        if (remainder > 0 && unit && facteur > 1) {
+          // Fraction de conditionnement (ex: 1.5 casier de 24) :
+          // 1. Partie entière en conditionnement
+          if (wholeUnits > 0) {
+            lines.push({
+              productId: product.id,
+              variantId: item.variantId ?? null,
+              quantite: wholeUnits,
+              prixReel: item.prixReel,
+              coutUnitaire: product.prixAchat * facteur,
+              unitId: unit.id,
+              unitLabel: unit.label,
+              unitFactor: facteur,
+            });
+          }
+          // 2. Fraction décomposée en unités de base (bouteilles)
+          const remainingBaseUnits = Math.round(remainder * facteur);
+          if (remainingBaseUnits > 0) {
+            const unitPrice = Math.round(item.prixReel / facteur);
+            lines.push({
+              productId: product.id,
+              variantId: item.variantId ?? null,
+              quantite: remainingBaseUnits,
+              prixReel: unitPrice,
+              coutUnitaire: product.prixAchat,
+              unitId: null,
+              unitLabel: product.baseUnit ? `Détail (${product.baseUnit})` : null,
+              unitFactor: 1,
+            });
+          }
+        } else {
+          lines.push({
+            productId: product.id,
+            variantId: item.variantId ?? null,
+            quantite: Math.max(1, Math.round(item.quantite)),
+            prixReel: item.prixReel,
+            coutUnitaire: product.prixAchat * facteur,
+            unitId: unit?.id ?? null,
+            unitLabel: unit?.label ?? null,
+            unitFactor: facteur,
+          });
+        }
       }
 
       // Résolution / création automatique du client si nécessaire
