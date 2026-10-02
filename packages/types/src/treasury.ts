@@ -4,7 +4,7 @@
  * @description Définitions de types partagés Zod et utilitaires pour la trésorerie : comptes, dépenses, virements, et clôtures.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

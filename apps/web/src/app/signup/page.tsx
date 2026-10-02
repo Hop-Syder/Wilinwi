@@ -6,7 +6,7 @@
  * @description Page d'Inscription Wilinwi — Wizard 3 Étapes Zéro-Scroll Pro
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -105,12 +105,12 @@ export default function SignupPage() {
 
   return (
     <main className="flex min-h-screen min-h-[100dvh] w-screen bg-background text-text-primary font-sans antialiased">
-      
+
       {/* ═══════════════════════════════════════
           PANNEAU GAUCHE — Branding & Offre
           ═══════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#0B1224] relative flex-col justify-between p-10 text-white overflow-hidden border-r border-slate-800/40">
-        
+
         {/* Halos lumineux d'ambiance */}
         <div className="absolute inset-0 opacity-[0.035] bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none" />
         <div className="absolute top-[-8%] right-[-8%] h-[380px] w-[380px] rounded-full bg-primary/15 blur-[90px] pointer-events-none" />
@@ -131,7 +131,7 @@ export default function SignupPage() {
 
         {/* ── Carte Avantage (Style Bento Box) ── */}
         <div className="relative z-10 my-auto py-4 flex flex-col gap-6 max-w-sm">
-          
+
           <div>
             <h2 className="font-display text-3xl font-extrabold tracking-tight text-white leading-tight mb-2">
               Démarrez votre caisse en <span className="text-emerald-400">moins de 2 minutes.</span>
@@ -142,20 +142,20 @@ export default function SignupPage() {
           </div>
 
           <div className="w-full bg-white/[0.04] backdrop-blur-xl border border-white/[0.09] rounded-2xl p-6 shadow-2xl relative overflow-hidden group cursor-default hover:border-white/[0.15] transition-all duration-300">
-             {/* Reflet interne */}
-             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.04] pointer-events-none rounded-2xl" />
-             {/* Glow interne hover */}
-             <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            {/* Reflet interne */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.04] pointer-events-none rounded-2xl" />
+            {/* Glow interne hover */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
             <div className="flex items-center gap-2 mb-4">
               <span className="h-6 w-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               </span>
               <span className="text-[10px] uppercase tracking-widest text-amber-400 font-extrabold">
                 Offre de bienvenue
               </span>
             </div>
-            
+
             <h3 className="text-lg font-bold text-white mb-1.5">14 Jours d&apos;Essai Pro Gratuit</h3>
             <p className="text-xs text-slate-400 mb-5">
               Accès complet à toutes les fonctionnalités Premium : Caisse Tactile Offline, Gestion des Stocks Multi-Boutiques, et Rapports Financiers.
@@ -169,7 +169,7 @@ export default function SignupPage() {
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <div className={`w-5 h-5 rounded flex items-center justify-center bg-white/[0.05] border border-white/[0.05] ${item.color}`}>
-                     <item.icon className="w-3 h-3" />
+                    <item.icon className="w-3 h-3" />
                   </div>
                   <span className="text-xs font-medium text-slate-300">{item.text}</span>
                 </div>
@@ -193,7 +193,7 @@ export default function SignupPage() {
           PANNEAU DROIT — Wizard d'inscription
           ═══════════════════════════════════════ */}
       <div className="w-full lg:w-1/2 flex flex-col p-6 sm:p-10 min-h-full bg-slate-50/60 relative">
-        
+
         {/* Header & Logo mobile */}
         <div className="flex items-center justify-between shrink-0 mb-6 lg:mb-0">
           <div className="lg:hidden flex items-center">
@@ -225,12 +225,12 @@ export default function SignupPage() {
         {/* ── Carte Formulaire ── */}
         <div className="w-full max-w-sm mx-auto my-auto relative">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_8px_40px_rgb(0,0,0,0.04)] flex flex-col overflow-hidden transition-all duration-300">
-            
+
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
-              
+
               {/* Corps (Étapes) */}
               <div className="px-7 py-6">
-                
+
                 {error && (
                   <div className="mb-5 p-3 bg-rose-50 border border-rose-200/80 rounded-xl" role="alert">
                     <p className="text-xs font-semibold text-rose-700">{error}</p>
@@ -355,11 +355,10 @@ export default function SignupPage() {
                             key={sec}
                             type="button"
                             onClick={() => setFormData({ ...formData, sector: sec })}
-                            className={`px-2 py-2.5 text-[10px] font-bold leading-tight rounded-xl border text-left transition-all cursor-pointer ${
-                              formData.sector === sec
+                            className={`px-2 py-2.5 text-[10px] font-bold leading-tight rounded-xl border text-left transition-all cursor-pointer ${formData.sector === sec
                                 ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm shadow-emerald-500/10'
                                 : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
-                            }`}
+                              }`}
                           >
                             {sec}
                           </button>
@@ -432,11 +431,10 @@ export default function SignupPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className={`flex-1 h-11 text-sm font-semibold group rounded-xl transition-all duration-200 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(255,255,255,0.1)_inset] ${
-                    step === 3 
-                      ? 'bg-gradient-to-b from-[#00A86B] to-[#008f5a] shadow-[0_0_0_1px_rgba(0,168,107,0.4)] hover:from-[#00c980] hover:to-[#00A86B]' 
+                  className={`flex-1 h-11 text-sm font-semibold group rounded-xl transition-all duration-200 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.05),0_0_0_1px_rgba(255,255,255,0.1)_inset] ${step === 3
+                      ? 'bg-gradient-to-b from-[#00A86B] to-[#008f5a] shadow-[0_0_0_1px_rgba(0,168,107,0.4)] hover:from-[#00c980] hover:to-[#00A86B]'
                       : 'bg-gradient-to-b from-[#0005ea] to-[#0004c8] shadow-[0_0_0_1px_rgba(0,5,234,0.4)] hover:from-[#2e31ff] hover:to-[#0005ea]'
-                  } text-white active:scale-[0.98] cursor-pointer`}
+                    } text-white active:scale-[0.98] cursor-pointer`}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2 text-xs">

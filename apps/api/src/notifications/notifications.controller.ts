@@ -4,7 +4,7 @@
  * @description Contrôleur HTTP — Notifications in-app. Réservé OWNER/MANAGER
  *   (capacité activity:read, comme le journal d'audit).
  * @created 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -16,7 +16,7 @@ import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(private readonly notifications: NotificationsService) { }
 
   @RequireCapabilities('activity:read')
   @Get()

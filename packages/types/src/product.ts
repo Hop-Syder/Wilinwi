@@ -4,7 +4,7 @@
  * @description Définitions de types partagés : product.ts
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -301,20 +301,20 @@ export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export const UpdateProductSchema = CreateProductSchemaBase.omit({ stock: true })
   .partial()
   .superRefine((data, ctx) => {
-  // If all three prices are provided, check the condition
-  if (
-    data.prixAchat !== undefined &&
-    data.prixPlancher !== undefined &&
-    data.prixCatalogue !== undefined
-  ) {
-    if (!(data.prixAchat <= data.prixPlancher && data.prixPlancher <= data.prixCatalogue)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Doit respecter : prix_achat ≤ prix_plancher ≤ prix_catalogue',
-        path: ['prixCatalogue'],
-      });
+    // If all three prices are provided, check the condition
+    if (
+      data.prixAchat !== undefined &&
+      data.prixPlancher !== undefined &&
+      data.prixCatalogue !== undefined
+    ) {
+      if (!(data.prixAchat <= data.prixPlancher && data.prixPlancher <= data.prixCatalogue)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Doit respecter : prix_achat ≤ prix_plancher ≤ prix_catalogue',
+          path: ['prixCatalogue'],
+        });
+      }
     }
-  }
     // Mise à jour partielle (1 ou 2 prix) : la validation croisée contre les valeurs
     // existantes est faite côté service (StockService.update), source de vérité.
   });

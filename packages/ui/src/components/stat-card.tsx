@@ -4,7 +4,7 @@
  * @description Composant UI partagé : stat-card.tsx (Magic Glow Card)
  * @created 2026-06-20
  * @updated 2026-07-21
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -38,20 +38,20 @@ const iconColors: Record<NonNullable<StatCardProps['accent']>, string> = {
 /** Indicateur de tableau de bord — design "Magic Glow Card" Glassmorphism. */
 export function StatCard({ label, value, hint, icon, accent = 'brand', className }: StatCardProps) {
   return (
-    <div 
+    <div
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border/50 bg-white/60 p-5 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:bg-slate-900/60",
         className
       )}
     >
       {/* Effet Glow au survol */}
-      <div 
+      <div
         className={cn(
           "pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br opacity-0 transition-opacity duration-500 group-hover:opacity-100",
           accentColors[accent]
-        )} 
+        )}
       />
-      
+
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs sm:text-sm font-semibold tracking-wide text-text-secondary truncate">{label}</p>
         {icon && (
@@ -60,11 +60,11 @@ export function StatCard({ label, value, hint, icon, accent = 'brand', className
           </div>
         )}
       </div>
-      
+
       <div className="mt-3 flex items-baseline gap-2 overflow-hidden">
         <p className="tabular text-lg sm:text-xl xl:text-2xl font-bold tracking-tight text-text-primary whitespace-nowrap">{value}</p>
       </div>
-      
+
       {hint && (
         <div className="mt-2 flex items-center text-sm font-medium text-text-secondary/80">
           <span className="relative flex h-2 w-2 mr-2">

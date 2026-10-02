@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour auth
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,4 +21,4 @@ import { UsersService } from './users.service';
   providers: [AuthService, SupabaseAdminService, UsersService],
   exports: [SupabaseAdminService],
 })
-export class AuthModule {}
+export class AuthModule { }

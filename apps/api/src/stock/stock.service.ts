@@ -4,7 +4,7 @@
  * @description Service métier pour stock
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -49,7 +49,7 @@ export class StockService {
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly auditAlerts: AuditAlertService,
-  ) {}
+  ) { }
 
   async list(ctx: AuthContext, globalView = false) {
     // Rétrogradation Starter (impayé J+7) : catalogue bridé aux 50 articles les
@@ -74,11 +74,11 @@ export class StockService {
           // Lots de la boutique courante (BATCHED) : snapshot POS + péremption.
           ...(!globalView && ctx.etablissementId
             ? {
-                batches: {
-                  where: { etablissementId: ctx.etablissementId },
-                  orderBy: { expiresAt: 'asc' as const },
-                },
-              }
+              batches: {
+                where: { etablissementId: ctx.etablissementId },
+                orderBy: { expiresAt: 'asc' as const },
+              },
+            }
             : {}),
         },
         orderBy: downgraded ? { createdAt: 'asc' } : { nom: 'asc' },
@@ -184,9 +184,9 @@ export class StockService {
       // Lots de la boutique courante (BATCHED).
       const batches = ctx.etablissementId
         ? await tx.productBatch.findMany({
-            where: { productId: p.id, etablissementId: ctx.etablissementId },
-            orderBy: { expiresAt: 'asc' },
-          })
+          where: { productId: p.id, etablissementId: ctx.etablissementId },
+          orderBy: { expiresAt: 'asc' },
+        })
         : undefined;
       return { ...p, batches, units };
     });
@@ -544,8 +544,8 @@ export class StockService {
         }
       }
 
-      return tx.product.update({ 
-        where: { id }, 
+      return tx.product.update({
+        where: { id },
         data: scalars,
         include: { variants: true }
       });
@@ -1263,7 +1263,7 @@ export class StockService {
   }
 
   private async ensureProduct(tx: TenantTx, tenantId: string, id: string) {
-    const product = await tx.product.findFirst({ 
+    const product = await tx.product.findFirst({
       where: { id, tenantId },
       include: { variants: true }
     });

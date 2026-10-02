@@ -4,7 +4,7 @@
  * @description Service métier — Établissements (lieux physiques d'une entreprise).
  *   CRUD réservé OWNER/MANAGER. La liste accessible alimente le sélecteur du header.
  * @created 2026-06-27
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -48,7 +48,7 @@ export class EtablissementService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly planConfig: PlanConfigService,
-  ) {}
+  ) { }
 
   /** Tous les établissements de l'entreprise (gestion — OWNER/MANAGER). */
   async list(ctx: AuthContext): Promise<EtablissementDto[]> {

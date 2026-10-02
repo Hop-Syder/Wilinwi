@@ -4,7 +4,7 @@
  * @description Composant Tiroir/Modale de suivi de synchronisation offline (SyncStatusDrawer)
  * @created 2026-08-01
  * @updated 2026-08-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -111,15 +111,14 @@ export function SyncStatusDrawer({ onRefreshProducts, onFixSale }: SyncStatusDra
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-          rejectedCount > 0
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${rejectedCount > 0
             ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 animate-pulse'
             : pendingCount > 0
-            ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-            : isOnline
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-            : 'bg-gray-100 border-gray-300 text-gray-700'
-        }`}
+              ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+              : isOnline
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                : 'bg-gray-100 border-gray-300 text-gray-700'
+          }`}
       >
         {!isOnline ? (
           <WifiOff className="w-3.5 h-3.5 text-gray-500" />
@@ -133,19 +132,18 @@ export function SyncStatusDrawer({ onRefreshProducts, onFixSale }: SyncStatusDra
           {!isOnline
             ? 'Hors-ligne'
             : isSyncing
-            ? 'Synchro...'
-            : rejectedCount > 0
-            ? `${rejectedCount} échec(s)`
-            : pendingCount > 0
-            ? `${pendingCount} en attente`
-            : 'En ligne'}
+              ? 'Synchro...'
+              : rejectedCount > 0
+                ? `${rejectedCount} échec(s)`
+                : pendingCount > 0
+                  ? `${pendingCount} en attente`
+                  : 'En ligne'}
         </span>
 
         {totalIssueCount > 0 && (
           <span
-            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-              rejectedCount > 0 ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'
-            }`}
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${rejectedCount > 0 ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'
+              }`}
           >
             {totalIssueCount}
           </span>
@@ -182,22 +180,20 @@ export function SyncStatusDrawer({ onRefreshProducts, onFixSale }: SyncStatusDra
                 <button
                   type="button"
                   onClick={() => setActiveTab('pending')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    activeTab === 'pending'
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'pending'
                       ? 'bg-white shadow text-slate-900 border'
                       : 'text-slate-600 hover:bg-slate-200/60'
-                  }`}
+                    }`}
                 >
                   En attente ({pendingCount})
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('rejected')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    activeTab === 'rejected'
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'rejected'
                       ? 'bg-red-50 text-red-700 border border-red-200'
                       : 'text-slate-600 hover:bg-slate-200/60'
-                  }`}
+                    }`}
                 >
                   Échecs ({rejectedCount})
                 </button>

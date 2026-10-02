@@ -4,7 +4,7 @@
  * @description Panneau d'alertes de gestion (ruptures de stock, créances clients, dettes échues)
  * @created 2026-09-21
  * @updated 2026-09-21
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

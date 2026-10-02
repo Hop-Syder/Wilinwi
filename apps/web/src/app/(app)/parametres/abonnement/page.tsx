@@ -8,7 +8,7 @@
  *   sélecteur de cycle mensuel/annuel (-17%), quotas et souscription directe.
  * @created 2026-09-17
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -288,22 +288,20 @@ export default function AbonnementPage() {
           <button
             type="button"
             onClick={() => setBillingCycle('monthly')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              billingCycle === 'monthly'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${billingCycle === 'monthly'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             Facturation Mensuelle
           </button>
           <button
             type="button"
             onClick={() => setBillingCycle('yearly')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              billingCycle === 'yearly'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${billingCycle === 'yearly'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             Facturation Annuelle
             <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
@@ -324,11 +322,10 @@ export default function AbonnementPage() {
           return (
             <Card
               key={plan.id}
-              className={`relative flex flex-col justify-between p-5 rounded-3xl transition-all duration-200 ${
-                plan.isPopular
+              className={`relative flex flex-col justify-between p-5 rounded-3xl transition-all duration-200 ${plan.isPopular
                   ? 'border-2 border-emerald-500 shadow-lg shadow-emerald-500/10 bg-gradient-to-b from-emerald-50/20 via-white to-white'
                   : 'border border-slate-200/90 shadow-xs hover:border-slate-300 bg-white'
-              }`}
+                }`}
             >
               {plan.isPopular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
@@ -414,11 +411,10 @@ export default function AbonnementPage() {
                     href={getWhatsAppUpgradeUrl(plan.name)}
                     target="_blank"
                     rel="noreferrer"
-                    className={`inline-flex items-center justify-center w-full gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 shadow-xs ${
-                      plan.isPopular
+                    className={`inline-flex items-center justify-center w-full gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 shadow-xs ${plan.isPopular
                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
                         : 'bg-slate-900 hover:bg-slate-800 text-white'
-                    }`}
+                      }`}
                   >
                     Choisir ce plan
                     <ArrowUpRight className="h-3.5 w-3.5" />

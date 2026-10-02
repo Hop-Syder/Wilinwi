@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Répartition des établissements par ville avec visualisation Globe 3D.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -50,7 +50,7 @@ export function EtabGeo() {
             <MapPin className="h-5 w-5 text-emerald-500" /> Établissements par ville
           </h2>
         </div>
-        
+
         <div className="flex-1 p-6 pt-0">
           {error ? (
             <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-center text-sm text-danger backdrop-blur-md">

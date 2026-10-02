@@ -13,7 +13,7 @@
  *     - Pied de page contractuel avec pagination dynamique multi-pages
  * @created 2026-07-01
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

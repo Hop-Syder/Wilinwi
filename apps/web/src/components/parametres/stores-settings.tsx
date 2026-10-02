@@ -4,7 +4,7 @@
  * @description Onglet Établissements & Dépôts (StoresSettings) — Multi-Boutiques & Dépôts
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -88,9 +88,8 @@ export function StoresSettings({
         {stores.map((s) => (
           <Card
             key={s.id}
-            className={`p-5 bg-white border rounded-2xl shadow-2xs space-y-3 relative overflow-hidden transition-all ${
-              s.isDefault ? 'border-indigo-400 ring-2 ring-indigo-500/10' : 'border-slate-200/80 hover:border-slate-300'
-            }`}
+            className={`p-5 bg-white border rounded-2xl shadow-2xs space-y-3 relative overflow-hidden transition-all ${s.isDefault ? 'border-indigo-400 ring-2 ring-indigo-500/10' : 'border-slate-200/80 hover:border-slate-300'
+              }`}
           >
             {s.isDefault && (
               <div className="absolute top-0 right-0 bg-indigo-600 text-white px-3 py-0.5 rounded-bl-xl text-[10px] font-extrabold flex items-center gap-1">

@@ -4,7 +4,7 @@
  * @description Service métier pour platform (console super-admin)
  * @created 2026-06-29
  * @updated 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -52,7 +52,7 @@ export class PlatformService {
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly supabaseAdmin: SupabaseAdminService,
-  ) {}
+  ) { }
 
   /** Retourne la synthèse globale de tous les tenants (entreprises) en contournant la RLS. */
   async getTenantsOverview(): Promise<PlatformTenantDto[]> {
@@ -281,12 +281,12 @@ export class PlatformService {
           countryCode === 'XX'
             ? 'Inconnu / local'
             : (() => {
-                try {
-                  return names.of(countryCode) ?? countryCode;
-                } catch {
-                  return countryCode;
-                }
-              })(),
+              try {
+                return names.of(countryCode) ?? countryCode;
+              } catch {
+                return countryCode;
+              }
+            })(),
         ipCount,
         hits,
       }))

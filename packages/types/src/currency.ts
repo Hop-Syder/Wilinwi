@@ -5,7 +5,7 @@
  *   Devise pivot système par défaut = FCFA (XOF/XAF, 1:1).
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

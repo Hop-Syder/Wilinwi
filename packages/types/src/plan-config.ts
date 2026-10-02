@@ -4,7 +4,7 @@
  * @description Configuration tarifaire & limites par plan (Lot 2.3) — pilotable en base.
  * @created 2026-06-30
  * @updated 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -4,7 +4,7 @@
  * @description Composant StockLevelBar (Barre de niveau de stock visuelle colorée - Axe 2)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

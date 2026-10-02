@@ -4,7 +4,7 @@
  * @description Module Admin — plan management.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -15,4 +15,4 @@ import { AdminController } from './admin.controller';
 @Module({
   controllers: [AdminController],
 })
-export class AdminModule {}
+export class AdminModule { }

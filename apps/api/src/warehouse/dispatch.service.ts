@@ -6,7 +6,7 @@
  *   la projection ProductStock + le grand livre de mouvements), annulation.
  *   Réservé OWNER/MANAGER (capacité supplier:manage).
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -81,7 +81,7 @@ export class DispatchService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
-  ) {}
+  ) { }
 
   async list(ctx: AuthContext, status?: string) {
     const rows = await this.prisma.forTenant(ctx.tenantId, (tx) =>

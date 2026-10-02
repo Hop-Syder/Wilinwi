@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour platform (console super-admin)
  * @created 2026-06-29
  * @updated 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,4 +21,4 @@ import { PlatformService } from './platform.service';
   providers: [PlatformService, AdminPrismaService],
   exports: [PlatformService],
 })
-export class PlatformModule {}
+export class PlatformModule { }

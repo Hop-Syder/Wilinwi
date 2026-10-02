@@ -4,7 +4,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Console admin — redirige vers /platform (ou /login si non connecté).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

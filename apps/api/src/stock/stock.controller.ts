@@ -4,7 +4,7 @@
  * @description Contrôleur API pour stock
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -43,7 +43,7 @@ import { StockService } from './stock.service';
 
 @Controller('stock')
 export class StockController {
-  constructor(private readonly stock: StockService) {}
+  constructor(private readonly stock: StockService) { }
 
   /** Importation de catalogue en masse via fichier Excel/CSV avec upsert par SKU. */
   @RequireCapabilities('stock:write')

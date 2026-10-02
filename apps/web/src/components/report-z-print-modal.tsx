@@ -4,7 +4,7 @@
  * @description Modale et composant d'impression du Ticket Rapport Z (report-z-print-modal.tsx)
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -80,19 +80,19 @@ export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModa
             <div className="space-y-2 text-[11px]">
               <p className="font-bold text-slate-900 uppercase text-[10px] tracking-wider">Ventilation des Ventes</p>
               <div className="flex justify-between">
-                <span className="flex items-center gap-1"><Wallet className="w-3 h-3 text-slate-500"/> Espèces :</span>
+                <span className="flex items-center gap-1"><Wallet className="w-3 h-3 text-slate-500" /> Espèces :</span>
                 <span className="font-bold">{formatAmount(session.totalEspeces)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="flex items-center gap-1"><Smartphone className="w-3 h-3 text-brand"/> Mobile Money :</span>
+                <span className="flex items-center gap-1"><Smartphone className="w-3 h-3 text-brand" /> Mobile Money :</span>
                 <span className="font-bold">{formatAmount(session.totalMoMo)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-emerald-600"/> Carte / Virement :</span>
+                <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-emerald-600" /> Carte / Virement :</span>
                 <span className="font-bold">{formatAmount(session.totalBanque)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="flex items-center gap-1"><DollarSign className="w-3 h-3 text-amber-600"/> Crédits Clients :</span>
+                <span className="flex items-center gap-1"><DollarSign className="w-3 h-3 text-amber-600" /> Crédits Clients :</span>
                 <span className="font-bold">{formatAmount(session.totalCredit)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-slate-300 font-bold text-slate-900 text-xs">
@@ -122,8 +122,8 @@ export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModa
                   {(session.ecart ?? 0) === 0
                     ? `${formatAmount(0)} (Exact)`
                     : (session.ecart ?? 0) > 0
-                    ? `+${formatAmount(session.ecart!)}`
-                    : formatAmount(session.ecart!)}
+                      ? `+${formatAmount(session.ecart!)}`
+                      : formatAmount(session.ecart!)}
                 </span>
               </div>
               {session.note && (

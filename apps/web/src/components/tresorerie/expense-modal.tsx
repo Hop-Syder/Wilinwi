@@ -4,7 +4,7 @@
  * @description Modale de Saisie des Dépenses (ExpenseModal) & Apports de Capital
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -91,9 +91,8 @@ export function ExpenseModal({
         <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
-              className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white ${
-                mode === 'EXPENSE' ? 'bg-rose-600' : 'bg-emerald-600'
-              }`}
+              className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white ${mode === 'EXPENSE' ? 'bg-rose-600' : 'bg-emerald-600'
+                }`}
             >
               {mode === 'EXPENSE' ? <TrendingDown className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
             </div>
@@ -114,18 +113,16 @@ export function ExpenseModal({
           <button
             type="button"
             onClick={() => setMode('EXPENSE')}
-            className={`flex-1 py-1.5 rounded-xl text-center transition-all ${
-              mode === 'EXPENSE' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex-1 py-1.5 rounded-xl text-center transition-all ${mode === 'EXPENSE' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
+              }`}
           >
             🟥 Sortie / Dépense
           </button>
           <button
             type="button"
             onClick={() => setMode('CAPITAL')}
-            className={`flex-1 py-1.5 rounded-xl text-center transition-all ${
-              mode === 'CAPITAL' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex-1 py-1.5 rounded-xl text-center transition-all ${mode === 'CAPITAL' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200'
+              }`}
           >
             🟩 Injection Capital / Prêt
           </button>
@@ -172,13 +169,12 @@ export function ExpenseModal({
                   key={acc.id}
                   type="button"
                   onClick={() => setCompte(acc.id as CashAccount)}
-                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border text-center transition-all ${
-                    compte === acc.id
+                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border text-center transition-all ${compte === acc.id
                       ? mode === 'EXPENSE'
                         ? 'border-rose-600 bg-rose-50 text-rose-800 shadow-2xs'
                         : 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {acc.label}
                 </button>
@@ -252,9 +248,8 @@ export function ExpenseModal({
             </Button>
             <Button
               type="submit"
-              className={`flex-1 text-white font-extrabold ${
-                mode === 'EXPENSE' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
+              className={`flex-1 text-white font-extrabold ${mode === 'EXPENSE' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
               disabled={busy}
             >
               {busy ? 'Enregistrement...' : mode === 'EXPENSE' ? 'Valider la dépense' : 'Valider l’apport'}

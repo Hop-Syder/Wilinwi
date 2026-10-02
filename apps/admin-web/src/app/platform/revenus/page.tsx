@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Revenus : MRR, ARR, ARPU, LTV, churn (proxy snapshot).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

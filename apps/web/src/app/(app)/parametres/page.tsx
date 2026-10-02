@@ -11,7 +11,7 @@
  *   toutes les sections en permanence, donc la racine nue redirige vers la
  *   section par défaut (Entreprise & Reçu) plutôt que de dupliquer le menu.
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

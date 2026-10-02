@@ -4,7 +4,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Console admin — connexion e-mail/mot de passe (comptes super-admin).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

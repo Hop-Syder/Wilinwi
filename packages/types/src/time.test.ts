@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Tests des frontières de journée par fuseau (time.ts).
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

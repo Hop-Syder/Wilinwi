@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description État de chargement natif Next.js Suspense (Route: /r/[code])
  * @created 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

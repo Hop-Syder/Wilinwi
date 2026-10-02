@@ -6,7 +6,7 @@
  * @description Layout de l'application (Route: (app) — Conteneur élargi max-w-[1800px])
  * @created 2026-06-20
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -5,7 +5,7 @@
  *   barre d'onglets desktop (layout.tsx) et le menu liste mobile façon
  *   WhatsApp (page.tsx, écran racine /parametres).
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

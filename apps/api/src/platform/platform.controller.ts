@@ -4,7 +4,7 @@
  * @description Contrôleur API pour platform (console super-admin)
  * @created 2026-06-29
  * @updated 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -54,7 +54,7 @@ import {
 @Controller('platform')
 @PlatformAdmin()
 export class PlatformController {
-  constructor(private readonly platformService: PlatformService) {}
+  constructor(private readonly platformService: PlatformService) { }
 
   /** GET /api/platform/tenants — Récupère tous les tenants de la plateforme. */
   @Get('tenants')

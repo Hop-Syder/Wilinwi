@@ -4,7 +4,7 @@
  * @description Modale d'encaissement de remboursement de dette client + Reçu thermique imprimable
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -192,11 +192,10 @@ export function ClientPaymentModal({
                     key={m.id}
                     type="button"
                     onClick={() => setMethod(m.id as PaymentMethod)}
-                    className={`px-3 py-2 text-xs font-bold rounded-xl border text-center transition-all ${
-                      method === m.id
+                    className={`px-3 py-2 text-xs font-bold rounded-xl border text-center transition-all ${method === m.id
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     {m.label}
                   </button>

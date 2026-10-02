@@ -5,7 +5,7 @@
 * @description Rapport d'audit produit, UX et architecture du projet Wilinwi MVP1
 * @created 2026-06-21
 * @updated 2026-06-21
-* 🌐 ceo.nexuspartners.xyz
+* 🌐 nexus-partners.xyz
 * 📧 <daoudaabassichristian@gmail.com>
  */
 -- ──────────────────────────────────

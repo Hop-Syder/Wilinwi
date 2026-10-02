@@ -4,7 +4,7 @@
  * @description Contrôleur des alertes d'audit (TDR §18.2) — lecture/résolution
  *   côté tenant (OWNER/MANAGER via activity:read).
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -16,7 +16,7 @@ import { AuditAlertService } from './audit-alert.service';
 
 @Controller('audit-alerts')
 export class AuditAlertController {
-  constructor(private readonly alerts: AuditAlertService) {}
+  constructor(private readonly alerts: AuditAlertService) { }
 
   @RequireCapabilities('activity:read')
   @Get()

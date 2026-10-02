@@ -4,7 +4,7 @@
  * @description Modale de Virement / Transfert Inter-Comptes Neutre & Prise en Charge des Frais de Transaction
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

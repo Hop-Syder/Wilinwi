@@ -16,7 +16,7 @@
  *   façon écran de détail WhatsApp — jamais la liste ET le contenu en
  *   même temps sur petit écran.
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -64,17 +64,15 @@ export default function ParametresLayout({ children }: { children: React.ReactNo
                 key={tab.href}
                 href={tab.href}
                 prefetch
-                className={`group inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-150 ${
-                  isActive ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className={`group inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-150 ${isActive ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
               >
                 <Icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'}`} />
                 <span>{tab.label}</span>
                 {tab.ownerOnly && (
                   <span
-                    className={`ml-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
-                      isActive ? 'bg-indigo-700/80 text-white' : 'bg-slate-200/80 text-slate-600'
-                    }`}
+                    className={`ml-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${isActive ? 'bg-indigo-700/80 text-white' : 'bg-slate-200/80 text-slate-600'
+                      }`}
                   >
                     Owner
                   </span>

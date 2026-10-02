@@ -5,7 +5,7 @@
  * @description Document de synthèse globale du projet Wilinwi (Description, Détails techniques, Étape actuelle, Cartographie des fonctions et Schéma de base de données)
  * @created 2026-08-01
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 -->

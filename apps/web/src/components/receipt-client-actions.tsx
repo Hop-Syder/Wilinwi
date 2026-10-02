@@ -5,7 +5,7 @@
  * @organization Nexus Partners
  * @description Client Component pour les actions interactives du reçu public (Impression, Partage WhatsApp/SMS/Email)
  * @created 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

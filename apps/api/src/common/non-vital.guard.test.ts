@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Tests du garde des routes non vitales (dunning J+3 côté API).
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -4,7 +4,7 @@
  * @description Définitions de types partagés : platform.ts (Console Plateforme)
  * @created 2026-06-29
  * @updated 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

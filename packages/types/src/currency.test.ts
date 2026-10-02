@@ -4,7 +4,7 @@
  * @description Tests unitaires pour la modélisation et conversion multi-devises (Module 1).
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

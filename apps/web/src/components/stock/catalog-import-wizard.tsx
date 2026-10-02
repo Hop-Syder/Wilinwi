@@ -4,7 +4,7 @@
  * @description Assistant d'Importation Catalogue en 3 étapes (Axe 3 : Modèle CSV, Mapping, Prévisualisation & Anomalies)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

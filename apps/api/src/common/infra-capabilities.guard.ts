@@ -6,7 +6,7 @@
  *   suffit pas, l'API refuse aussi (TDR §2.7). Les capacités effectives sont
  *   résolues par AuthGuard (infrastructure → plan → add-ons → dunning → rôle).
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -25,7 +25,7 @@ import { INFRA_ANY_CAPABILITIES_KEY, INFRA_CAPABILITIES_KEY } from './decorators
 export class InfraCapabilitiesGuard implements CanActivate {
   private readonly logger = new Logger(InfraCapabilitiesGuard.name);
 
-  constructor(private readonly reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride<InfraCapability[]>(INFRA_CAPABILITIES_KEY, [

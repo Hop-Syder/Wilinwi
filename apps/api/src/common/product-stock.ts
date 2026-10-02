@@ -6,7 +6,7 @@
  *   (produit/variante × établissement) à jour — la projection du grand livre.
  *   Double-écriture avec Product.stock pendant la transition (cf. doc §7).
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -4,7 +4,7 @@
  * @organization Nexus Partners
  * @description Page de réception pas-à-pas pour les bons de commande d'achat
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -22,12 +22,12 @@ import type { TourStep } from '@/components/tour-guide';
 export default function ReceptionPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  
+
   const [po, setPo] = useState<PurchaseOrderDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  
+
   // Saisie des quantités reçues (clé: itemId, valeur: quantite reçue maintenant)
   const [qtyInputs, setQtyInputs] = useState<Record<string, string>>({});
   const [montantPaye, setMontantPaye] = useState('0');
@@ -75,7 +75,7 @@ export default function ReceptionPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!po) return;
-    
+
     // Construire la liste des items à réceptionner
     const rxItems = Object.entries(qtyInputs)
       .map(([itemId, val]) => ({

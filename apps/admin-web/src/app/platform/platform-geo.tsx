@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Provenance géographique des accès (analytics #2) — geoip-lite hors-ligne.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

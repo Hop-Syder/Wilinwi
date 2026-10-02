@@ -4,7 +4,7 @@
  * @description Onglet Devises, Plan & Préférences (PreferencesSettings)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -168,11 +168,10 @@ export function PreferencesSettings({
             ].map((p) => (
               <div
                 key={p.id}
-                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
-                  currentPlan === p.id
+                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${currentPlan === p.id
                     ? 'border-indigo-600 bg-indigo-50/70 shadow-2xs'
                     : 'border-slate-200/80 bg-white'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center gap-2">

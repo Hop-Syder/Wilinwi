@@ -4,7 +4,7 @@
  * @description Bandeau d'alertes opérationnelles supérieures (Heads-Up Banner)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -4,7 +4,7 @@
  * @description Source de vérité statique pour le RBAC (rôles et capacités), utilisée à la fois par le frontend et le backend
  * @created 2026-06-19
  * @updated 2026-06-19
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

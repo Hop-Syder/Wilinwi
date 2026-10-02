@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Tableau de bord cockpit : KPI consolidés + revenus + échéances + géo.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

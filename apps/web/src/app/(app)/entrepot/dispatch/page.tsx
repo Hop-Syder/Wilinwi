@@ -9,7 +9,7 @@
  *   Réservé OWNER/MANAGER.
  * @created 2026-06-28
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -191,7 +191,7 @@ export default function DispatchPage() {
       <Link href="/entrepot" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-teal-700 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Entrepôt
       </Link>
-      
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 font-display text-xl sm:text-2xl font-extrabold text-teal-950">
@@ -250,55 +250,50 @@ export default function DispatchPage() {
         <button
           type="button"
           onClick={() => setFilterTab('ALL')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-            filterTab === 'ALL'
+          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filterTab === 'ALL'
               ? 'bg-teal-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
-          }`}
+            }`}
         >
           Tous ({counts.ALL})
         </button>
         <button
           type="button"
           onClick={() => setFilterTab('SHIPPED')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-            filterTab === 'SHIPPED'
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filterTab === 'SHIPPED'
               ? 'bg-blue-600 text-white shadow-sm'
               : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
-          }`}
+            }`}
         >
           <Truck className="h-3.5 w-3.5" /> En transit ({counts.SHIPPED})
         </button>
         <button
           type="button"
           onClick={() => setFilterTab('DRAFT')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-            filterTab === 'DRAFT'
+          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filterTab === 'DRAFT'
               ? 'bg-amber-600 text-white shadow-sm'
               : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
-          }`}
+            }`}
         >
           Brouillons ({counts.DRAFT})
         </button>
         <button
           type="button"
           onClick={() => setFilterTab('VALIDATED')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-            filterTab === 'VALIDATED'
+          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filterTab === 'VALIDATED'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-          }`}
+            }`}
         >
           Réceptionnés ({counts.VALIDATED})
         </button>
         <button
           type="button"
           onClick={() => setFilterTab('CANCELLED')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-            filterTab === 'CANCELLED'
+          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filterTab === 'CANCELLED'
               ? 'bg-slate-600 text-white shadow-sm'
               : 'text-slate-500 hover:bg-slate-100'
-          }`}
+            }`}
         >
           Annulés ({counts.CANCELLED})
         </button>

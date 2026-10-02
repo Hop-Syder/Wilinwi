@@ -4,7 +4,7 @@
  * @description Service métier pour inventory
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -22,7 +22,7 @@ import { applyStockDelta } from '../common/product-stock';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** 1. Lancer : fige le stock théorique des produits sélectionnés. */
   async start(ctx: AuthContext, input: StartInventoryInput) {

@@ -4,7 +4,7 @@
  * @description Modale d'enregistrement rapide des dépenses courantes pour le Dashboard
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

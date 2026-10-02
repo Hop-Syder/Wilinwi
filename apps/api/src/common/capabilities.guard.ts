@@ -4,7 +4,7 @@
  * @description Utilitaire de sécurité/validation API : capabilities.guard.ts
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -17,7 +17,7 @@ import { CAPABILITIES_KEY } from './decorators';
 /** Refuse l'accès si le rôle de l'utilisateur n'a pas toutes les capacités requises. */
 @Injectable()
 export class CapabilitiesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride<Capability[]>(CAPABILITIES_KEY, [

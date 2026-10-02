@@ -4,7 +4,7 @@
  * @description Cartes KPIs synthétiques pour le module CRM Clients (Thème Violet Contextuel)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -76,9 +76,8 @@ export function ClientKpiCards({
       {/* KPI 3 : Créances en Retard / Plafond Dépassé */}
       <Card
         onClick={onFilterOverLimit || onFilterDebtors}
-        className={`p-4 bg-white border border-slate-200/80 shadow-2xs rounded-2xl flex items-center justify-between transition-all ${
-          overLimitCount > 0 ? 'cursor-pointer hover:border-rose-300 hover:bg-rose-50/30' : ''
-        }`}
+        className={`p-4 bg-white border border-slate-200/80 shadow-2xs rounded-2xl flex items-center justify-between transition-all ${overLimitCount > 0 ? 'cursor-pointer hover:border-rose-300 hover:bg-rose-50/30' : ''
+          }`}
       >
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">

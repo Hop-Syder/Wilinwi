@@ -5,7 +5,7 @@
  *   lorsque l'entreprise est en statut Lecture Seule (impayé > 3 jours de grâce - Module 3).
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

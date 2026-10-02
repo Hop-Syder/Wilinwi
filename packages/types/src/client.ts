@@ -4,7 +4,7 @@
  * @description Types partagés Zod pour la fiche client et les paiements CRM.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

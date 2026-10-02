@@ -4,7 +4,7 @@
  * @description Onglet Journal d'Audit & Sécurité (AuditTrailSettings) — Traçabilité totale des actions sensibles
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -111,11 +111,10 @@ export function AuditTrailSettings({
                 key={f.id}
                 type="button"
                 onClick={() => setCategoryFilter(f.id)}
-                className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all shrink-0 ${
-                  categoryFilter === f.id
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all shrink-0 ${categoryFilter === f.id
                     ? 'bg-slate-900 text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 {f.label}
               </button>

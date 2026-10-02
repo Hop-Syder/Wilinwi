@@ -4,7 +4,7 @@
  * @description Composant UI partagé (Design System) : badge.tsx
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -34,7 +34,7 @@ type Tone = NonNullable<VariantProps<typeof badgeVariants>['tone']>;
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+  VariantProps<typeof badgeVariants> {
   /** Alias de `tone` (compatibilité ergonomique). */
   variant?: Tone;
 }

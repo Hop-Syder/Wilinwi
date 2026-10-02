@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Métriques plateforme + flux d'audit cross-tenant (Lot 2.5).
  * @created 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

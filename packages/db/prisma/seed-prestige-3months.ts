@@ -14,7 +14,7 @@
  *   - Dépenses OPEX (Loyers boutiques, Factures SBEE/SONEB, Salaires employés)
  *   - Retraits personnels & Primes du DG (Daouda Christian)
  * @created 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

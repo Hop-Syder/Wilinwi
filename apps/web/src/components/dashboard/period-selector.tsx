@@ -4,7 +4,7 @@
  * @description Composant sélecteur de période dynamique avec comparaison relative et dates personnalisées
  * @created 2026-08-03
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -60,11 +60,10 @@ export function PeriodSelector({
               key={p}
               type="button"
               onClick={() => onPresetChange(p)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
-                active
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all duration-150 ${active
                   ? 'bg-blue-600 text-white shadow-xs font-extrabold border border-blue-700'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
+                }`}
             >
               <span className="hidden sm:inline">{PRESET_CONFIG[p].label}</span>
               <span className="sm:hidden">{PRESET_CONFIG[p].shortLabel}</span>
@@ -99,16 +98,14 @@ export function PeriodSelector({
         <button
           type="button"
           onClick={() => onCompareToggle(!compare)}
-          className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs select-none whitespace-nowrap active:scale-95 shrink-0 ${
-            compare
+          className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs select-none whitespace-nowrap active:scale-95 shrink-0 ${compare
               ? 'border-emerald-300 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500/20'
               : 'border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50'
-          }`}
+            }`}
         >
           <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors ${
-              compare ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
-            }`}
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors ${compare ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
+              }`}
           >
             {compare && <Check className="h-2.5 w-2.5 stroke-[3]" />}
           </span>

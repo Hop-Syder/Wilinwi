@@ -4,7 +4,7 @@
  * @description Définitions de types partagés : etablissement.ts
  *   Établissement = lieu physique d'exploitation d'une Entreprise (= tenant).
  * @created 2026-06-27
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

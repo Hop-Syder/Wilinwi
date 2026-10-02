@@ -4,7 +4,7 @@
  * @description Composant UI partagé (Design System) : offline-indicator.tsx
  * @created 2026-06-20
  * @updated 2026-06-22
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

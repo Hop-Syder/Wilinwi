@@ -6,7 +6,7 @@
  * @description Page de Connexion Wilinwi — Finitions Pro (Split-Screen, 100dvh, Zero-Scroll)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -154,13 +154,12 @@ export default function LoginPage() {
               {barHeights.map((h, i) => (
                 <div
                   key={i}
-                  className={`w-full rounded-t transition-all duration-700 ease-in-out ${
-                    i === 4
+                  className={`w-full rounded-t transition-all duration-700 ease-in-out ${i === 4
                       ? 'bg-primary shadow-[0_0_12px_rgba(0,5,234,0.55)]'
                       : i === 3
-                      ? 'bg-primary/50 group-hover:bg-primary/65'
-                      : 'bg-slate-700/70 group-hover:bg-slate-600/80'
-                  }`}
+                        ? 'bg-primary/50 group-hover:bg-primary/65'
+                        : 'bg-slate-700/70 group-hover:bg-slate-600/80'
+                    }`}
                   style={{ height: `${h}%` }}
                 />
               ))}

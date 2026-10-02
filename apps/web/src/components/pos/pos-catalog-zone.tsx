@@ -4,7 +4,7 @@
  * @description Composant Zone Catalogue & Recherche POS (Axe 2 : Omnibox, Pills Catégories & Grille Produit 2/3)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -106,11 +106,10 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
           <button
             type="button"
             onClick={() => setSelectedCategory('ALL')}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
-              selectedCategory === 'ALL'
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${selectedCategory === 'ALL'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <span>Toutes</span>
           </button>
@@ -121,11 +120,10 @@ export const PosCatalogZone = forwardRef<HTMLInputElement, PosCatalogZoneProps>(
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
-                  selectedCategory === cat
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${selectedCategory === cat
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 <span>{cat}</span>
               </button>

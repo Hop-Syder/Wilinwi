@@ -6,7 +6,7 @@
  *   et génère les notifications et alertes système.
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -19,7 +19,7 @@ export class SubscriptionCronService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SubscriptionCronService.name);
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   onModuleInit() {
     // Exécution initiale puis boucle toutes les 12h

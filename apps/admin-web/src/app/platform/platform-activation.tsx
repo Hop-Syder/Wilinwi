@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Funnel d'activation des entreprises + comptes à relancer (analytics #3).
  *   « Activé » = ≥ 10 articles créés ET ≥ 1 vente en caisse.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -49,12 +49,12 @@ export function PlatformActivation() {
   const total = funnel?.total ?? 0;
   const steps = funnel
     ? [
-        { label: 'Inscrits', value: funnel.total, tone: 'bg-slate-400' },
-        { label: '≥ 1 article', value: funnel.withAnyProduct, tone: 'bg-primary/70' },
-        { label: '≥ 10 articles', value: funnel.with10Products, tone: 'bg-primary' },
-        { label: '≥ 1 vente', value: funnel.withAnySale, tone: 'bg-warning' },
-        { label: 'Activés ✓', value: funnel.activated, tone: 'bg-success' },
-      ]
+      { label: 'Inscrits', value: funnel.total, tone: 'bg-slate-400' },
+      { label: '≥ 1 article', value: funnel.withAnyProduct, tone: 'bg-primary/70' },
+      { label: '≥ 10 articles', value: funnel.with10Products, tone: 'bg-primary' },
+      { label: '≥ 1 vente', value: funnel.withAnySale, tone: 'bg-warning' },
+      { label: 'Activés ✓', value: funnel.activated, tone: 'bg-success' },
+    ]
     : [];
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 

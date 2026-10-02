@@ -4,7 +4,7 @@
  * @description Bloc d'actions rapides (POS, Dépense, Clôture caisse, Rapport Z) - Design Command Hub
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

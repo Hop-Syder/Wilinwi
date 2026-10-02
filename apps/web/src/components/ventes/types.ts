@@ -4,7 +4,7 @@
  * @description Types et constantes partagés pour le module Ventes
  * @created 2026-06-20
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

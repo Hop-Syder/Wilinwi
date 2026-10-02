@@ -4,7 +4,7 @@
  * @description Widget Récapitulatif de la Trésorerie (Design Fintech Modern : Espèces, MoMo, Banque & Total)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

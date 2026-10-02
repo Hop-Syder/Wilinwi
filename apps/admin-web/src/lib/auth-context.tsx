@@ -5,7 +5,7 @@
  * @organization Nexus Partners
  * @description Console admin : contexte d'auth (session Supabase → /api/auth/me).
  *   N'expose que ce dont la console a besoin : identité + drapeau super-admin.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

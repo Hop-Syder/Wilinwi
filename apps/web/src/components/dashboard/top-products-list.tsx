@@ -4,7 +4,7 @@
  * @description Composant Classement Top 5 Meilleures Ventes avec contribution au CA %
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -69,15 +69,14 @@ export function TopProductsList({ products }: TopProductsListProps) {
                 <div className="flex items-center gap-2.5 min-w-0">
                   {/* Badge de Rang */}
                   <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold font-mono ${
-                      idx === 0
+                    className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold font-mono ${idx === 0
                         ? 'bg-amber-100 text-amber-800 border border-amber-200'
                         : idx === 1
                           ? 'bg-slate-200 text-slate-700'
                           : idx === 2
                             ? 'bg-amber-50 text-amber-700 border border-amber-100'
                             : 'bg-slate-100 text-slate-500'
-                    }`}
+                      }`}
                   >
                     #{idx + 1}
                   </span>

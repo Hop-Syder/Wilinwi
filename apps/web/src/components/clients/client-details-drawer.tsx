@@ -4,7 +4,7 @@
  * @description Panneau latéral Fiche Client Détaillée (ClientDetailsDrawer) — 3 Onglets : Profil, Achats, Relevé
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -112,31 +112,28 @@ export function ClientDetailsDrawer({
         <div className="border-b border-slate-200 bg-white px-6 flex items-center gap-6 text-xs font-bold">
           <button
             onClick={() => setActiveTab('PROFILE')}
-            className={`py-3 border-b-2 transition-colors ${
-              activeTab === 'PROFILE'
+            className={`py-3 border-b-2 transition-colors ${activeTab === 'PROFILE'
                 ? 'border-violet-600 text-violet-900 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             👤 Profil & Crédit
           </button>
           <button
             onClick={() => setActiveTab('PURCHASES')}
-            className={`py-3 border-b-2 transition-colors ${
-              activeTab === 'PURCHASES'
+            className={`py-3 border-b-2 transition-colors ${activeTab === 'PURCHASES'
                 ? 'border-violet-600 text-violet-900 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             🛍️ Historique Achats ({ventes.length})
           </button>
           <button
             onClick={() => setActiveTab('STATEMENT')}
-            className={`py-3 border-b-2 transition-colors ${
-              activeTab === 'STATEMENT'
+            className={`py-3 border-b-2 transition-colors ${activeTab === 'STATEMENT'
                 ? 'border-violet-600 text-violet-900 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             📜 Relevé & Versments ({remboursements.length})
           </button>
@@ -190,11 +187,10 @@ export function ClientDetailsDrawer({
                     </div>
                   </div>
                   <span
-                    className={`px-2.5 py-1 text-xs font-extrabold rounded-full border ${
-                      isOverLimit
+                    className={`px-2.5 py-1 text-xs font-extrabold rounded-full border ${isOverLimit
                         ? 'bg-rose-50 text-rose-700 border-rose-200'
                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}
+                      }`}
                   >
                     {isOverLimit ? 'Bloqué' : 'Actif'}
                   </span>
@@ -240,13 +236,12 @@ export function ClientDetailsDrawer({
                             #{v.id.slice(0, 8).toUpperCase()}
                           </span>
                           <span
-                            className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
-                              v.status === 'COMPLETED'
+                            className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${v.status === 'COMPLETED'
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : v.status === 'PENDING_PAYMENT'
-                                ? 'bg-amber-50 text-amber-700'
-                                : 'bg-rose-50 text-rose-700'
-                            }`}
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-rose-50 text-rose-700'
+                              }`}
                           >
                             {v.status === 'COMPLETED' ? 'Payée' : v.status === 'PENDING_PAYMENT' ? 'Abonnement / Crédit' : 'Annulée'}
                           </span>

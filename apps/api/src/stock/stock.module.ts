@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour stock
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -18,4 +18,4 @@ import { StockService } from './stock.service';
   providers: [StockService],
   exports: [StockService],
 })
-export class StockModule {}
+export class StockModule { }

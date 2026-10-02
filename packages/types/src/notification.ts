@@ -4,7 +4,7 @@
  * @description Types partagés — Notifications in-app (centre de pilotage).
  *   Alertes poussées au propriétaire/gérant (stock bas, impayé…).
  * @created 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

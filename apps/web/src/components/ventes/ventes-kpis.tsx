@@ -4,7 +4,7 @@
  * @description Cartes KPIs Financières Ventes (4 Métriques Clés)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Contrôleur API — lecture des plans/tarifs (config pilotable, Lot 2.3).
  * @created 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -14,7 +14,7 @@ import { PlanConfigService } from '../common/plan-config.service';
 
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly planConfig: PlanConfigService) {}
+  constructor(private readonly planConfig: PlanConfigService) { }
 
   /** GET /api/plans — tarifs & limites des plans (lecture pour tout utilisateur authentifié). */
   @Get()

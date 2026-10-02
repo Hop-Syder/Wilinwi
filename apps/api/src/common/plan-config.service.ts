@@ -4,7 +4,7 @@
  * @description Service de configuration des plans (Lot 2.3) — lecture en base + cache.
  * @created 2026-06-30
  * @updated 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -39,7 +39,7 @@ export class PlanConfigService {
   private loadedAt = 0;
   private static readonly TTL_MS = 60_000;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** Toutes les configurations de plan (telles que stockées : -1 = illimité). */
   async getAll(): Promise<PlanConfigDto[]> {

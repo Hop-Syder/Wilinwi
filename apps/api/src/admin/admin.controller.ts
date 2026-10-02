@@ -4,7 +4,7 @@
  * @description Contrôleur Admin — gestion du plan d'abonnement du tenant (usage test/backoffice).
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -18,7 +18,7 @@ import type { TenantLocalisationInput, UpdateTenantProfileInput } from '@wilinwi
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** GET /api/admin/tenant — Infos du tenant courant (plan, statut, profil reçu). */
   @RequireCapabilities('users:manage')

@@ -4,7 +4,7 @@
  * @description Contrôleur API pour inventory
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -25,7 +25,7 @@ import { InventoryService } from './inventory.service';
 
 @Controller('inventory')
 export class InventoryController {
-  constructor(private readonly inventory: InventoryService) {}
+  constructor(private readonly inventory: InventoryService) { }
 
   @RequireCapabilities('inventory:count')
   @Post()

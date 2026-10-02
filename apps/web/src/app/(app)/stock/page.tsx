@@ -4,7 +4,7 @@
  * @description Page Stock Principal Wilinwi (Architecture 5 Axes : KPIs synthétiques, Data Table ergonomique, Modales, Importation & Scanner Mobile)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -272,11 +272,10 @@ export default function StockPage() {
           <button
             type="button"
             onClick={() => setFilterLowStock(!filterLowStock)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${
-              filterLowStock
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${filterLowStock
                 ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <AlertTriangle className="h-4 w-4" />
             <span>Stock Faible ({lowStockProducts.length})</span>

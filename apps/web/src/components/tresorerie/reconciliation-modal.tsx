@@ -4,7 +4,7 @@
  * @description Modale de Pointage & Vérification du Solde Réel MoMo / Caisse (ReconciliationModal / CashClose)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -111,11 +111,10 @@ export function ReconciliationModal({
                     setCompte(acc.id as CashAccount);
                     setSoldeReelInput(String(balances[acc.id as CashAccount] ?? 0));
                   }}
-                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border text-center transition-all ${
-                    compte === acc.id
+                  className={`px-2.5 py-2 text-xs font-bold rounded-xl border text-center transition-all ${compte === acc.id
                       ? 'border-indigo-600 bg-indigo-50 text-indigo-900 shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {acc.label}
                 </button>
@@ -151,9 +150,8 @@ export function ReconciliationModal({
             <div className="flex justify-between items-center text-xs font-extrabold">
               <span>Écart de Réconciliation :</span>
               <span
-                className={`font-mono text-sm ${
-                  ecart === 0 ? 'text-emerald-600' : ecart > 0 ? 'text-emerald-700' : 'text-rose-600'
-                }`}
+                className={`font-mono text-sm ${ecart === 0 ? 'text-emerald-600' : ecart > 0 ? 'text-emerald-700' : 'text-rose-600'
+                  }`}
               >
                 {ecart > 0 ? `+${formatAmount(ecart)}` : formatAmount(ecart)}
               </span>

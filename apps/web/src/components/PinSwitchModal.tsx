@@ -6,7 +6,7 @@
  * @description Composant de verrouillage par PIN avec sélection de profil (Mode Kiosque)
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -39,13 +39,13 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
       const newPin = pin + digit;
       setPin(newPin);
       setError('');
-      
+
       // Auto-submit si 4 chiffres
       if (newPin.length === 4) {
         // Le composant parent vérifiera le PIN via API, ici on passe juste la valeur
         onUnlock(selectedUser!.id, newPin);
         // Si erreur, le parent devrait idéalement repasser une prop `error`, mais pour fluidifier on réinitialise.
-        setTimeout(() => setPin(''), 500); 
+        setTimeout(() => setPin(''), 500);
       }
     }
   };
@@ -64,7 +64,7 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md max-h-[95vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-8 shadow-2xl">
-        
+
         {/* ÉTAPE 1 : CHOIX DE L'UTILISATEUR */}
         {!selectedUser ? (
           <div className="flex flex-col">
@@ -105,7 +105,7 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
                 </button>
               ))}
             </div>
-            
+
             {users.length === 0 && (
               <div className="rounded-lg bg-amber-50 p-4 text-center text-sm text-amber-700">
                 Aucun utilisateur trouvé.
@@ -113,8 +113,8 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
             )}
           </div>
         ) : (
-          
-        /* ÉTAPE 2 : SAISIE DU CODE PIN */
+
+          /* ÉTAPE 2 : SAISIE DU CODE PIN */
           <div className="flex flex-col items-center">
             <div className="w-full flex items-center justify-between mb-4">
               <button onClick={handleBack} className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100">
@@ -136,9 +136,8 @@ export function PinSwitchModal({ users, onUnlock, onCancel }: PinSwitchModalProp
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className={`h-4 w-4 rounded-full transition-all ${
-                    pin.length > i ? 'bg-brand scale-110' : 'bg-slate-200'
-                  }`}
+                  className={`h-4 w-4 rounded-full transition-all ${pin.length > i ? 'bg-brand scale-110' : 'bg-slate-200'
+                    }`}
                 />
               ))}
             </div>

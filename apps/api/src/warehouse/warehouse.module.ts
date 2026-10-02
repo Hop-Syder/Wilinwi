@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Module d'injection de dépendances NestJS pour la gestion d'entrepôt
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,4 +21,4 @@ import { DispatchService } from './dispatch.service';
   providers: [SuppliersService, PurchaseOrdersService, DispatchService],
   exports: [SuppliersService, PurchaseOrdersService, DispatchService],
 })
-export class WarehouseModule {}
+export class WarehouseModule { }

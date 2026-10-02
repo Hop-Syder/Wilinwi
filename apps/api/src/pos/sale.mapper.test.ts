@@ -4,7 +4,7 @@
  * @description Mapper DTO/Entité pour sale.mapper.test.ts
  * @created 2026-06-20
  * @updated 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

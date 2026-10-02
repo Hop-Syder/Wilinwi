@@ -4,7 +4,7 @@
  * @description Fiche Détail Produit — Page /stock/[id] (Axe 4 : Navigation par Onglets Synthèse, Journal & Performance)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -169,11 +169,10 @@ export default function ProductStockDetailsPage() {
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`pb-3 border-b-2 transition-colors ${
-              activeTab === 'overview'
+            className={`pb-3 border-b-2 transition-colors ${activeTab === 'overview'
                 ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             Synthèse & Tarification
           </button>
@@ -181,11 +180,10 @@ export default function ProductStockDetailsPage() {
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`pb-3 border-b-2 transition-colors ${
-              activeTab === 'history'
+            className={`pb-3 border-b-2 transition-colors ${activeTab === 'history'
                 ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             Journal des Mouvements ({movements.length})
           </button>
@@ -193,11 +191,10 @@ export default function ProductStockDetailsPage() {
           <button
             type="button"
             onClick={() => setActiveTab('performance')}
-            className={`pb-3 border-b-2 transition-colors ${
-              activeTab === 'performance'
+            className={`pb-3 border-b-2 transition-colors ${activeTab === 'performance'
                 ? 'border-amber-600 text-amber-700'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             Analyse des Performances
           </button>

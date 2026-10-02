@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour inventory
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -17,4 +17,4 @@ import { InventoryService } from './inventory.service';
   controllers: [InventoryController],
   providers: [InventoryService],
 })
-export class InventoryModule {}
+export class InventoryModule { }

@@ -4,7 +4,7 @@
  * @description Carte Produit Tactile pour le Catalogue POS (Axe 2 : Stock, Formattage FCFA & Feedback visuel)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -53,24 +53,22 @@ export function ProductGridCard({
       type="button"
       onClick={handleTap}
       disabled={disabled}
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200 select-none ${
-        justAdded
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200 select-none ${justAdded
           ? 'scale-95 border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-400'
           : isOutOfStock
             ? 'border-slate-200/90 bg-slate-50/70 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 hover:border-amber-400 hover:shadow-xs cursor-pointer'
             : 'border-slate-200/90 bg-white hover:border-emerald-500 hover:shadow-md active:scale-95'
-      }`}
+        }`}
     >
       {/* Visual Indicator of Stock (Top Right Badge) */}
       <div className="absolute top-2 right-2 z-10">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow-2xs ${
-            isOutOfStock
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold shadow-2xs ${isOutOfStock
               ? 'bg-rose-100 text-rose-700 border border-rose-200'
               : isLowStock
                 ? 'bg-amber-100 text-amber-800 border border-amber-200'
                 : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-          }`}
+            }`}
         >
           {isOutOfStock ? 'Rupture' : `${formatQty(stock)} en stock`}
         </span>

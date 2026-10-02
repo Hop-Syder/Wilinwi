@@ -8,7 +8,7 @@
  *   Pays & Ville + « Votre activité » (infrastructure métier du 1ᵉʳ établissement,
  *   §5.5 — active les bons modules : POS food, lots pharmacie, casiers…).
  * @created 2026-07-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -151,11 +151,10 @@ export function OnboardingLocalisationModal({ onDone }: Props) {
                     key={infra}
                     type="button"
                     onClick={() => setInfrastructure(infra)}
-                    className={`flex flex-col items-center gap-1 rounded border px-2 py-2.5 text-center text-[11px] font-semibold transition-colors ${
-                      actif
+                    className={`flex flex-col items-center gap-1 rounded border px-2 py-2.5 text-center text-[11px] font-semibold transition-colors ${actif
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border bg-background text-text-secondary hover:border-primary/40'
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                     {INFRASTRUCTURE_LABELS[infra]}

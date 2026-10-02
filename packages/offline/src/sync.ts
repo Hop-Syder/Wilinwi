@@ -4,7 +4,7 @@
  * @description Gestionnaire de mode offline PWA : sync.ts
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -26,7 +26,7 @@ type Poster = (path: string, body: unknown) => Promise<unknown>;
  * clientGeneratedId porté par chaque vente.
  */
 export class SyncEngine {
-  constructor(private readonly post: Poster) {}
+  constructor(private readonly post: Poster) { }
 
   /** Enregistre une vente localement (toujours, même en ligne) puis tente la sync. */
   async enqueueSale(payload: CreateSaleInput): Promise<PendingSale> {

@@ -4,7 +4,7 @@
  * @description Service métier pour analytics (KPIs, comparaison temporelle, marge brute, trésorerie et alertes)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -26,7 +26,7 @@ const DORMANT_DAYS = 30;
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** Tableau de bord (Wilinwi Analytics — base, §5.1). */
   async dashboard(ctx: AuthContext) {
@@ -138,7 +138,7 @@ export class AnalyticsService {
       // Grouper par jour de la semaine
       const daysOfWeek = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
       const salesByDayMap = new Map<string, number>();
-      
+
       // Initialiser les 7 derniers jours à 0
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -218,14 +218,14 @@ export class AnalyticsService {
       // 2. Ventes période précédente (pour la comparaison relative)
       const salesPrev = compare
         ? await tx.sale.findMany({
-            where: {
-              tenantId: ctx.tenantId,
-              ...etabFilter,
-              createdAt: { gte: prevFrom, lte: prevTo },
-              status: { not: 'CANCELLED' },
-            },
-            include: { items: true },
-          })
+          where: {
+            tenantId: ctx.tenantId,
+            ...etabFilter,
+            createdAt: { gte: prevFrom, lte: prevTo },
+            status: { not: 'CANCELLED' },
+          },
+          include: { items: true },
+        })
         : [];
 
       const chiffreAffaires = sales.reduce((s, v) => s + v.total, 0);
@@ -482,11 +482,11 @@ export class AnalyticsService {
         totalDepenses,
         ...(seeSensitive
           ? {
-              benefice,
-              beneficePrev,
-              variationBeneficePercent,
-              sparklineBenefice,
-            }
+            benefice,
+            beneficePrev,
+            variationBeneficePercent,
+            sparklineBenefice,
+          }
           : {}),
         serie,
         topProduits,

@@ -4,7 +4,7 @@
  * @description Directive de Développement & UI/UX Master — Wilinwi MVP2
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

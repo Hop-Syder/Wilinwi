@@ -4,7 +4,7 @@
  * @description DTO de validation pour l'importation de catalogue produits (import-catalogue.dto.ts)
  * @created 2026-08-01
  * @updated 2026-08-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

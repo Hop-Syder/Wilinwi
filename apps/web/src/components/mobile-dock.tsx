@@ -4,7 +4,7 @@
  * @description Dock de navigation mobile ultra-pro (Floating Dynamic Island / Frosted Glass).
  *   Design épuré et minimaliste, feedback tactile haptique, zéro surcharge textuelle.
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

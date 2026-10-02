@@ -4,7 +4,7 @@
  * @description Pop-up / Bottom Sheet Panier Grand Format (h-[92vh]) pour POS Mobile & Tablette (MobileCartDrawer)
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -85,7 +85,7 @@ export function MobileCartDrawer({
 
       {/* Pop-up / Tiroir Grand Format (92% de la hauteur de l'écran) */}
       <div className="w-full h-[92vh] bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border-t border-slate-200">
-        
+
         {/* Poignée Visuelle & En-tête */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 shrink-0">
           <div className="flex items-center gap-3">
@@ -127,11 +127,10 @@ export function MobileCartDrawer({
           <button
             type="button"
             onClick={() => onOrderModeChange('SUR_PLACE')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-              orderMode === 'SUR_PLACE'
+            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${orderMode === 'SUR_PLACE'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
                 : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
+              }`}
           >
             <Store className="w-3.5 h-3.5 text-emerald-600" />
             <span>Sur place</span>
@@ -139,11 +138,10 @@ export function MobileCartDrawer({
           <button
             type="button"
             onClick={() => onOrderModeChange('A_EMPORTER')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-              orderMode === 'A_EMPORTER'
+            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${orderMode === 'A_EMPORTER'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
                 : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
+              }`}
           >
             <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
             <span>À emporter</span>
@@ -151,11 +149,10 @@ export function MobileCartDrawer({
           <button
             type="button"
             onClick={() => onOrderModeChange('LIVRAISON')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-              orderMode === 'LIVRAISON'
+            className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${orderMode === 'LIVRAISON'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
                 : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
+              }`}
           >
             <Truck className="w-3.5 h-3.5 text-indigo-600" />
             <span>Livraison</span>

@@ -4,7 +4,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Console admin : client Supabase navigateur.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

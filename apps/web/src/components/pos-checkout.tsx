@@ -4,7 +4,7 @@
  * @description Modales de validation d'encaissement et de succès pour la caisse (POS)
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -86,7 +86,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
   }, [isOpen]);
 
   const changeToReturn = Number(cashReceived) - cartTotal;
-  
+
   const isCreditOrInstallment = paymentMethod === 'CREDIT' || paymentMethod === 'INSTALLMENT';
   // Modes éligibles au paiement mixte (une part en espèces) : Mobile Money / Banque.
   const isMixteEligible = paymentMethod === 'MOBILE_MONEY' || paymentMethod === 'BANK_TRANSFER';
@@ -99,10 +99,10 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
       : 0;
   const creditLimitExceeded = Boolean(
     isCreditOrInstallment &&
-      selectedCreditClient &&
-      selectedCreditClient.plafondCredit !== null &&
-      selectedCreditClient.plafondCredit !== undefined &&
-      currentCreditBalance + outstandingCredit > selectedCreditClient.plafondCredit,
+    selectedCreditClient &&
+    selectedCreditClient.plafondCredit !== null &&
+    selectedCreditClient.plafondCredit !== undefined &&
+    currentCreditBalance + outstandingCredit > selectedCreditClient.plafondCredit,
   );
 
   useEffect(() => {
@@ -115,10 +115,10 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
   useEffect(() => {
     if (aLivrer) setAssociateClient(true);
   }, [aLivrer]);
-  
+
   const isValid = () => {
     if (isCreditOrInstallment && !associateClient) return false;
-    
+
     if (associateClient) {
       if (clientType === 'existing' && !clientId) return false;
       if (clientType === 'new' && (!clientNom.trim() || !clientTelephone.trim())) return false;
@@ -196,11 +196,10 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                 <button
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
-                  className={`py-2 px-1 text-sm rounded-md border font-medium transition-colors ${
-                    paymentMethod === opt.value
+                  className={`py-2 px-1 text-sm rounded-md border font-medium transition-colors ${paymentMethod === opt.value
                       ? 'bg-brand text-white border-brand font-bold'
                       : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
-                  }`}
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -260,11 +259,10 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
               {/* Affichage Grand Format de la Monnaie à Rendre */}
               {cashReceived && Number(cashReceived) > 0 && (
                 <div
-                  className={`rounded-2xl p-4 text-center border transition-all ${
-                    changeToReturn < 0
+                  className={`rounded-2xl p-4 text-center border transition-all ${changeToReturn < 0
                       ? 'bg-rose-50 border-rose-200 text-rose-800'
                       : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm'
-                  }`}
+                    }`}
                 >
                   <span className="block text-xs font-bold uppercase tracking-wider opacity-75">
                     {changeToReturn < 0 ? 'Reste à percevoir' : 'Monnaie à rendre'}
@@ -331,9 +329,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                     Reste via {PAYMENT_METHOD_LABELS[paymentMethod]} :
                   </span>
                   <span
-                    className={`font-bold ${
-                      Number(montantEspeces) > cartTotal ? 'text-red-500' : 'text-emerald-600'
-                    }`}
+                    className={`font-bold ${Number(montantEspeces) > cartTotal ? 'text-red-500' : 'text-emerald-600'
+                      }`}
                   >
                     {Math.max(cartTotal - Number(montantEspeces), 0).toLocaleString()} F
                   </span>
@@ -369,22 +366,20 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                   <button
                     type="button"
                     onClick={() => setClientType('existing')}
-                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${
-                      clientType === 'existing'
+                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${clientType === 'existing'
                         ? 'bg-white border-slate-300 text-brand shadow-sm font-bold'
                         : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}
+                      }`}
                   >
                     Existant
                   </button>
                   <button
                     type="button"
                     onClick={() => setClientType('new')}
-                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${
-                      clientType === 'new'
+                    className={`flex-1 py-1 text-xs rounded border font-medium transition-all ${clientType === 'new'
                         ? 'bg-white border-slate-300 text-brand shadow-sm font-bold'
                         : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}
+                      }`}
                   >
                     Nouveau
                   </button>
@@ -489,8 +484,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
 
         <div className="mt-8 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onClose}>Annuler</Button>
-          <Button 
-            className="flex-1" 
+          <Button
+            className="flex-1"
             onClick={handleConfirm}
             disabled={!isValid()}
           >
@@ -654,46 +649,46 @@ export function SaleSuccessModal({
 
         {/* Une vente refusée n'a pas de ticket valide : on ne montre que Écarter/Corriger. */}
         {syncStatus !== 'rejected' && (
-        <div className="space-y-3">
-          {onShowReceipt && (
+          <div className="space-y-3">
+            {onShowReceipt && (
+              <Button
+                className="w-full justify-center gap-2"
+                onClick={onShowReceipt}
+              >
+                <Receipt className="h-4 w-4" />
+                Afficher le ticket
+              </Button>
+            )}
             <Button
+              variant="outline"
               className="w-full justify-center gap-2"
-              onClick={onShowReceipt}
+              onClick={() => {
+                setShowQrModal(true);
+                if (receiptCode) {
+                  window.open(`/r/${receiptCode}?download=true`, '_blank');
+                }
+              }}
             >
-              <Receipt className="h-4 w-4" />
-              Afficher le ticket
+              <QrCode className="h-4 w-4 text-primary" />
+              Télécharger le reçu (QR)
             </Button>
-          )}
-          <Button 
-            variant="outline" 
-            className="w-full justify-center gap-2"
-            onClick={() => {
-              setShowQrModal(true);
-              if (receiptCode) {
-                window.open(`/r/${receiptCode}?download=true`, '_blank');
-              }
-            }}
-          >
-            <QrCode className="h-4 w-4 text-primary" />
-            Télécharger le reçu (QR)
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full justify-center mt-4"
-            onClick={onNewSale}
-          >
-            Nouvelle vente
-          </Button>
-          {onCancelSale && (
-            <button
-              onClick={onCancelSale}
-              className="w-full text-center text-sm text-text-secondary/70 hover:text-danger pt-2 transition-colors flex items-center justify-center gap-1"
+            <Button
+              variant="outline"
+              className="w-full justify-center mt-4"
+              onClick={onNewSale}
             >
-              <RotateCcw className="h-3 w-3" />
-              Annuler cette vente (Erreur)
-            </button>
-          )}
-        </div>
+              Nouvelle vente
+            </Button>
+            {onCancelSale && (
+              <button
+                onClick={onCancelSale}
+                className="w-full text-center text-sm text-text-secondary/70 hover:text-danger pt-2 transition-colors flex items-center justify-center gap-1"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Annuler cette vente (Erreur)
+              </button>
+            )}
+          </div>
         )}
 
         {/* Modal QR Code de téléchargement de la facture PDF */}

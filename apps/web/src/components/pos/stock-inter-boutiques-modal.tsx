@@ -4,7 +4,7 @@
  * @description Modale de consultation du stock inter-boutiques (Règle POS Niveau 2 - Rupture en boutique)
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

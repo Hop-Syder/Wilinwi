@@ -6,7 +6,7 @@
  * @description Réinitialisation du mot de passe : saisie de l'email → Supabase envoie
  *   un lien de récupération pointant vers /set-password (même page que l'invitation).
  * @created 2026-07-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

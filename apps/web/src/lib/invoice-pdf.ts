@@ -12,7 +12,7 @@
  *     - Code QR miniature d'authentification (20x20 mm) vérifiable en ligne
  *     - Cadre signature / cachet commercial et pagination dynamique
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

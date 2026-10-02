@@ -7,7 +7,7 @@
  *   Permet au caissier d'enregistrer une dépense immédiate sans quitter l'écran de vente,
  *   avec déduction en direct du solde théorique de la session.
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

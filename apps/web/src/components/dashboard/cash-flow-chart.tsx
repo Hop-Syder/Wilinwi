@@ -4,7 +4,7 @@
  * @description Graphique Flux de Caisse : entrées (CA) vs sorties (dépenses) + solde net cumulé
  * @created 2026-09-21
  * @updated 2026-09-21
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -4,7 +4,7 @@
  * @description Types partagés — Fournisseurs (module Entrepôt).
  *   Miroir du CRM côté achat : un fournisseur porte une dette (ce qu'on lui doit).
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

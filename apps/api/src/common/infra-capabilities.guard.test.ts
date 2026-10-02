@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Tests d'autorisation du garde des capacités d'infrastructure (OT-3).
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

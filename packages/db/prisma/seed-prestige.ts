@@ -6,7 +6,7 @@
  *   (catalogue tenant + mouvement IN « Stock initial » + projection ProductStock).
  *   Idempotent : rejouable sans dupliquer les données.
  * @created 2026-07-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

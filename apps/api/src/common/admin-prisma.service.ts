@@ -5,7 +5,7 @@
  *   Seul ce rôle peut appeler les fonctions cross-tenant `app.*` (verrou base, Lot A).
  *   Tout le reste de l'API utilise PrismaService (rôle applicatif public, RLS).
  * @created 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -28,7 +28,7 @@ export class AdminPrismaService implements OnModuleDestroy {
       // contournement silencieux). Le reste de l'API continue de fonctionner.
       this.logger.warn(
         'ADMIN_DATABASE_URL non défini : le module plateforme utilisera le rôle applicatif, ' +
-          'privé des fonctions admin — les routes /platform échoueront tant que la variable est absente.',
+        'privé des fonctions admin — les routes /platform échoueront tant que la variable est absente.',
       );
     }
     this.client = new PrismaClient({

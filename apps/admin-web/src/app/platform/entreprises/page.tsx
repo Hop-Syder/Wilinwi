@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Entreprises : liste + tiroir détail (facturation, modules, établissements).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -279,9 +279,8 @@ export default function EntreprisesPage() {
 
       {feedback && (
         <div
-          className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
-            feedback.kind === 'ok' ? 'border-success/30 bg-success/5 text-success' : 'border-danger/30 bg-danger/5 text-danger'
-          }`}
+          className={`flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${feedback.kind === 'ok' ? 'border-success/30 bg-success/5 text-success' : 'border-danger/30 bg-danger/5 text-danger'
+            }`}
         >
           <span className="font-medium">{feedback.text}</span>
           <button onClick={() => setFeedback(null)} className="shrink-0 opacity-70 hover:opacity-100">
@@ -345,9 +344,8 @@ export default function EntreprisesPage() {
                         <tr
                           key={t.id}
                           onClick={() => loadEtablissements(t)}
-                          className={`cursor-pointer border-b border-border transition-colors hover:bg-surface-hover ${
-                            isSelected ? 'border-l-4 border-l-primary bg-primary/5' : ''
-                          }`}
+                          className={`cursor-pointer border-b border-border transition-colors hover:bg-surface-hover ${isSelected ? 'border-l-4 border-l-primary bg-primary/5' : ''
+                            }`}
                         >
                           <td className="p-4">
                             <div className="font-extrabold text-text-primary">{t.nom}</div>
@@ -503,11 +501,10 @@ export default function EntreprisesPage() {
                             key={p}
                             onClick={() => changePlan(selectedTenant, p)}
                             disabled={actionBusy !== null || p === selectedTenant.plan}
-                            className={`flex flex-col items-center justify-center rounded-md border py-1.5 px-2 text-[11px] font-bold transition-colors disabled:opacity-100 ${
-                              p === selectedTenant.plan
+                            className={`flex flex-col items-center justify-center rounded-md border py-1.5 px-2 text-[11px] font-bold transition-colors disabled:opacity-100 ${p === selectedTenant.plan
                                 ? 'cursor-default border-primary bg-primary/10 text-primary'
                                 : 'border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-text-primary disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-text-secondary'
-                            }`}
+                              }`}
                           >
                             <span>{p}</span>
                             <span className="text-[9px] font-medium opacity-75">{priceLabel}</span>
@@ -562,9 +559,8 @@ export default function EntreprisesPage() {
                               type="button"
                               disabled={included || actionBusy !== null}
                               onClick={() => toggleModule(mod)}
-                              className={`flex w-full items-center justify-between rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
-                                active ? 'border-primary/30 bg-primary/5 text-text-primary' : 'border-border bg-surface text-text-secondary hover:border-primary/40'
-                              } ${included ? 'cursor-default opacity-90' : ''}`}
+                              className={`flex w-full items-center justify-between rounded-md border px-2.5 py-1.5 text-xs transition-colors ${active ? 'border-primary/30 bg-primary/5 text-text-primary' : 'border-border bg-surface text-text-secondary hover:border-primary/40'
+                                } ${included ? 'cursor-default opacity-90' : ''}`}
                             >
                               <span className="font-medium">{MODULE_LABELS[mod]}</span>
                               {included ? (

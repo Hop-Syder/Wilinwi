@@ -8,7 +8,7 @@
  *   prochain chargement de session), réactiver. Un appareil inactif depuis
  *   30 jours libère automatiquement son emplacement.
  * @created 2026-07-06
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

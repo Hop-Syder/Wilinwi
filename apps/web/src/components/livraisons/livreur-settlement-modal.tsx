@@ -4,7 +4,7 @@
  * @description Modale de Pointage & Réception des Fonds Livreur (COD Settlement)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -157,11 +157,10 @@ export function LivreurSettlementModal({
                   key={acc.id}
                   type="button"
                   onClick={() => setTargetAccount(acc.id as CashAccount)}
-                  className={`px-3 py-2 text-xs font-bold rounded-xl border text-center transition-all ${
-                    targetAccount === acc.id
+                  className={`px-3 py-2 text-xs font-bold rounded-xl border text-center transition-all ${targetAccount === acc.id
                       ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {acc.label}
                 </button>
@@ -190,17 +189,16 @@ export function LivreurSettlementModal({
                     <div
                       key={d.id}
                       onClick={() => toggleSelect(d.id)}
-                      className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${
-                        isSelected
+                      className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${isSelected
                           ? 'border-emerald-500 bg-white shadow-2xs'
                           : 'border-slate-200/60 bg-slate-100/60 opacity-65'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => {}}
+                          onChange={() => { }}
                           className="h-4 w-4 rounded-md text-emerald-600 accent-emerald-600"
                         />
                         <div>

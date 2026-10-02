@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Tests du resolver de capacités d'infrastructure (TDR v2 — OT-2).
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

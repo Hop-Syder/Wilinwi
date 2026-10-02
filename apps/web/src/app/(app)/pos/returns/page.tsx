@@ -6,7 +6,7 @@
  * @description Page de gestion des retours partiels et des avoirs (POS)
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -46,7 +46,7 @@ function ReturnsContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sale, setSale] = useState<SaleDto | null>(null);
-  
+
   // { saleItemId: quantiteRetournee }
   const [returns, setReturns] = useState<Record<string, number>>({});
   const [action, setAction] = useState<'REFUND_CASH' | 'CREATE_CREDIT'>('REFUND_CASH');
@@ -79,7 +79,7 @@ function ReturnsContent() {
     try {
       // Recherche d'une seule vente via l'API
       const found = await apiGet<SaleDto>(`/api/pos/sales/${idToSearch}`);
-      
+
       if (!found) {
         setError("Vente introuvable avec cet ID");
       } else if (found.status !== 'COMPLETED' && found.status !== 'PENDING_PAYMENT') {
@@ -104,7 +104,7 @@ function ReturnsContent() {
   const handleReturnAmountChange = (itemId: string, val: number, maxAllowed: number) => {
     if (val < 0) val = 0;
     if (val > maxAllowed) val = maxAllowed;
-    
+
     setReturns(prev => ({ ...prev, [itemId]: val }));
   };
 
@@ -115,7 +115,7 @@ function ReturnsContent() {
 
   const handleSubmit = async () => {
     if (!sale) return;
-    
+
     const returnPayload = Object.entries(returns)
       .filter(([_, qty]) => qty > 0)
       .map(([saleItemId, quantiteRetournee]) => ({ saleItemId, quantiteRetournee }));
@@ -168,7 +168,7 @@ function ReturnsContent() {
 
       <main className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-3xl space-y-6">
-          
+
           {/* RECHERCHE */}
           <Card id="tour-returns-search">
             <CardHeader>
@@ -177,8 +177,8 @@ function ReturnsContent() {
             <CardContent>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <Input 
-                    placeholder="Entrez l'ID de la vente (ex: 4a2b...)" 
+                  <Input
+                    placeholder="Entrez l'ID de la vente (ex: 4a2b...)"
                     value={searchId}
                     onChange={(e) => setSearchId(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -238,7 +238,7 @@ function ReturnsContent() {
                     const prevReturned = item.quantiteRetournee || 0;
                     const maxAllowed = item.quantite - prevReturned;
                     const currentRet = returns[item.id] || 0;
-                    
+
                     return (
                       <div key={item.id} className="grid grid-cols-12 gap-4 items-center rounded-xl border border-slate-100 p-3 hover:bg-slate-50 transition-colors">
                         <div className="col-span-5 font-medium text-slate-900">{item.productName || 'Produit'}</div>
@@ -246,17 +246,17 @@ function ReturnsContent() {
                         <div className="col-span-2 text-center text-amber-600 font-medium">{prevReturned > 0 ? prevReturned : '-'}</div>
                         <div className="col-span-3 flex justify-end">
                           <div className="flex items-center gap-2 max-w-[120px]">
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8 shrink-0 rounded-full"
                               disabled={currentRet <= 0}
                               onClick={() => handleReturnAmountChange(item.id, currentRet - 1, maxAllowed)}
                             >-</Button>
                             <span className="w-8 text-center font-bold">{currentRet}</span>
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8 shrink-0 rounded-full"
                               disabled={currentRet >= maxAllowed}
                               onClick={() => handleReturnAmountChange(item.id, currentRet + 1, maxAllowed)}
@@ -274,25 +274,25 @@ function ReturnsContent() {
                       <label className="text-sm font-semibold text-slate-700">Méthode de compensation</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <label className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all ${action === 'REFUND_CASH' ? 'border-brand bg-white shadow-sm' : 'border-transparent bg-slate-200/50 hover:bg-slate-200'}`}>
-                          <input 
-                            type="radio" 
-                            name="action" 
-                            className="sr-only" 
-                            checked={action === 'REFUND_CASH'} 
-                            onChange={() => setAction('REFUND_CASH')} 
+                          <input
+                            type="radio"
+                            name="action"
+                            className="sr-only"
+                            checked={action === 'REFUND_CASH'}
+                            onChange={() => setAction('REFUND_CASH')}
                           />
                           <Banknote className={`h-5 w-5 ${action === 'REFUND_CASH' ? 'text-brand' : 'text-slate-400'}`} />
                           <span className={`font-medium ${action === 'REFUND_CASH' ? 'text-slate-900' : 'text-slate-600'}`}>Remboursement</span>
                         </label>
-                        
+
                         <label className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all ${!sale.clientId ? 'opacity-50 cursor-not-allowed' : action === 'CREATE_CREDIT' ? 'border-brand bg-white shadow-sm' : 'border-transparent bg-slate-200/50 hover:bg-slate-200'}`}>
-                          <input 
-                            type="radio" 
-                            name="action" 
-                            className="sr-only" 
+                          <input
+                            type="radio"
+                            name="action"
+                            className="sr-only"
                             disabled={!sale.clientId}
-                            checked={action === 'CREATE_CREDIT'} 
-                            onChange={() => setAction('CREATE_CREDIT')} 
+                            checked={action === 'CREATE_CREDIT'}
+                            onChange={() => setAction('CREATE_CREDIT')}
                           />
                           <CreditCard className={`h-5 w-5 ${action === 'CREATE_CREDIT' ? 'text-brand' : 'text-slate-400'}`} />
                           <span className={`font-medium ${action === 'CREATE_CREDIT' ? 'text-slate-900' : 'text-slate-600'}`}>Avoir Client</span>
@@ -300,7 +300,7 @@ function ReturnsContent() {
                       </div>
                       {!sale.clientId && <p className="text-xs text-amber-600 font-medium mt-1">L'avoir nécessite un client rattaché.</p>}
                     </div>
-                    
+
                     <div className="text-right shrink-0">
                       <p className="text-sm font-medium text-slate-500 mb-1">Montant à {action === 'REFUND_CASH' ? 'Rembourser' : 'Créditer'}</p>
                       <p className="text-3xl font-bold text-brand">{totalRefund} FCFA</p>
@@ -308,8 +308,8 @@ function ReturnsContent() {
                   </div>
 
                   <div className="mt-6 flex justify-end">
-                    <Button 
-                      size="lg" 
+                    <Button
+                      size="lg"
                       className="w-full sm:w-auto"
                       disabled={totalRefund === 0 || loading}
                       onClick={handleSubmit}

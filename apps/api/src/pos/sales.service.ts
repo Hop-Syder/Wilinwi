@@ -4,7 +4,7 @@
  * @description Service de gestion des ventes, implémentant la logique métier des 4 prix, du POS offline-first et des validations de gérant
  * @created 2026-06-19
  * @updated 2026-06-19
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -37,7 +37,7 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AuditAlertService,
-  ) {}
+  ) { }
 
   /**
    * Crée une vente.
@@ -280,7 +280,7 @@ export class SalesService {
       const intendedAcompte = this.validateAcompte(input, total);
       // Crédit client : vérifier le plafond avant de créer la vente.
       await this.assertCreditWithinLimit(tx, ctx, input, total, intendedAcompte);
-      
+
       // Rattachement de la vente à la session POS active du caissier/établissement.
       let session = null;
       if (input.posSessionId) {
@@ -1094,7 +1094,7 @@ export class SalesService {
         if (ret.quantiteRetournee <= 0) continue;
         const item = sale.items.find(i => i.id === ret.saleItemId);
         if (!item) throw new BadRequestException(`Ligne ${ret.saleItemId} introuvable`);
-        
+
         // Vérifier que la quantité retournée (historique + demandée) ne dépasse pas la quantité vendue
         // On force le cast 'any' si prisma client n'est pas encore généré pour quantiteRetournee
         const itemAny = item as any;
@@ -1322,7 +1322,7 @@ export class SalesService {
 
     if (filters) {
       const { from, to, status, clientId, posSessionId, q } = filters;
-      
+
       if (from || to) {
         where.createdAt = {};
         if (from) where.createdAt.gte = new Date(from);
@@ -1332,11 +1332,11 @@ export class SalesService {
             to.length <= 10 ? endOfCalendarDayInTz(to, ctx.timezone) : new Date(to);
         }
       }
-      
+
       if (status) {
         where.status = status;
       }
-      
+
       if (clientId) {
         where.clientId = clientId;
       }
@@ -1344,14 +1344,14 @@ export class SalesService {
       if (posSessionId) {
         where.posSessionId = posSessionId;
       }
-      
+
       if (q) {
         where.OR = [
           { client: { nom: { contains: q, mode: 'insensitive' } } },
           { vendeur: { nom: { contains: q, mode: 'insensitive' } } },
           { items: { some: { product: { nom: { contains: q, mode: 'insensitive' } } } } }
         ];
-        
+
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
         if (isUuid) {
           where.OR.push({ id: q });

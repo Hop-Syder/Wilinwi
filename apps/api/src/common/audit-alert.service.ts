@@ -7,7 +7,7 @@
  *   atomicité), listées côté tenant (OWNER/MANAGER) et remontées à la console
  *   super-admin via app.platform_audit_alerts().
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -42,7 +42,7 @@ export interface RaiseAlertInput {
 export class AuditAlertService {
   private readonly logger = new Logger(AuditAlertService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Lève une alerte DANS une transaction tenant existante : si l'opération

@@ -4,7 +4,7 @@
  * @description Composant des filtres de recherche pour la page Ventes
  * @created 2026-06-20
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

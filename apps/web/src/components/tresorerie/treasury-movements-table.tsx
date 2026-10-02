@@ -4,7 +4,7 @@
  * @description Tableau du Registre de Trésorerie avec Badges Colorés (Entrées 🟩, Dépenses 🟥, Transferts 🔵)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -112,11 +112,10 @@ export function TreasuryMovementsTable({
                 key={f.id}
                 type="button"
                 onClick={() => setTypeFilter(f.id as any)}
-                className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all shrink-0 ${
-                  typeFilter === f.id
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-full transition-all shrink-0 ${typeFilter === f.id
                     ? 'bg-rose-950 text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-                }`}
+                  }`}
               >
                 {f.label}
               </button>

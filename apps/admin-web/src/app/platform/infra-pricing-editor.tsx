@@ -5,7 +5,7 @@
  *   RETAIL/SERVICE inclus (0) ; FOOD/HEALTH/WHOLESALE facturés par établissement
  *   ACTIF qui les utilise. Lecture/écriture via /api/platform/infra-pricing.
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

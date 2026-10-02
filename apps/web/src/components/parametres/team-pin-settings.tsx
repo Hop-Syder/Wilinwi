@@ -4,7 +4,7 @@
  * @description Onglet Équipe, Rôles & Codes PIN (Sécurité, Matrice des Permissions & PIN Caissier)
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

@@ -8,7 +8,7 @@
  *   rejetées par le serveur (ex: oversell de stock entre deux postes), de comprendre
  *   le motif de refus et de décider de la marche à suivre (écarter ou réessayer).
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

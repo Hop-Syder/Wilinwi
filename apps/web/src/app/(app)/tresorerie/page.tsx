@@ -9,7 +9,7 @@
  *   Modales de Saisie Dépenses OPEX, Virements neutres inter-comptes et Pointage MoMo.
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -212,22 +212,20 @@ export default function TresoreriePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('REGISTER')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'REGISTER'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'REGISTER'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 💸 Registre & Dépenses
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('TRANSFERS_AND_CLOSES')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'TRANSFERS_AND_CLOSES'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'TRANSFERS_AND_CLOSES'
                     ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 🔄 Transferts & Pointage
               </button>

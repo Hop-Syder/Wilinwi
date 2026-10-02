@@ -13,7 +13,7 @@ const HEADER_TEMPLATE = `/**
  * @description {DESCRIPTION}
  * @created ${currentDate}
  * @updated ${currentDate}
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

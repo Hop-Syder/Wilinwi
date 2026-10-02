@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Courbes d'évolution de la plateforme (inscriptions, ventes, GMV) — Lot analytics #1.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -78,9 +78,8 @@ export function PlatformEvolution() {
             <button
               key={r.days}
               onClick={() => setDays(r.days)}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                days === r.days ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'
-              }`}
+              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${days === r.days ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'
+                }`}
             >
               {r.label}
             </button>

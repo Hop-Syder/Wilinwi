@@ -4,7 +4,7 @@
  * @description Index général de la documentation technique et fonctionnelle du projet Wilinwi
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

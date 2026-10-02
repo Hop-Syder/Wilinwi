@@ -7,7 +7,7 @@
  *   est active. Les quantités d'ingrédients suivent la convention milli-unités
  *   (§19.1) : elles sont exprimées dans l'ÉCHELLE DE L'INGRÉDIENT.
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

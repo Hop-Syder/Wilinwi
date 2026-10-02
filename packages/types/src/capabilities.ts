@@ -7,7 +7,7 @@
  *   Axe distinct des capacités de rôle (`roles.ts`, notation `domaine:action`) :
  *   ici la notation est `domaine.action` (capacités métier par établissement).
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

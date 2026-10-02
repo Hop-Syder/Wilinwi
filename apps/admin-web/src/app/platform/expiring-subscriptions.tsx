@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Liste des abonnements arrivant à échéance (ou dépassés) avec AnimatedList.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -47,7 +47,7 @@ export function ExpiringSubscriptions({ days = 14, max }: { days?: number; max?:
         </h2>
         {!loading && <Badge variant={rows.length > 0 ? 'danger' : 'neutral'} className="shadow-sm">{rows.length}</Badge>}
       </div>
-      
+
       {error ? (
         <div className="p-6 text-center text-sm text-danger font-medium">{error}</div>
       ) : loading ? (
@@ -63,15 +63,14 @@ export function ExpiringSubscriptions({ days = 14, max }: { days?: number; max?:
               const late = s.daysLeft < 0;
               const soon = s.daysLeft >= 0 && s.daysLeft <= 3;
               return (
-                <div 
-                  key={s.id} 
-                  className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
-                    late 
-                      ? 'bg-red-500/10 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-                      : soon 
-                      ? 'bg-orange-500/10 border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]' 
-                      : 'bg-white/50 dark:bg-slate-800/50 border-white/20 hover:shadow-md'
-                  }`}
+                <div
+                  key={s.id}
+                  className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${late
+                      ? 'bg-red-500/10 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                      : soon
+                        ? 'bg-orange-500/10 border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
+                        : 'bg-white/50 dark:bg-slate-800/50 border-white/20 hover:shadow-md'
+                    }`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-bold text-text-primary">{s.nom}</div>

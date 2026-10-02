@@ -4,7 +4,7 @@
  * @description Composant Zone Panier & Gestion Client POS (Axe 3 : Panier Persistant 1/3, Crédit Client & Mode Commande)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -211,11 +211,10 @@ export function PosCartZone({
           <button
             type="button"
             onClick={() => onOrderModeChange('SUR_PLACE')}
-            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${
-              orderMode === 'SUR_PLACE'
+            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${orderMode === 'SUR_PLACE'
                 ? 'bg-slate-900 text-white shadow-2xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <Store className="h-3.5 w-3.5" />
             <span>Sur place</span>
@@ -224,11 +223,10 @@ export function PosCartZone({
           <button
             type="button"
             onClick={() => onOrderModeChange('A_EMPORTER')}
-            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${
-              orderMode === 'A_EMPORTER'
+            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${orderMode === 'A_EMPORTER'
                 ? 'bg-slate-900 text-white shadow-2xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <ShoppingBag className="h-3.5 w-3.5" />
             <span>À emporter</span>
@@ -237,11 +235,10 @@ export function PosCartZone({
           <button
             type="button"
             onClick={() => onOrderModeChange('LIVRAISON')}
-            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${
-              orderMode === 'LIVRAISON'
+            className={`flex items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] font-extrabold transition-all ${orderMode === 'LIVRAISON'
                 ? 'bg-slate-900 text-white shadow-2xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <Truck className="h-3.5 w-3.5" />
             <span>Livraison</span>

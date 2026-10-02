@@ -4,7 +4,7 @@
  * @description Composant En-tête du Tableau de Bord (Architecture Responsive Executive & Toolbar Unifiée)
  * @created 2026-06-20
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -69,11 +69,10 @@ export function DashboardHeader({
               <span className="truncate max-w-[220px]">{activeEtablissementName}</span>
             </span>
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap border shadow-2xs ${
-                isOnline
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap border shadow-2xs ${isOnline
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                   : 'bg-amber-50 text-amber-800 border-amber-200/80'
-              }`}
+                }`}
             >
               {isOnline ? (
                 <Wifi className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
@@ -169,7 +168,7 @@ export function DashboardHeader({
               preset={preset}
               compare={false}
               onPresetChange={onPresetChange}
-              onCompareToggle={() => {}}
+              onCompareToggle={() => { }}
               customFrom={customFrom}
               customTo={customTo}
               onCustomDateChange={onCustomDateChange}
@@ -183,11 +182,10 @@ export function DashboardHeader({
             <div className="flex items-center gap-1.5 shrink-0">
               <CurrencySelector />
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border shrink-0 ${
-                  isOnline
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border shrink-0 ${isOnline
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                     : 'bg-amber-50 text-amber-800 border-amber-200/80'
-                }`}
+                  }`}
                 title={isOnline ? `${pendingCount} vente(s) en attente` : 'Mode hors-ligne'}
               >
                 {isOnline ? (
@@ -211,16 +209,14 @@ export function DashboardHeader({
               <button
                 type="button"
                 onClick={() => onCompareToggle(!compare)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs select-none whitespace-nowrap active:scale-95 ${
-                  compare
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs select-none whitespace-nowrap active:scale-95 ${compare
                     ? 'border-emerald-300 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500/20'
                     : 'border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 <span
-                  className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors ${
-                    compare ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
-                  }`}
+                  className={`flex h-3.5 w-3.5 items-center justify-center rounded border transition-colors ${compare ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
+                    }`}
                 >
                   {compare && <Check className="h-2.5 w-2.5 stroke-[3]" />}
                 </span>

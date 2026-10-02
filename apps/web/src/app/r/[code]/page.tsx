@@ -9,7 +9,7 @@ import type { PublicReceiptData } from '@/components/receipt-client-actions';
  * @description Page Server Component (RSC) du reçu public (Route: /r/[code])
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

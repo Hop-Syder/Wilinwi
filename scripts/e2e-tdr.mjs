@@ -9,7 +9,7 @@
  *            node scripts/e2e-tdr.mjs
  *   Le script nettoie derrière lui (annulations) — rejouable.
  * @created 2026-07-06
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

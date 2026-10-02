@@ -6,7 +6,7 @@
  *   les notifications (dédup + auto-résolution) à partir de l'état courant.
  *   Lecture au niveau entreprise. Réservé OWNER/MANAGER (activity:read).
  * @created 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -31,7 +31,7 @@ function toDto(n: Notification): NotificationDto {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** Liste (50 récentes, non-lues d'abord) après synchronisation des alertes. */
   async list(ctx: AuthContext): Promise<NotificationDto[]> {

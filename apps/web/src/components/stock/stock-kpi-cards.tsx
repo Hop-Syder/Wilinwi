@@ -4,7 +4,7 @@
  * @description Carte KPIs Synthèse Stock Haut de Page (Grid 2 Colonnes md:grid-cols-2 & Vue Mobile L1: Total Réf, L2: Valeur Stock)
  * @created 2026-08-03
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -105,11 +105,10 @@ export function StockKpiCards({
           <button
             type="button"
             onClick={onToggleLowStockFilter}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 transition-all text-left ${
-              filterLowStockActive
+            className={`flex items-center justify-between rounded-2xl border p-3.5 transition-all text-left ${filterLowStockActive
                 ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
                 : 'bg-amber-50/80 text-amber-950 border-amber-200/90 hover:bg-amber-100/60'
-            }`}
+              }`}
           >
             <div className="min-w-0 pr-1">
               <span className={`text-[10px] font-extrabold uppercase tracking-wider block leading-tight ${filterLowStockActive ? 'text-amber-100' : 'text-amber-800'}`}>
@@ -208,26 +207,23 @@ export function StockKpiCards({
         <button
           type="button"
           onClick={onToggleLowStockFilter}
-          className={`relative text-left overflow-hidden rounded-2xl border p-5 shadow-sm transition-all duration-200 md:col-span-1 lg:col-span-1 h-full flex flex-col justify-between ${
-            filterLowStockActive
+          className={`relative text-left overflow-hidden rounded-2xl border p-5 shadow-sm transition-all duration-200 md:col-span-1 lg:col-span-1 h-full flex flex-col justify-between ${filterLowStockActive
               ? 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-400'
               : 'bg-white border-slate-200/70 hover:border-amber-300 hover:shadow-md'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between">
             <span
-              className={`text-xs font-bold uppercase tracking-wider ${
-                filterLowStockActive ? 'text-amber-100' : 'text-slate-500'
-              }`}
+              className={`text-xs font-bold uppercase tracking-wider ${filterLowStockActive ? 'text-amber-100' : 'text-slate-500'
+                }`}
             >
               Sous Seuil d'Alerte
             </span>
             <div
-              className={`rounded-xl p-2 border ${
-                filterLowStockActive
+              className={`rounded-xl p-2 border ${filterLowStockActive
                   ? 'bg-amber-600/60 text-white border-amber-400/50'
                   : 'bg-amber-50 text-amber-600 border-amber-100'
-              }`}
+                }`}
             >
               <AlertTriangle className="h-5 w-5" />
             </div>
@@ -235,16 +231,14 @@ export function StockKpiCards({
 
           <div className="mt-2 space-y-1">
             <h3
-              className={`font-mono text-2xl font-extrabold tabular-nums ${
-                filterLowStockActive ? 'text-white' : 'text-slate-900'
-              }`}
+              className={`font-mono text-2xl font-extrabold tabular-nums ${filterLowStockActive ? 'text-white' : 'text-slate-900'
+                }`}
             >
               {lowStockCount} article{lowStockCount > 1 ? 's' : ''}
             </h3>
             <p
-              className={`text-xs font-semibold flex items-center gap-1 ${
-                filterLowStockActive ? 'text-amber-100' : 'text-amber-700'
-              }`}
+              className={`text-xs font-semibold flex items-center gap-1 ${filterLowStockActive ? 'text-amber-100' : 'text-amber-700'
+                }`}
             >
               <span>{filterLowStockActive ? 'Filtre actif — Tout réafficher' : 'Cliquer pour filtrer'}</span>
               <ArrowRight className="h-3 w-3" />

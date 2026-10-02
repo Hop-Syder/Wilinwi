@@ -5,7 +5,7 @@
  *   Supabase Auth (API admin GoTrue en fetch, sans dépendance) avec les claims
  *   app_metadata { tenant_id, role, plan } exigés par l'AuthGuard de l'API.
  * @created 2026-07-02
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

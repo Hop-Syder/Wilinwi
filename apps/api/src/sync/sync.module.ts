@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour sync
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -30,7 +30,7 @@ type SyncBatchInput = z.infer<typeof SyncBatchSchema>;
 
 @Controller('sync')
 class SyncController {
-  constructor(private readonly sales: SalesService) {}
+  constructor(private readonly sales: SalesService) { }
 
   /**
    * Vide la file de synchronisation offline. Chaque opération est idempotente
@@ -70,4 +70,4 @@ class SyncController {
   imports: [SalesModule],
   controllers: [SyncController],
 })
-export class SyncModule {}
+export class SyncModule { }

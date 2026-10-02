@@ -5,7 +5,7 @@
  *   FOOD : une vente POS peut s'y rattacher (Sale.tableId). Gardé par la capacité
  *   d'infrastructure `food.tables` (l'API refuse hors FOOD — TDR §2.7).
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -40,7 +40,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
 @Injectable()
 class FoodTablesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /** Tables actives de l'établissement courant (sélecteur du POS). */
   async list(ctx: AuthContext): Promise<FoodTableDto[]> {
@@ -93,7 +93,7 @@ function toDto(row: {
 @Controller('food')
 @RequireInfraCapability('food.tables')
 class FoodTablesController {
-  constructor(private readonly tables: FoodTablesService) {}
+  constructor(private readonly tables: FoodTablesService) { }
 
   /** Tables actives de la boutique courante — le POS en a besoin (vendeur/caissier). */
   @RequireCapabilities('sale:create')
@@ -126,4 +126,4 @@ class FoodTablesController {
   controllers: [FoodTablesController],
   providers: [FoodTablesService],
 })
-export class FoodModule {}
+export class FoodModule { }

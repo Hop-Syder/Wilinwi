@@ -4,7 +4,7 @@
  * @description Service Trésorerie — soldes, virements (avec vérif solde), clôtures (motif obligatoire sur écart), stats journalières, filtres avancés.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -57,7 +57,7 @@ export interface MovementFilters {
 
 @Injectable()
 export class TreasuryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ─── Soldes ───────────────────────────────────────────────────────────────
 

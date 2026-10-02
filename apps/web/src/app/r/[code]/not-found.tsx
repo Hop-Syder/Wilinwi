@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Page 404 native Next.js quand un reçu n'existe pas ou est expiré (Route: /r/[code])
  * @created 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

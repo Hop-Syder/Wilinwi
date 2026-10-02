@@ -4,7 +4,7 @@
  * @description Contrôleur Trésorerie — endpoints REST pour soldes, stats, dépenses, virements, mouvements filtrés, clôtures.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -28,7 +28,7 @@ import { TreasuryService } from './treasury.service';
 
 @Controller('treasury')
 export class TreasuryController {
-  constructor(private readonly treasury: TreasuryService) {}
+  constructor(private readonly treasury: TreasuryService) { }
 
   /** GET /api/treasury/balances — Soldes bruts par compte. */
   @RequireCapabilities('treasury:read')

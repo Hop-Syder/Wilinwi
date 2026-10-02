@@ -4,7 +4,7 @@
  * @description Tableau de bord principal Wilinwi (Architecture 5 Axes : TopBar, Hero KPIs, DataViz, Trésorerie & Ergonomie)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const activeEtablissementName = isGlobalView
     ? 'Tous les établissements'
     : (user?.etablissements.find((etablissement) => etablissement.id === user?.etablissementId)
-        ?.nom ?? 'Établissement actif');
+      ?.nom ?? 'Établissement actif');
   const canSeeProfit = user?.role === 'OWNER' || user?.role === 'MANAGER';
 
   const { state: syncState, pending: pendingCount } = useSync();

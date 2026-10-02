@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Service métier pour la gestion des bons de commande et réceptions
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,7 +21,7 @@ export class PurchaseOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
-  ) {}
+  ) { }
 
   async list(ctx: AuthContext, status?: string) {
     const orders = await this.prisma.forTenant(ctx.tenantId, (tx) =>
@@ -82,7 +82,7 @@ export class PurchaseOrdersService {
         if (hasWarehouse) {
           throw new BadRequestException(
             `Les commandes fournisseurs se réceptionnent à l'entrepôt central, pas à « ${destination.nom} ». ` +
-              'Choisissez votre entrepôt comme destination, puis approvisionnez la boutique via un Dispatch.',
+            'Choisissez votre entrepôt comme destination, puis approvisionnez la boutique via un Dispatch.',
           );
         }
       }

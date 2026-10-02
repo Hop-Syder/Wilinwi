@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Contrôleur API pour la gestion des fournisseurs
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -24,7 +24,7 @@ import { SuppliersService } from './suppliers.service';
 
 @Controller('suppliers')
 export class SuppliersController {
-  constructor(private readonly suppliers: SuppliersService) {}
+  constructor(private readonly suppliers: SuppliersService) { }
 
   @RequireCapabilities('supplier:manage')
   @Get()

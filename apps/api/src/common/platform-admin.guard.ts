@@ -4,7 +4,7 @@
  * @description Guard de sécurité restreignant l'accès aux administrateurs de la plateforme.
  * @created 2026-06-29
  * @updated 2026-06-29
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

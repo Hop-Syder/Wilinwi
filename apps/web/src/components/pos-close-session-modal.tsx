@@ -4,7 +4,7 @@
  * @description Composant Modal de Clôture de Session et Bilan d'Écart de Caisse au POS (pos-close-session-modal.tsx)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -450,7 +450,7 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
                           onChange={(e) =>
                             setCounts({
                               ...counts,
-                            [denom.value]: parsePositiveInteger(e.target.value),
+                              [denom.value]: parsePositiveInteger(e.target.value),
                             })
                           }
                           className="w-10 text-center font-bold text-xs bg-slate-50 border border-slate-200 rounded-md py-1"
@@ -491,9 +491,8 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
                 <div className="text-right">
                   <span className="text-xs text-slate-400">Écart projeté</span>
                   <p
-                    className={`font-bold text-sm ${
-                      ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-blue-400' : 'text-red-400'
-                    }`}
+                    className={`font-bold text-sm ${ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-blue-400' : 'text-red-400'
+                      }`}
                   >
                     {ecart > 0 ? `+${formatFCFA(ecart)}` : formatFCFA(ecart)}
                   </p>
@@ -538,8 +537,8 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
                     {ecart === 0
                       ? 'Solde Exact (0 FCFA)'
                       : ecart > 0
-                      ? `Excédent (+${formatFCFA(ecart)})`
-                      : `Déficit (${formatFCFA(ecart)})`}
+                        ? `Excédent (+${formatFCFA(ecart)})`
+                        : `Déficit (${formatFCFA(ecart)})`}
                   </Badge>
                 </div>
               </div>

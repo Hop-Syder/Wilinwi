@@ -4,7 +4,7 @@
  * @description Composant UI partagé : globe.tsx
  * @created 2026-07-22
  * @updated 2026-07-22
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

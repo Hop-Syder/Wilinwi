@@ -6,7 +6,7 @@
  *   GET /etablissements/manage   → toute l'entreprise (OWNER/MANAGER).
  *   POST/PATCH/DELETE            → gestion (OWNER/MANAGER, capacité users:manage).
  * @created 2026-06-27
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -25,7 +25,7 @@ import { EtablissementService } from './etablissement.service';
 
 @Controller('etablissements')
 export class EtablissementController {
-  constructor(private readonly etablissements: EtablissementService) {}
+  constructor(private readonly etablissements: EtablissementService) { }
 
   /** Liste accessible à l'utilisateur courant (sélecteur du header). */
   @Get()

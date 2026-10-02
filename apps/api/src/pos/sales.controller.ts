@@ -4,7 +4,7 @@
  * @description Contrôleur API pour sales
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -41,7 +41,7 @@ type AssignDeliveryInput = z.infer<typeof AssignDeliverySchema>;
 
 @Controller('pos')
 export class SalesController {
-  constructor(private readonly sales: SalesService) {}
+  constructor(private readonly sales: SalesService) { }
 
   // Défense en profondeur (TDR §2.7) : au-delà du rôle, l'établissement courant
   // doit avoir UN POS actif — refuse aussi la vente serveur-side au dunning J+30

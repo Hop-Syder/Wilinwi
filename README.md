@@ -5,7 +5,7 @@
  * @description README principal détaillant l'architecture, les 5 modules métier, le CI/CD, les déploiements Vercel/Railway et les correctifs DB
  * @created 2026-06-19
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 ──────────────────────────────────

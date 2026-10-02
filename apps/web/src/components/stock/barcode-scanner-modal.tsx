@@ -4,7 +4,7 @@
  * @description Lecteur de Code-Barres par Caméra Mobile/PWA & Bouton Flottant (Axe 5)
  * @created 2026-08-03
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

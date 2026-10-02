@@ -4,7 +4,7 @@
  * @description Contrôleur HTTP — Dispatch (transfert entrepôt → boutique).
  *   Réservé OWNER/MANAGER (capacité supplier:manage, comme le reste de l'entrepôt).
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,7 +21,7 @@ import { DispatchService } from './dispatch.service';
 
 @Controller('dispatches')
 export class DispatchController {
-  constructor(private readonly dispatch: DispatchService) {}
+  constructor(private readonly dispatch: DispatchService) { }
 
   @RequireCapabilities('supplier:manage')
   @Get()

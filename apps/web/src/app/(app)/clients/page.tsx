@@ -8,7 +8,7 @@
  *   Badges colorés, Modal d'encaissement et Drawer Fiche Client.
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -244,22 +244,20 @@ export default function ClientsPage() {
               <button
                 type="button"
                 onClick={() => setActiveMainTab('DIRECTORY')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  activeMainTab === 'DIRECTORY'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeMainTab === 'DIRECTORY'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 👥 Annuaire Clients
               </button>
               <button
                 type="button"
                 onClick={() => setActiveMainTab('DEBT_LEDGER')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  activeMainTab === 'DEBT_LEDGER'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeMainTab === 'DEBT_LEDGER'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 💳 Carnet de Dettes & Recouvrements
               </button>

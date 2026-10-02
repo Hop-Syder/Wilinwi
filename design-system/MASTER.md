@@ -4,7 +4,7 @@
  * @description Charte graphique et spécifications UI/UX Master (Concept 5 — Fintech Next)
  * @created 2026-06-25
  * @updated 2026-06-26
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 ──────────────────────────────────

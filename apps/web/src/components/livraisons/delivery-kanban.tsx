@@ -4,7 +4,7 @@
  * @description Pipeline Kanban de Suivi des Livraisons à 4 Colonnes + Fiches WhatsApp & Appels Directs
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

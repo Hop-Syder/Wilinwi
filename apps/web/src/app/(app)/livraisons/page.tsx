@@ -9,7 +9,7 @@
  *   et Modale de Pointage/Réception des Fonds Livreur (COD).
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -219,22 +219,20 @@ export default function LivraisonsPage() {
               <button
                 type="button"
                 onClick={() => setViewMode('KANBAN')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  viewMode === 'KANBAN'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'KANBAN'
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 📋 Pipeline Kanban
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('TABLE')}
-                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  viewMode === 'TABLE'
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'TABLE'
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 📊 Tableau Expéditions
               </button>

@@ -5,7 +5,7 @@
  * @description Page principale du module d'approvisionnement & entrepôt (KPIs 4 Métriques, 3 Onglets & Workflow Logistique)
  * @created 2026-06-28
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -46,17 +46,17 @@ export default function EntrepotPage() {
   const { user } = useAuth();
   const currentEtablissementId = user?.etablissementId ?? null;
   const [activeTab, setActiveTab] = useState<'dispatch' | 'orders' | 'suppliers'>('dispatch');
-  
+
   // Data states
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [etablissements, setEtablissements] = useState<EtablissementDto[]>([]);
   const [dispatches, setDispatches] = useState<DispatchOrderDto[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
-  
+
   // Filters & loading
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modals state
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierDto | null>(null);
@@ -209,11 +209,10 @@ export default function EntrepotPage() {
           <button
             type="button"
             onClick={() => setActiveTab('dispatch')}
-            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'dispatch'
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'dispatch'
                 ? 'border-teal-600 text-teal-800 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             <Truck className="h-4 w-4" />
             <span>Transferts Inter-Boutiques (Dispatch)</span>
@@ -222,11 +221,10 @@ export default function EntrepotPage() {
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'orders'
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'orders'
                 ? 'border-teal-600 text-teal-800 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             <span>📦 Commandes & Réceptions Fournisseurs</span>
           </button>
@@ -234,11 +232,10 @@ export default function EntrepotPage() {
           <button
             type="button"
             onClick={() => setActiveTab('suppliers')}
-            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'suppliers'
+            className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'suppliers'
                 ? 'border-teal-600 text-teal-800 font-extrabold'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
           >
             <Warehouse className="h-4 w-4" />
             <span>Fournisseurs & Échéancier Dettes</span>
@@ -293,13 +290,12 @@ export default function EntrepotPage() {
                     <tr key={d.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 py-3 font-mono font-bold text-slate-900">#{d.reference}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold border ${
-                          d.statut === 'VALIDATED'
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold border ${d.statut === 'VALIDATED'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : d.statut === 'DRAFT'
                               ? 'bg-blue-50 text-blue-800 border-blue-200'
                               : 'bg-rose-50 text-rose-800 border-rose-200'
-                        }`}>
+                          }`}>
                           {d.statut === 'VALIDATED' ? '🟢 Reçu' : d.statut === 'DRAFT' ? '🔵 En Transit' : '🔴 Annulé'}
                         </span>
                       </td>

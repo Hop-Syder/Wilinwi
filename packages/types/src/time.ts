@@ -7,7 +7,7 @@
  *   (Railway = UTC). Fonctions pures (Intl natif, zéro dépendance), mêmes
  *   résultats côté web et API.
  * @created 2026-07-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

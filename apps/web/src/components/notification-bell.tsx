@@ -7,7 +7,7 @@
  *   Polling 30s, navigation au clic, cache offline LocalStorage et Web Push.
  * @created 2026-06-29
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -225,18 +225,16 @@ export function NotificationBell() {
                 <li
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-slate-50 ${
-                    n.read ? 'opacity-65 bg-white' : 'bg-indigo-50/40'
-                  }`}
+                  className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-slate-50 ${n.read ? 'opacity-65 bg-white' : 'bg-indigo-50/40'
+                    }`}
                 >
                   <span
-                    className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${
-                      n.type === 'PAST_DUE'
+                    className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${n.type === 'PAST_DUE'
                         ? 'bg-rose-100 text-rose-600'
                         : n.type === 'STOCK_LOW'
-                        ? 'bg-amber-100 text-amber-600'
-                        : 'bg-indigo-100 text-indigo-600'
-                    }`}
+                          ? 'bg-amber-100 text-amber-600'
+                          : 'bg-indigo-100 text-indigo-600'
+                      }`}
                   >
                     <Icon className="h-4 w-4" />
                   </span>

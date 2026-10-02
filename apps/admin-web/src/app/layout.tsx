@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Console super-admin Wilinwi — layout racine.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -11,10 +11,10 @@ import { Plus_Jakarta_Sans, DM_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 
-const plusJakartaSans = Plus_Jakarta_Sans({ 
-  subsets: ['latin'], 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-sans' 
+  variable: '--font-sans'
 });
 const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-mono' });
 

@@ -5,7 +5,7 @@
  * @organization Nexus Partners
  * @description Coque cockpit : sidebar de navigation + en-tête + garde super-admin.
  *   Garde côté client (l'API reste la source de vérité via PlatformAdminGuard).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -99,11 +99,10 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              active
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-            }`}
+              }`}
           >
             <Icon className="h-4.5 w-4.5" />
             {item.label}

@@ -4,7 +4,7 @@
  * @description Types partagés — Dispatch / transfert interne (module Entrepôt).
  *   Déplace la marchandise entrepôt → boutique : brouillon → validation.
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

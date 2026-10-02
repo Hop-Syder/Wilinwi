@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Contrôleur API pour la gestion des bons de commande d'achat
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -22,7 +22,7 @@ import { PurchaseOrdersService } from './purchase-orders.service';
 
 @Controller('purchase-orders')
 export class PurchaseOrdersController {
-  constructor(private readonly orders: PurchaseOrdersService) {}
+  constructor(private readonly orders: PurchaseOrdersService) { }
 
   @RequireCapabilities('supplier:manage')
   @Get()

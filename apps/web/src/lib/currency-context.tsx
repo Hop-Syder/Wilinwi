@@ -7,7 +7,7 @@
  *   Effectue la conversion dynamique d'affichage tout en préservant les montants bruts FCFA.
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -31,7 +31,7 @@ interface CurrencyContextType {
 
 const CurrencyContext = createContext<CurrencyContextType>({
   currency: 'XOF',
-  setCurrency: () => {},
+  setCurrency: () => { },
   convertAmount: (amount) => amount,
   formatAmount: (amount) => formatCurrencyAmount(amount, 'XOF'),
   rates: DEFAULT_EXCHANGE_RATES,

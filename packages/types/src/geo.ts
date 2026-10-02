@@ -5,7 +5,7 @@
  *   Source de vérité partagée : le sélecteur du pop-up (web) et la validation de
  *   l'endpoint (API) consomment la même liste.
  * @created 2026-07-01
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

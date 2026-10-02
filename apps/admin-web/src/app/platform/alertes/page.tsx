@@ -4,7 +4,7 @@
  * @description Alertes d'audit cross-tenant (TDR §18.2) : anomalies non bloquantes
  *   à corriger manuellement — stock négatif (ALLOW_NEGATIVE), conflits de lots
  *   Health (Milestone 4). Les CRITICAL remontent en tête.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

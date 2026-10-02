@@ -4,7 +4,7 @@
  * @description Page Ventes — Vue globale multi-boutiques et gestion des transactions (Clean Architecture refactored)
  * @created 2026-06-20
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -302,18 +302,16 @@ export default function VentesPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('SALES')}
-                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'SALES' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                }`}
+                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'SALES' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
               >
                 Ventes Individuelles
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('SESSIONS')}
-                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'SESSIONS' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                }`}
+                className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'SESSIONS' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
               >
                 Clôtures de Caisse (Rapports Journaliers)
               </button>
@@ -401,24 +399,24 @@ export default function VentesPage() {
 
       {/* Contenu principal Onglet 1 vs Onglet 2 */}
       <div id="tour-ventes-table">
-      {activeTab === 'SALES' ? (
-        <VentesTable
-          sales={sales}
-          isGlobalView={isGlobalView}
-          onSelectDetail={(s) => setDetail(s)}
-          onSelectReceipt={(s) => setReceipt(s)}
-          onSelectPayment={(s) => setPaymentSale(s)}
-        />
-      ) : (
-        <VentesSessionsTable
-          sessions={sessions}
-          onFilterBySession={(sessionId) => {
-            setPosSessionIdFilter(sessionId);
-            setActiveTab('SALES');
-          }}
-          onSelectReportZ={(sess) => setReportZSession(sess)}
-        />
-      )}
+        {activeTab === 'SALES' ? (
+          <VentesTable
+            sales={sales}
+            isGlobalView={isGlobalView}
+            onSelectDetail={(s) => setDetail(s)}
+            onSelectReceipt={(s) => setReceipt(s)}
+            onSelectPayment={(s) => setPaymentSale(s)}
+          />
+        ) : (
+          <VentesSessionsTable
+            sessions={sessions}
+            onFilterBySession={(sessionId) => {
+              setPosSessionIdFilter(sessionId);
+              setActiveTab('SALES');
+            }}
+            onSelectReportZ={(sess) => setReportZSession(sess)}
+          />
+        )}
       </div>
 
       {/* Modale Reçu */}

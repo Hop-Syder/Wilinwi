@@ -2,7 +2,7 @@
  * @author @hopsyder
  * @organization Nexus Partners
  * @description Utilisateurs (cross-tenant) : recherche, blocage, reset PIN / mot de passe, connexions.
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 
@@ -179,9 +179,8 @@ export default function UtilisateursPage() {
                       <tr
                         key={u.id}
                         onClick={() => openUser(u)}
-                        className={`cursor-pointer border-b border-border transition-colors hover:bg-surface-hover ${
-                          selected?.id === u.id ? 'border-l-4 border-l-primary bg-primary/5' : ''
-                        }`}
+                        className={`cursor-pointer border-b border-border transition-colors hover:bg-surface-hover ${selected?.id === u.id ? 'border-l-4 border-l-primary bg-primary/5' : ''
+                          }`}
                       >
                         <td className="p-3">
                           <div className="font-bold text-text-primary">{u.nom}</div>

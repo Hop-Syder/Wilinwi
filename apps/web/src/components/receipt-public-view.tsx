@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Composant Server-Side pour le rendu visuel du reçu original
  * @created 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

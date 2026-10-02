@@ -4,7 +4,7 @@
  * @description Éditeur super-admin des tarifs & limites par plan (Lot 2.3).
  *   Lecture via /api/plans · écriture via PATCH /api/platform/plans/:plan.
  * @created 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -267,7 +267,7 @@ export function PlanEditor() {
                   </div>
 
                   <Field label="Libellé" type="text" value={d.label} onChange={(v) => patch(plan, 'label', v)} />
-                  
+
                   <div className="grid grid-cols-2 gap-2">
                     <Field
                       label="Prix /mois"

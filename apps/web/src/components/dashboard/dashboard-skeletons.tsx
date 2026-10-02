@@ -4,7 +4,7 @@
  * @description Skeletons de chargement adaptés aux widgets du Tableau de bord
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

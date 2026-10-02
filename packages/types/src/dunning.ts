@@ -6,7 +6,7 @@
  *   → J+7 (rétrogradation Starter, non bloquante) → J+30 (blocage, dernier recours).
  *   Tout est dérivé d'une date `pastDueSince` → aucun cron nécessaire pour les effets.
  * @created 2026-06-27
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

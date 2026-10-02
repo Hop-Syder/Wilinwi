@@ -4,7 +4,7 @@
  * @description Service NestJS pour la gestion des clients (CRM) : création, modification, archivage, calcul des KPIs et encaissement avec lettrage/FIFO.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -25,7 +25,7 @@ import { toClientDto } from './client.mapper';
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async list(ctx: AuthContext) {
     const clients = await this.prisma.forTenant(ctx.tenantId, (tx) =>
@@ -101,7 +101,7 @@ export class ClientsService {
       }
 
       let remaining = input.montant;
-      
+
       if (input.saleId) {
         const sale = await tx.sale.findFirst({
           where: { id: input.saleId, tenantId: ctx.tenantId, clientId: id },
@@ -149,7 +149,7 @@ export class ClientsService {
         for (const sale of sales) {
           if (remaining <= 0) break;
           if (input.saleId && sale.id === input.saleId) continue;
-          
+
           const inst = sale.installment;
           if (!inst) continue;
 
@@ -233,7 +233,7 @@ export class ClientsService {
       const totalDette = clients.reduce((sum, c) => sum + c.soldeCredit, 0);
       const debiteurs = clients.filter(c => c.soldeCredit > 0).length;
       const remboursementsAujourdhui = todayPayments.reduce((sum, p) => sum + p.montant, 0);
-      
+
       const creditDisponible = clients.reduce((sum, c) => {
         if (c.plafondCredit === null) return sum;
         return sum + Math.max(c.plafondCredit - c.soldeCredit, 0);

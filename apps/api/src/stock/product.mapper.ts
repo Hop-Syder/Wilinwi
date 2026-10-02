@@ -4,7 +4,7 @@
  * @description Mapper DTO/Entité pour product
  * @created 2026-06-20
  * @updated 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

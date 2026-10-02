@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Service métier pour la gestion des fournisseurs
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -20,7 +20,7 @@ export class SuppliersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
-  ) {}
+  ) { }
 
   async list(ctx: AuthContext) {
     const suppliers = await this.prisma.forTenant(ctx.tenantId, (tx) =>
@@ -96,10 +96,10 @@ export class SuppliersService {
     if (!etablissementId) {
       throw new BadRequestException("Veuillez sélectionner un établissement pour enregistrer ce règlement");
     }
-    
+
     return this.prisma.forTenant(ctx.tenantId, async (tx) => {
       const supplier = await this.ensureSupplier(tx, ctx.tenantId, id);
-      
+
       if (supplier.soldeDette < input.montant) {
         throw new BadRequestException("Le montant du règlement ne peut pas dépasser le solde de la dette.");
       }

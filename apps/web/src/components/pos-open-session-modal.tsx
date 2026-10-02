@@ -4,7 +4,7 @@
  * @description Composant Modal d'Ouverture de Session POS & Saisie du Fond de Caisse Initial (pos-open-session-modal.tsx)
  * @created 2026-08-04
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -144,11 +144,10 @@ export function PosOpenSessionModal({ isOpen, onClose, onSuccess }: PosOpenSessi
                   key={amt}
                   type="button"
                   onClick={() => setFondInitial(String(amt))}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
-                    numericAmount === amt
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${numericAmount === amt
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   {formatAmount(amt)}
                 </button>

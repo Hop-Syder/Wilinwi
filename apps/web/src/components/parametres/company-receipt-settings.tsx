@@ -4,7 +4,7 @@
  * @description Onglet Profil Entreprise & Personnalisation des Reçus Thermiques + Live Receipt Preview
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -151,11 +151,10 @@ export function CompanyReceiptSettings({
                       key={p.id}
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, paperFormat: p.id as any }))}
-                      className={`p-3 rounded-xl border text-left transition-all ${
-                        form.paperFormat === p.id
+                      className={`p-3 rounded-xl border text-left transition-all ${form.paperFormat === p.id
                           ? 'border-indigo-600 bg-indigo-50/50 shadow-2xs'
                           : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <p className="font-extrabold text-slate-900">{p.label}</p>
                       <p className="text-[10px] text-slate-500">{p.desc}</p>
@@ -211,9 +210,8 @@ export function CompanyReceiptSettings({
 
         {/* Simulacre de Ticket Thermique Imprimé */}
         <div
-          className={`mx-auto bg-white p-5 border border-slate-300 shadow-xl rounded-xl font-mono text-xs text-slate-900 space-y-3 transition-all ${
-            form.paperFormat === '58mm' ? 'max-w-[280px]' : 'max-w-[340px]'
-          }`}
+          className={`mx-auto bg-white p-5 border border-slate-300 shadow-xl rounded-xl font-mono text-xs text-slate-900 space-y-3 transition-all ${form.paperFormat === '58mm' ? 'max-w-[280px]' : 'max-w-[340px]'
+            }`}
         >
           {/* Header */}
           <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">

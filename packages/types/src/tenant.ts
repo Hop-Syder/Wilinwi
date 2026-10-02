@@ -5,7 +5,7 @@
  *   (/parametres/entreprise). Distinct de `geo.ts` (localisation siège,
  *   onboarding) : ce schéma couvre l'identité affichée sur les reçus.
  * @created 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

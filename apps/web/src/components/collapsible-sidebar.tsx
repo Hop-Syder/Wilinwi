@@ -5,7 +5,7 @@
  *   Couleurs Contextuelles par Module, Raccourcis Clavier & Rich Tooltips
  * @created 2026-08-04
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

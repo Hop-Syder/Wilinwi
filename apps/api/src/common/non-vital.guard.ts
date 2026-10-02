@@ -6,7 +6,7 @@
  *   marquées @NonVital (rapports avancés, exports) sont refusées tant que
  *   l'impayé n'est pas régularisé — le frontend ne fait que refléter cet état.
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -21,7 +21,7 @@ import { NON_VITAL_KEY } from './decorators';
 export class NonVitalGuard implements CanActivate {
   private readonly logger = new Logger(NonVitalGuard.name);
 
-  constructor(private readonly reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
     const nonVital = this.reflector.getAllAndOverride<boolean>(NON_VITAL_KEY, [

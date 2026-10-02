@@ -17,7 +17,7 @@
  *   compris celle-ci, vit sur sa propre route à égalité avec les autres.
  * @created 2026-06-20
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -112,7 +112,7 @@ export default function ParametresEntreprisePage() {
     if (user?.role === 'OWNER' && data.adresse.includes(',')) {
       const [ville, pays] = data.adresse.split(',').map((s) => s.trim());
       if (ville && pays) {
-        await apiPatch('/api/admin/tenant/localisation', { pays, ville }).catch(() => {});
+        await apiPatch('/api/admin/tenant/localisation', { pays, ville }).catch(() => { });
         await refreshUser();
       }
     }

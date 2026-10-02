@@ -4,7 +4,7 @@
  * @description Modale d'encaissement d'un reste dû (crédit/acompte)
  * @created 2026-06-20
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

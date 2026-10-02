@@ -4,7 +4,7 @@
  * @description Le Hub — Launchpad & Centre de Commande Rapide (Antigravity Design Expert & UI/UX Pro Max)
  * @created 2026-06-20
  * @updated 2026-09-17
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -110,17 +110,17 @@ export default function HubPage() {
         // Session caisse active (si l'utilisateur a accès au module POS)
         const activeSession = canAccessPos
           ? await apiGet<{ id: string; openedAt: string; openedBy?: { nom?: string } } | null>(
-              '/api/pos/sessions/active',
-            ).catch(() => null)
+            '/api/pos/sessions/active',
+          ).catch(() => null)
           : null;
 
         // Dashboard summary (uniquement si l'utilisateur a accès aux rapports financiers)
         const summaryRes = canReadReports
           ? await apiGet<{
-              chiffreAffaires?: number;
-              nombreVentes?: number;
-              alertes?: { outOfStockProducts?: number };
-            }>('/api/analytics/reports/dashboard').catch(() => null)
+            chiffreAffaires?: number;
+            nombreVentes?: number;
+            alertes?: { outOfStockProducts?: number };
+          }>('/api/analytics/reports/dashboard').catch(() => null)
           : null;
 
         if (isMounted) {

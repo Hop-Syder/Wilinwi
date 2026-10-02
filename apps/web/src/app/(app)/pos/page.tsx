@@ -4,7 +4,7 @@
  * @description Page Caisse & Point de Vente (POS) — Refonte 5 Axes (Split-Screen 2/3 + 1/3, Raccourcis clavier F2/F4/Entrée/Échap, Encaissement & Off-line)
  * @created 2026-06-20
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -42,7 +42,7 @@ export default function PosPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [livreurs, setLivreurs] = useState<{ id: string; nom: string }[]>([]);
-  
+
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const clientSearchInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +65,7 @@ export default function PosPage() {
   const [showDisburseModal, setShowDisburseModal] = useState(false);
   const [showMobileCartDrawer, setShowMobileCartDrawer] = useState(false);
   const [selectedModalProduct, setSelectedModalProduct] = useState<ProductDto | null>(null);
-  
+
   const [lastSaleTotal, setLastSaleTotal] = useState(0);
   const [lastSale, setLastSale] = useState<ReceiptSale | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);

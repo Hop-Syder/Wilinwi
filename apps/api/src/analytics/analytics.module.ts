@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour analytics
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -16,7 +16,7 @@ import { AnalyticsService } from './analytics.service';
 
 @Controller('analytics')
 class AnalyticsController {
-  constructor(private readonly analytics: AnalyticsService) {}
+  constructor(private readonly analytics: AnalyticsService) { }
 
   @RequireCapabilities('reports:read')
   @Get('dashboard')
@@ -52,4 +52,4 @@ class AnalyticsController {
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })
-export class AnalyticsModule {}
+export class AnalyticsModule { }

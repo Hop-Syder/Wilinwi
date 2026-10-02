@@ -4,7 +4,7 @@
  * @description Module d'injection de dépendances NestJS pour common
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -48,4 +48,4 @@ import { ReadOnlyGuard } from './read-only.guard';
   ],
   exports: [PrismaService, PlanConfigService, ActivityService, AuditAlertService, CurrencyService],
 })
-export class CommonModule {}
+export class CommonModule { }

@@ -5,7 +5,7 @@
  * @organization Nexus Partners
  * @description Console admin : appels API authentifiés par la session Supabase.
  *   Version épurée (pas de PIN ni d'établissement — l'admin n'en a pas besoin).
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  */
 // ──────────────────────────────────
 

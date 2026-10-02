@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Module — lecture des plans/tarifs (PlanConfigService est global).
  * @created 2026-06-30
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -17,4 +17,4 @@ import { SubscriptionCronService } from './subscription-cron.service';
   providers: [SubscriptionCronService],
   exports: [SubscriptionCronService],
 })
-export class PlansModule {}
+export class PlansModule { }

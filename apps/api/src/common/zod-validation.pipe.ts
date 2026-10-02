@@ -4,7 +4,7 @@
  * @description Utilitaire de sécurité/validation API : zod-validation.pipe.ts
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -14,7 +14,7 @@ import type { ZodSchema } from 'zod';
 
 /** Pipe de validation Zod : `@Body(new ZodValidationPipe(Schema))`. */
 export class ZodValidationPipe<T> implements PipeTransform {
-  constructor(private readonly schema: ZodSchema<T>) {}
+  constructor(private readonly schema: ZodSchema<T>) { }
 
   transform(value: unknown): T {
     const result = this.schema.safeParse(value);

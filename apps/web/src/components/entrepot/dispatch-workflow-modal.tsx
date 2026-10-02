@@ -4,7 +4,7 @@
  * @description Modale Workflow Dispatch à 3 Étapes (Expédition, Scan Réception & Traitement des Écarts + Bordereau Imprimable)
  * @created 2026-08-05
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -166,11 +166,10 @@ export function DispatchReceiveModal({ dispatch, products = [], onClose, onConfi
                             [item.productId]: Math.max(0, parseInt(e.target.value) || 0),
                           })
                         }
-                        className={`w-20 rounded-xl border px-3 py-1.5 font-mono text-sm font-bold text-center outline-none ${
-                          isDiff
+                        className={`w-20 rounded-xl border px-3 py-1.5 font-mono text-sm font-bold text-center outline-none ${isDiff
                             ? 'border-rose-400 bg-rose-50 text-rose-900 focus:ring-2 focus:ring-rose-500/20'
                             : 'border-slate-200 bg-white text-slate-900 focus:border-teal-500'
-                        }`}
+                          }`}
                       />
                     </div>
                   </div>

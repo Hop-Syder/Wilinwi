@@ -4,7 +4,7 @@
  * @description Types partagés — Bons de commande & réception (module Entrepôt).
  *   Créer une commande fournisseur, la recevoir (ravitaillement → stock IN).
  * @created 2026-06-28
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

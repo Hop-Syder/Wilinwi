@@ -6,7 +6,7 @@
  *   ESLint attrape les vrais problèmes (variables inutilisées, cas oubliés…).
  *   Chaque package lance `eslint src` — la résolution flat remonte jusqu'ici.
  * @created 2026-07-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

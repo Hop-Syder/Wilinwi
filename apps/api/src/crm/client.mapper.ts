@@ -4,7 +4,7 @@
  * @description Mapper pour transformer le modèle de base de données Client en DTO client, filtrant les informations de crédit sensibles selon le rôle.
  * @created 2026-06-20
  * @updated 2026-06-20
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────

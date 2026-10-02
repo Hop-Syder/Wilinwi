@@ -4,7 +4,7 @@
  * @description Contrôleur d'API Publique pour la consultation des reçus (Résolution unifiée UUID vs Référence courte).
  * @created 2026-06-20
  * @updated 2026-08-05
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -32,7 +32,7 @@ const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 
 @Controller('public/receipt')
 export class PublicReceiptController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   @Public()
   @Get(':code')
@@ -86,8 +86,8 @@ export class PublicReceiptController {
       where: isUuid
         ? { id: rawCode }
         : {
-            OR: [{ receiptCode: rawCode }, { receiptCode: upperCode }],
-          },
+          OR: [{ receiptCode: rawCode }, { receiptCode: upperCode }],
+        },
       include: {
         etablissement: { select: { nom: true } },
         items: { include: { product: { select: { nom: true } } } },

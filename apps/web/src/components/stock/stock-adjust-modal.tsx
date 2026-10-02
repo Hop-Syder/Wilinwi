@@ -4,7 +4,7 @@
  * @description Modale d'Ajustement Manuel de Stock (Axe 3 : Code couleur strict & sélection obligatoire du motif)
  * @created 2026-08-03
  * @updated 2026-08-03
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
@@ -140,11 +140,10 @@ export function StockAdjustModal({
               <button
                 type="button"
                 onClick={() => { setType('IN'); setMotif(''); }}
-                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${
-                  type === 'IN'
+                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${type === 'IN'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-500 ring-2 ring-emerald-300'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <ArrowUpRight className="h-4 w-4 text-emerald-600" />
                 <span>Entrée (Vert)</span>
@@ -153,11 +152,10 @@ export function StockAdjustModal({
               <button
                 type="button"
                 onClick={() => { setType('OUT'); setMotif(''); }}
-                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${
-                  type === 'OUT'
+                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${type === 'OUT'
                     ? 'bg-rose-50 text-rose-800 border-rose-500 ring-2 ring-rose-300'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <ArrowDownRight className="h-4 w-4 text-rose-600" />
                 <span>Sortie (Rouge)</span>
@@ -166,11 +164,10 @@ export function StockAdjustModal({
               <button
                 type="button"
                 onClick={() => { setType('ADJUST'); setMotif(''); }}
-                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${
-                  type === 'ADJUST'
+                className={`flex items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-bold transition-all ${type === 'ADJUST'
                     ? 'bg-blue-50 text-blue-800 border-blue-500 ring-2 ring-blue-300'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <RefreshCw className="h-4 w-4 text-blue-600" />
                 <span>Régulariser (Bleu)</span>
@@ -259,13 +256,12 @@ export function StockAdjustModal({
             <button
               type="submit"
               disabled={submitting}
-              className={`rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all disabled:opacity-50 ${
-                type === 'IN'
+              className={`rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all disabled:opacity-50 ${type === 'IN'
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : type === 'OUT'
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+                }`}
             >
               {submitting ? 'Enregistrement...' : 'Valider l\'ajustement'}
             </button>

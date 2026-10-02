@@ -4,7 +4,7 @@
  * @description Data Table du Stock (Ergonomie Desktop & Nouvelle Carte Produit Mobile Aérée & Lisible)
  * @created 2026-08-03
  * @updated 2026-08-04
- * 🌐 ceo.nexuspartners.xyz
+ * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
 // ──────────────────────────────────
