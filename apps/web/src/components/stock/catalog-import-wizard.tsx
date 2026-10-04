@@ -67,28 +67,79 @@ function generateSmartSku(nom: string, index: number, seenSkus: Set<string>): st
   return candidate;
 }
 
+export type WilinwiTargetField =
+  | 'ignore'
+  | 'nom'
+  | 'prixCatalogue'
+  | 'sku'
+  | 'stock'
+  | 'prixAchat'
+  | 'categorie';
+
+interface TargetFieldDef {
+  key: WilinwiTargetField;
+  label: string;
+  shortLabel: string;
+  required?: boolean;
+  badge?: string;
+  description: string;
+}
+
+const TARGET_FIELDS: TargetFieldDef[] = [
+  {
+    key: 'ignore',
+    label: '— Ignorer cette colonne —',
+    shortLabel: 'Ignorer',
+    description: 'Ne sera pas importée',
+  },
+  {
+    key: 'nom',
+    label: '⭐ Nom du Produit (Obligatoire)',
+    shortLabel: 'Nom du Produit',
+    required: true,
+    description: 'Désignation principale de l’article',
+  },
+  {
+    key: 'prixCatalogue',
+    label: '⭐ Prix de Vente (Obligatoire)',
+    shortLabel: 'Prix de Vente',
+    required: true,
+    description: 'Tarif appliqué aux clients (FCFA)',
+  },
+  {
+    key: 'sku',
+    label: 'Code SKU / Référence',
+    shortLabel: 'SKU / Réf',
+    description: 'Si ignoré : généré automatiquement (Auto-SKU)',
+  },
+  {
+    key: 'stock',
+    label: 'Quantité Stock',
+    shortLabel: 'Stock Initial',
+    description: 'Si ignoré : initialisé à 0',
+  },
+  {
+    key: 'prixAchat',
+    label: 'Prix d’Achat (FCFA)',
+    shortLabel: 'Prix d’Achat',
+    description: 'Optionnel — Coût de revient',
+  },
+  {
+    key: 'categorie',
+    label: 'Catégorie',
+    shortLabel: 'Catégorie',
+    description: 'Optionnel — Famille ou rayon',
+  },
+];
+
 export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [fileName, setFileName] = useState<string>('');
   const [headers, setHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<string[][]>([]);
 
-  // Mapping des colonnes (-1 signifie auto-généré / optionnel / valeur par défaut)
-  const [mapping, setMapping] = useState<{
-    nom: number;
-    sku: number;
-    categorie: number;
-    prixCatalogue: number;
-    prixAchat: number;
-    stock: number;
-  }>({
-    nom: 0,
-    sku: -1,
-    categorie: -1,
-    prixCatalogue: 1,
-    prixAchat: -1,
-    stock: -1,
-  });
+  // Mapping inversé : pour chaque colonne du fichier client (index), quel champ Wilinwi lui est assigné ?
+  const [columnMappings, setColumnMappings] = useState<WilinwiTargetField[]>([]);
 
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -112,7 +163,7 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     document.body.removeChild(link);
   };
 
-  // Traitement des données brutes en-tête + lignes
+  // Traitement des données brutes en-tête + lignes avec auto-détection par colonne
   const processParsedSheet = (parsedHeaders: string[], parsedRows: string[][]) => {
     if (parsedHeaders.length === 0 || parsedRows.length === 0) {
       setImportError('Le fichier ne contient aucune donnée utilisable.');
@@ -122,26 +173,78 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     setHeaders(parsedHeaders);
     setRawRows(parsedRows);
 
-    // Mapping automatique selon les mots-clés d'en-tête
-    const autoMap = {
-      nom: parsedHeaders.findIndex((h) => /nom|designation|product|article|libelle/i.test(h)),
-      sku: parsedHeaders.findIndex((h) => /sku|ref|code/i.test(h)),
-      categorie: parsedHeaders.findIndex((h) => /cat|famille|rayon/i.test(h)),
-      prixCatalogue: parsedHeaders.findIndex((h) => /prix.*cat|vente|price|pv|prix/i.test(h)),
-      prixAchat: parsedHeaders.findIndex((h) => /achat|cost|cout|pa/i.test(h)),
-      stock: parsedHeaders.findIndex((h) => /stock|qte|quantite/i.test(h)),
-    };
+    // Auto-détection intelligente pour chaque colonne du fichier client
+    const assigned = new Set<WilinwiTargetField>();
+    const initialMappings: WilinwiTargetField[] = parsedHeaders.map((header) => {
+      const h = header.toLowerCase();
 
-    setMapping({
-      nom: autoMap.nom !== -1 ? autoMap.nom : 0,
-      sku: autoMap.sku !== -1 ? autoMap.sku : -1, // Par défaut : -1 (Auto-génération intelligente)
-      categorie: autoMap.categorie !== -1 ? autoMap.categorie : -1, // Par défaut : -1 (Optionnel / vide)
-      prixCatalogue: autoMap.prixCatalogue !== -1 ? autoMap.prixCatalogue : (autoMap.nom === 0 ? 1 : 0),
-      prixAchat: autoMap.prixAchat !== -1 ? autoMap.prixAchat : -1, // Par défaut : -1 (Optionnel / vide)
-      stock: autoMap.stock !== -1 ? autoMap.stock : -1, // Par défaut : -1 (Stock initial à 0)
+      // 1. Nom de produit
+      if (!assigned.has('nom') && /nom|designation|product|article|libelle|boisson/i.test(h)) {
+        assigned.add('nom');
+        return 'nom';
+      }
+
+      // 2. Prix de vente / catalogue
+      if (!assigned.has('prixCatalogue') && /prix.*cat|tarif.*vente|prix.*vente|prix.*client|pv|catalogue/i.test(h)) {
+        assigned.add('prixCatalogue');
+        return 'prixCatalogue';
+      }
+
+      // 3. Prix d'achat
+      if (!assigned.has('prixAchat') && /achat|cost|cout|pa\b/i.test(h)) {
+        assigned.add('prixAchat');
+        return 'prixAchat';
+      }
+
+      // 4. Stock / Quantité
+      if (!assigned.has('stock') && /stock|qte|quantite|depart|dispo/i.test(h)) {
+        assigned.add('stock');
+        return 'stock';
+      }
+
+      // 5. SKU / Référence
+      if (!assigned.has('sku') && /sku|ref|code/i.test(h)) {
+        assigned.add('sku');
+        return 'sku';
+      }
+
+      // 6. Catégorie
+      if (!assigned.has('categorie') && /cat|famille|rayon|groupe/i.test(h)) {
+        assigned.add('categorie');
+        return 'categorie';
+      }
+
+      // 7. Fallback Prix si non encore assigné
+      if (!assigned.has('prixCatalogue') && /prix|price|tarif/i.test(h)) {
+        assigned.add('prixCatalogue');
+        return 'prixCatalogue';
+      }
+
+      return 'ignore';
     });
 
+    // Si 'nom' n'a pas été détecté automatiquement et qu'il y a des colonnes, proposer la première si libre
+    if (!assigned.has('nom') && initialMappings.length > 0 && initialMappings[0] === 'ignore') {
+      initialMappings[0] = 'nom';
+      assigned.add('nom');
+    }
+
+    setColumnMappings(initialMappings);
     setStep(2);
+  };
+
+  // Modification d'un mapping avec garantie d'unicité (sauf pour 'ignore')
+  const handleColumnMappingChange = (colIdx: number, newTarget: WilinwiTargetField) => {
+    setColumnMappings((prev) =>
+      prev.map((currentTarget, idx) => {
+        if (idx === colIdx) return newTarget;
+        // Si une autre colonne avait déjà cette cible (autre que 'ignore'), elle est réinitialisée à 'ignore'
+        if (newTarget !== 'ignore' && currentTarget === newTarget) {
+          return 'ignore';
+        }
+        return currentTarget;
+      })
+    );
   };
 
   // Chargement et analyse du fichier (.csv ou .xlsx / .xls avec parseurs officiels)
@@ -207,13 +310,26 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
 
   // Passage à l'étape 3 : Validation et détection d'anomalies
   const validateAndPreview = () => {
+    const colNom = columnMappings.indexOf('nom');
+    const colPrixCat = columnMappings.indexOf('prixCatalogue');
+    const colSku = columnMappings.indexOf('sku');
+    const colStock = columnMappings.indexOf('stock');
+    const colPrixAchat = columnMappings.indexOf('prixAchat');
+    const colCategorie = columnMappings.indexOf('categorie');
+
+    if (colNom === -1 || colPrixCat === -1) {
+      setImportError('Veuillez assigner au moins le Nom du Produit et le Prix de Vente avant de continuer.');
+      return;
+    }
+
+    setImportError(null);
     const seenSkus = new Set<string>();
     const fileSkuCounts = new Map<string, number>();
 
     // Pré-calcul des doublons dans le fichier si colonne SKU sélectionnée
-    if (mapping.sku >= 0) {
+    if (colSku >= 0) {
       rawRows.forEach((r) => {
-        const val = r[mapping.sku]?.trim();
+        const val = r[colSku]?.trim();
         if (val) {
           fileSkuCounts.set(val, (fileSkuCounts.get(val) || 0) + 1);
         }
@@ -223,12 +339,12 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     const rows: ParsedRow[] = [];
 
     rawRows.forEach((r, idx) => {
-      const nom = mapping.nom >= 0 ? (r[mapping.nom]?.trim() || '') : '';
+      const nom = colNom >= 0 ? (r[colNom]?.trim() || '') : '';
 
-      let sku = mapping.sku >= 0 ? (r[mapping.sku]?.trim() || '') : '';
+      let sku = colSku >= 0 ? (r[colSku]?.trim() || '') : '';
       let isAutoSku = false;
 
-      // Si mapping sur Auto (-1) ou case vide dans le fichier Excel
+      // Si SKU non mappé ou case vide dans le fichier Excel
       if (!sku) {
         sku = generateSmartSku(nom || 'PROD', idx, seenSkus);
         isAutoSku = true;
@@ -236,25 +352,25 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
         seenSkus.add(sku);
       }
 
-      const categorie = mapping.categorie >= 0 ? (r[mapping.categorie]?.trim() || undefined) : undefined;
+      const categorie = colCategorie >= 0 ? (r[colCategorie]?.trim() || undefined) : undefined;
 
-      const rawPrixCat = mapping.prixCatalogue >= 0 ? (r[mapping.prixCatalogue]?.trim() || '0') : '0';
+      const rawPrixCat = colPrixCat >= 0 ? (r[colPrixCat]?.trim() || '0') : '0';
       const prixCatalogue = parseInt(rawPrixCat.replace(/[^0-9]/g, '') || '0', 10);
 
-      const rawPrixAchat = mapping.prixAchat >= 0 ? (r[mapping.prixAchat]?.trim() || '') : '';
+      const rawPrixAchat = colPrixAchat >= 0 ? (r[colPrixAchat]?.trim() || '') : '';
       const parsedAchat = rawPrixAchat ? parseInt(rawPrixAchat.replace(/[^0-9]/g, ''), 10) : undefined;
       const prixAchat = parsedAchat !== undefined && !isNaN(parsedAchat) ? parsedAchat : undefined;
 
-      const rawStock = mapping.stock >= 0 ? (r[mapping.stock]?.trim() || '') : '';
+      const rawStock = colStock >= 0 ? (r[colStock]?.trim() || '') : '';
       const parsedStock = rawStock ? parseFloat(rawStock.replace(/,/g, '.').replace(/[^0-9.]/g, '')) : 0;
       const stock = isNaN(parsedStock) ? 0 : Math.max(0, Math.floor(parsedStock));
 
       const rowErrors: string[] = [];
 
       if (!nom) rowErrors.push('Nom de produit manquant');
-      if (isNaN(prixCatalogue) || prixCatalogue <= 0) rowErrors.push('Prix catalogue invalide');
+      if (isNaN(prixCatalogue) || prixCatalogue <= 0) rowErrors.push('Prix de vente invalide');
       if (prixAchat !== undefined && (isNaN(prixAchat) || prixAchat < 0)) rowErrors.push('Prix d\'achat invalide');
-      if (mapping.stock >= 0 && rawStock !== '' && (isNaN(parsedStock) || parsedStock < 0)) {
+      if (colStock >= 0 && rawStock !== '' && (isNaN(parsedStock) || parsedStock < 0)) {
         rowErrors.push('Quantité de stock invalide');
       }
 
@@ -309,18 +425,24 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     }
   };
 
+  const colNom = columnMappings.indexOf('nom');
+  const colPrixCat = columnMappings.indexOf('prixCatalogue');
+  const colSku = columnMappings.indexOf('sku');
+  const colStock = columnMappings.indexOf('stock');
+  const canProceedToPreview = colNom !== -1 && colPrixCat !== -1;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl space-y-4">
+      <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl space-y-4">
         {/* Header Assistant */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
           <div>
             <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              <span>Assistant d'Importation Catalogue (3 Étapes)</span>
+              <span>Assistant d'Importation Catalogue</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Étape {step} sur 3 — {step === 1 ? 'Chargement fichier' : step === 2 ? 'Mapping colonnes' : 'Aperçu & Détection'}
+              Étape {step} sur 3 — {step === 1 ? 'Chargement du fichier' : step === 2 ? 'Correspondance des colonnes' : 'Aperçu & Détection'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-200">
@@ -360,140 +482,145 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
             </div>
           )}
 
-          {/* ÉTAPE 2 : Mapping Dynamique des Colonnes */}
+          {/* ÉTAPE 2 : Mapping Inversé (Chaque colonne du client -> Champ Wilinwi) */}
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-xs text-slate-600 font-medium">
-                Vérifiez la correspondance entre les colonnes de votre fichier ({fileName}) et les champs de Wilinwi :
-              </p>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                {/* 1. Nom */}
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nom du Produit *</label>
-                  <select
-                    value={mapping.nom}
-                    onChange={(e) => setMapping({ ...mapping, nom: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
-                  >
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Colonnes détectées dans votre fichier ({fileName})
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Associez chaque colonne de votre fichier au champ Wilinwi correspondant.
+                  </p>
                 </div>
-
-                {/* 2. SKU */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Code SKU / Référence</label>
-                    <span className="text-[10px] font-semibold text-emerald-600">Auto ou Colonne</span>
-                  </div>
-                  <select
-                    value={mapping.sku}
-                    onChange={(e) => setMapping({ ...mapping, sku: parseInt(e.target.value, 10) })}
-                    className={`w-full rounded-xl border p-2 font-medium transition-colors ${
-                      mapping.sku === -1
-                        ? 'border-emerald-300 bg-emerald-50/50 text-emerald-900 font-semibold'
-                        : 'border-slate-200 bg-slate-50 text-slate-800'
-                    }`}
-                  >
-                    <option value={-1}>🪄 Générer automatiquement (Auto-SKU)</option>
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
-                  {mapping.sku === -1 && (
-                    <p className="mt-1 text-[10px] text-emerald-600 font-medium">
-                      Un code unique sera généré automatiquement à partir du nom.
-                    </p>
-                  )}
-                </div>
-
-                {/* 3. Prix de vente */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Prix de Vente (FCFA) *</label>
-                  <select
-                    value={mapping.prixCatalogue}
-                    onChange={(e) => setMapping({ ...mapping, prixCatalogue: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
-                  >
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 4. Prix d'achat */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Prix d'Achat (FCFA)</label>
-                    <span className="text-[10px] text-slate-400">Optionnel</span>
-                  </div>
-                  <select
-                    value={mapping.prixAchat}
-                    onChange={(e) => setMapping({ ...mapping, prixAchat: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
-                  >
-                    <option value={-1}>— Laisser vide (non renseigné) —</option>
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 5. Quantité Stock */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Quantité Stock</label>
-                    <span className="text-[10px] text-slate-400">Optionnel</span>
-                  </div>
-                  <select
-                    value={mapping.stock}
-                    onChange={(e) => setMapping({ ...mapping, stock: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
-                  >
-                    <option value={-1}>— Laisser vide (Stock initial à 0) —</option>
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
-                  {mapping.stock === -1 && (
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      Les articles seront créés avec un stock à 0.
-                    </p>
-                  )}
-                </div>
-
-                {/* 6. Catégorie */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Catégorie</label>
-                    <span className="text-[10px] text-slate-400">Optionnel</span>
-                  </div>
-                  <select
-                    value={mapping.categorie}
-                    onChange={(e) => setMapping({ ...mapping, categorie: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
-                  >
-                    <option value={-1}>— Laisser vide (sans catégorie) —</option>
-                    {headers.map((h, idx) => (
-                      <option key={idx} value={idx}>
-                        Colonne {idx + 1}: {h}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                    {headers.length} colonnes
+                  </span>
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
+                    {rawRows.length} lignes
+                  </span>
                 </div>
               </div>
+
+              {/* État récapitulatif des champs clés */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                {/* 1. Nom */}
+                <div className={`p-2 rounded-xl border ${colNom !== -1 ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900' : 'bg-rose-50/50 border-rose-200 text-rose-900'}`}>
+                  <span className="font-semibold block">Produit *</span>
+                  <span className="text-[11px] truncate block">
+                    {colNom !== -1 ? `Col. ${colNom + 1}: ${headers[colNom]}` : '⚠️ Requis non assigné'}
+                  </span>
+                </div>
+
+                {/* 2. Prix de Vente */}
+                <div className={`p-2 rounded-xl border ${colPrixCat !== -1 ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900' : 'bg-rose-50/50 border-rose-200 text-rose-900'}`}>
+                  <span className="font-semibold block">Prix de Vente *</span>
+                  <span className="text-[11px] truncate block">
+                    {colPrixCat !== -1 ? `Col. ${colPrixCat + 1}: ${headers[colPrixCat]}` : '⚠️ Requis non assigné'}
+                  </span>
+                </div>
+
+                {/* 3. SKU */}
+                <div className={`p-2 rounded-xl border ${colSku !== -1 ? 'bg-blue-50/50 border-blue-200 text-blue-900' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                  <span className="font-semibold block">Code SKU</span>
+                  <span className="text-[11px] truncate block">
+                    {colSku !== -1 ? `Col. ${colSku + 1}: ${headers[colSku]}` : '🪄 Auto-SKU actif'}
+                  </span>
+                </div>
+
+                {/* 4. Stock */}
+                <div className={`p-2 rounded-xl border ${colStock !== -1 ? 'bg-amber-50/50 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                  <span className="font-semibold block">Stock initial</span>
+                  <span className="text-[11px] truncate block">
+                    {colStock !== -1 ? `Col. ${colStock + 1}: ${headers[colStock]}` : '📦 Défaut à 0'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Liste défilante des colonnes du fichier */}
+              <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/40">
+                {headers.map((headerName, colIdx) => {
+                  const currentTarget = columnMappings[colIdx] || 'ignore';
+                  const isRequiredMapped = currentTarget === 'nom' || currentTarget === 'prixCatalogue';
+                  const isOptionalMapped = currentTarget !== 'ignore' && !isRequiredMapped;
+
+                  // Récupérer 2-3 exemples réels du fichier
+                  const samples = rawRows
+                    .slice(0, 5)
+                    .map((r) => r[colIdx]?.trim())
+                    .filter((val): val is string => Boolean(val && val.length > 0))
+                    .slice(0, 3);
+
+                  return (
+                    <div
+                      key={colIdx}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${
+                        isRequiredMapped
+                          ? 'border-emerald-300 bg-white shadow-xs'
+                          : isOptionalMapped
+                            ? 'border-blue-300 bg-white shadow-xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      {/* Détail colonne client */}
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-600">
+                            Col. {colIdx + 1}
+                          </span>
+                          <span className="font-bold text-slate-900 text-xs truncate">
+                            {headerName || `(Colonne sans titre)`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {samples.length > 0 ? (
+                            <span>
+                              <span className="text-slate-400 font-medium">Exemples : </span>
+                              <span className="italic text-slate-600 font-mono text-[10px]">
+                                {samples.map((s) => `"${s.length > 25 ? s.slice(0, 25) + '…' : s}"`).join(', ')}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="italic text-slate-400">Aucune valeur dans les 5 premières lignes</span>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Dropdown de destination Wilinwi */}
+                      <div className="sm:w-64 shrink-0">
+                        <select
+                          value={currentTarget}
+                          onChange={(e) => handleColumnMappingChange(colIdx, e.target.value as WilinwiTargetField)}
+                          className={`w-full rounded-xl border p-2 text-xs font-medium transition-colors ${
+                            isRequiredMapped
+                              ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900 font-semibold'
+                              : isOptionalMapped
+                                ? 'border-blue-300 bg-blue-50/40 text-blue-900 font-semibold'
+                                : 'border-slate-200 bg-slate-50 text-slate-600'
+                          }`}
+                        >
+                          {TARGET_FIELDS.map((tf) => (
+                            <option key={tf.key} value={tf.key}>
+                              {tf.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!canProceedToPreview && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>
+                    Veuillez attribuer au moins le <strong>Nom du Produit</strong> et le <strong>Prix de Vente</strong> à vos colonnes pour continuer.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -587,7 +714,8 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
               <button
                 type="button"
                 onClick={validateAndPreview}
-                className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                disabled={!canProceedToPreview}
+                className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <span>Aperçu & Vérification</span>
                 <ArrowRight className="h-4 w-4" />

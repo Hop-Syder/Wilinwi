@@ -26,43 +26,49 @@ task_context:
       - "Aperçu Step 3 : Affichage du badge '🪄 Auto' pour les SKU auto-générés et rendu propre des catégories"
 
   current:
-    id: "CATALOG-IMPORT-WIZARD-ENHANCEMENT"
-    objective: "Permettre l'import fluide de fichiers Excel sans SKU, stock ou catégorie requis"
+    id: "REVERSED-COLUMN-MAPPING-IMPORT-WIZARD"
+    objective: "Inversion du paradigme de mapping dans l'assistant d'import catalogue (colonne client -> champ Wilinwi, style Flatfile/Airtable)"
     branch: "main-mvp2"
     status: "COMPLETED"
     files_in_scope:
       - "apps/web/src/components/stock/catalog-import-wizard.tsx"
     constraints:
-      - "Garantir la conformité avec le schéma Zod de l'API /api/stock/import (sku non vide, stock positif ou 0)"
-      - "Préserver l'intégrité et la réversibilité"
+      - "Chaque colonne du fichier client est listée avec badge, nom d'en-tête et 2-3 exemples réels du fichier"
+      - "Sélecteur de destination Wilinwi pour chaque colonne avec garantie d'unicité (les cibles uniques se détachent automatiquement)"
+      - "Seuls Nom du Produit et Prix de Vente sont obligatoires pour passer à l'étape 3"
+      - "Auto-SKU déterministe et stock à 0 par défaut pour les colonnes non mappées"
+      - "Zéro warning ESLint et validation typecheck stricte"
 
   future:
     known_tasks:
       - id: "MERGE-MVP2-INTO-MAIN"
         objective: "Fusionner main-mvp2 dans main via branche tampon et résolution ordonnée des 35 fichiers de conflits"
-        dependency: "CATALOG-IMPORT-AUTO-SKU-AND-OPTIONAL-FIELDS"
+        dependency: "REVERSED-COLUMN-MAPPING-IMPORT-WIZARD"
         status: "PLANNED"
 
   cross_branch:
     inspected_branches: ["main", "main-mvp2"]
-    relevant_changes: ["Auto-SKU & champs optionnels import catalogue", "Conflits identifiés sur 35 fichiers lors du dry-run merge-tree"]
+    relevant_changes: ["Mapping inversé import catalogue", "Auto-SKU & champs optionnels import catalogue", "Conflits identifiés sur 35 fichiers lors du dry-run merge-tree"]
     conflicts: ["35 fichiers de conflit entre main et main-mvp2 (API, Web, Types, Offline, DB)"]
     decisions_found: ["Ne pas fusionner directement vers main sans branche tampon de validation"]
 
   temporary_memory:
     facts:
+      - "Mapping inversé Flatfile-style implémenté dans apps/web/src/components/stock/catalog-import-wizard.tsx"
+      - "ESLint validé avec 0 warning (--max-warnings 0)"
       - "Base Supabase migrée en double precision pour les quantités"
       - "Prisma client régénéré avec Float"
       - "Validation point de stock auto-ouvre une session d'inventaire si nécessaire"
       - "Règle mémoire inscrite dans GEMINI.md et AGENTS.md"
     decisions:
-      - "Double precision préféré aux entiers fixes pour souplesse maximale tous secteurs (vrac, boisson, découpe, agro)"
+      - "Paradigme inversé : chaque colonne du fichier du client pointe vers un champ Wilinwi ou 'Ignorer cette colonne'"
+      - "Unicité automatique des cibles : réassigner un champ cible bascule l'ancienne colonne à 'ignore'"
+      - "Seuls nom et prixCatalogue sont obligatoires pour débloquer l'aperçu"
     discoveries:
-      - "sales.service déduisait -1 au lieu de -item.quantite pour les produits non sérialisés/sans lot"
-      - "La confirmation d'inventaire bloquait si l'utilisateur n'avait pas cliqué sur Démarrer une session"
+      - "Les fichiers clients réels (ex: Suivi_Boissons_Stock_et_Prix.xlsx) ont des en-têtes personnalisés (Boissons, Quantité de départ, etc.) que le mapping direct inversé gère avec clarté visuelle"
     blockers: []
     pending_actions:
-      - "Push final sur origin/main-mvp2"
+      - "Commit Git et push sur origin/main-mvp2"
 ```
 
 ## 🛠️ Stack détectée
