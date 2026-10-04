@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Plus, Search, AlertTriangle, ArrowRightLeft,
-  Warehouse, FileSpreadsheet, Camera, Package
+  Warehouse, FileSpreadsheet, Camera, Package, ClipboardCheck
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
@@ -23,6 +23,7 @@ import { apiGet, apiPatch } from '@/lib/api';
 import { useCachedQuery } from '@/lib/use-cached-query';
 import { useAuth } from '@/lib/auth-context';
 import { ProductFormModal, StockTransferModal } from '@/components/stock-modals';
+import { PointDeStockModal } from '@/components/stock/point-de-stock-modal';
 import { StockKpiCards } from '@/components/stock/stock-kpi-cards';
 import { StockDataTable } from '@/components/stock/stock-data-table';
 import { StockAdjustModal } from '@/components/stock/stock-adjust-modal';
@@ -59,6 +60,7 @@ export default function StockPage() {
   const [adjustProduct, setAdjustProduct] = useState<ProductDto | undefined>();
   const [quickAdjustDelta, setQuickAdjustDelta] = useState<number | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showPointModal, setShowPointModal] = useState(false);
 
   // Filtres & Recherche Douchette / Code-barres
   const [search, setSearch] = useState('');
@@ -175,8 +177,19 @@ export default function StockPage() {
             </p>
           </div>
 
-          {/* Droite : Groupe d'Actions Aligné sur 1 Ligne (Import | Transférer | Entrepôt | + Nouveau | ❓) */}
+          {/* Droite : Groupe d'Actions Aligné sur 1 Ligne (Point de Stock | Import | Transférer | Entrepôt | + Nouveau | ❓) */}
           <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap justify-start lg:justify-end shrink-0">
+            {canReadStock && (
+              <Button
+                variant="outline"
+                onClick={() => setShowPointModal(true)}
+                className="rounded-xl border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100 hover:text-amber-950 text-xs font-black gap-1.5 shadow-2xs"
+              >
+                <ClipboardCheck className="h-4 w-4 text-amber-600" />
+                <span>Faire le point</span>
+              </Button>
+            )}
+
             {canWrite && (
               <Button
                 variant="outline"
@@ -363,6 +376,14 @@ export default function StockPage() {
           onSuccess={() => { setShowTransferModal(false); void refetch(); }}
         />
       )}
+
+      {/* Modale Point de Stock & Récolement Physique */}
+      <PointDeStockModal
+        isOpen={showPointModal}
+        onClose={() => setShowPointModal(false)}
+        products={products}
+        onStockUpdated={() => void refetch()}
+      />
     </div>
   );
 }

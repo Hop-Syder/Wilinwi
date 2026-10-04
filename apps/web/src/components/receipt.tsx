@@ -33,7 +33,10 @@ export interface ReceiptSale {
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */
 function _receiptText(sale: ReceiptSale): string {
   const lignes = sale.items
-    .map((it) => `${it.quantite}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(it.prixReel * it.quantite)}`)
+    .map((it) => {
+      const formattedQty = it.quantite % 1 !== 0 ? it.quantite.toLocaleString('fr-FR') : String(it.quantite);
+      return `${formattedQty}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(Math.round(it.prixReel * it.quantite))}`;
+    })
     .join('\n');
   const detailsMoMo = sale.paymentMethod === 'MOBILE_MONEY' && sale.momoOperator
     ? ` (${sale.momoOperator}${sale.momoReference ? ` - Réf: ${sale.momoReference}` : ''})`
@@ -116,14 +119,18 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
 
           <div className="my-2 border-t border-dashed border-slate-300" />
 
-          {sale.items.map((it) => (
-            <div key={it.id} className="flex justify-between">
-              <span>
-                {it.quantite}× {it.product?.nom ?? 'Article'}
-              </span>
-              <span className="tabular">{formatFCFA(it.prixReel * it.quantite)}</span>
-            </div>
-          ))}
+          {sale.items.map((it) => {
+            const formattedQty = it.quantite % 1 !== 0 ? it.quantite.toLocaleString('fr-FR') : String(it.quantite);
+            const lineTotal = Math.round(it.prixReel * it.quantite);
+            return (
+              <div key={it.id} className="flex justify-between">
+                <span>
+                  {formattedQty}× {it.product?.nom ?? 'Article'}
+                </span>
+                <span className="tabular">{formatFCFA(lineTotal)}</span>
+              </div>
+            );
+          })}
 
           <div className="my-2 border-t border-dashed border-slate-300" />
 

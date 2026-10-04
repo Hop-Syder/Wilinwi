@@ -98,13 +98,30 @@ export class PublicReceiptController {
       throw new NotFoundException('Reçu introuvable ou expiré.');
     }
 
-    const itemsFormatted = sale.items.map((it) => ({
-      nom: it.unitLabel
-        ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
-        : (it.product?.nom ?? 'Article'),
-      quantite: it.quantite,
-      prixReel: it.prixReel,
-    }));
+    const itemsFormatted = sale.items.map((it) => {
+      let quantite = it.quantite;
+      let prixReel = it.prixReel;
+      let label = it.unitLabel;
+      if (it.unitLabel && it.unitLabel.startsWith('DEC:')) {
+        const parts = it.unitLabel.split(':');
+        const decQtyStr = parts[1];
+        const unitPriceStr = parts[2];
+        const decQty = decQtyStr ? parseFloat(decQtyStr) : NaN;
+        const unitPrice = unitPriceStr ? parseInt(unitPriceStr, 10) : NaN;
+        if (!isNaN(decQty) && !isNaN(unitPrice)) {
+          quantite = decQty;
+          prixReel = unitPrice;
+          label = parts.slice(3).join(':');
+        }
+      }
+      return {
+        nom: label
+          ? `${it.product?.nom ?? 'Article'} — ${label}`
+          : (it.product?.nom ?? 'Article'),
+        quantite,
+        prixReel,
+      };
+    });
 
     return {
       code: sale.receiptCode || sale.id.slice(0, 8).toUpperCase(),

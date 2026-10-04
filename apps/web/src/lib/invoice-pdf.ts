@@ -260,11 +260,12 @@ export async function generateSaleInvoicePdf(
     head: [['N°', 'DÉSIGNATION DU PRODUIT', 'QTÉ', 'PRIX UNITAIRE', 'MONTANT TOTAL']],
     body: sale.items.map((it, idx) => {
       const itemNom = it.nom || it.product?.nom || 'Article';
-      const totalLigne = it.prixReel * it.quantite;
+      const formattedQty = it.quantite % 1 !== 0 ? String(it.quantite).replace('.', ',') : String(it.quantite);
+      const totalLigne = Math.round(it.prixReel * it.quantite);
       return [
         String(idx + 1).padStart(2, '0'),
         itemNom,
-        String(it.quantite),
+        formattedQty,
         fcfa(it.prixReel),
         fcfa(totalLigne),
       ];

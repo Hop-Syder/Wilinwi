@@ -22,11 +22,50 @@ type SaleLike = { items?: SaleItemLike[] | null } & Record<string, unknown>;
  * pendant des produits via toProductDto (§3 / §9).
  */
 export function toSaleDto<T extends SaleLike>(sale: T, role: Role): T {
-  if (canSeeSensitivePricing(role)) return sale;
+  const isAllowedSensitive = canSeeSensitivePricing(role);
 
   const items = (sale.items ?? []).map((item) => {
-    const { coutUnitaire: _cout, ...rest } = item;
-    return rest;
+    let itemOut: SaleItemLike = { ...item };
+    if (!isAllowedSensitive) {
+      const { coutUnitaire: _cout, ...rest } = itemOut;
+      itemOut = rest;
+    }
+
+    // 🎯 Restitution exacte des quantités décimales et prix unitaires (0.5, 0.75, 1.25...)
+    const unitLabel = typeof itemOut.unitLabel === 'string' ? itemOut.unitLabel : null;
+    if (unitLabel && unitLabel.startsWith('DEC:')) {
+      const parts = unitLabel.split(':');
+      const decQtyStr = parts[1];
+      const unitPriceStr = parts[2];
+      const decQty = decQtyStr ? parseFloat(decQtyStr) : NaN;
+      const unitPrice = unitPriceStr ? parseInt(unitPriceStr, 10) : NaN;
+      const displayTag = parts.slice(3).join(':');
+      if (!isNaN(decQty) && !isNaN(unitPrice)) {
+        itemOut = {
+          ...itemOut,
+          quantite: decQty,
+          prixReel: unitPrice,
+          unitLabel: displayTag || `${decQty}x`,
+        };
+      }
+    } else if (unitLabel) {
+      // Rétrocompatibilité avec les ventes créées avec format "0,5x", "0,75x", "0,5 kg"
+      const match = unitLabel.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(.*)$/);
+      const rawQty = match?.[1];
+      if (rawQty && (rawQty.includes('.') || rawQty.includes(','))) {
+        const parsed = parseFloat(rawQty.replace(',', '.'));
+        if (parsed > 0 && parsed !== 1 && itemOut.quantite === 1) {
+          const lineTotal = Number(itemOut.prixReel) || 0;
+          itemOut = {
+            ...itemOut,
+            quantite: parsed,
+            prixReel: Math.round(lineTotal / parsed),
+          };
+        }
+      }
+    }
+
+    return itemOut;
   });
 
   return { ...sale, items } as unknown as T;

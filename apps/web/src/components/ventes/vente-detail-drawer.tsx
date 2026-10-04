@@ -102,14 +102,18 @@ export function VenteDetailDrawer({
             </div>
 
             <ul className="divide-y divide-dashed divide-slate-200">
-              {sale.items.map((it) => (
-                <li key={it.id} className="flex justify-between py-1.5">
-                  <span className="text-slate-800 font-bold">
-                    {it.quantite}× {it.product?.nom ?? 'Article'}
-                  </span>
-                  <span className="font-black text-slate-900">{formatFCFA(it.prixReel * it.quantite)}</span>
-                </li>
-              ))}
+              {sale.items.map((it) => {
+                const formattedQty = it.quantite % 1 !== 0 ? it.quantite.toLocaleString('fr-FR') : String(it.quantite);
+                const lineTotal = Math.round(it.prixReel * it.quantite);
+                return (
+                  <li key={it.id} className="flex justify-between py-1.5">
+                    <span className="text-slate-800 font-bold">
+                      {formattedQty}× {it.product?.nom ?? 'Article'}
+                    </span>
+                    <span className="font-black text-slate-900">{formatFCFA(lineTotal)}</span>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="border-t border-dashed border-slate-300 pt-2 space-y-1">

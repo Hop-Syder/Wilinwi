@@ -18,6 +18,7 @@ import {
 import {
   accountForPayment,
   saleStockBehavior,
+  quantityScale,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
@@ -221,6 +222,10 @@ export class SalesService {
           const lineTotal = Math.round(item.prixReel * item.quantite);
           const formattedQty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(item.quantite);
           const unitTag = product.baseUnit ? `${formattedQty} ${product.baseUnit}` : `${formattedQty}x`;
+          // Encodage standard DEC:quantite:prixUnitaire:libelle pour restitution parfaite sans altérer la facture
+          const metaLabel = `DEC:${item.quantite}:${item.prixReel}:${unitTag}`;
+          const scale = quantityScale(product.unitKind);
+          const unitFactor = scale > 1 ? Math.round(item.quantite * scale) : Math.max(1, Math.round(item.quantite));
           lines.push({
             productId: product.id,
             variantId: item.variantId ?? null,
@@ -228,8 +233,8 @@ export class SalesService {
             prixReel: lineTotal,
             coutUnitaire: Math.round(product.prixAchat * item.quantite),
             unitId: null,
-            unitLabel: unitTag,
-            unitFactor: Math.max(1, Math.round(item.quantite)),
+            unitLabel: metaLabel,
+            unitFactor,
           });
         } else {
           lines.push({
@@ -658,13 +663,30 @@ export class SalesService {
         boutiqueNom: tenant?.nom ?? 'Wilinwi',
         total: sale.total,
         montantVerse,
-        items: sale.items.map((it) => ({
-          nom: it.unitLabel
-            ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
-            : (it.product?.nom ?? 'Article'),
-          quantite: it.quantite,
-          prixReel: it.prixReel,
-        })),
+        items: sale.items.map((it) => {
+          let quantite = it.quantite;
+          let prixReel = it.prixReel;
+          let label = it.unitLabel;
+          if (it.unitLabel && it.unitLabel.startsWith('DEC:')) {
+            const parts = it.unitLabel.split(':');
+            const decQtyStr = parts[1];
+            const unitPriceStr = parts[2];
+            const decQty = decQtyStr ? parseFloat(decQtyStr) : NaN;
+            const unitPrice = unitPriceStr ? parseInt(unitPriceStr, 10) : NaN;
+            if (!isNaN(decQty) && !isNaN(unitPrice)) {
+              quantite = decQty;
+              prixReel = unitPrice;
+              label = parts.slice(3).join(':');
+            }
+          }
+          return {
+            nom: label
+              ? `${it.product?.nom ?? 'Article'} — ${label}`
+              : (it.product?.nom ?? 'Article'),
+            quantite,
+            prixReel,
+          };
+        }),
         saleDate: sale.createdAt,
       },
     });
