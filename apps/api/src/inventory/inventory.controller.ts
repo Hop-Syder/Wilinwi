@@ -37,6 +37,12 @@ export class InventoryController {
   }
 
   @RequireCapabilities('inventory:count')
+  @Get()
+  list(@CurrentUser() user: AuthContext) {
+    return this.inventory.list(user);
+  }
+
+  @RequireCapabilities('inventory:count')
   @Get(':id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string) {
     return this.inventory.get(user, id);

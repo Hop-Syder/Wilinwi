@@ -391,8 +391,8 @@ model Product {
   prixAchat     Int         @map("prix_achat") // sensible
   prixPlancher  Int         @map("prix_plancher") // sensible
   prixCatalogue Int         @map("prix_catalogue")
-  stock         Int         @default(0)
-  seuilAlerte   Int         @default(5) @map("seuil_alerte")
+  stock         Float       @default(0)
+  seuilAlerte   Float       @default(5) @map("seuil_alerte")
   /// Vendable à la caisse (POS). `false` = matière première / ingrédient : reste
   /// visible et gérable en stock, mais jamais proposé ni vendable au POS.
   vendablePos   Boolean     @default(true) @map("vendable_pos")
@@ -554,7 +554,7 @@ model RecipeItem {
   /// Quantité consommée PAR PLAT VENDU, dans l'échelle de l'ingrédient (§19.1 :
   /// milli-unités pour WEIGHT/VOLUME — 200 g de riz = 200 si baseUnit "g",
   /// ou 0,2 kg = 200 milli-kg). Pas d'unité libre : celle de l'ingrédient fait foi.
-  quantite            Int
+  quantite            Float
 
   tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   recipe     ProductRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
@@ -591,7 +591,7 @@ model ProductVariant {
   productId String   @map("product_id") @db.Uuid
   attributs Json // { taille: 'L', couleur: 'rouge' }
   sku       String?
-  stock     Int      @default(0)
+  stock     Float    @default(0)
   createdAt DateTime @default(now()) @map("created_at")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -611,7 +611,7 @@ model StockMovement {
   /// utilisée pour la ré-entrée à l'annulation/retour (même pattern que saleId).
   batchId   String?           @map("batch_id") @db.Uuid
   type      StockMovementType
-  quantite  Int // signé selon le type
+  quantite  Float // signé selon le type
   motif     String
   saleId    String?           @map("sale_id") @db.Uuid
   createdAt DateTime          @default(now()) @map("created_at")
@@ -655,9 +655,9 @@ model InventoryItem {
   inventoryId      String  @map("inventory_id") @db.Uuid
   productId        String  @map("product_id") @db.Uuid
   variantId        String? @map("variant_id") @db.Uuid
-  quantiteTheorique Int    @map("quantite_theorique")
-  quantiteReelle   Int?    @map("quantite_reelle")
-  ecart            Int? // reelle - theorique, calculé à la saisie
+  quantiteTheorique Float  @map("quantite_theorique")
+  quantiteReelle   Float?  @map("quantite_reelle")
+  ecart            Float? // reelle - theorique, calculé à la saisie
 
   inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
 
@@ -729,8 +729,8 @@ model SaleItem {
   saleId    String  @map("sale_id") @db.Uuid
   productId String  @map("product_id") @db.Uuid
   variantId String? @map("variant_id") @db.Uuid
-  quantite  Int
-  quantiteRetournee Int @default(0) @map("quantite_retournee")
+  quantite  Float
+  quantiteRetournee Float @default(0) @map("quantite_retournee")
   prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié (PAR conditionnement si unitId)
   /// Coût figé au moment de la vente (prix d'achat × facteur), pour la marge.
   coutUnitaire Int  @map("cout_unitaire")
@@ -739,7 +739,7 @@ model SaleItem {
   /// si le conditionnement est modifié/supprimé ensuite.
   unitId     String? @map("unit_id") @db.Uuid
   unitLabel  String? @map("unit_label")
-  unitFactor Int     @default(1) @map("unit_factor")
+  unitFactor Float   @default(1) @map("unit_factor")
   /// Échelle des quantités de la ligne (§19.1) — SNAPSHOT figé à la vente :
   /// 1000 pour un produit WEIGHT/VOLUME (quantite = 250 → 0,25 kg), 1 sinon.
   /// Montant de la ligne = prixReel × quantite / quantityScale (prix PAR kg/L).
@@ -994,8 +994,8 @@ model PurchaseOrderItem {
   purchaseOrderId  String  @map("purchase_order_id") @db.Uuid
   productId        String  @map("product_id") @db.Uuid
   variantId        String? @map("variant_id") @db.Uuid
-  quantiteCommandee Int    @map("quantite_commandee")
-  quantiteRecue    Int     @default(0) @map("quantite_recue")
+  quantiteCommandee Float  @map("quantite_commandee")
+  quantiteRecue    Float   @default(0) @map("quantite_recue")
   prixUnitaire     Int     @map("prix_unitaire") // coût d'achat unitaire
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
@@ -1039,8 +1039,8 @@ model ProductStock {
   productId       String   @map("product_id") @db.Uuid
   variantId       String?  @map("variant_id") @db.Uuid
   etablissementId String   @map("etablissement_id") @db.Uuid
-  quantite        Int      @default(0)
-  quantiteMin     Int      @default(0) @map("quantite_min") // alerte si quantite <= quantiteMin
+  quantite        Float    @default(0)
+  quantiteMin     Float    @default(0) @map("quantite_min") // alerte si quantite <= quantiteMin
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1096,7 +1096,7 @@ model DispatchOrderItem {
   dispatchOrderId String  @map("dispatch_order_id") @db.Uuid
   productId       String  @map("product_id") @db.Uuid
   variantId       String? @map("variant_id") @db.Uuid
-  quantite        Int
+  quantite        Float
 
   dispatchOrder DispatchOrder @relation(fields: [dispatchOrderId], references: [id], onDelete: Cascade)
   product       Product       @relation(fields: [productId], references: [id])

@@ -22,7 +22,13 @@ import {
   type AuthContext,
 } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
-import { saleItemDisplayQty } from '../pos/sale.mapper';
+import { toDisplayItem } from '../pos/sale.mapper';
+
+/** Marge FCFA d'une ligne de vente (quantité affichée, lignes legacy décodées). */
+function lineMargin(it: { prixReel: number; coutUnitaire: number; quantite: number; quantityScale?: number | null; unitLabel?: string | null }): number {
+  const shown = toDisplayItem(it);
+  return saleLineAmount(shown.prixReel - (shown.coutUnitaire ?? 0), shown.quantite);
+}
 
 const LOW_STOCK_THRESHOLD = 5;
 const DORMANT_DAYS = 30;
@@ -55,14 +61,14 @@ export class AnalyticsService {
 
       const ventesDuJour = salesToday.reduce((sum, s) => sum + s.total, 0);
       const articlesVendus = salesToday.reduce(
-        (sum, s) => sum + s.items.reduce((q, it) => q + saleItemDisplayQty(it), 0),
+        (sum, s) => sum + s.items.reduce((q, it) => q + toDisplayItem(it).quantite, 0),
         0,
       );
 
       // Bénéfice du jour (marge réelle) — donnée sensible
       const beneficeDuJour = salesToday.reduce(
         (sum, s) =>
-          sum + s.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
+          sum + s.items.reduce((m, it) => m + lineMargin(it), 0),
         0,
       );
 
@@ -244,7 +250,7 @@ export class AnalyticsService {
       const nombreVentesPrev = salesPrev.length;
 
       const articlesVendus = sales.reduce(
-        (s, v) => s + v.items.reduce((q, it) => q + saleItemDisplayQty(it), 0),
+        (s, v) => s + v.items.reduce((q, it) => q + toDisplayItem(it).quantite, 0),
         0,
       );
 
@@ -252,11 +258,11 @@ export class AnalyticsService {
       const panierMoyenPrev = nombreVentesPrev ? Math.round(chiffreAffairesPrev / nombreVentesPrev) : 0;
 
       const benefice = sales.reduce(
-        (s, v) => s + v.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
+        (s, v) => s + v.items.reduce((m, it) => m + lineMargin(it), 0),
         0,
       );
       const beneficePrev = salesPrev.reduce(
-        (s, v) => s + v.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
+        (s, v) => s + v.items.reduce((m, it) => m + lineMargin(it), 0),
         0,
       );
 
@@ -303,7 +309,7 @@ export class AnalyticsService {
         const cur = byDay.get(day) ?? { ca: 0, benefice: 0, ventes: 0 };
         cur.ca += s.total;
         cur.ventes += 1;
-        cur.benefice += s.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0);
+        cur.benefice += s.items.reduce((m, it) => m + lineMargin(it), 0);
         byDay.set(day, cur);
       }
 
@@ -355,8 +361,9 @@ export class AnalyticsService {
             quantite: 0,
             ca: 0,
           };
-          cur.quantite += saleItemDisplayQty(it);
-          cur.ca += saleLineAmount(it.prixReel, saleItemDisplayQty(it));
+          const shown = toDisplayItem(it);
+          cur.quantite += shown.quantite;
+          cur.ca += saleLineAmount(shown.prixReel, shown.quantite);
           byProduct.set(prodId, cur);
         }
       }

@@ -97,16 +97,19 @@ export function ReceiptPublicView({
             Détail des Articles ({receipt.items.length})
           </p>
           <ul className="divide-y divide-slate-100 text-xs">
-            {receipt.items.map((it, idx) => (
-              <li key={idx} className="py-2 flex justify-between items-baseline gap-2">
-                <span className="font-medium text-slate-800">
-                  <span className="font-bold text-slate-900 font-mono">{it.quantite}×</span> {it.nom}
-                </span>
-                <span className="font-bold font-mono text-slate-900 shrink-0">
-                  {formatFCFA(saleLineAmount(it.prixReel, it.quantite))}
-                </span>
-              </li>
-            ))}
+            {receipt.items.map((it, idx) => {
+              const formattedQty = it.quantite % 1 !== 0 ? it.quantite.toLocaleString('fr-FR') : String(it.quantite);
+              return (
+                <li key={idx} className="py-2 flex justify-between items-baseline gap-2">
+                  <span className="font-medium text-slate-800">
+                    <span className="font-bold text-slate-900 font-mono">{formattedQty}×</span> {it.nom}
+                  </span>
+                  <span className="font-bold font-mono text-slate-900 shrink-0">
+                    {formatFCFA(saleLineAmount(it.prixReel, it.quantite))}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 

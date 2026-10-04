@@ -332,7 +332,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
           id: v.id,
           attributs: { [v.key || 'Variante']: v.val.trim() },
           sku: v.sku.trim() || undefined,
-          stock: isEditing && v.id ? v.stock : Math.round(parseNum(v.stock, 0))
+          stock: isEditing && v.id ? v.stock : parseNum(v.stock, 0)
         }))
       };
 

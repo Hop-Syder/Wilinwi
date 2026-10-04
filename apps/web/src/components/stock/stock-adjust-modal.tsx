@@ -72,7 +72,7 @@ export function StockAdjustModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = parseInt(quantite, 10);
+    const qty = parseFloat(quantite.replace(',', '.'));
     const finalMotif = motif === 'Autre' ? customMotif.trim() : motif.trim();
 
     if (isNaN(qty) || (type === 'ADJUST' ? qty === 0 : qty <= 0)) {
@@ -183,7 +183,8 @@ export function StockAdjustModal({
               </label>
               <input
                 type="number"
-                min={type === 'ADJUST' ? undefined : '1'}
+                step="any"
+                min={type === 'ADJUST' ? undefined : '0.001'}
                 required
                 value={quantite}
                 onChange={(e) => setQuantite(e.target.value)}

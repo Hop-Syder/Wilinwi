@@ -53,7 +53,7 @@ export class InventoryService {
       });
       const localByProduct = new Map(localRows.map((r) => [r.productId, r.quantite]));
 
-      return tx.inventory.create({
+      const inv = await tx.inventory.create({
         data: {
           tenantId: ctx.tenantId,
           etablissementId: ctx.etablissementId,
@@ -63,12 +63,14 @@ export class InventoryService {
             create: products.map((p) => ({
               tenantId: ctx.tenantId,
               productId: p.id,
-              quantiteTheorique: localByProduct.get(p.id) ?? 0,
+              quantiteTheorique: localByProduct.get(p.id) ?? p.stock ?? 0,
             })),
           },
         },
         include: { items: true },
       });
+      const itemsWithProduct = await this.attachProductsToItems(tx, inv.items);
+      return { ...inv, items: itemsWithProduct };
     });
   }
 
@@ -99,7 +101,8 @@ export class InventoryService {
           },
         });
       }
-      return tx.inventoryItem.findMany({ where: { tenantId: ctx.tenantId, inventoryId } });
+      const items = await tx.inventoryItem.findMany({ where: { tenantId: ctx.tenantId, inventoryId } });
+      return this.attachProductsToItems(tx, items);
     });
   }
 
@@ -146,7 +149,7 @@ export class InventoryService {
         }
       }
 
-      return tx.inventory.update({
+      const updated = await tx.inventory.update({
         where: { id: inventoryId },
         data: {
           status: 'VALIDATED',
@@ -156,17 +159,80 @@ export class InventoryService {
         },
         include: { items: true },
       });
+      const itemsWithProduct = await this.attachProductsToItems(tx, updated.items);
+      return { ...updated, items: itemsWithProduct };
+    });
+  }
+
+  async list(ctx: AuthContext) {
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const inventories = await tx.inventory.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          ...(ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        include: {
+          items: true,
+          validator: { select: { id: true, nom: true, email: true } },
+          etablissement: { select: { id: true, nom: true } },
+        },
+      });
+
+      return Promise.all(
+        inventories.map(async (inv) => ({
+          ...inv,
+          items: await this.attachProductsToItems(tx, inv.items),
+        })),
+      );
     });
   }
 
   async get(ctx: AuthContext, inventoryId: string) {
-    const inv = await this.prisma.forTenant(ctx.tenantId, (tx) =>
-      tx.inventory.findFirst({
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const inv = await tx.inventory.findFirst({
         where: { id: inventoryId, tenantId: ctx.tenantId },
-        include: { items: true },
-      }),
-    );
-    if (!inv) throw new NotFoundException('Inventaire introuvable');
-    return inv;
+        include: {
+          items: true,
+          validator: { select: { id: true, nom: true, email: true } },
+          etablissement: { select: { id: true, nom: true } },
+        },
+      });
+      if (!inv) throw new NotFoundException('Inventaire introuvable');
+      const itemsWithProduct = await this.attachProductsToItems(tx, inv.items);
+      return { ...inv, items: itemsWithProduct };
+    });
+  }
+
+  private async attachProductsToItems<T extends { productId: string }>(
+    tx: any,
+    items: T[],
+  ) {
+    if (items.length === 0) return [];
+    const productIds = Array.from(new Set(items.map((it) => it.productId)));
+    const products: Array<{
+      id: string;
+      nom: string;
+      baseUnit: string | null;
+      unitKind: any;
+      prixVente: number;
+      prixAchat: number;
+    }> = await tx.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        nom: true,
+        baseUnit: true,
+        unitKind: true,
+        prixVente: true,
+        prixAchat: true,
+      },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    return items.map((it) => ({
+      ...it,
+      product: productMap.get(it.productId) ?? null,
+    }));
   }
 }

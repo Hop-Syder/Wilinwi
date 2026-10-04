@@ -12,7 +12,7 @@
 import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { Public } from '../common/decorators';
 import { PrismaService } from '../common/prisma.service';
-import { saleItemDisplayQty } from '../pos/sale.mapper';
+import { toDisplayItem } from '../pos/sale.mapper';
 
 export interface PublicReceiptDto {
   code: string;
@@ -99,13 +99,16 @@ export class PublicReceiptController {
       throw new NotFoundException('Reçu introuvable ou expiré.');
     }
 
-    const itemsFormatted = sale.items.map((it) => ({
-      nom: it.unitLabel
-        ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
-        : (it.product?.nom ?? 'Article'),
-      quantite: saleItemDisplayQty(it),
-      prixReel: it.prixReel,
-    }));
+    const itemsFormatted = sale.items.map((raw) => {
+      const it = toDisplayItem(raw);
+      return {
+        nom: it.unitLabel
+          ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
+          : (it.product?.nom ?? 'Article'),
+        quantite: it.quantite,
+        prixReel: it.prixReel,
+      };
+    });
 
     return {
       code: sale.receiptCode || sale.id.slice(0, 8).toUpperCase(),

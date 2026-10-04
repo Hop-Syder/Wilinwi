@@ -72,13 +72,13 @@ export function PosProductSelectModal({
 
   // Garde-fou stock : la quantité demandée (en unités persistées) ne doit pas
   // dépasser le disponible — même règle que le serveur (STRICT).
-  const requestedStored = Math.round(quantite * (selectedUnit ? selectedUnit.factorToBase : scale));
+  const requestedStored =
+    Math.round(quantite * (selectedUnit ? selectedUnit.factorToBase : scale) * 1000) / 1000;
   const available = selectedVariant ? selectedVariant.stock : product.stock;
   const exceedsStock =
     product.type !== 'BATCHED' &&
     saleStockBehavior(product.type, product.stockPolicy).precheck &&
-    requestedStored > available;
-  const pieceFraction = !byWeight && !selectedUnit && !Number.isInteger(quantite);
+    requestedStored > available + 1e-6;
 
   const breakdown = hasUnits
     ? formatPackBreakdown(
@@ -89,7 +89,7 @@ export function PosProductSelectModal({
     : null;
 
   const handleAdd = () => {
-    if (quantite <= 0 || requestedStored <= 0 || exceedsStock || pieceFraction) return;
+    if (quantite <= 0 || requestedStored <= 0 || exceedsStock) return;
 
     const line: CartLine = {
       product,
@@ -259,8 +259,8 @@ export function PosProductSelectModal({
               </button>
               <input
                 type="number"
-                step={step}
-                min={step}
+                step="any"
+                min={0.001}
                 inputMode="decimal"
                 value={quantite}
                 onChange={(e) => setQuantite(parseFloat(e.target.value.replace(',', '.')) || 0)}
@@ -289,15 +289,12 @@ export function PosProductSelectModal({
                 Stock insuffisant : {formatQuantity(available, product.unitKind, product.baseUnit)} disponible(s).
               </p>
             )}
-            {pieceFraction && (
-              <p className="text-xs font-bold text-rose-600">Ce produit se vend à l&apos;unité (pas de fraction).</p>
-            )}
 
             <Button
               variant="emerald"
               size="lg"
               onClick={handleAdd}
-              disabled={quantite <= 0 || exceedsStock || pieceFraction}
+              disabled={quantite <= 0 || exceedsStock}
               className="w-full py-3.5 rounded-2xl font-extrabold text-sm shadow-md shadow-emerald-900/20"
             >
               Ajouter au panier

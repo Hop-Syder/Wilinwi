@@ -212,22 +212,34 @@ export default function PosPage() {
     });
   };
 
-  // Mise à jour Quantité
+  // Mise à jour Quantité par incrément/décrément
   const handleUpdateQuantity = (index: number, delta: number) => {
     setCart((prev) => {
       const copy = [...prev];
       const line = copy[index];
       if (!line) return prev;
-      // Poids/volume : pas de 0,25 kg/L, quelle que soit la touche (+/−).
-      // Conditionnement : demi-casier permis (delta tel quel) ; sinon le pas
-      // dépend du produit — 0,25 kg/L au poids/volume, 1 pour une pièce
-      // (une pièce ne se fractionne pas : le serveur refuse 0,5 chemise).
-      const step = line.unitId ? delta : Math.sign(delta) * saleQuantityStep(line.product.unitKind);
+      // Poids/volume (hors conditionnement) : pas de 0,25 kg/L sur +/− ; sinon
+      // le delta du composant (½ casier, 1 pièce…) est appliqué tel quel.
+      const byWeight = !line.unitId && quantityScale(line.product.unitKind) !== 1;
+      const step = byWeight ? Math.sign(delta) * saleQuantityStep(line.product.unitKind) : delta;
       const newQty = Number((line.quantite + step).toFixed(3));
       if (newQty <= 0) {
         return copy.filter((_, i) => i !== index);
       }
       copy[index].quantite = newQty;
+      return copy;
+    });
+  };
+
+  // Définition directe de la Quantité (saisie manuelle au clavier : 0.5, 0.75, 1.25, 1.5, etc.)
+  const handleSetQuantity = (index: number, newQty: number) => {
+    setCart((prev) => {
+      const copy = [...prev];
+      if (!copy[index]) return prev;
+      if (newQty <= 0) {
+        return copy.filter((_, i) => i !== index);
+      }
+      copy[index].quantite = Number(newQty.toFixed(3));
       return copy;
     });
   };
@@ -433,6 +445,7 @@ export default function PosPage() {
           <PosCartZone
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
+            onSetQuantity={handleSetQuantity}
             onRemoveLine={handleRemoveLine}
             onClearCart={() => setCart([])}
             clients={clients}
@@ -551,6 +564,7 @@ export default function PosPage() {
         onClose={() => setShowMobileCartDrawer(false)}
         cart={cart}
         onUpdateQuantity={handleUpdateQuantity}
+        onSetQuantity={handleSetQuantity}
         onRemoveLine={handleRemoveLine}
         onClearCart={() => setCart([])}
         clients={clients}

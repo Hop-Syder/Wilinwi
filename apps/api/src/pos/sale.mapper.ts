@@ -13,6 +13,8 @@ import { canSeeSensitivePricing, type Role } from '@wilinwi/types';
 
 type SaleItemLike = {
   coutUnitaire?: number | null;
+  prixReel?: number;
+  unitLabel?: string | null;
   quantite?: number;
   quantiteRetournee?: number | null;
   quantityScale?: number | null;
@@ -27,10 +29,54 @@ export function saleItemDisplayQty(item: { quantite: number; quantityScale?: num
   return item.quantite / (item.quantityScale || 1);
 }
 
-/** Ramène les quantités persistées d'une ligne à l'échelle d'affichage. */
-function toDisplayItem<I extends SaleItemLike>(item: I): I {
+/**
+ * Lignes LEGACY (antérieures à quantity_scale) qui encodaient la quantité
+ * décimale dans `unitLabel` : « DEC:0.25:3000:0,25 kg » (quantité, prix
+ * unitaire, libellé) ou « 0,5 kg » sur une ligne de quantite 1 dont prixReel
+ * était le total. Décodées à la lecture pour que l'historique reste juste.
+ */
+function decodeLegacyDecimal<I extends SaleItemLike>(item: I): I {
+  const label = typeof item.unitLabel === 'string' ? item.unitLabel : null;
+  if (!label) return item;
+  if (label.startsWith('DEC:')) {
+    const [, qtyStr, priceStr, ...tag] = label.split(':');
+    const quantite = qtyStr ? parseFloat(qtyStr) : NaN;
+    const prixReel = priceStr ? parseInt(priceStr, 10) : NaN;
+    if (Number.isNaN(quantite) || Number.isNaN(prixReel) || quantite <= 0) return item;
+    return {
+      ...item,
+      quantite,
+      prixReel,
+      coutUnitaire: unitCost(item.coutUnitaire, quantite),
+      unitLabel: tag.join(':') || null,
+    };
+  }
+  const rawQty = label.match(/^([0-9]+[.,][0-9]+)\s*(.*)$/)?.[1];
+  const parsed = rawQty ? parseFloat(rawQty.replace(',', '.')) : NaN;
+  if (parsed > 0 && parsed !== 1 && item.quantite === 1) {
+    return {
+      ...item,
+      quantite: parsed,
+      prixReel: Math.round((Number(item.prixReel) || 0) / parsed),
+      coutUnitaire: unitCost(item.coutUnitaire, parsed),
+    };
+  }
+  return item;
+}
+
+/** Les formats legacy figeaient le coût TOTAL de la ligne : on le ramène à l'unité. */
+function unitCost(cout: number | null | undefined, quantite: number): number | null | undefined {
+  return typeof cout === 'number' ? Math.round(cout / quantite) : cout;
+}
+
+/**
+ * Ligne de vente telle qu'AFFICHÉE (historique, reçu, client) : quantités
+ * ramenées de l'échelle persistée (250 milli-kg → 0,25) et lignes legacy
+ * décodées. Invariant : saleLineAmount(prixReel, quantite) = montant ligne.
+ */
+export function toDisplayItem<I extends SaleItemLike>(item: I): I {
   const scale = item.quantityScale || 1;
-  if (scale === 1) return item;
+  if (scale === 1) return decodeLegacyDecimal(item);
   return {
     ...item,
     quantite: (item.quantite ?? 0) / scale,

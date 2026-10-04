@@ -9,7 +9,8 @@
  *     3. ProductStock / Product.stock = Σ grand livre ;
  *     4. Montant de chaque ligne = prix/kg × quantité, total vente = Σ lignes ;
  *     5. L'historique restitue la quantité décimale exacte (0,25 et non 1) ;
- *     6. Retour partiel et annulation ré-entrent exactement ce qui est sorti.
+ *     6. Retour partiel et annulation ré-entrent exactement ce qui est sorti ;
+ *     7. Même chose pour un produit « À l'unité » vendu en fraction (½ poisson).
  *   Base CIBLE = DATABASE_URL (utiliser une base de test, jamais la prod).
  *   Usage : DATABASE_URL=postgresql://… pnpm --filter @wilinwi/api exec tsx scripts/simulate-decimal-sales.ts
  * @created 2026-10-04
@@ -48,7 +49,7 @@ async function setup() {
 /** Crée un produit au poids/volume avec un stock initial (saisi en décimal comme l'UI). */
 async function createProduct(p: {
   nom: string;
-  unitKind: 'WEIGHT' | 'VOLUME';
+  unitKind: 'WEIGHT' | 'VOLUME' | 'UNIT';
   baseUnit: string;
   prixAchat: number;
   prixPlancher: number;
@@ -121,6 +122,13 @@ async function main() {
     prixAchat: 900, prixPlancher: 1200, prixCatalogue: 1500, stockStored: 10000,
   });
 
+  // ── Poisson fumé configuré « À l'unité » : 10 pièces, vendu en fractions
+  //    (stock Float, échelle 1 — cas des boutiques qui n'ont pas de balance).
+  const fume = await createProduct({
+    nom: 'Poisson fumé (pièce)', unitKind: 'UNIT', baseUnit: 'pièce',
+    prixAchat: 600, prixPlancher: 800, prixCatalogue: 1000, stockStored: 10,
+  });
+
   // Ventes saisies au POS en DÉCIMAL (ce que la caissière tape).
   const poissonQtys = [0.5, 0.25, 0.25, 1.5, 0.75, 1.75]; // Σ = 5 kg exactement
   const huileQtys = [1.15, 0.5, 0.25, 0.33, 2.77]; // Σ = 5 L
@@ -162,6 +170,20 @@ async function main() {
     check(s.total === Math.round(1500 * q), `prix ${q} L = ${Math.round(1500 * q)} FCFA (obtenu ${s.total})`);
   }
 
+  console.log('\n🐠 Ventes poisson fumé « À l\'unité » (1 000 FCFA/pièce) :');
+  const fumeQtys = [1.15, 0.5, 0.25, 0.33, 2.77, 0.1, 0.2, 4.7]; // Σ = 10 pièces
+  for (const q of fumeQtys) {
+    const s = (await sell(fume.id, q, 1000)) as any;
+    check(s.total === Math.round(1000 * q) && Math.abs(s.items[0].quantite - q) < 1e-9, `${q} pièce → ${Math.round(1000 * q)} FCFA, historique ${s.items[0].quantite}`);
+  }
+  let fumeRefused = false;
+  try {
+    await sell(fume.id, 0.1, 1000);
+  } catch {
+    fumeRefused = true;
+  }
+  check(fumeRefused, 'vente de 0,1 pièce au-delà des 10 pièces refusée');
+
   // Retour partiel de 0,25 L sur la vente de 0,5 L, puis annulation de la vente de 1,15 L.
   const venteHuile05 = (await sales.get(ctx, saleIds[poissonQtys.length + 1]!)) as any;
   await sales.returnPartial(ctx, venteHuile05.id, [{ saleItemId: venteHuile05.items[0].id, quantiteRetournee: 0.25 }], 'REFUND_CASH');
@@ -174,16 +196,19 @@ async function main() {
     [poisson, 5000, 0],
     // 10 L − 5 L vendus + 0,25 L retourné + 1,15 L annulé = 6,4 L
     [huile, 10000, 6400],
+    [fume, 10, 0],
   ] as const) {
     const moves = await prisma.stockMovement.findMany({ where: { productId: p.id }, orderBy: { createdAt: 'asc' } });
     const ledger = moves.reduce((s, m) => s + m.quantite, 0);
     const ps = await prisma.productStock.findFirstOrThrow({ where: { productId: p.id } });
     const prod = await prisma.product.findUniqueOrThrow({ where: { id: p.id } });
     console.log(`  ${p.nom} : mouvements = [${moves.map((m) => formatQuantity(m.quantite, p.unitKind, p.baseUnit)).join(' | ')}]`);
-    check(ledger === expectedRemaining, `${p.nom} : Σ mouvements = ${formatQuantity(expectedRemaining, p.unitKind, p.baseUnit)} (obtenu ${formatQuantity(ledger, p.unitKind, p.baseUnit)})`);
-    check(ps.quantite === ledger && prod.stock === ledger, `${p.nom} : stock restant (ProductStock/Product) = grand livre`);
+    // Tolérance 1e-9 : exacte en milli-unités entières ; protège du résidu
+    // flottant (1e-15) des colonnes Float pour l'échelle 1.
+    check(Math.abs(ledger - expectedRemaining) < 1e-9, `${p.nom} : Σ mouvements = ${formatQuantity(expectedRemaining, p.unitKind, p.baseUnit)} (obtenu ${formatQuantity(ledger, p.unitKind, p.baseUnit)})`);
+    check(Math.abs(ps.quantite - ledger) < 1e-9 && Math.abs(prod.stock - ledger) < 1e-9, `${p.nom} : stock restant (ProductStock/Product) = grand livre`);
     const out = moves.filter((m) => m.type === 'OUT').reduce((s, m) => s - m.quantite, 0);
-    check(out <= initial, `${p.nom} : sorties (${formatQuantity(out, p.unitKind, p.baseUnit)}) ≤ stock de départ`);
+    check(out <= initial + 1e-9, `${p.nom} : sorties (${formatQuantity(out, p.unitKind, p.baseUnit)}) ≤ stock de départ`);
   }
 
   const failed = results.filter((r) => !r.ok).length;
