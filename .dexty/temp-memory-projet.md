@@ -13,48 +13,41 @@
 ```yaml
 task_context:
   previous:
-    id: "POS-DECIMAL-AND-RECONCILIATION"
+    id: "CATALOG-IMPORT-AUTO-SKU-AND-OPTIONAL-FIELDS"
     status: "COMPLETED"
-    result: "Support universel des quantités décimales (PostgreSQL Float, calculs POS et UI) et réconciliation point de stock avec historique et PV"
+    result: "Assistant d'importation catalogue enrichi : Auto-génération intelligente de SKU (nom + index unique), options 'Laisser vide' pour catégorie, stock (fixé à 0) et prix d'achat"
     files_changed:
-      - "packages/db/prisma/schema.prisma"
-      - "apps/api/src/pos/sales.service.ts"
-      - "packages/ui/src/utils/formatters.ts"
-      - "apps/web/src/components/pos/cart-quantity-input.tsx"
-      - "apps/web/src/components/pos/product-select-modal.tsx"
-      - "apps/web/src/components/stock/stock-adjust-modal.tsx"
-      - "apps/web/src/app/(app)/stock/inventaire/page.tsx"
+      - "apps/web/src/components/stock/catalog-import-wizard.tsx"
     important_decisions:
-      - "Migration BDD double precision sur toutes les colonnes de quantité (stocks, mouvements, ventes, inventaire)"
-      - "Auto-création transparente de session d'inventaire lors de la réconciliation point de stock"
-      - "Prise en charge universelle de la saisie décimale au clavier (1,5 ou 1.5, pas de limitation aux entiers)"
-      - "Règle de synchronisation mémoire obligatoire avant tout push Git enregistrée dans GEMINI.md et AGENTS.md"
+      - "SKU : Option '-1' par défaut si colonne SKU absente dans le fichier Excel/CSV, avec génération déterministe et unique (ex: RIZ-PAR-001)"
+      - "Catégorie : Option 'Laisser vide' (-1) pour importer sans catégorie préalable et classer ultérieurement"
+      - "Stock : Option 'Laisser vide (Stock à 0)' (-1) pour éviter le blocage de stock manquant et permettre les inventaires ultérieurs"
+      - "Prix d'achat : Option 'Laisser vide' (-1) pour gérer les catalogues de vente purs"
+      - "Aperçu Step 3 : Affichage du badge '🪄 Auto' pour les SKU auto-générés et rendu propre des catégories"
 
   current:
-    id: "SYNC-DEXTY-MEMORY-AND-GEMINI-RULES"
-    objective: "Mettre à jour la mémoire du projet .dexty/temp-memory-projet.md et synchroniser les règles dans GEMINI.md avant push"
+    id: "CATALOG-IMPORT-WIZARD-ENHANCEMENT"
+    objective: "Permettre l'import fluide de fichiers Excel sans SKU, stock ou catégorie requis"
     branch: "main-mvp2"
-    status: "IN_PROGRESS"
+    status: "COMPLETED"
     files_in_scope:
-      - "/home/dexty/.gemini/GEMINI.md"
-      - "AGENTS.md"
-      - ".dexty/temp-memory-projet.md"
+      - "apps/web/src/components/stock/catalog-import-wizard.tsx"
     constraints:
-      - "Mettre à jour tous les paramètres et faits techniques récents dans la mémoire"
-      - "Ne jamais faire de push sans avoir synchronisé la mémoire"
+      - "Garantir la conformité avec le schéma Zod de l'API /api/stock/import (sku non vide, stock positif ou 0)"
+      - "Préserver l'intégrité et la réversibilité"
 
   future:
     known_tasks:
-      - id: "POS-OFFLINE-FRACTIONAL-SYNC"
-        objective: "Valider la synchronisation Dexie/IndexedDB pour les ventes fractionnées hors-ligne"
-        dependency: "POS-DECIMAL-AND-RECONCILIATION"
+      - id: "MERGE-MVP2-INTO-MAIN"
+        objective: "Fusionner main-mvp2 dans main via branche tampon et résolution ordonnée des 35 fichiers de conflits"
+        dependency: "CATALOG-IMPORT-AUTO-SKU-AND-OPTIONAL-FIELDS"
         status: "PLANNED"
 
   cross_branch:
-    inspected_branches: ["main-mvp2"]
-    relevant_changes: ["Support quantités décimales", "Historique inventaire", "Règle mémoire Dexty"]
-    conflicts: []
-    decisions_found: []
+    inspected_branches: ["main", "main-mvp2"]
+    relevant_changes: ["Auto-SKU & champs optionnels import catalogue", "Conflits identifiés sur 35 fichiers lors du dry-run merge-tree"]
+    conflicts: ["35 fichiers de conflit entre main et main-mvp2 (API, Web, Types, Offline, DB)"]
+    decisions_found: ["Ne pas fusionner directement vers main sans branche tampon de validation"]
 
   temporary_memory:
     facts:

@@ -41,3 +41,7 @@ coverage/
 scripts/watch.sh
 .vercel
 .env*
+
+# dexty local cache / snapshots
+.dexty/snapshots/
+.dexty/evidence/

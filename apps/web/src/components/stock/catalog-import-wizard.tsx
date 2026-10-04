@@ -26,11 +26,45 @@ interface CatalogImportWizardProps {
 export interface ParsedRow {
   nom: string;
   sku?: string;
+  isAutoSku?: boolean;
   categorie?: string;
   prixCatalogue: number;
   prixAchat?: number;
   stock: number;
   errors?: string[];
+}
+
+/**
+ * Génère un code SKU court, propre et garanti unique à partir du nom du produit.
+ * Exemple: "Riz Parfumé 5kg" -> "RIZ-PAR-001"
+ */
+function generateSmartSku(nom: string, index: number, seenSkus: Set<string>): string {
+  const clean = (nom || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .trim();
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  const prefix =
+    words.length >= 2
+      ? `${words[0].slice(0, 3)}-${words[1].slice(0, 3)}`
+      : words.length === 1
+        ? words[0].slice(0, 6)
+        : 'ART';
+
+  const paddedIndex = String(index + 1).padStart(3, '0');
+  let candidate = `${prefix}-${paddedIndex}`;
+
+  let counter = 1;
+  while (seenSkus.has(candidate)) {
+    candidate = `${prefix}-${String(index + 1 + counter).padStart(3, '0')}`;
+    counter++;
+  }
+
+  seenSkus.add(candidate);
+  return candidate;
 }
 
 export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardProps) {
@@ -39,7 +73,7 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
   const [headers, setHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<string[][]>([]);
 
-  // Mapping des colonnes
+  // Mapping des colonnes (-1 signifie auto-généré / optionnel / valeur par défaut)
   const [mapping, setMapping] = useState<{
     nom: number;
     sku: number;
@@ -49,11 +83,11 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     stock: number;
   }>({
     nom: 0,
-    sku: 1,
-    categorie: 2,
-    prixCatalogue: 3,
-    prixAchat: 4,
-    stock: 5,
+    sku: -1,
+    categorie: -1,
+    prixCatalogue: 1,
+    prixAchat: -1,
+    stock: -1,
   });
 
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
@@ -90,21 +124,21 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
 
     // Mapping automatique selon les mots-clés d'en-tête
     const autoMap = {
-      nom: parsedHeaders.findIndex((h) => /nom|designation|product|article/i.test(h)),
+      nom: parsedHeaders.findIndex((h) => /nom|designation|product|article|libelle/i.test(h)),
       sku: parsedHeaders.findIndex((h) => /sku|ref|code/i.test(h)),
-      categorie: parsedHeaders.findIndex((h) => /cat/i.test(h)),
-      prixCatalogue: parsedHeaders.findIndex((h) => /prix.*cat|vente|price|prix/i.test(h)),
-      prixAchat: parsedHeaders.findIndex((h) => /achat|cost|cout/i.test(h)),
+      categorie: parsedHeaders.findIndex((h) => /cat|famille|rayon/i.test(h)),
+      prixCatalogue: parsedHeaders.findIndex((h) => /prix.*cat|vente|price|pv|prix/i.test(h)),
+      prixAchat: parsedHeaders.findIndex((h) => /achat|cost|cout|pa/i.test(h)),
       stock: parsedHeaders.findIndex((h) => /stock|qte|quantite/i.test(h)),
     };
 
     setMapping({
       nom: autoMap.nom !== -1 ? autoMap.nom : 0,
-      sku: autoMap.sku !== -1 ? autoMap.sku : 1,
-      categorie: autoMap.categorie !== -1 ? autoMap.categorie : 2,
-      prixCatalogue: autoMap.prixCatalogue !== -1 ? autoMap.prixCatalogue : 3,
-      prixAchat: autoMap.prixAchat !== -1 ? autoMap.prixAchat : 4,
-      stock: autoMap.stock !== -1 ? autoMap.stock : 5,
+      sku: autoMap.sku !== -1 ? autoMap.sku : -1, // Par défaut : -1 (Auto-génération intelligente)
+      categorie: autoMap.categorie !== -1 ? autoMap.categorie : -1, // Par défaut : -1 (Optionnel / vide)
+      prixCatalogue: autoMap.prixCatalogue !== -1 ? autoMap.prixCatalogue : (autoMap.nom === 0 ? 1 : 0),
+      prixAchat: autoMap.prixAchat !== -1 ? autoMap.prixAchat : -1, // Par défaut : -1 (Optionnel / vide)
+      stock: autoMap.stock !== -1 ? autoMap.stock : -1, // Par défaut : -1 (Stock initial à 0)
     });
 
     setStep(2);
@@ -174,39 +208,69 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
   // Passage à l'étape 3 : Validation et détection d'anomalies
   const validateAndPreview = () => {
     const seenSkus = new Set<string>();
+    const fileSkuCounts = new Map<string, number>();
+
+    // Pré-calcul des doublons dans le fichier si colonne SKU sélectionnée
+    if (mapping.sku >= 0) {
+      rawRows.forEach((r) => {
+        const val = r[mapping.sku]?.trim();
+        if (val) {
+          fileSkuCounts.set(val, (fileSkuCounts.get(val) || 0) + 1);
+        }
+      });
+    }
+
     const rows: ParsedRow[] = [];
 
-    rawRows.forEach((r) => {
-      const nom = r[mapping.nom]?.trim() || '';
-      const sku = r[mapping.sku]?.trim() || '';
-      const categorie = r[mapping.categorie]?.trim() || 'Général';
-      const prixCatalogue = parseInt(r[mapping.prixCatalogue] || '0', 10);
-      const prixAchat = parseInt(r[mapping.prixAchat] || '0', 10);
-      const stock = parseInt(r[mapping.stock] || '0', 10);
+    rawRows.forEach((r, idx) => {
+      const nom = mapping.nom >= 0 ? (r[mapping.nom]?.trim() || '') : '';
+
+      let sku = mapping.sku >= 0 ? (r[mapping.sku]?.trim() || '') : '';
+      let isAutoSku = false;
+
+      // Si mapping sur Auto (-1) ou case vide dans le fichier Excel
+      if (!sku) {
+        sku = generateSmartSku(nom || 'PROD', idx, seenSkus);
+        isAutoSku = true;
+      } else {
+        seenSkus.add(sku);
+      }
+
+      const categorie = mapping.categorie >= 0 ? (r[mapping.categorie]?.trim() || undefined) : undefined;
+
+      const rawPrixCat = mapping.prixCatalogue >= 0 ? (r[mapping.prixCatalogue]?.trim() || '0') : '0';
+      const prixCatalogue = parseInt(rawPrixCat.replace(/[^0-9]/g, '') || '0', 10);
+
+      const rawPrixAchat = mapping.prixAchat >= 0 ? (r[mapping.prixAchat]?.trim() || '') : '';
+      const parsedAchat = rawPrixAchat ? parseInt(rawPrixAchat.replace(/[^0-9]/g, ''), 10) : undefined;
+      const prixAchat = parsedAchat !== undefined && !isNaN(parsedAchat) ? parsedAchat : undefined;
+
+      const rawStock = mapping.stock >= 0 ? (r[mapping.stock]?.trim() || '') : '';
+      const parsedStock = rawStock ? parseFloat(rawStock.replace(/,/g, '.').replace(/[^0-9.]/g, '')) : 0;
+      const stock = isNaN(parsedStock) ? 0 : Math.max(0, Math.floor(parsedStock));
 
       const rowErrors: string[] = [];
 
       if (!nom) rowErrors.push('Nom de produit manquant');
-      if (!sku) rowErrors.push('SKU manquant');
       if (isNaN(prixCatalogue) || prixCatalogue <= 0) rowErrors.push('Prix catalogue invalide');
-      if (canSeeCostCheck() && (isNaN(prixAchat) || prixAchat < 0)) rowErrors.push('Prix d\'achat invalide');
-      if (isNaN(stock) || stock < 0) rowErrors.push('Quantité de stock invalide');
+      if (prixAchat !== undefined && (isNaN(prixAchat) || prixAchat < 0)) rowErrors.push('Prix d\'achat invalide');
+      if (mapping.stock >= 0 && rawStock !== '' && (isNaN(parsedStock) || parsedStock < 0)) {
+        rowErrors.push('Quantité de stock invalide');
+      }
 
-      if (sku) {
-        if (seenSkus.has(sku)) {
-          rowErrors.push(`Doublon de SKU détecté: ${sku}`);
-        } else {
-          seenSkus.add(sku);
-        }
+      // Doublon dans le fichier source si renseigné manuellement
+      if (!isAutoSku && sku && (fileSkuCounts.get(sku) || 0) > 1) {
+        rowErrors.push(`Doublon de SKU dans le fichier : ${sku}`);
       }
 
       rows.push({
         nom,
-        sku: sku || undefined,
+        sku,
+        isAutoSku,
         categorie,
         prixCatalogue: isNaN(prixCatalogue) ? 0 : prixCatalogue,
-        prixAchat: isNaN(prixAchat) ? 0 : prixAchat,
-        stock: isNaN(stock) ? 0 : stock,
+        prixAchat,
+        stock,
         errors: rowErrors.length > 0 ? rowErrors : undefined,
       });
     });
@@ -214,8 +278,6 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
     setParsedData(rows);
     setStep(3);
   };
-
-  const canSeeCostCheck = () => true;
 
   // Lancement de l'importation backend
   const handleFinalImport = async () => {
@@ -233,7 +295,7 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
         items: validRows.map((row) => ({
           nom: row.nom,
           sku: row.sku!,
-          categorie: row.categorie,
+          categorie: row.categorie || undefined,
           prixAchat: row.prixAchat,
           prixCatalogue: row.prixCatalogue,
           stockInitial: row.stock,
@@ -306,6 +368,7 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
               </p>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
+                {/* 1. Nom */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Nom du Produit *</label>
                   <select
@@ -321,21 +384,36 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
                   </select>
                 </div>
 
+                {/* 2. SKU */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Code SKU / Référence</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">Code SKU / Référence</label>
+                    <span className="text-[10px] font-semibold text-emerald-600">Auto ou Colonne</span>
+                  </div>
                   <select
                     value={mapping.sku}
                     onChange={(e) => setMapping({ ...mapping, sku: parseInt(e.target.value, 10) })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
+                    className={`w-full rounded-xl border p-2 font-medium transition-colors ${
+                      mapping.sku === -1
+                        ? 'border-emerald-300 bg-emerald-50/50 text-emerald-900 font-semibold'
+                        : 'border-slate-200 bg-slate-50 text-slate-800'
+                    }`}
                   >
+                    <option value={-1}>🪄 Générer automatiquement (Auto-SKU)</option>
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
                         Colonne {idx + 1}: {h}
                       </option>
                     ))}
                   </select>
+                  {mapping.sku === -1 && (
+                    <p className="mt-1 text-[10px] text-emerald-600 font-medium">
+                      Un code unique sera généré automatiquement à partir du nom.
+                    </p>
+                  )}
                 </div>
 
+                {/* 3. Prix de vente */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Prix de Vente (FCFA) *</label>
                   <select
@@ -351,13 +429,18 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
                   </select>
                 </div>
 
+                {/* 4. Prix d'achat */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Prix d'Achat (FCFA)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">Prix d'Achat (FCFA)</label>
+                    <span className="text-[10px] text-slate-400">Optionnel</span>
+                  </div>
                   <select
                     value={mapping.prixAchat}
                     onChange={(e) => setMapping({ ...mapping, prixAchat: parseInt(e.target.value, 10) })}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
                   >
+                    <option value={-1}>— Laisser vide (non renseigné) —</option>
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
                         Colonne {idx + 1}: {h}
@@ -366,28 +449,43 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
                   </select>
                 </div>
 
+                {/* 5. Quantité Stock */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Quantité Stock *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">Quantité Stock</label>
+                    <span className="text-[10px] text-slate-400">Optionnel</span>
+                  </div>
                   <select
                     value={mapping.stock}
                     onChange={(e) => setMapping({ ...mapping, stock: parseInt(e.target.value, 10) })}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
                   >
+                    <option value={-1}>— Laisser vide (Stock initial à 0) —</option>
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
                         Colonne {idx + 1}: {h}
                       </option>
                     ))}
                   </select>
+                  {mapping.stock === -1 && (
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Les articles seront créés avec un stock à 0.
+                    </p>
+                  )}
                 </div>
 
+                {/* 6. Catégorie */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Catégorie</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">Catégorie</label>
+                    <span className="text-[10px] text-slate-400">Optionnel</span>
+                  </div>
                   <select
                     value={mapping.categorie}
                     onChange={(e) => setMapping({ ...mapping, categorie: parseInt(e.target.value, 10) })}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-medium"
                   >
+                    <option value={-1}>— Laisser vide (sans catégorie) —</option>
                     {headers.map((h, idx) => (
                       <option key={idx} value={idx}>
                         Colonne {idx + 1}: {h}
@@ -427,7 +525,24 @@ export function CatalogImportWizard({ onClose, onSuccess }: CatalogImportWizardP
                   <tbody className="divide-y divide-slate-100">
                     {parsedData.map((r, idx) => (
                       <tr key={idx} className={r.errors ? 'bg-rose-50/60 text-rose-900' : 'hover:bg-slate-50'}>
-                        <td className="p-2 font-medium">{r.nom || '—'} {r.sku ? `(${r.sku})` : ''}</td>
+                        <td className="p-2 font-medium">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{r.nom || '—'}</span>
+                            {r.sku && (
+                              <span className="font-mono text-[11px] text-slate-500">({r.sku})</span>
+                            )}
+                            {r.isAutoSku && (
+                              <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200/60">
+                                🪄 Auto
+                              </span>
+                            )}
+                            {r.categorie && (
+                              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                                {r.categorie}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-2 font-mono">{formatFCFA(r.prixCatalogue)}</td>
                         <td className="p-2 font-mono">{r.stock}</td>
                         <td className="p-2">
