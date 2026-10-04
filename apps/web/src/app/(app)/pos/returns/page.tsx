@@ -13,7 +13,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Input, Badge, Card, CardHeader, CardTitle, CardContent } from '@wilinwi/ui';
+import { Button, Input, Badge, Card, CardHeader, CardTitle, CardContent, formatQty } from '@wilinwi/ui';
+import { saleLineAmount } from '@wilinwi/types';
 import { ArrowLeft, Search, CheckCircle2, RotateCcw, CreditCard, Banknote } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
 import { ContextualHelp } from '@/components/contextual-help';
@@ -26,6 +27,8 @@ interface SaleItemDto {
   quantite: number;
   quantiteRetournee?: number;
   prixReel: number;
+  /** 1000 = ligne au poids/volume (quantités affichées décimales : 0,25 kg). */
+  quantityScale?: number;
 }
 
 interface SaleDto {
@@ -104,13 +107,14 @@ function ReturnsContent() {
   const handleReturnAmountChange = (itemId: string, val: number, maxAllowed: number) => {
     if (val < 0) val = 0;
     if (val > maxAllowed) val = maxAllowed;
+    val = Number(val.toFixed(3));
 
     setReturns(prev => ({ ...prev, [itemId]: val }));
   };
 
   const totalRefund = sale?.items.reduce((sum, item) => {
     const qty = returns[item.id] || 0;
-    return sum + (qty * item.prixReel);
+    return sum + saleLineAmount(item.prixReel, qty);
   }, 0) || 0;
 
   const handleSubmit = async () => {
@@ -238,11 +242,13 @@ function ReturnsContent() {
                     const prevReturned = item.quantiteRetournee || 0;
                     const maxAllowed = item.quantite - prevReturned;
                     const currentRet = returns[item.id] || 0;
+                    // Poids/volume : retour par pas de 0,25 (borné au restant vendu).
+                    const step = (item.quantityScale ?? 1) !== 1 ? 0.25 : 1;
 
                     return (
                       <div key={item.id} className="grid grid-cols-12 gap-4 items-center rounded-xl border border-slate-100 p-3 hover:bg-slate-50 transition-colors">
                         <div className="col-span-5 font-medium text-slate-900">{item.productName || 'Produit'}</div>
-                        <div className="col-span-2 text-center text-slate-600">{item.quantite}</div>
+                        <div className="col-span-2 text-center text-slate-600">{formatQty(item.quantite)}</div>
                         <div className="col-span-2 text-center text-amber-600 font-medium">{prevReturned > 0 ? prevReturned : '-'}</div>
                         <div className="col-span-3 flex justify-end">
                           <div className="flex items-center gap-2 max-w-[120px]">
@@ -251,15 +257,15 @@ function ReturnsContent() {
                               size="icon"
                               className="h-8 w-8 shrink-0 rounded-full"
                               disabled={currentRet <= 0}
-                              onClick={() => handleReturnAmountChange(item.id, currentRet - 1, maxAllowed)}
+                              onClick={() => handleReturnAmountChange(item.id, currentRet - step, maxAllowed)}
                             >-</Button>
-                            <span className="w-8 text-center font-bold">{currentRet}</span>
+                            <span className="w-8 text-center font-bold">{formatQty(currentRet)}</span>
                             <Button
                               variant="outline"
                               size="icon"
                               className="h-8 w-8 shrink-0 rounded-full"
                               disabled={currentRet >= maxAllowed}
-                              onClick={() => handleReturnAmountChange(item.id, currentRet + 1, maxAllowed)}
+                              onClick={() => handleReturnAmountChange(item.id, currentRet + step, maxAllowed)}
                             >+</Button>
                           </div>
                         </div>

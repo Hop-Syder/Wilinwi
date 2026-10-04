@@ -17,6 +17,7 @@ import type { ClientDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
 import { useCurrency } from '@/lib/currency-context';
 import type { ReceiptSale } from '@/components/receipt';
+import { saleLineAmount } from '@wilinwi/types';
 
 interface Sale extends ReceiptSale {
   status: 'COMPLETED' | 'PENDING_PAYMENT' | 'CANCELLED';
@@ -256,7 +257,7 @@ export function ClientDetailsDrawer({
                         {v.items.map((it) => (
                           <div key={it.id} className="flex justify-between">
                             <span>{it.quantite}× {it.product?.nom ?? 'Article'}</span>
-                            <span className="font-mono font-bold text-slate-800">{formatAmount(it.prixReel * it.quantite)}</span>
+                            <span className="font-mono font-bold text-slate-800">{formatAmount(saleLineAmount(it.prixReel, it.quantite))}</span>
                           </div>
                         ))}
                       </div>

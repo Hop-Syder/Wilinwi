@@ -62,6 +62,8 @@ export const SaleItemInputSchema = z.object({
   /** Facteur du conditionnement, FOURNI PAR LE CLIENT pour le débit du snapshot
    *  offline uniquement — le serveur résout le facteur réel depuis la base. */
   unitFactor: z.number().int().min(1).optional(),
+  /** Quantité AFFICHÉE : décimale pour le poids/volume (0,25 kg ; 1,15 L — le
+   *  serveur la persiste en milli-unités, §19.1), entière pour la pièce. */
   quantite: z.number().positive(),
   prixReel: MoneySchema,
   /** Justification obligatoire quand on passe sous le prix plancher. */

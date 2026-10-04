@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, Smartphone, Mail, Printer, FileDown } from 'lucide-react';
 import { formatFCFA } from '@wilinwi/ui';
 import { generateSaleInvoicePdf } from '@/lib/invoice-pdf';
+import { saleLineAmount } from '@wilinwi/types';
 
 export interface PublicReceiptItem {
   nom: string;
@@ -55,7 +56,7 @@ export function ReceiptClientActions({
     `Réf : ${receipt.code}`,
     '',
     ...receipt.items.map(
-      (it) => `${it.quantite}× ${it.nom} = ${formatFCFA(it.prixReel * it.quantite)}`
+      (it) => `${it.quantite}× ${it.nom} = ${formatFCFA(saleLineAmount(it.prixReel, it.quantite))}`
     ),
     '',
     `TOTAL : ${formatFCFA(receipt.total)}`,

@@ -20,6 +20,7 @@ import type { ClientDto } from '@wilinwi/types';
 import { formatQty } from '@wilinwi/ui';
 import { useCurrency } from '@/lib/currency-context';
 import type { CartLine, OrderMode } from './pos-cart-zone';
+import { quantityScale, saleLineAmount } from '@wilinwi/types';
 
 interface MobileCartDrawerProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export function MobileCartDrawer({
   const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   const totalAmount = useMemo(() => {
-    return cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0);
+    return cart.reduce((sum, line) => sum + saleLineAmount(line.prixReel, line.quantite), 0);
   }, [cart]);
 
   const totalItemsCount = useMemo(() => {
@@ -261,6 +262,11 @@ export function MobileCartDrawer({
                   )}
                   <div className="text-xs font-black text-emerald-700 mt-1">
                     {formatAmount(item.prixReel)}
+                    {!item.unitId && quantityScale(item.product.unitKind) !== 1 && (
+                      <span className="font-sans text-[10px] font-semibold text-slate-400">
+                        {' '}/ {item.product.baseUnit || (item.product.unitKind === 'WEIGHT' ? 'kg' : 'L')}
+                      </span>
+                    )}
                   </div>
                 </div>
 

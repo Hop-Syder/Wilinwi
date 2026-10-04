@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { ProductDto, ClientDto } from '@wilinwi/types';
 import { Button, formatFCFA, formatQty } from '@wilinwi/ui';
+import { quantityScale, saleLineAmount } from '@wilinwi/types';
 
 export interface CartLine {
   product: ProductDto;
@@ -66,7 +67,7 @@ export function PosCartZone({
 
   // Calcul du sous-total du panier
   const totalAmount = useMemo(() => {
-    return cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0);
+    return cart.reduce((sum, line) => sum + saleLineAmount(line.prixReel, line.quantite), 0);
   }, [cart]);
 
   const totalItemsCount = useMemo(() => {
@@ -267,6 +268,11 @@ export function PosCartZone({
               </div>
               <p className="font-mono text-xs font-black text-slate-700 mt-0.5">
                 {formatFCFA(line.prixReel)}
+                    {!line.unitId && quantityScale(line.product.unitKind) !== 1 && (
+                      <span className="font-sans text-[10px] font-semibold text-slate-400">
+                        {' '}/ {line.product.baseUnit || (line.product.unitKind === 'WEIGHT' ? 'kg' : 'L')}
+                      </span>
+                    )}
               </p>
             </div>
 

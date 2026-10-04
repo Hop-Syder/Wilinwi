@@ -20,7 +20,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
+import { saleLineAmount, PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 
 export interface InvoiceSaleItem {
   id?: string;
@@ -260,7 +260,7 @@ export async function generateSaleInvoicePdf(
     head: [['N°', 'DÉSIGNATION DU PRODUIT', 'QTÉ', 'PRIX UNITAIRE', 'MONTANT TOTAL']],
     body: sale.items.map((it, idx) => {
       const itemNom = it.nom || it.product?.nom || 'Article';
-      const totalLigne = it.prixReel * it.quantite;
+      const totalLigne = saleLineAmount(it.prixReel, it.quantite);
       return [
         String(idx + 1).padStart(2, '0'),
         itemNom,

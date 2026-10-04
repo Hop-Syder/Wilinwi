@@ -26,6 +26,7 @@ import {
 import { Button, Badge, formatFCFA } from '@wilinwi/ui';
 import { syncEngine } from '@/lib/sync';
 import { getDB, type PendingSale } from '@wilinwi/offline';
+import { saleLineAmount } from '@wilinwi/types';
 
 interface SyncStatusDrawerProps {
   onRefreshProducts?: () => void;
@@ -244,7 +245,7 @@ export function SyncStatusDrawer({ onRefreshProducts, onFixSale }: SyncStatusDra
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold text-slate-900 text-sm">
-                              {formatFCFA(sale.payload.items.reduce((sum, item) => sum + item.prixReel * item.quantite, 0))}
+                              {formatFCFA(sale.payload.items.reduce((sum, item) => sum + saleLineAmount(item.prixReel, item.quantite), 0))}
                             </p>
                             <p className="text-xs text-slate-500">
                               {sale.payload.items.reduce((sum, item) => sum + item.quantite, 0)} articles • {sale.payload.paymentMethod}
@@ -285,7 +286,7 @@ export function SyncStatusDrawer({ onRefreshProducts, onFixSale }: SyncStatusDra
 
                         <div>
                           <p className="font-bold text-slate-900 text-sm">
-                            {formatFCFA(sale.payload.items.reduce((sum, item) => sum + item.prixReel * item.quantite, 0))}
+                            {formatFCFA(sale.payload.items.reduce((sum, item) => sum + saleLineAmount(item.prixReel, item.quantite), 0))}
                           </p>
                           {sale.error && (
                             <div className="mt-1.5 p-2 bg-red-100/80 rounded-md text-xs text-red-800 flex items-start gap-1.5">

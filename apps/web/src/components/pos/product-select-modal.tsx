@@ -3,7 +3,8 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Modale de sélection d'unité/conditionnement pour la vente POS (Casier vs Bouteille, Variantes)
+ * @description Modale de sélection d'unité/conditionnement pour la vente POS (Casier vs Bouteille, Variantes,
+ * quantité décimale pour les produits au poids/volume : 0,25 kg, 1,15 L…)
  * Permet à la vendeuse de choisir entre le casier (ex: x24) et la bouteille au détail,
  * ou d'ajouter une combinaison casier + bouteilles.
  */
@@ -11,8 +12,16 @@
 import { useState } from 'react';
 import { X, Check, Package } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
-import { unitDefaultPrice, formatPackBreakdown } from '@wilinwi/types';
-import { Button, formatFCFA, formatQty } from '@wilinwi/ui';
+import {
+  formatPackBreakdown,
+  formatQuantity,
+  quantityScale,
+  saleLineAmount,
+  saleQuantityStep,
+  saleStockBehavior,
+  unitDefaultPrice,
+} from '@wilinwi/types';
+import { Button, formatFCFA } from '@wilinwi/ui';
 import type { CartLine } from './pos-cart-zone';
 
 interface PosProductSelectModalProps {
@@ -32,6 +41,9 @@ export function PosProductSelectModal({
   const variants = product.variants ?? [];
   const hasUnits = units.length > 0;
   const hasVariants = variants.length > 0;
+  // Produit au poids/volume : stock en milli-unités, saisie décimale (§19.1).
+  const scale = quantityScale(product.unitKind);
+  const byWeight = scale !== 1;
 
   // Par défaut, première unité ou unité de base (bouteille / pièce)
   const [selectedUnitId, setSelectedUnitId] = useState<string>('BASE');
@@ -49,7 +61,24 @@ export function PosProductSelectModal({
 
   const currentLabel = selectedUnit
     ? selectedUnit.label
-    : (product.baseUnit ? `Unité (${product.baseUnit})` : 'Bouteille / Détail (1x)');
+    : byWeight
+      ? (product.baseUnit || (product.unitKind === 'WEIGHT' ? 'kg' : 'L'))
+      : (product.baseUnit ? `Unité (${product.baseUnit})` : 'Bouteille / Détail (1x)');
+
+  // Pas des boutons +/− et raccourcis adaptés au produit.
+  const step = saleQuantityStep(product.unitKind, !!selectedUnit);
+  const presets = byWeight && !selectedUnit ? [0.25, 0.5, 1, 2] : hasUnits ? [0.5, 1, 2, 5] : [1, 2, 5, 10];
+  const presetLabel = (p: number) => (p === 0.5 ? '½' : p === 0.25 ? '¼' : String(p));
+
+  // Garde-fou stock : la quantité demandée (en unités persistées) ne doit pas
+  // dépasser le disponible — même règle que le serveur (STRICT).
+  const requestedStored = Math.round(quantite * (selectedUnit ? selectedUnit.factorToBase : scale));
+  const available = selectedVariant ? selectedVariant.stock : product.stock;
+  const exceedsStock =
+    product.type !== 'BATCHED' &&
+    saleStockBehavior(product.type, product.stockPolicy).precheck &&
+    requestedStored > available;
+  const pieceFraction = !byWeight && !selectedUnit && !Number.isInteger(quantite);
 
   const breakdown = hasUnits
     ? formatPackBreakdown(
@@ -60,7 +89,7 @@ export function PosProductSelectModal({
     : null;
 
   const handleAdd = () => {
-    if (quantite <= 0) return;
+    if (quantite <= 0 || requestedStored <= 0 || exceedsStock || pieceFraction) return;
 
     const line: CartLine = {
       product,
@@ -92,7 +121,9 @@ export function PosProductSelectModal({
             <div>
               <h2 className="text-base font-extrabold text-slate-900 leading-tight">{product.nom}</h2>
               <p className="text-xs text-slate-500 font-medium">
-                {breakdown ? `Stock dispo : ${breakdown.text}` : `Stock dispo : ${formatQty(product.stock)}`}
+                {breakdown
+                  ? `Stock dispo : ${breakdown.text}`
+                  : `Stock dispo : ${formatQuantity(product.stock, product.unitKind, product.baseUnit)}`}
               </p>
             </div>
           </div>
@@ -186,7 +217,7 @@ export function PosProductSelectModal({
                           : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                       }`}
                     >
-                      {label} (Stock: {v.stock})
+                      {label} (Stock: {formatQuantity(v.stock, product.unitKind, product.baseUnit)})
                     </button>
                   );
                 })}
@@ -201,7 +232,7 @@ export function PosProductSelectModal({
                 Quantité ({currentLabel})
               </label>
               <div className="flex gap-1.5">
-                {[0.5, 1, 2, 5].map((preset) => (
+                {presets.map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -212,7 +243,7 @@ export function PosProductSelectModal({
                         : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    {preset === 0.5 ? '½' : preset}
+                    {presetLabel(preset)}
                   </button>
                 ))}
               </div>
@@ -221,22 +252,23 @@ export function PosProductSelectModal({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setQuantite((q) => Math.max(0.5, q - (q <= 1 ? 0.5 : 1)))}
+                onClick={() => setQuantite((q) => Math.max(step, Number((q - step).toFixed(3))))}
                 className="h-11 w-11 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
               >
                 -
               </button>
               <input
                 type="number"
-                step="any"
-                min="0.1"
+                step={step}
+                min={step}
+                inputMode="decimal"
                 value={quantite}
                 onChange={(e) => setQuantite(parseFloat(e.target.value.replace(',', '.')) || 0)}
                 className="flex-1 h-11 rounded-2xl border border-slate-200 px-3 text-center font-mono text-base font-black text-slate-900 outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
-                onClick={() => setQuantite((q) => q + (q < 1 ? 0.5 : 1))}
+                onClick={() => setQuantite((q) => Number((q + step).toFixed(3)))}
                 className="h-11 w-11 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
               >
                 +
@@ -249,14 +281,23 @@ export function PosProductSelectModal({
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-bold text-slate-400">Total ligne</span>
               <span className="font-mono text-xl font-black text-emerald-600">
-                {formatFCFA(currentPrice * quantite)}
+                {formatFCFA(saleLineAmount(currentPrice, quantite))}
               </span>
             </div>
+            {exceedsStock && (
+              <p className="text-xs font-bold text-rose-600">
+                Stock insuffisant : {formatQuantity(available, product.unitKind, product.baseUnit)} disponible(s).
+              </p>
+            )}
+            {pieceFraction && (
+              <p className="text-xs font-bold text-rose-600">Ce produit se vend à l&apos;unité (pas de fraction).</p>
+            )}
 
             <Button
               variant="emerald"
               size="lg"
               onClick={handleAdd}
+              disabled={quantite <= 0 || exceedsStock || pieceFraction}
               className="w-full py-3.5 rounded-2xl font-extrabold text-sm shadow-md shadow-emerald-900/20"
             >
               Ajouter au panier

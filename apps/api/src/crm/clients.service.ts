@@ -22,6 +22,7 @@ import type { TenantTx } from '@wilinwi/db';
 import { PrismaService } from '../common/prisma.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { toClientDto } from './client.mapper';
+import { toSaleDtoList } from '../pos/sale.mapper';
 
 @Injectable()
 export class ClientsService {
@@ -84,7 +85,8 @@ export class ClientsService {
         orderBy: { createdAt: 'desc' },
         take: 50,
       });
-      return { client: toClientDto(client, ctx.role), ventes: sales, remboursements: payments };
+      // Sortie via le mapper ventes : quantités affichées (0,25 kg) + coût masqué selon le rôle.
+      return { client: toClientDto(client, ctx.role), ventes: toSaleDtoList(sales, ctx.role), remboursements: payments };
     });
   }
 

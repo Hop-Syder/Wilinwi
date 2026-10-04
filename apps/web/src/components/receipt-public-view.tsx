@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { CheckCircle2, ShieldAlert } from 'lucide-react';
 import { formatFCFA } from '@wilinwi/ui';
 import { ReceiptClientActions, type PublicReceiptData } from './receipt-client-actions';
+import { saleLineAmount } from '@wilinwi/types';
 
 export function ReceiptPublicView({
   receipt,
@@ -102,7 +103,7 @@ export function ReceiptPublicView({
                   <span className="font-bold text-slate-900 font-mono">{it.quantite}×</span> {it.nom}
                 </span>
                 <span className="font-bold font-mono text-slate-900 shrink-0">
-                  {formatFCFA(it.prixReel * it.quantite)}
+                  {formatFCFA(saleLineAmount(it.prixReel, it.quantite))}
                 </span>
               </li>
             ))}

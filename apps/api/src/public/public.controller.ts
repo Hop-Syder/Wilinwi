@@ -12,6 +12,7 @@
 import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { Public } from '../common/decorators';
 import { PrismaService } from '../common/prisma.service';
+import { saleItemDisplayQty } from '../pos/sale.mapper';
 
 export interface PublicReceiptDto {
   code: string;
@@ -102,7 +103,7 @@ export class PublicReceiptController {
       nom: it.unitLabel
         ? `${it.product?.nom ?? 'Article'} — ${it.unitLabel}`
         : (it.product?.nom ?? 'Article'),
-      quantite: it.quantite,
+      quantite: saleItemDisplayQty(it),
       prixReel: it.prixReel,
     }));
 

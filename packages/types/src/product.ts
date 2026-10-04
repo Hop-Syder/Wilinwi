@@ -76,6 +76,26 @@ export function toDisplayQuantity(stored: number, kind: UnitKind | null | undefi
   return stored / quantityScale(kind);
 }
 
+/**
+ * Montant (FCFA entiers) d'une ligne de vente : prix unitaire × quantité
+ * AFFICHÉE (0,25 kg ; 1,15 L ; 3 pièces). La quantité est d'abord ramenée au
+ * milli (précision persistée, §19.1) pour que le POS, le serveur, l'historique
+ * et les remboursements calculent EXACTEMENT le même montant (pas d'écart dû
+ * au flottant : 0,1 + 0,2 kg = 0,3 kg).
+ */
+export function saleLineAmount(prixReel: number, quantite: number): number {
+  return Math.round((prixReel * Math.round(quantite * 1000)) / 1000);
+}
+
+/**
+ * Pas d'incrément d'une ligne de panier : 0,25 pour le poids/volume (quart de
+ * kg/L), 0,5 pour un conditionnement (demi-casier), 1 pour la pièce.
+ */
+export function saleQuantityStep(kind: UnitKind | null | undefined, hasPack = false): number {
+  if (quantityScale(kind) !== 1 && !hasPack) return 0.25;
+  return hasPack ? 0.5 : 1;
+}
+
 /** Affichage FR : « 1,5 kg », « 0,33 L », « 24 ». */
 export function formatQuantity(
   stored: number,
@@ -153,10 +173,14 @@ export interface SaleLineLike {
   quantite: number;
   /** Conditionnement (Wholesale) : le stock local bouge de quantite × unitFactor. */
   unitFactor?: number;
+  /** Présent = vente d'un conditionnement (le facteur est déjà en unités persistées). */
+  unitId?: string | null;
 }
 
 interface ProductStockLike {
   id: string;
+  /** WEIGHT/VOLUME : stock en milli-unités, la ligne arrive en décimal (§19.1). */
+  unitKind?: UnitKind | null;
   type?: ProductType | null;
   stockPolicy?: StockPolicy | null;
   stock: number;
@@ -189,11 +213,15 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
     let variants = p.variants;
     let batches = p.batches;
     for (const line of lines) {
-      const facteur = line.unitFactor ?? 1;
-      stock += sign * line.quantite * facteur;
+      // Même règle que le serveur : conditionnement → × facteur ; sinon la
+      // quantité décimale (0,25 kg) est convertie en milli-unités (250).
+      const isPack = !!line.unitId || (line.unitFactor ?? 1) > 1;
+      const facteur = isPack ? (line.unitFactor ?? 1) : quantityScale(p.unitKind);
+      const delta = Math.round(line.quantite * facteur);
+      stock += sign * delta;
       if (line.variantId && variants) {
         variants = variants.map((v) =>
-          v.id === line.variantId ? { ...v, stock: v.stock + sign * line.quantite * facteur } : v,
+          v.id === line.variantId ? { ...v, stock: v.stock + sign * delta } : v,
         );
       }
       // BATCHED : miroir FEFO du serveur sur le snapshot — debit sort des lots
@@ -209,7 +237,7 @@ export function applySaleStockToProducts<T extends ProductStockLike>(
           (b) => new Date(b.expiresAt).getTime() > now,
         );
         const cibles = mode === 'debit' ? vendables : [...vendables].reverse();
-        let restant = line.quantite * facteur;
+        let restant = delta;
         const deltas = new Map<string, number>();
         for (const b of cibles) {
           if (restant <= 0) break;

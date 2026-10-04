@@ -19,6 +19,7 @@ import {
   defaultStockPolicy,
   DOWNGRADE_MAX_PRODUCTS,
   productAffectsStock,
+  toDisplayQuantity,
   type AuthContext,
   type AdjustBatchInput,
   type BatchDto,
@@ -692,10 +693,16 @@ export class StockService {
       let valeurAchat = 0;
       let valeurCatalogue = 0;
       for (const p of products) {
-        valeurAchat += p.prixAchat * p.stock;
-        valeurCatalogue += p.prixCatalogue * p.stock;
+        // Prix PAR kg/L : stock WEIGHT/VOLUME ramené des milli-unités (§19.1).
+        const qty = toDisplayQuantity(p.stock, p.unitKind);
+        valeurAchat += p.prixAchat * qty;
+        valeurCatalogue += p.prixCatalogue * qty;
       }
-      return { valeurAchat, valeurCatalogue, nbProduits: products.length };
+      return {
+        valeurAchat: Math.round(valeurAchat),
+        valeurCatalogue: Math.round(valeurCatalogue),
+        nbProduits: products.length,
+      };
     });
   }
 

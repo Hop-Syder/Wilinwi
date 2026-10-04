@@ -44,3 +44,22 @@ describe('toSaleDto — sécurité au niveau champ (ventes)', () => {
     }
   });
 });
+
+describe('toSaleDto — quantités décimales (§19.1)', () => {
+  it('ligne au poids : 250 milli-kg sortent en 0,25 (prixReel × quantite = montant)', () => {
+    const weighed = {
+      id: 's2',
+      total: 750,
+      items: [{ id: 'i2', prixReel: 3000, quantite: 250, quantiteRetournee: 0, quantityScale: 1000, coutUnitaire: 1800 }],
+    };
+    for (const role of ['OWNER', 'CASHIER'] as const) {
+      const item = toSaleDto(weighed, role).items[0]!;
+      expect(item.quantite).toBe(0.25);
+      expect(item.prixReel * item.quantite).toBe(750);
+    }
+  });
+
+  it('ligne à la pièce : inchangée', () => {
+    expect(toSaleDto(sale, 'OWNER').items[0]!.quantite).toBe(2);
+  });
+});

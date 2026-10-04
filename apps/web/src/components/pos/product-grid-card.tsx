@@ -14,8 +14,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Package, Check } from 'lucide-react';
-import type { ProductDto } from '@wilinwi/types';
-import { formatFCFA, formatQty } from '@wilinwi/ui';
+import { formatQuantity, type ProductDto } from '@wilinwi/types';
+import { formatFCFA } from '@wilinwi/ui';
 
 interface ProductGridCardProps {
   product: ProductDto;
@@ -70,7 +70,7 @@ export function ProductGridCard({
                 : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
             }`}
         >
-          {isOutOfStock ? 'Rupture' : `${formatQty(stock)} en stock`}
+          {isOutOfStock ? 'Rupture' : `${formatQuantity(stock, product.unitKind, product.baseUnit)} en stock`}
         </span>
       </div>
 

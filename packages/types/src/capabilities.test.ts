@@ -20,6 +20,8 @@ import {
   formatQuantity,
   nearestExpiry,
   productAffectsStock,
+  saleLineAmount,
+  saleQuantityStep,
   saleStockBehavior,
   sellableBatchQuantity,
   toDisplayQuantity,
@@ -249,6 +251,41 @@ describe('milli-unités (quantités décimales, persistance entière)', () => {
 
   it('arrondi au milli le plus proche (pas de flottant persisté)', () => {
     expect(toStoredQuantity(0.1 + 0.2, 'WEIGHT')).toBe(300);
+  });
+
+  it('saleLineAmount : prix/kg × quantité décimale, FCFA entiers', () => {
+    expect(saleLineAmount(3000, 0.25)).toBe(750);
+    expect(saleLineAmount(1500, 1.15)).toBe(1725);
+    expect(saleLineAmount(1500, 0.33)).toBe(495);
+    expect(saleLineAmount(1000, 0.1 + 0.2)).toBe(300); // pas d'écart flottant
+    expect(saleLineAmount(2500, 3)).toBe(7500); // pièce : inchangé
+  });
+
+  it('saleQuantityStep : ¼ au poids/volume, ½ conditionnement, 1 pièce', () => {
+    expect(saleQuantityStep('WEIGHT')).toBe(0.25);
+    expect(saleQuantityStep('VOLUME')).toBe(0.25);
+    expect(saleQuantityStep('UNIT')).toBe(1);
+    expect(saleQuantityStep('UNIT', true)).toBe(0.5);
+  });
+
+  it('snapshot offline : 0,25 kg débite 250 milli-kg (Σ ventes = stock de départ)', () => {
+    let products = [{ id: 'poisson', unitKind: 'WEIGHT' as const, stock: 5000 }];
+    for (const q of [0.5, 0.25, 0.25, 1.5, 0.75, 1.75]) {
+      products = applySaleStockToProducts(products, [{ productId: 'poisson', quantite: q }], 'debit');
+    }
+    expect(products[0]!.stock).toBe(0);
+    const back = applySaleStockToProducts(products, [{ productId: 'poisson', quantite: 0.25 }], 'credit');
+    expect(back[0]!.stock).toBe(250);
+  });
+
+  it('snapshot offline : un conditionnement garde son facteur', () => {
+    const products = [{ id: 'biere', unitKind: 'UNIT' as const, stock: 48 }];
+    const after = applySaleStockToProducts(
+      products,
+      [{ productId: 'biere', quantite: 1, unitId: 'casier', unitFactor: 24 }],
+      'debit',
+    );
+    expect(after[0]!.stock).toBe(24);
   });
 });
 

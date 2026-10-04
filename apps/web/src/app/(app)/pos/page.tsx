@@ -32,6 +32,7 @@ import { BarcodeScannerModal } from '@/components/stock/barcode-scanner-modal';
 import { FloatingCartButtons } from '@/components/pos/floating-cart-buttons';
 import { MobileCartDrawer } from '@/components/pos/mobile-cart-drawer';
 import { PosProductSelectModal } from '@/components/pos/product-select-modal';
+import { quantityScale, saleLineAmount, saleQuantityStep } from '@wilinwi/types';
 
 export default function PosPage() {
   const { refreshPending, state } = useSync();
@@ -162,7 +163,12 @@ export default function PosPage() {
   const handleSelectProduct = (product: ProductDto) => {
     // Si le produit possède des conditionnements (ex: Casier 24) ou des variantes,
     // ouvrir directement la modale de sélection de conditionnement (Wholesale M5)
-    if ((product.units && product.units.length > 0) || (product.variants && product.variants.length > 0)) {
+    // Produit au poids/volume (0,25 kg ; 1,15 L) : la modale permet la saisie décimale.
+    if (
+      (product.units && product.units.length > 0) ||
+      (product.variants && product.variants.length > 0) ||
+      quantityScale(product.unitKind) !== 1
+    ) {
       setSelectedModalProduct(product);
       return;
     }
@@ -199,7 +205,7 @@ export default function PosPage() {
       );
       if (existingIdx >= 0) {
         const copy = [...prev];
-        copy[existingIdx].quantite = Number((copy[existingIdx].quantite + newLine.quantite).toFixed(2));
+        copy[existingIdx].quantite = Number((copy[existingIdx].quantite + newLine.quantite).toFixed(3));
         return copy;
       }
       return [...prev, newLine];
@@ -212,7 +218,12 @@ export default function PosPage() {
       const copy = [...prev];
       const line = copy[index];
       if (!line) return prev;
-      const newQty = Number((line.quantite + delta).toFixed(2));
+      // Poids/volume : pas de 0,25 kg/L, quelle que soit la touche (+/−).
+      // Conditionnement : demi-casier permis (delta tel quel) ; sinon le pas
+      // dépend du produit — 0,25 kg/L au poids/volume, 1 pour une pièce
+      // (une pièce ne se fractionne pas : le serveur refuse 0,5 chemise).
+      const step = line.unitId ? delta : Math.sign(delta) * saleQuantityStep(line.product.unitKind);
+      const newQty = Number((line.quantite + step).toFixed(3));
       if (newQty <= 0) {
         return copy.filter((_, i) => i !== index);
       }
@@ -232,7 +243,7 @@ export default function PosPage() {
     setBusy(true);
     setShowCheckoutModal(false);
 
-    const total = cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0);
+    const total = cart.reduce((sum, line) => sum + saleLineAmount(line.prixReel, line.quantite), 0);
     setLastSaleTotal(total);
 
     const payload: CreateSaleInput = {
@@ -447,7 +458,7 @@ export default function PosPage() {
         <CheckoutModal
           isOpen={showCheckoutModal}
           onClose={() => setShowCheckoutModal(false)}
-          cartTotal={cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0)}
+          cartTotal={cart.reduce((sum, line) => sum + saleLineAmount(line.prixReel, line.quantite), 0)}
           clients={clients}
           livreurs={livreurs}
           initialClientId={selectedClient?.id}
@@ -529,7 +540,7 @@ export default function PosPage() {
       {/* Bouton Panier Flottant & Compteur (Mobile & Tablette < lg) */}
       <FloatingCartButtons
         itemCount={cart.reduce((sum, line) => sum + line.quantite, 0)}
-        totalAmount={cart.reduce((sum, line) => sum + line.prixReel * line.quantite, 0)}
+        totalAmount={cart.reduce((sum, line) => sum + saleLineAmount(line.prixReel, line.quantite), 0)}
         onOpenCart={() => setShowMobileCartDrawer(true)}
         onOpenScanner={() => setShowScannerModal(true)}
       />

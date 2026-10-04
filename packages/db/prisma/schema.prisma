@@ -740,6 +740,10 @@ model SaleItem {
   unitId     String? @map("unit_id") @db.Uuid
   unitLabel  String? @map("unit_label")
   unitFactor Int     @default(1) @map("unit_factor")
+  /// Échelle des quantités de la ligne (§19.1) — SNAPSHOT figé à la vente :
+  /// 1000 pour un produit WEIGHT/VOLUME (quantite = 250 → 0,25 kg), 1 sinon.
+  /// Montant de la ligne = prixReel × quantite / quantityScale (prix PAR kg/L).
+  quantityScale Int  @default(1) @map("quantity_scale")
 
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

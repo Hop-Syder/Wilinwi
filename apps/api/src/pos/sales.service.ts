@@ -17,6 +17,9 @@ import {
 } from '@nestjs/common';
 import {
   accountForPayment,
+  formatQuantity,
+  quantityScale,
+  saleLineAmount,
   saleStockBehavior,
   type AuthContext,
   type CreateSaleInput,
@@ -30,7 +33,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditAlertService } from '../common/audit-alert.service';
 import { assertConcreteEtablissement } from '../common/scope';
 import { applyStockDelta, readStockAt } from '../common/product-stock';
-import { toSaleDto, toSaleDtoList } from './sale.mapper';
+import { saleItemDisplayQty, toSaleDto, toSaleDtoList } from './sale.mapper';
 
 @Injectable()
 export class SalesService {
@@ -82,6 +85,8 @@ export class SalesService {
         if (existing) return existing;
       }
 
+      // Total = Σ prix × quantité SAISIE, arrondi par ligne exactement comme le
+      // POS (saleLineAmount) : 0,25 kg × 3 000 = 750 côté caisse ET serveur.
       let total = 0;
       const lines: {
         productId: string;
@@ -92,6 +97,7 @@ export class SalesService {
         unitId: string | null;
         unitLabel: string | null;
         unitFactor: number;
+        quantityScale: number;
       }[] = [];
 
       for (const item of input.items) {
@@ -142,6 +148,27 @@ export class SalesService {
           throw new BadRequestException('Conditionnement et variante ne se combinent pas.');
         }
         const facteur = unit?.factorToBase ?? 1;
+        // Quantités décimales (§19.1) : un produit WEIGHT/VOLUME se vend en
+        // décimal (0,25 kg) et se PERSISTE en milli-unités entières (250) — même
+        // échelle que son stock, donc Σ mouvements = stock exact, sans flottant.
+        const scale = quantityScale(product.unitKind);
+        // Unités persistées débitées par UNE unité vendue (1 casier = facteur ;
+        // 1 kg = 1000 milli-kg ; 1 pièce = 1).
+        const perSoldUnit = unit ? facteur : scale;
+        const requiredBaseQty = Math.round(item.quantite * perSoldUnit);
+        if (requiredBaseQty <= 0) {
+          throw new BadRequestException(
+            `Quantité trop petite pour « ${product.nom} » (minimum ${formatQuantity(1, product.unitKind, product.baseUnit)}).`,
+          );
+        }
+        // Une pièce ne se fractionne pas : refuser plutôt que d'arrondir en
+        // silence (0,5 chemise vendue mais 1 sortie de stock).
+        // (Un conditionnement > 1 se fractionne : 1,5 casier → 1 casier + 12 btl.)
+        if (!(unit && facteur > 1) && scale === 1 && !Number.isInteger(item.quantite)) {
+          throw new BadRequestException(
+            `« ${product.nom} » se vend à l'unité : quantité ${item.quantite} invalide. Passez le produit « Au poids » ou « Au volume » pour le vendre au détail.`,
+          );
+        }
 
         // Stock disponible dans LA BOUTIQUE qui vend (projection ProductStock).
         // Pas de repli sur le stock global : sans établissement courant la vente
@@ -157,7 +184,6 @@ export class SalesService {
         // bloquent pas (le stock négatif reste visible et alerté par les seuils).
         // BATCHED (Option B §18.2) : jamais bloqué serveur-side — le POS local
         // refuse déjà périmés/insuffisants ; un conflit devient une alerte CRITICAL.
-        const requiredBaseQty = Math.round(item.quantite * facteur);
         if (product.type !== 'BATCHED' && saleStockBehavior(product.type, product.stockPolicy).precheck) {
           const availableStock = await readStockAt(
             tx,
@@ -167,7 +193,7 @@ export class SalesService {
           );
           if (requiredBaseQty > availableStock) {
             throw new BadRequestException(
-              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${requiredBaseQty}, Disponible : ${availableStock}`
+              `Stock insuffisant pour le produit "${product.nom}". Demandé : ${formatQuantity(requiredBaseQty, product.unitKind, product.baseUnit)}, Disponible : ${formatQuantity(availableStock, product.unitKind, product.baseUnit)}`
             );
           }
         }
@@ -181,7 +207,7 @@ export class SalesService {
           );
         }
 
-        total += Math.round(item.prixReel * item.quantite);
+        total += saleLineAmount(item.prixReel, item.quantite);
 
         const wholeUnits = Math.floor(item.quantite);
         const remainder = Number((item.quantite - wholeUnits).toFixed(4));
@@ -195,40 +221,58 @@ export class SalesService {
               variantId: item.variantId ?? null,
               quantite: wholeUnits,
               prixReel: item.prixReel,
-              coutUnitaire: product.prixAchat * facteur,
+              coutUnitaire: Math.round(product.prixAchat * (facteur / scale)),
               unitId: unit.id,
               unitLabel: unit.label,
               unitFactor: facteur,
+              quantityScale: 1,
             });
           }
-          // 2. Fraction décomposée en unités de base (bouteilles)
+          // 2. Fraction décomposée en unités de base (bouteilles, ou milli-kg
+          //    pour un conditionnement au poids), prix ramené à l'unité de base.
           const remainingBaseUnits = Math.round(remainder * facteur);
           if (remainingBaseUnits > 0) {
-            const unitPrice = Math.round(item.prixReel / facteur);
             lines.push({
               productId: product.id,
               variantId: item.variantId ?? null,
               quantite: remainingBaseUnits,
-              prixReel: unitPrice,
+              prixReel: Math.round((item.prixReel * scale) / facteur),
               coutUnitaire: product.prixAchat,
               unitId: null,
               unitLabel: product.baseUnit ? `Détail (${product.baseUnit})` : null,
               unitFactor: 1,
+              quantityScale: scale,
             });
           }
-        } else {
+        } else if (unit) {
           lines.push({
             productId: product.id,
             variantId: item.variantId ?? null,
-            quantite: Math.max(1, Math.round(item.quantite)),
+            quantite: Math.round(item.quantite),
             prixReel: item.prixReel,
-            coutUnitaire: product.prixAchat * facteur,
-            unitId: unit?.id ?? null,
-            unitLabel: unit?.label ?? null,
+            coutUnitaire: Math.round(product.prixAchat * (facteur / scale)),
+            unitId: unit.id,
+            unitLabel: unit.label,
             unitFactor: facteur,
+            quantityScale: 1,
+          });
+        } else {
+          // Vente au détail : quantite persistée à l'échelle du stock
+          // (250 milli-kg pour 0,25 kg), prix PAR kg/L/pièce.
+          lines.push({
+            productId: product.id,
+            variantId: item.variantId ?? null,
+            quantite: requiredBaseQty,
+            prixReel: item.prixReel,
+            coutUnitaire: product.prixAchat,
+            unitId: null,
+            unitLabel: null,
+            unitFactor: 1,
+            quantityScale: scale,
           });
         }
       }
+
 
       // Résolution / création automatique du client si nécessaire
       let finalClientId = input.clientId ?? null;
@@ -376,6 +420,7 @@ export class SalesService {
             unitId: line.unitId,
             unitLabel: line.unitLabel,
             unitFactor: line.unitFactor,
+            quantityScale: line.quantityScale,
           },
         });
       }
@@ -433,7 +478,7 @@ export class SalesService {
           variantId: item.variantId,
           type: 'OUT',
           quantite: -baseQty,
-          motif: `Vente ${saleId}${item.unitLabel ? ` (${item.quantite} × ${item.unitLabel})` : ''}`,
+          motif: `Vente ${saleId}${item.unitLabel ? ` (${saleItemDisplayQty(item)} × ${item.unitLabel})` : ''}`,
           saleId,
         },
       });
@@ -478,7 +523,7 @@ export class SalesService {
                 variantId: item.variantId,
                 saleId,
                 stockApres: after,
-                quantiteVendue: item.quantite,
+                quantiteVendue: saleItemDisplayQty(item),
               },
             });
           }
@@ -509,7 +554,7 @@ export class SalesService {
         // Seuls les ingrédients à stock direct se décrémentent (pas de recettes
         // imbriquées au MVP ; la politique NO_STOCK de l'ingrédient est respectée).
         if (!saleStockBehavior(ri.ingredient.type, ri.ingredient.stockPolicy).decrement) continue;
-        const consomme = ri.quantite * item.quantite;
+        const consomme = Math.round(ri.quantite * saleItemDisplayQty(item));
         await tx.stockMovement.create({
           data: {
             tenantId: ctx.tenantId,
@@ -1090,23 +1135,31 @@ export class SalesService {
 
       let refundAmount = 0;
 
-      for (const ret of returns) {
-        if (ret.quantiteRetournee <= 0) continue;
-        const item = sale.items.find(i => i.id === ret.saleItemId);
-        if (!item) throw new BadRequestException(`Ligne ${ret.saleItemId} introuvable`);
+      for (const rawRet of returns) {
+        if (rawRet.quantiteRetournee <= 0) continue;
+        const item = sale.items.find(i => i.id === rawRet.saleItemId);
+        if (!item) throw new BadRequestException(`Ligne ${rawRet.saleItemId} introuvable`);
+
+        // La quantité retournée arrive AFFICHÉE (0,25 kg) comme dans l'historique ;
+        // on la ramène à l'échelle persistée de la ligne (250 milli-kg, §19.1).
+        const scale = item.quantityScale || 1;
+        const ret = { ...rawRet, quantiteRetournee: Math.round(rawRet.quantiteRetournee * scale) };
+        if (ret.quantiteRetournee <= 0 || (scale === 1 && !Number.isInteger(rawRet.quantiteRetournee))) {
+          throw new BadRequestException(`Quantité retournée invalide (${rawRet.quantiteRetournee}) pour la ligne ${item.id}`);
+        }
 
         // Vérifier que la quantité retournée (historique + demandée) ne dépasse pas la quantité vendue
-        // On force le cast 'any' si prisma client n'est pas encore généré pour quantiteRetournee
-        const itemAny = item as any;
-        const prevReturned = itemAny.quantiteRetournee || 0;
+        const prevReturned = item.quantiteRetournee || 0;
         if (prevReturned + ret.quantiteRetournee > item.quantite) {
-          throw new BadRequestException(`Impossible de retourner ${ret.quantiteRetournee} article(s) pour la ligne ${item.id} (déjà retourné: ${prevReturned}/${item.quantite})`);
+          throw new BadRequestException(
+            `Impossible de retourner ${rawRet.quantiteRetournee} pour la ligne ${item.id} (déjà retourné: ${prevReturned / scale}/${item.quantite / scale})`,
+          );
         }
 
         // MAJ de la ligne
         await tx.saleItem.update({
           where: { id: item.id },
-          data: { quantiteRetournee: { increment: ret.quantiteRetournee } } as any,
+          data: { quantiteRetournee: { increment: ret.quantiteRetournee } },
         });
 
         // Remettre en stock — symétrique de finalize : seuls les articles dont le
@@ -1177,7 +1230,7 @@ export class SalesService {
           }
         }
 
-        refundAmount += item.prixReel * ret.quantiteRetournee;
+        refundAmount += saleLineAmount(item.prixReel, ret.quantiteRetournee / scale);
       }
 
       // Remboursement espèces borné à ce qui a réellement été encaissé : sur une

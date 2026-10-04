@@ -13,7 +13,7 @@
 
 import Link from 'next/link';
 import { Ban, X, Store, Share2, RotateCcw, Printer } from 'lucide-react';
-import { PAYMENT_METHOD_LABELS } from '@wilinwi/types';
+import { saleLineAmount, PAYMENT_METHOD_LABELS } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
 import type { Sale } from './types';
 import { STATUS } from './types';
@@ -107,7 +107,7 @@ export function VenteDetailDrawer({
                   <span className="text-slate-800 font-bold">
                     {it.quantite}× {it.product?.nom ?? 'Article'}
                   </span>
-                  <span className="font-black text-slate-900">{formatFCFA(it.prixReel * it.quantite)}</span>
+                  <span className="font-black text-slate-900">{formatFCFA(saleLineAmount(it.prixReel, it.quantite))}</span>
                 </li>
               ))}
             </ul>

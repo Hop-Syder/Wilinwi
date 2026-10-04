@@ -14,12 +14,15 @@ import {
   addDays,
   calendarDateInTz,
   canSeeSensitivePricing,
+  saleLineAmount,
+  toDisplayQuantity,
   endOfCalendarDayInTz,
   startOfCalendarDayInTz,
   startOfDayInTz,
   type AuthContext,
 } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
+import { saleItemDisplayQty } from '../pos/sale.mapper';
 
 const LOW_STOCK_THRESHOLD = 5;
 const DORMANT_DAYS = 30;
@@ -52,14 +55,14 @@ export class AnalyticsService {
 
       const ventesDuJour = salesToday.reduce((sum, s) => sum + s.total, 0);
       const articlesVendus = salesToday.reduce(
-        (sum, s) => sum + s.items.reduce((q, it) => q + it.quantite, 0),
+        (sum, s) => sum + s.items.reduce((q, it) => q + saleItemDisplayQty(it), 0),
         0,
       );
 
       // Bénéfice du jour (marge réelle) — donnée sensible
       const beneficeDuJour = salesToday.reduce(
         (sum, s) =>
-          sum + s.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+          sum + s.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
         0,
       );
 
@@ -92,12 +95,18 @@ export class AnalyticsService {
         }
       }
 
-      const valeurStockCatalogue = products.reduce((s, p) => s + p.prixCatalogue * p.stock, 0);
-      const valeurStockAchat = products.reduce((s, p) => s + p.prixAchat * p.stock, 0);
+      // Prix PAR kg/L : le stock WEIGHT/VOLUME (milli-unités, §19.1) est ramené
+      // à l'unité affichée avant valorisation (5 000 milli-kg = 5 kg).
+      const valeurStockCatalogue = Math.round(
+        products.reduce((s, p) => s + p.prixCatalogue * toDisplayQuantity(p.stock, p.unitKind), 0),
+      );
+      const valeurStockAchat = Math.round(
+        products.reduce((s, p) => s + p.prixAchat * toDisplayQuantity(p.stock, p.unitKind), 0),
+      );
 
       // Alertes stock : ruptures proches
       const ruptures = products
-        .filter((p) => p.stock <= LOW_STOCK_THRESHOLD)
+        .filter((p) => toDisplayQuantity(p.stock, p.unitKind) <= LOW_STOCK_THRESHOLD)
         .map((p) => ({ id: p.id, nom: p.nom, stock: p.stock }));
 
       // Produits dormants : aucun mouvement OUT depuis DORMANT_DAYS jours dans cet établissement
@@ -235,7 +244,7 @@ export class AnalyticsService {
       const nombreVentesPrev = salesPrev.length;
 
       const articlesVendus = sales.reduce(
-        (s, v) => s + v.items.reduce((q, it) => q + it.quantite, 0),
+        (s, v) => s + v.items.reduce((q, it) => q + saleItemDisplayQty(it), 0),
         0,
       );
 
@@ -243,11 +252,11 @@ export class AnalyticsService {
       const panierMoyenPrev = nombreVentesPrev ? Math.round(chiffreAffairesPrev / nombreVentesPrev) : 0;
 
       const benefice = sales.reduce(
-        (s, v) => s + v.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+        (s, v) => s + v.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
         0,
       );
       const beneficePrev = salesPrev.reduce(
-        (s, v) => s + v.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0),
+        (s, v) => s + v.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0),
         0,
       );
 
@@ -294,7 +303,7 @@ export class AnalyticsService {
         const cur = byDay.get(day) ?? { ca: 0, benefice: 0, ventes: 0 };
         cur.ca += s.total;
         cur.ventes += 1;
-        cur.benefice += s.items.reduce((m, it) => m + (it.prixReel - it.coutUnitaire) * it.quantite, 0);
+        cur.benefice += s.items.reduce((m, it) => m + saleLineAmount(it.prixReel - it.coutUnitaire, saleItemDisplayQty(it)), 0);
         byDay.set(day, cur);
       }
 
@@ -346,8 +355,8 @@ export class AnalyticsService {
             quantite: 0,
             ca: 0,
           };
-          cur.quantite += it.quantite;
-          cur.ca += it.prixReel * it.quantite;
+          cur.quantite += saleItemDisplayQty(it);
+          cur.ca += saleLineAmount(it.prixReel, saleItemDisplayQty(it));
           byProduct.set(prodId, cur);
         }
       }

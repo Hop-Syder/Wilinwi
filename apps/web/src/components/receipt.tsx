@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, X, FileDown } from 'lucide-react';
 import Image from 'next/image';
-import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
+import { saleLineAmount, PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
 import { generateSaleInvoicePdf } from '@/lib/invoice-pdf';
@@ -33,7 +33,7 @@ export interface ReceiptSale {
 /** Construit le texte du reçu (utilisé pour le QR → WhatsApp). */
 function _receiptText(sale: ReceiptSale): string {
   const lignes = sale.items
-    .map((it) => `${it.quantite}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(it.prixReel * it.quantite)}`)
+    .map((it) => `${it.quantite}x ${it.product?.nom ?? 'Article'} = ${formatFCFA(saleLineAmount(it.prixReel, it.quantite))}`)
     .join('\n');
   const detailsMoMo = sale.paymentMethod === 'MOBILE_MONEY' && sale.momoOperator
     ? ` (${sale.momoOperator}${sale.momoReference ? ` - Réf: ${sale.momoReference}` : ''})`
@@ -121,7 +121,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
               <span>
                 {it.quantite}× {it.product?.nom ?? 'Article'}
               </span>
-              <span className="tabular">{formatFCFA(it.prixReel * it.quantite)}</span>
+              <span className="tabular">{formatFCFA(saleLineAmount(it.prixReel, it.quantite))}</span>
             </div>
           ))}
 
