@@ -8,7 +8,69 @@
 - **Nom** : Wilinwi
 - **Type** : SaaS multi-tenant (POS · Stock · Pay · CRM · Livraisons · Analytics · Configuration)
 - **Initialisé le** : 2026-06-19
-- **Dernière mise à jour** : 2026-08-05
+- **Dernière mise à jour** : 2026-10-04
+
+```yaml
+task_context:
+  previous:
+    id: "POS-DECIMAL-AND-RECONCILIATION"
+    status: "COMPLETED"
+    result: "Support universel des quantités décimales (PostgreSQL Float, calculs POS et UI) et réconciliation point de stock avec historique et PV"
+    files_changed:
+      - "packages/db/prisma/schema.prisma"
+      - "apps/api/src/pos/sales.service.ts"
+      - "packages/ui/src/utils/formatters.ts"
+      - "apps/web/src/components/pos/cart-quantity-input.tsx"
+      - "apps/web/src/components/pos/product-select-modal.tsx"
+      - "apps/web/src/components/stock/stock-adjust-modal.tsx"
+      - "apps/web/src/app/(app)/stock/inventaire/page.tsx"
+    important_decisions:
+      - "Migration BDD double precision sur toutes les colonnes de quantité (stocks, mouvements, ventes, inventaire)"
+      - "Auto-création transparente de session d'inventaire lors de la réconciliation point de stock"
+      - "Prise en charge universelle de la saisie décimale au clavier (1,5 ou 1.5, pas de limitation aux entiers)"
+      - "Règle de synchronisation mémoire obligatoire avant tout push Git enregistrée dans GEMINI.md et AGENTS.md"
+
+  current:
+    id: "SYNC-DEXTY-MEMORY-AND-GEMINI-RULES"
+    objective: "Mettre à jour la mémoire du projet .dexty/temp-memory-projet.md et synchroniser les règles dans GEMINI.md avant push"
+    branch: "main-mvp2"
+    status: "IN_PROGRESS"
+    files_in_scope:
+      - "/home/dexty/.gemini/GEMINI.md"
+      - "AGENTS.md"
+      - ".dexty/temp-memory-projet.md"
+    constraints:
+      - "Mettre à jour tous les paramètres et faits techniques récents dans la mémoire"
+      - "Ne jamais faire de push sans avoir synchronisé la mémoire"
+
+  future:
+    known_tasks:
+      - id: "POS-OFFLINE-FRACTIONAL-SYNC"
+        objective: "Valider la synchronisation Dexie/IndexedDB pour les ventes fractionnées hors-ligne"
+        dependency: "POS-DECIMAL-AND-RECONCILIATION"
+        status: "PLANNED"
+
+  cross_branch:
+    inspected_branches: ["main-mvp2"]
+    relevant_changes: ["Support quantités décimales", "Historique inventaire", "Règle mémoire Dexty"]
+    conflicts: []
+    decisions_found: []
+
+  temporary_memory:
+    facts:
+      - "Base Supabase migrée en double precision pour les quantités"
+      - "Prisma client régénéré avec Float"
+      - "Validation point de stock auto-ouvre une session d'inventaire si nécessaire"
+      - "Règle mémoire inscrite dans GEMINI.md et AGENTS.md"
+    decisions:
+      - "Double precision préféré aux entiers fixes pour souplesse maximale tous secteurs (vrac, boisson, découpe, agro)"
+    discoveries:
+      - "sales.service déduisait -1 au lieu de -item.quantite pour les produits non sérialisés/sans lot"
+      - "La confirmation d'inventaire bloquait si l'utilisateur n'avait pas cliqué sur Démarrer une session"
+    blockers: []
+    pending_actions:
+      - "Push final sur origin/main-mvp2"
+```
 
 ## 🛠️ Stack détectée
 
@@ -116,3 +178,17 @@ packages/
 - **[UNIFICATION PARAMÈTRES UX & SUPPRESSION MOCKS - 2026-09-17]** : Élimination complète de la divergence Frontend ≠ Backend. Remplacement des faux tableaux en mémoire par un `layout.tsx` partagé à onglets persistants (`/parametres`, `/utilisateurs`, `/etablissements`, `/appareils`, `/abonnement`, `/journal` réservé OWNER). Connexion directe à l'API réelle `/api/admin/tenant`, création de l'espace `/parametres/abonnement` (quotas, dunning J+0..J+30, plan actif).
 - **[WORKFLOW INVITATION & SECRET PERSONNEL - 2026-09-17]** : Implémentation du cycle d'onboarding bancaire/confidentiel : l'admin invite par nom/email/rôle sans fixer de secret. Ajout de `POST /users/me/pin` dans l'API backend. Sur `/set-password`, le collaborateur définit lui-même son mot de passe et son code PIN de caisse à 4 chiffres (hashé bcrypt). Ajout du partage WhatsApp direct du lien d'invitation pour le terrain ouest-africain.
 - **[CENTRE DE RÉSOLUTION DES CONFLITS OFFLINE - 2026-09-17]** : Extension de `useSync` (`rejectedCount`, `rejectedSales`, `discardSale`, `retrySale`). Création de `SyncConflictsModal` et intégration d'un badge d'alerte animé cliquable dans la Topbar (`AppTopbar`) et `OfflineBanner` pour traiter les rejets serveur (ex. oversell hors-ligne sur stock épuisé) avec option d'écarter (recrédit stock local) ou de réessayer.
+- **[SUPPORT UNIVERSEL DES NOMBRES DÉCIMAUX (FLOAT) - 2026-10-04]** :
+  - **Base de données PostgreSQL (Supabase)** : Migration de toutes les colonnes de quantité de `integer` vers `double precision` (`products.stock`, `product_stock.quantite`, `stock_movements.quantite`, `sale_items.quantite`, `inventory_items.quantite_theorique`, `inventory_items.quantite_comptee`, `inventory_items.ecart`, `purchase_order_items.quantite_commandee`, `purchase_order_items.quantite_recue`).
+  - **Prisma ORM (`packages/db/prisma/schema.prisma`)** : Typage de toutes les quantités en `Float` et régénération de `@prisma/client`.
+  - **Backend API NestJS (`apps/api/src/pos/sales.service.ts`)** : Correction critique de la déduction de stock lors des ventes POS fractionnées (`0.25`, `0.5`, `0.75`, `1.5`, etc.) pour déduire exactement `item.quantite` et non une quantité tronquée ou `-1`.
+  - **Frontend Web & UI** :
+    - `packages/ui/src/utils/formatters.ts` : Adaptation de `formatQty` avec `maximumFractionDigits: 3` pour formater élégamment les décimales sans zéros inutiles.
+    - `apps/web/src/components/pos/cart-quantity-input.tsx` : Saisie libre et directe au clavier de tout nombre décimal (virgule `,` ou point `.`), synchronisation avec le store panier POS, gestion stable du focus/blur pour permettre la saisie fluide sans écrasement prématuré.
+    - `apps/web/src/components/stock/stock-adjust-modal.tsx` : Remplacement de `parseInt` par `parseFloat` avec `step="any"` pour les ajustements de stock manuels.
+- **[RÉGULARISATION POINT DE STOCK & HISTORIQUE DES SESSIONS - 2026-10-04]** :
+  - **Auto-création transparente de session d'inventaire** : Correction du blocage silencieux sur "Confirmer la régularisation". Désormais, si aucune session d'inventaire n'est préalablement ouverte sur l'établissement, le système crée automatiquement la session (`POST /inventory/sessions`), enregistre les lignes (`POST /inventory/sessions/:id/lines`) puis procède à la réconciliation (`POST /inventory/sessions/:id/reconcile`).
+  - **Onglet Historique & PV imprimable (`apps/web/src/app/(app)/stock/inventaire/page.tsx`)** : Implémentation d'une vue à onglets ("Point de stock" / "Historique des inventaires"). L'historique permet d'inspecter les sessions clôturées, les métriques d'écarts (quantités et valorisation financière), et d'ouvrir une modale détaillée avec impression du Procès-Verbal (PV) de réconciliation.
+  - **Correctif d'affichage** : Élévation du z-index de la boîte de dialogue de confirmation en `z-[100]` pour garantir sa visibilité au-dessus de la navigation.
+- **[MODALE SÉLECTION DU CONDITIONNEMENT POS - 2026-10-04]** : Ajout de `ProductSelectModal` au POS pour permettre de sélectionner le conditionnement de vente (ex. vente au casier complet ou à la bouteille individuelle) dès le clic sur le produit.
+- **[SYNCHRONISATION MÉMOIRE DEXTY SYSTÉMATIQUE - 2026-10-04]** : Règle absolue inscrite dans `GEMINI.md` (règle 12.4) et `AGENTS.md` (règle cardinale 9) : toujours mettre à jour `.dexty/temp-memory-projet.md` avec l'ensemble des paramètres, décisions et statuts avant tout push Git, assurant une mémoire d'agent permanente et prévenant toute régression.
