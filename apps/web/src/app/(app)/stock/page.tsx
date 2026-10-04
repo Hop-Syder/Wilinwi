@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Plus, Search, AlertTriangle, ArrowRightLeft,
-  Warehouse, FileSpreadsheet, Camera, Package, ClipboardCheck
+  Warehouse, FileSpreadsheet, Camera, Package, ClipboardCheck, History
 } from 'lucide-react';
 import type { ProductDto } from '@wilinwi/types';
 import { Button } from '@wilinwi/ui';
@@ -61,6 +61,7 @@ export default function StockPage() {
   const [quickAdjustDelta, setQuickAdjustDelta] = useState<number | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showPointModal, setShowPointModal] = useState(false);
+  const [pointModalTab, setPointModalTab] = useState<'COUNT' | 'HISTORY'>('COUNT');
 
   // Filtres & Recherche Douchette / Code-barres
   const [search, setSearch] = useState('');
@@ -180,14 +181,31 @@ export default function StockPage() {
           {/* Droite : Groupe d'Actions Aligné sur 1 Ligne (Point de Stock | Import | Transférer | Entrepôt | + Nouveau | ❓) */}
           <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap justify-start lg:justify-end shrink-0">
             {canReadStock && (
-              <Button
-                variant="outline"
-                onClick={() => setShowPointModal(true)}
-                className="rounded-xl border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100 hover:text-amber-950 text-xs font-black gap-1.5 shadow-2xs"
-              >
-                <ClipboardCheck className="h-4 w-4 text-amber-600" />
-                <span>Faire le point</span>
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPointModalTab('COUNT');
+                    setShowPointModal(true);
+                  }}
+                  className="rounded-xl border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100 hover:text-amber-950 text-xs font-black gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <ClipboardCheck className="h-4 w-4 text-amber-600" />
+                  <span>Faire le point</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPointModalTab('HISTORY');
+                    setShowPointModal(true);
+                  }}
+                  title="Consulter l'historique des points de stock passés"
+                  className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <History className="h-4 w-4 text-slate-500" />
+                  <span className="hidden sm:inline">Historique</span>
+                </Button>
+              </div>
             )}
 
             {canWrite && (
@@ -383,6 +401,7 @@ export default function StockPage() {
         onClose={() => setShowPointModal(false)}
         products={products}
         onStockUpdated={() => void refetch()}
+        initialTab={pointModalTab}
       />
     </div>
   );
