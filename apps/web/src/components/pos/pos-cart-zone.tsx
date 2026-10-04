@@ -13,11 +13,12 @@
 
 import { useMemo, useState, type RefObject } from 'react';
 import {
-  ShoppingCart, Trash2, Plus, Minus, UserCheck, AlertTriangle,
+  ShoppingCart, Trash2, UserCheck, AlertTriangle,
   ChevronRight, X, Store, ShoppingBag, Truck
 } from 'lucide-react';
 import type { ProductDto, ClientDto } from '@wilinwi/types';
-import { Button, formatFCFA, formatQty } from '@wilinwi/ui';
+import { Button, formatFCFA } from '@wilinwi/ui';
+import { CartQuantityInput } from './cart-quantity-input';
 
 export interface CartLine {
   product: ProductDto;
@@ -35,6 +36,7 @@ export type OrderMode = 'SUR_PLACE' | 'A_EMPORTER' | 'LIVRAISON';
 interface PosCartZoneProps {
   cart: CartLine[];
   onUpdateQuantity: (index: number, delta: number) => void;
+  onSetQuantity?: (index: number, quantity: number) => void;
   onRemoveLine: (index: number) => void;
   onClearCart: () => void;
   clients: ClientDto[];
@@ -50,6 +52,7 @@ interface PosCartZoneProps {
 export function PosCartZone({
   cart,
   onUpdateQuantity,
+  onSetQuantity,
   onRemoveLine,
   onClearCart,
   clients,
@@ -270,27 +273,14 @@ export function PosCartZone({
               </p>
             </div>
 
-            {/* Ingrément/Décrément Tactile direct [ - ] [ Qté ] [ + ] */}
+            {/* Ingrément/Décrément Tactile direct et saisie manuelle fluide [ - ] [ Qté ] [ + ] */}
             <div className="flex items-center gap-1">
-              <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => onUpdateQuantity(idx, line.quantite <= 1 && line.quantite > 0.5 ? -0.5 : -1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-700 shadow-2xs hover:bg-slate-100 active:scale-95 transition-all"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="w-9 text-center font-mono text-xs font-extrabold text-slate-900">
-                  {formatQty(line.quantite)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onUpdateQuantity(idx, 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-slate-700 shadow-2xs hover:bg-slate-100 active:scale-95 transition-all"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <CartQuantityInput
+                value={line.quantite}
+                onChange={(newQty) => onSetQuantity?.(idx, newQty)}
+                onDelta={(delta) => onUpdateQuantity(idx, delta)}
+                size="sm"
+              />
 
               <button
                 type="button"

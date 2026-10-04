@@ -13,19 +13,20 @@
 
 import { useMemo, useState } from 'react';
 import {
-  X, Trash2, Plus, Minus, UserCheck, UserPlus, CreditCard, ShoppingBag,
+  X, Trash2, UserCheck, UserPlus, CreditCard, ShoppingBag,
   Store, ShoppingCart, AlertCircle, Truck
 } from 'lucide-react';
 import type { ClientDto } from '@wilinwi/types';
-import { formatQty } from '@wilinwi/ui';
 import { useCurrency } from '@/lib/currency-context';
 import type { CartLine, OrderMode } from './pos-cart-zone';
+import { CartQuantityInput } from './cart-quantity-input';
 
 interface MobileCartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartLine[];
   onUpdateQuantity: (index: number, delta: number) => void;
+  onSetQuantity?: (index: number, quantity: number) => void;
   onRemoveLine: (index: number) => void;
   onClearCart: () => void;
   clients: ClientDto[];
@@ -42,6 +43,7 @@ export function MobileCartDrawer({
   onClose,
   cart,
   onUpdateQuantity,
+  onSetQuantity,
   onRemoveLine,
   onClearCart,
   clients,
@@ -264,29 +266,14 @@ export function MobileCartDrawer({
                   </div>
                 </div>
 
-                {/* Sélecteur de Quantité Aéré (Grands Boutons - / +) */}
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-2xs p-1">
-                    <button
-                      type="button"
-                      onClick={() => onUpdateQuantity(idx, item.quantite <= 1 && item.quantite > 0.5 ? -0.5 : -1)}
-                      className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 transition-colors"
-                      aria-label="Diminuer quantité"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-9 text-center text-xs font-extrabold text-slate-900">
-                      {formatQty(item.quantite)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateQuantity(idx, 1)}
-                      className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 transition-colors"
-                      aria-label="Augmenter quantité"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                {/* Sélecteur de Quantité Aéré avec saisie manuelle fluide */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <CartQuantityInput
+                    value={item.quantite}
+                    onChange={(newQty) => onSetQuantity?.(idx, newQty)}
+                    onDelta={(delta) => onUpdateQuantity(idx, delta)}
+                    size="md"
+                  />
 
                   {/* Bouton Suppression */}
                   <button

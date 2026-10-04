@@ -206,17 +206,30 @@ export default function PosPage() {
     });
   };
 
-  // Mise à jour Quantité
+  // Mise à jour Quantité par incrément/décrément
   const handleUpdateQuantity = (index: number, delta: number) => {
     setCart((prev) => {
       const copy = [...prev];
       const line = copy[index];
       if (!line) return prev;
-      const newQty = Number((line.quantite + delta).toFixed(2));
+      const newQty = Number((line.quantite + delta).toFixed(3));
       if (newQty <= 0) {
         return copy.filter((_, i) => i !== index);
       }
       copy[index].quantite = newQty;
+      return copy;
+    });
+  };
+
+  // Définition directe de la Quantité (saisie manuelle au clavier : 0.5, 0.75, 1.25, 1.5, etc.)
+  const handleSetQuantity = (index: number, newQty: number) => {
+    setCart((prev) => {
+      const copy = [...prev];
+      if (!copy[index]) return prev;
+      if (newQty <= 0) {
+        return copy.filter((_, i) => i !== index);
+      }
+      copy[index].quantite = Number(newQty.toFixed(3));
       return copy;
     });
   };
@@ -422,6 +435,7 @@ export default function PosPage() {
           <PosCartZone
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
+            onSetQuantity={handleSetQuantity}
             onRemoveLine={handleRemoveLine}
             onClearCart={() => setCart([])}
             clients={clients}
@@ -540,6 +554,7 @@ export default function PosPage() {
         onClose={() => setShowMobileCartDrawer(false)}
         cart={cart}
         onUpdateQuantity={handleUpdateQuantity}
+        onSetQuantity={handleSetQuantity}
         onRemoveLine={handleRemoveLine}
         onClearCart={() => setCart([])}
         clients={clients}

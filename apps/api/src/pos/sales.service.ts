@@ -216,6 +216,21 @@ export class SalesService {
               unitFactor: 1,
             });
           }
+        } else if (item.quantite % 1 !== 0) {
+          // Produit sans conditionnement vendu avec quantité fractionnaire (ex: 1.5, 0.75, 1.25)
+          const lineTotal = Math.round(item.prixReel * item.quantite);
+          const formattedQty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(item.quantite);
+          const unitTag = product.baseUnit ? `${formattedQty} ${product.baseUnit}` : `${formattedQty}x`;
+          lines.push({
+            productId: product.id,
+            variantId: item.variantId ?? null,
+            quantite: 1,
+            prixReel: lineTotal,
+            coutUnitaire: Math.round(product.prixAchat * item.quantite),
+            unitId: null,
+            unitLabel: unitTag,
+            unitFactor: Math.max(1, Math.round(item.quantite)),
+          });
         } else {
           lines.push({
             productId: product.id,
