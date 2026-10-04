@@ -15,6 +15,7 @@ import { PaymentMethod, ClientDto, PAYMENT_METHOD_LABELS, MomoOperator, MOMO_OPE
 import { CheckCircle2, Receipt, X, RotateCcw, CloudOff, RefreshCw, AlertTriangle, QrCode, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCurrency } from '@/lib/currency-context';
+import { publicReceiptUrl } from '@/lib/public-receipt-url';
 
 export interface CheckoutResult {
   paymentMethod: PaymentMethod;
@@ -703,10 +704,9 @@ export function SaleSuccessModal({
               </div>
               <div className="bg-white p-2.5 rounded-xl inline-block border border-border shadow-2xs mb-3">
                 {(() => {
-                  const webBase = process.env.NEXT_PUBLIC_WEB_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://wilinwi.nexus-partners.xyz');
                   return (
                     <QRCodeSVG
-                      value={receiptCode ? `${webBase}/r/${receiptCode}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`}
+                      value={receiptCode ? `${publicReceiptUrl(receiptCode)}?download=true` : `https://wa.me/?text=Merci%20pour%20votre%20achat%20de%20${total}F%20chez%20nous!`}
                       size={115}
                       level="M"
                       includeMargin={true}

@@ -75,3 +75,15 @@
   1. Option `🪄 Générer automatiquement (Auto-SKU)` par défaut si colonne SKU absente, générant des codes uniques lisibles (`PREFIX-001`).
   2. Options `Laisser vide` pour le stock (fixé à 0), la catégorie (`null`) et le prix d'achat.
 - **Conséquences** : Taux d'abandon à l'import divisé par 3, conformité totale avec le schéma d'import backend.
+
+## ADR-010 — Kit de Marque PDF Unique & Logo Wilinwi à son Ratio Réel
+- **Date** : 2026-10-04
+- **Statut** : Accepté / Actif
+- **Contexte** : Factures et bons de commande jugés médiocres : logo horizontal (1229×363) forcé dans un carré 15×15 mm (illisible), palette teal hors charte, cartouches à hauteur fixe (textes longs débordants), fausses mentions « HT / TVA 0 % / TTC », QR non compressé (330 Ko), police `helvetica/mono` inexistante, mention « montant en lettres » absente, lien QR du reçu thermique sans `/r/` (404).
+- **Décision** :
+  1. `apps/web/src/lib/pdf/brand-kit.ts` = SEULE source de mise en page PDF (palette charte, en-tête logo + émetteur, cartouches dynamiques, totaux, montant en lettres, signatures, pied « Propulsé par Wilinwi », rappel sur pages de suite).
+  2. Logos d'impression dédiés recadrés/allégés : `public/brand/wilinwi-logo-print.png` (760×198, 20 Ko) et `wilinwi-mark-print.png` (356×240, 9 Ko) ; ratio lu dans l'en-tête PNG → jamais déformé.
+  3. `amountInWords` / `fcfaInWords` dans `@wilinwi/types` (orthographe traditionnelle, 27 tests) pour la mention « Arrêtée la présente facture à la somme de… ».
+  4. `publicReceiptUrl()` (`apps/web/src/lib/public-receipt-url.ts`) = source unique des liens/QR de reçu.
+  5. `<PrintBrandLogo />` (chargement `priority`) pour les documents imprimés via `window.print`.
+- **Conséquences** : PDF ~66 Ko au lieu de 330 Ko ; tout nouveau document PDF doit réutiliser le kit (pas de `doc.rect`/couleurs en dur).

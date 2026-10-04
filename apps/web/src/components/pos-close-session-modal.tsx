@@ -32,6 +32,7 @@ import {
 import { Button, Badge, formatFCFA } from '@wilinwi/ui';
 import { apiGet, apiPost } from '@/lib/api';
 import { useSync } from '@/lib/use-sync';
+import { PrintBrandLogo } from '@/components/print-brand-logo';
 
 interface PosCloseSessionModalProps {
   isOpen: boolean;
@@ -607,7 +608,8 @@ export function PosCloseSessionModal({ isOpen, onClose, onSuccess }: PosCloseSes
               {/* Fiche Ticket Z */}
               <div className="p-5 bg-white border border-slate-300 rounded-xl font-mono text-xs text-slate-800 space-y-3 shadow-inner print:shadow-none print:border-none print:p-0">
                 <div className="text-center pb-3 border-b border-dashed border-slate-300">
-                  <p className="font-bold text-sm tracking-wider uppercase">Wilinwi — Ticket Z de Clôture</p>
+                  <PrintBrandLogo width={140} className="mb-1.5" />
+                  <p className="font-bold text-sm tracking-wider uppercase">Ticket Z de clôture</p>
                   <p className="text-[10px] text-slate-500">
                     Date : {closeResult.closedAt.toLocaleDateString()} {closeResult.closedAt.toLocaleTimeString()}
                   </p>

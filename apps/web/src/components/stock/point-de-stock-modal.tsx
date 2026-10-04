@@ -38,6 +38,7 @@ import { Button, formatFCFA, cn } from '@wilinwi/ui';
 import { apiGet, apiPost } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { ProductDto } from '@wilinwi/types';
+import { PrintBrandLogo } from '@/components/print-brand-logo';
 
 export interface PointItem {
   id: string; // InventoryItem id or temp id
@@ -503,6 +504,15 @@ export function PointDeStockModal({
         className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ── En-tête imprimé uniquement : logo + intitulé du document ── */}
+        <div className="hidden print:flex items-center justify-between border-b border-slate-300 pb-3 mb-4">
+          <PrintBrandLogo width={170} className="!justify-start" />
+          <div className="text-right">
+            <p className="text-lg font-black text-slate-900">Point de stock & récolement</p>
+            <p className="text-xs text-slate-500">{new Date().toLocaleString('fr-FR')}</p>
+          </div>
+        </div>
+
         {/* ── Entête Supérieur Sombre ── */}
         <div className="no-print p-4 sm:p-5 bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">

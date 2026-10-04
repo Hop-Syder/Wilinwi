@@ -80,7 +80,6 @@ export function ReceiptClientActions({
           receiptCode: receipt.code,
           total: receipt.total,
           montantVerse: receipt.montantVerse,
-          paymentMethod: 'CASH',
           createdAt: receipt.date,
           items: receipt.items.map((it) => ({
             nom: it.nom,

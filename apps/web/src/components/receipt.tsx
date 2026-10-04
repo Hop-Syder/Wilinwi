@@ -9,11 +9,12 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, X, FileDown } from 'lucide-react';
-import Image from 'next/image';
 import { saleLineAmount, PAYMENT_METHOD_LABELS, type PaymentMethod } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
 import { useAuth } from '@/lib/auth-context';
 import { generateSaleInvoicePdf } from '@/lib/invoice-pdf';
+import { PrintBrandLogo } from '@/components/print-brand-logo';
+import { publicReceiptUrl } from '@/lib/public-receipt-url';
 
 export interface ReceiptSale {
   id: string;
@@ -62,7 +63,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
 
   // URL publique exacte pour le reçu numérique
   const receiptId = sale.receiptCode || sale.id;
-  const publicReceiptUrl = `https://wilinwi.nexus-partners.xyz/${receiptId}`;
+  const receiptUrl = publicReceiptUrl(receiptId);
   const reste = sale.total - sale.montantVerse;
 
   const handleDownloadInvoicePdf = async () => {
@@ -101,9 +102,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
         <div id="receipt-print" className="px-5 py-4 font-mono text-[12px] text-slate-900">
           <div className="text-center space-y-1">
             {/* Logo Wilinwi EN HAUT du nom de la boutique */}
-            <div className="flex justify-center mb-1">
-              <Image src="/logo.png" alt="Wilinwi Logo" width={32} height={32} className="object-contain" />
-            </div>
+            <PrintBrandLogo width={150} className="mb-1.5" />
             {/* Nom de la boutique à taille diminuée */}
             <div className="font-display text-[13px] font-black tracking-tight text-slate-900 leading-tight">
               {entreprise}
@@ -160,7 +159,7 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
             {/* Colonne 1 : QR Code Compact (68px) */}
             <div className="shrink-0 p-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
               <QRCodeSVG
-                value={publicReceiptUrl}
+                value={receiptUrl}
                 size={68}
                 level="M"
                 includeMargin={false}
@@ -172,13 +171,13 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
             {/* Colonne 2 : Lien + Message numérique + Remerciement */}
             <div className="flex-1 flex flex-col justify-center min-w-0 text-left space-y-0.5">
               <a
-                href={publicReceiptUrl}
+                href={receiptUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-mono text-[8.5px] font-bold text-blue-700 hover:underline break-all tracking-tight leading-tight line-clamp-2"
-                title={publicReceiptUrl}
+                title={receiptUrl}
               >
-                {publicReceiptUrl.replace(/^https?:\/\//, '')}
+                {receiptUrl.replace(/^https?:\/\//, '')}
               </a>
               <p className="text-[9px] font-medium text-slate-500 leading-tight">
                 Scannez pour votre reçu numérique

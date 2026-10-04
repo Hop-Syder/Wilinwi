@@ -16,6 +16,7 @@ import { X, DollarSign, Printer, CheckCircle2, AlertCircle } from 'lucide-react'
 import type { ClientDto, PaymentMethod } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
 import { useCurrency } from '@/lib/currency-context';
+import { PrintBrandLogo } from '@/components/print-brand-logo';
 
 interface ClientPaymentModalProps {
   client: ClientDto;
@@ -241,6 +242,7 @@ export function ClientPaymentModal({
             {/* Zone imprimable 80mm */}
             <div id="reimbursement-print" className="my-2 p-4 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-left font-mono text-xs text-slate-900 space-y-2">
               <div className="text-center border-b border-slate-200 pb-2">
+                <PrintBrandLogo width={140} className="mb-1.5" />
                 <p className="font-bold text-sm">REÇU DE REMBOURSEMENT</p>
                 <p className="text-[11px] text-slate-500">{paidReceipt.date}</p>
                 <p className="text-xs font-bold text-slate-800 mt-1">Client : {client.nom}</p>

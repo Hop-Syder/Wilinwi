@@ -32,4 +32,5 @@ export * from './geo.js';
 export * from './tenant.js';
 export * from './time.js';
 export * from './currency.js';
+export * from './amount-words.js';
 

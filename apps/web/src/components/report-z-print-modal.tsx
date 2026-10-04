@@ -15,6 +15,7 @@ import { Printer, X, Receipt, Wallet, DollarSign, Smartphone, CreditCard } from 
 import { Button } from '@wilinwi/ui';
 import type { PosSessionDto } from '@wilinwi/types';
 import { useCurrency } from '@/lib/currency-context';
+import { PrintBrandLogo } from '@/components/print-brand-logo';
 
 interface ReportZPrintModalProps {
   isOpen: boolean;
@@ -61,7 +62,8 @@ export function ReportZPrintModal({ isOpen, onClose, session }: ReportZPrintModa
           <div className="p-5 bg-slate-50 border border-slate-300 rounded-2xl font-mono text-xs text-slate-800 space-y-4 shadow-xs print:shadow-none print:border-none print:p-0">
             {/* Header Reçu */}
             <div className="text-center pb-3 border-b border-dashed border-slate-300 space-y-1">
-              <p className="font-bold text-sm tracking-wider uppercase">Wilinwi — Ticket Z de Clôture</p>
+              <PrintBrandLogo width={140} className="mb-1.5" />
+              <p className="font-bold text-sm tracking-wider uppercase">Ticket Z de clôture</p>
               <p className="text-[11px] text-slate-600 font-semibold">
                 Ouvert le : {openedAtDate.toLocaleDateString()} {openedAtDate.toLocaleTimeString()}
               </p>
