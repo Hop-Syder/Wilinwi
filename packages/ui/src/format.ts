@@ -17,9 +17,9 @@ export function formatFCFA(montant: number): string {
   return `${formatted}\u00A0FCFA`;
 }
 
-/** Formatage d'une quantité entière. */
+/** Formatage d'une quantité (entière ou décimale). */
 export function formatQty(qty: number): string {
-  return new Intl.NumberFormat('fr-FR').format(qty);
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(qty);
 }
 
 /** Date courte FR. */

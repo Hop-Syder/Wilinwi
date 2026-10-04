@@ -66,14 +66,15 @@ export function quantityScale(kind: UnitKind | null | undefined): number {
   return kind ? QUANTITY_SCALE[kind] : 1;
 }
 
-/** Saisie utilisateur (décimale possible) → quantité persistée (entier). */
+/** Saisie utilisateur (décimale possible) → quantité persistée. */
 export function toStoredQuantity(display: number, kind: UnitKind | null | undefined): number {
-  return Math.round(display * quantityScale(kind));
+  const scale = quantityScale(kind);
+  return scale > 1 ? Math.round(display * scale) : Number(display.toFixed(4));
 }
 
-/** Quantité persistée (entier) → valeur affichable (décimale possible). */
+/** Quantité persistée → valeur affichable (décimale possible). */
 export function toDisplayQuantity(stored: number, kind: UnitKind | null | undefined): number {
-  return stored / quantityScale(kind);
+  return Number((stored / quantityScale(kind)).toFixed(4));
 }
 
 /** Affichage FR : « 1,5 kg », « 0,33 L », « 24 ». */

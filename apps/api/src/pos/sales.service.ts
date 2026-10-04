@@ -18,7 +18,6 @@ import {
 import {
   accountForPayment,
   saleStockBehavior,
-  quantityScale,
   type AuthContext,
   type CreateSaleInput,
   type InstallmentStatus,
@@ -158,7 +157,7 @@ export class SalesService {
         // bloquent pas (le stock négatif reste visible et alerté par les seuils).
         // BATCHED (Option B §18.2) : jamais bloqué serveur-side — le POS local
         // refuse déjà périmés/insuffisants ; un conflit devient une alerte CRITICAL.
-        const requiredBaseQty = Math.round(item.quantite * facteur);
+        const requiredBaseQty = Number((item.quantite * facteur).toFixed(4));
         if (product.type !== 'BATCHED' && saleStockBehavior(product.type, product.stockPolicy).precheck) {
           const availableStock = await readStockAt(
             tx,
@@ -203,7 +202,7 @@ export class SalesService {
             });
           }
           // 2. Fraction décomposée en unités de base (bouteilles)
-          const remainingBaseUnits = Math.round(remainder * facteur);
+          const remainingBaseUnits = Number((remainder * facteur).toFixed(4));
           if (remainingBaseUnits > 0) {
             const unitPrice = Math.round(item.prixReel / facteur);
             lines.push({
@@ -218,31 +217,29 @@ export class SalesService {
             });
           }
         } else if (item.quantite % 1 !== 0) {
-          // Produit sans conditionnement vendu avec quantité fractionnaire (ex: 1.5, 0.75, 1.25)
+          // Produit sans conditionnement vendu avec quantité fractionnaire (ex: 1.5, 0.75, 1.25, 0.5)
           const lineTotal = Math.round(item.prixReel * item.quantite);
           const formattedQty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(item.quantite);
           const unitTag = product.baseUnit ? `${formattedQty} ${product.baseUnit}` : `${formattedQty}x`;
           // Encodage standard DEC:quantite:prixUnitaire:libelle pour restitution parfaite sans altérer la facture
           const metaLabel = `DEC:${item.quantite}:${item.prixReel}:${unitTag}`;
-          const scale = quantityScale(product.unitKind);
-          const unitFactor = scale > 1 ? Math.round(item.quantite * scale) : Math.max(1, Math.round(item.quantite));
           lines.push({
             productId: product.id,
             variantId: item.variantId ?? null,
-            quantite: 1,
+            quantite: Number(item.quantite.toFixed(4)),
             prixReel: lineTotal,
             coutUnitaire: Math.round(product.prixAchat * item.quantite),
             unitId: null,
             unitLabel: metaLabel,
-            unitFactor,
+            unitFactor: 1,
           });
         } else {
           lines.push({
             productId: product.id,
             variantId: item.variantId ?? null,
-            quantite: Math.max(1, Math.round(item.quantite)),
+            quantite: item.quantite,
             prixReel: item.prixReel,
-            coutUnitaire: product.prixAchat * facteur,
+            coutUnitaire: Math.round(product.prixAchat * facteur),
             unitId: unit?.id ?? null,
             unitLabel: unit?.label ?? null,
             unitFactor: facteur,
@@ -443,8 +440,11 @@ export class SalesService {
         }
         continue;
       }
-      // Conditionnement (Wholesale M5) : le stock bouge en UNITÉS DE BASE.
-      const baseQty = item.quantite * item.unitFactor;
+      // Conditionnement (Wholesale M5) : le stock bouge en UNITÉS DE BASE (support décimal exact).
+      const baseQty = Number((item.quantite * item.unitFactor).toFixed(4));
+      const cleanLabel = item.unitLabel?.startsWith('DEC:')
+        ? item.unitLabel.split(':')[3]
+        : item.unitLabel ? `${item.quantite} × ${item.unitLabel}` : null;
       await tx.stockMovement.create({
         data: {
           tenantId: ctx.tenantId,
@@ -453,7 +453,7 @@ export class SalesService {
           variantId: item.variantId,
           type: 'OUT',
           quantite: -baseQty,
-          motif: `Vente ${saleId}${item.unitLabel ? ` (${item.quantite} × ${item.unitLabel})` : ''}`,
+          motif: `Vente ${saleId}${cleanLabel ? ` (${cleanLabel})` : ''}`,
           saleId,
         },
       });

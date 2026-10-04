@@ -287,7 +287,7 @@ export function PointDeStockModal({
         .filter((it) => it.quantiteReelle !== null)
         .map((it) => ({
           productId: it.productId,
-          quantiteReelle: Math.round(it.quantiteReelle!),
+          quantiteReelle: Number(it.quantiteReelle!.toFixed(3)),
         }));
 
       if (countedItems.length > 0) {
@@ -335,7 +335,7 @@ export function PointDeStockModal({
         .filter((it) => it.quantiteReelle !== null)
         .map((it) => ({
           productId: it.productId,
-          quantiteReelle: Math.round(it.quantiteReelle!),
+          quantiteReelle: Number(it.quantiteReelle!.toFixed(3)),
         }));
 
       if (countedItems.length > 0) {
