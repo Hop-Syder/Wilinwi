@@ -13,62 +13,61 @@
 ```yaml
 task_context:
   previous:
-    id: "CATALOG-IMPORT-AUTO-SKU-AND-OPTIONAL-FIELDS"
+    id: "REVERSED-COLUMN-MAPPING-IMPORT-WIZARD"
     status: "COMPLETED"
-    result: "Assistant d'importation catalogue enrichi : Auto-génération intelligente de SKU (nom + index unique), options 'Laisser vide' pour catégorie, stock (fixé à 0) et prix d'achat"
+    result: "Inversion du mapping import catalogue (style Flatfile/Airtable) : colonnes du fichier client avec échantillons réels vers sélecteurs Wilinwi cibles, Auto-SKU et fallbacks optionnels"
     files_changed:
       - "apps/web/src/components/stock/catalog-import-wizard.tsx"
     important_decisions:
-      - "SKU : Option '-1' par défaut si colonne SKU absente dans le fichier Excel/CSV, avec génération déterministe et unique (ex: RIZ-PAR-001)"
-      - "Catégorie : Option 'Laisser vide' (-1) pour importer sans catégorie préalable et classer ultérieurement"
-      - "Stock : Option 'Laisser vide (Stock à 0)' (-1) pour éviter le blocage de stock manquant et permettre les inventaires ultérieurs"
-      - "Prix d'achat : Option 'Laisser vide' (-1) pour gérer les catalogues de vente purs"
-      - "Aperçu Step 3 : Affichage du badge '🪄 Auto' pour les SKU auto-générés et rendu propre des catégories"
+      - "Paradigme inversé : chaque colonne du fichier pointe vers un champ Wilinwi"
+      - "Unicité automatique des cibles sans collision"
+      - "Seuls nom et prixCatalogue sont obligatoires pour débloquer l'aperçu"
 
   current:
-    id: "REVERSED-COLUMN-MAPPING-IMPORT-WIZARD"
-    objective: "Inversion du paradigme de mapping dans l'assistant d'import catalogue (colonne client -> champ Wilinwi, style Flatfile/Airtable)"
+    id: "INTEGRATE-PULL-PDF-EXPORT-AND-BRAND-KIT"
+    objective: "Intégration et validation complète du pull sur la refonte des PDF (facture, bon de commande, logo Wilinwi, brand-kit)"
     branch: "main-mvp2"
     status: "COMPLETED"
     files_in_scope:
-      - "apps/web/src/components/stock/catalog-import-wizard.tsx"
+      - "apps/web/src/lib/pdf/brand-kit.ts"
+      - "apps/web/src/lib/invoice-pdf.ts"
+      - "apps/web/src/lib/purchase-order-pdf.ts"
+      - "apps/web/src/lib/public-receipt-url.ts"
+      - "packages/types/src/amount-words.ts"
+      - ".dexty/decisions.md"
     constraints:
-      - "Chaque colonne du fichier client est listée avec badge, nom d'en-tête et 2-3 exemples réels du fichier"
-      - "Sélecteur de destination Wilinwi pour chaque colonne avec garantie d'unicité (les cibles uniques se détachent automatiquement)"
-      - "Seuls Nom du Produit et Prix de Vente sont obligatoires pour passer à l'étape 3"
-      - "Auto-SKU déterministe et stock à 0 par défaut pour les colonnes non mappées"
-      - "Zéro warning ESLint et validation typecheck stricte"
+      - "Build de @wilinwi/types requis pour propager fcfaInWords et amountInWords dans packages/types/dist"
+      - "Validation typecheck stricte sur apps/web et packages/types"
+      - "Zero warning ESLint sur l'ensemble des modules PDF"
 
   future:
     known_tasks:
       - id: "MERGE-MVP2-INTO-MAIN"
         objective: "Fusionner main-mvp2 dans main via branche tampon et résolution ordonnée des 35 fichiers de conflits"
-        dependency: "REVERSED-COLUMN-MAPPING-IMPORT-WIZARD"
+        dependency: "INTEGRATE-PULL-PDF-EXPORT-AND-BRAND-KIT"
         status: "PLANNED"
 
   cross_branch:
     inspected_branches: ["main", "main-mvp2"]
-    relevant_changes: ["Mapping inversé import catalogue", "Auto-SKU & champs optionnels import catalogue", "Conflits identifiés sur 35 fichiers lors du dry-run merge-tree"]
+    relevant_changes: ["Refonte des PDF (facture, bon de commande) et logo Wilinwi lisible (dfb5054)", "Mapping inversé import catalogue (1ce3b30)"]
     conflicts: ["35 fichiers de conflit entre main et main-mvp2 (API, Web, Types, Offline, DB)"]
-    decisions_found: ["Ne pas fusionner directement vers main sans branche tampon de validation"]
+    decisions_found: ["ADR-010 : Kit de marque PDF unique, logos d'impression dédiés et montant en lettres"]
 
   temporary_memory:
     facts:
-      - "Mapping inversé Flatfile-style implémenté dans apps/web/src/components/stock/catalog-import-wizard.tsx"
-      - "ESLint validé avec 0 warning (--max-warnings 0)"
-      - "Base Supabase migrée en double precision pour les quantités"
-      - "Prisma client régénéré avec Float"
-      - "Validation point de stock auto-ouvre une session d'inventaire si nécessaire"
-      - "Règle mémoire inscrite dans GEMINI.md et AGENTS.md"
+      - "Commit dfb5054 intégré sur main-mvp2 : Kit de marque PDF partagé (brand-kit.ts), invoice-pdf.ts et purchase-order-pdf.ts réécrits"
+      - "Poids des factures PDF réduit de 330 Ko à ~66 Ko grâce à la compression optimisée et logos recadrés"
+      - "amountInWords / fcfaInWords validés avec 27 tests unitaires dans @wilinwi/types (102 tests types au total)"
+      - "@wilinwi/types buildé avec succès (dist à jour pour tsc)"
+      - "ESLint et tsc validés avec 0 erreur sur apps/web et modules PDF"
     decisions:
-      - "Paradigme inversé : chaque colonne du fichier du client pointe vers un champ Wilinwi ou 'Ignorer cette colonne'"
-      - "Unicité automatique des cibles : réassigner un champ cible bascule l'ancienne colonne à 'ignore'"
-      - "Seuls nom et prixCatalogue sont obligatoires pour débloquer l'aperçu"
+      - "ADR-010 : apps/web/src/lib/pdf/brand-kit.ts est l'unique source de mise en page pour tous les documents PDF"
+      - "publicReceiptUrl() est la source unique pour les QR codes et liens publics de reçu (/r/<code>)"
     discoveries:
-      - "Les fichiers clients réels (ex: Suivi_Boissons_Stock_et_Prix.xlsx) ont des en-têtes personnalisés (Boissons, Quantité de départ, etc.) que le mapping direct inversé gère avec clarté visuelle"
+      - "La compilation de @wilinwi/types (tsc -> dist) est indispensable après l'ajout de nouveaux exports pour que web les résolve sans erreur TS2305"
     blockers: []
     pending_actions:
-      - "Commit Git et push sur origin/main-mvp2"
+      - "Mémoire synchronisée"
 ```
 
 ## 🛠️ Stack détectée
