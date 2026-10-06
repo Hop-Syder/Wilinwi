@@ -19,8 +19,9 @@ import {
 import type { ClientDto } from '@wilinwi/types';
 import { useCurrency } from '@/lib/currency-context';
 import type { CartLine, OrderMode } from './pos-cart-zone';
-import { quantityScale, saleLineAmount } from '@wilinwi/types';
+import { checkSalePrice, quantityScale, saleLineAmount } from '@wilinwi/types';
 import { CartQuantityInput } from './cart-quantity-input';
+import { CartLinePrice, cartLineBounds } from './cart-line-price';
 
 interface MobileCartDrawerProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface MobileCartDrawerProps {
   cart: CartLine[];
   onUpdateQuantity: (index: number, delta: number) => void;
   onSetQuantity?: (index: number, quantity: number) => void;
+  /** Prix négocié d'une ligne (borné par la fourchette du produit). */
+  onUpdatePrice?: (index: number, price: number) => void;
   onRemoveLine: (index: number) => void;
   onClearCart: () => void;
   clients: ClientDto[];
@@ -45,6 +48,7 @@ export function MobileCartDrawer({
   cart,
   onUpdateQuantity,
   onSetQuantity,
+  onUpdatePrice,
   onRemoveLine,
   onClearCart,
   clients,
@@ -78,6 +82,8 @@ export function MobileCartDrawer({
   const clientSolde = selectedClient?.soldeCredit ?? 0;
   const clientPlafond = selectedClient?.plafondCredit ?? 0;
   const hasExceededPlafond = clientPlafond > 0 && clientSolde + totalAmount > clientPlafond;
+  // Un prix hors fourchette (catalogue modifié entre-temps) bloque l'encaissement.
+  const hasPriceOutOfRange = cart.some((l) => checkSalePrice(l.prixReel, cartLineBounds(l)) !== 'ok');
 
   if (!isOpen) return null;
 
@@ -262,14 +268,16 @@ export function MobileCartDrawer({
                       {item.unitLabel}
                     </span>
                   )}
-                  <div className="text-xs font-black text-emerald-700 mt-1">
-                    {formatAmount(item.prixReel)}
-                    {!item.unitId && quantityScale(item.product.unitKind) !== 1 && (
-                      <span className="font-sans text-[10px] font-semibold text-slate-400">
-                        {' '}/ {item.product.baseUnit || (item.product.unitKind === 'WEIGHT' ? 'kg' : 'L')}
-                      </span>
-                    )}
-                  </div>
+                  <CartLinePrice
+                    line={item}
+                    disabled={disabled}
+                    onChange={(price) => onUpdatePrice?.(idx, price)}
+                    suffix={
+                      !item.unitId && quantityScale(item.product.unitKind) !== 1
+                        ? item.product.baseUnit || (item.product.unitKind === 'WEIGHT' ? 'kg' : 'L')
+                        : null
+                    }
+                  />
                 </div>
 
                 {/* Sélecteur de Quantité Aéré avec saisie manuelle fluide */}
@@ -307,7 +315,7 @@ export function MobileCartDrawer({
 
           <button
             type="button"
-            disabled={cart.length === 0 || disabled || hasExceededPlafond}
+            disabled={cart.length === 0 || disabled || hasExceededPlafond || hasPriceOutOfRange}
             onClick={() => {
               onClose();
               onProceedToCheckout();

@@ -113,8 +113,16 @@ export function ProductGridCard({
 
       {/* Price Section */}
       <div className="mt-2 flex items-baseline justify-between pt-1 border-t border-slate-100">
-        <span className="font-mono text-sm font-black text-slate-900 group-hover:text-emerald-600">
-          {formatFCFA(product.prixCatalogue)}
+        <span className="flex flex-col">
+          <span className="font-mono text-sm font-black text-slate-900 group-hover:text-emerald-600">
+            {formatFCFA(product.prixCatalogue)}
+          </span>
+          {/* Prix minimum négociable (visible par tous les rôles, CLAUDE.md). */}
+          {product.prixPlancher < product.prixCatalogue && (
+            <span className="font-mono text-[10px] font-semibold text-slate-400">
+              min. {formatFCFA(product.prixPlancher)}
+            </span>
+          )}
         </span>
         {product.variants && product.variants.length > 0 && (
           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">

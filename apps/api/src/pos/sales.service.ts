@@ -19,7 +19,9 @@ import {
   accountForPayment,
   formatQuantity,
   quantityScale,
+  checkSalePrice,
   saleLineAmount,
+  salePriceBounds,
   saleStockBehavior,
   type AuthContext,
   type CreateSaleInput,
@@ -109,7 +111,11 @@ export class SalesService {
         unitLabel: string | null;
         unitFactor: number;
         quantityScale: number;
+        /** Prix de vente affiché (borne haute), même échelle que prixReel. */
+        prixReference: number;
       }[] = [];
+      // Au moins une ligne vendue sous le prix affiché → nom du client exigé.
+      let hasDiscount = false;
 
       for (const item of input.items) {
         const product = await tx.product.findFirst({
@@ -205,14 +211,23 @@ export class SalesService {
           }
         }
 
-        // Anti-fraude absolu : vente sous le prix plancher strictement refusée.
-        // Conditionnement : le plancher se contrôle × facteur (un casier de 24 ne
-        // peut pas passer sous 24 × plancher — revue F7).
-        if (item.prixReel < product.prixPlancher * facteur) {
+        // Fourchette de prix (anti-fraude absolu) : minimum ≤ prix ≤ prix de vente.
+        // Conditionnement : sa propre fourchette (casier 5 900 – 6 000), sinon
+        // plancher/catalogue × facteur (revue F7). Même règle que le POS.
+        const bounds = salePriceBounds(product, unit);
+        const position = checkSalePrice(item.prixReel, bounds);
+        const tag = `"${product.nom}"${unit ? ` (${unit.label})` : ''}`;
+        if (position === 'low') {
           throw new BadRequestException(
-            `Opération refusée : le prix de vente de "${product.nom}"${unit ? ` (${unit.label})` : ''} (${item.prixReel}) est inférieur au prix plancher (${product.prixPlancher * facteur}).`,
+            `Opération refusée : le prix de ${tag} (${item.prixReel}) est inférieur au prix minimum (${bounds.min}).`,
           );
         }
+        if (position === 'high') {
+          throw new BadRequestException(
+            `Opération refusée : le prix de ${tag} (${item.prixReel}) dépasse le prix de vente (${bounds.max}).`,
+          );
+        }
+        if (item.prixReel < bounds.max) hasDiscount = true;
 
         total += saleLineAmount(item.prixReel, item.quantite);
 
@@ -228,6 +243,7 @@ export class SalesService {
               variantId: item.variantId ?? null,
               quantite: wholeUnits,
               prixReel: item.prixReel,
+              prixReference: bounds.max,
               coutUnitaire: Math.round(product.prixAchat * (facteur / scale)),
               unitId: unit.id,
               unitLabel: unit.label,
@@ -244,6 +260,7 @@ export class SalesService {
               variantId: item.variantId ?? null,
               quantite: remainingBaseUnits,
               prixReel: Math.round((item.prixReel * scale) / facteur),
+              prixReference: Math.round((bounds.max * scale) / facteur),
               coutUnitaire: product.prixAchat,
               unitId: null,
               unitLabel: product.baseUnit ? `Détail (${product.baseUnit})` : null,
@@ -257,6 +274,7 @@ export class SalesService {
             variantId: item.variantId ?? null,
             quantite: toMilli(item.quantite),
             prixReel: item.prixReel,
+            prixReference: bounds.max,
             coutUnitaire: Math.round(product.prixAchat * (facteur / scale)),
             unitId: unit.id,
             unitLabel: unit.label,
@@ -271,6 +289,7 @@ export class SalesService {
             variantId: item.variantId ?? null,
             quantite: requiredBaseQty,
             prixReel: item.prixReel,
+            prixReference: bounds.max,
             coutUnitaire: product.prixAchat,
             unitId: null,
             unitLabel: null,
@@ -304,6 +323,23 @@ export class SalesService {
           finalClientId = newClient.id;
         }
         input.clientId = finalClientId;
+      }
+
+      // Nom du client figé sur la vente : fiche CRM, sinon nom saisi (client de
+      // passage). OBLIGATOIRE dès qu'une remise est accordée (suivi des remises).
+      let clientNomSnapshot = input.clientNom?.trim() || null;
+      if (input.clientId) {
+        const fiche = await tx.client.findFirst({
+          where: { id: input.clientId, tenantId: ctx.tenantId },
+          select: { nom: true },
+        });
+        if (!fiche) throw new NotFoundException('Client introuvable');
+        clientNomSnapshot = fiche.nom;
+      }
+      if (hasDiscount && !clientNomSnapshot) {
+        throw new BadRequestException(
+          'Remise accordée : le nom du client est obligatoire pour vendre sous le prix de vente.',
+        );
       }
 
       if (input.livreurId) {
@@ -371,6 +407,7 @@ export class SalesService {
           etablissementId: ctx.etablissementId,
           vendeurId: ctx.userId,
           clientId: input.clientId ?? null,
+          clientNom: clientNomSnapshot,
           posSessionId: activePosSessionId,
           status: 'COMPLETED',
           paymentMethod: input.paymentMethod,
@@ -428,6 +465,7 @@ export class SalesService {
             unitLabel: line.unitLabel,
             unitFactor: line.unitFactor,
             quantityScale: line.quantityScale,
+            prixReference: line.prixReference,
           },
         });
       }

@@ -84,7 +84,7 @@ export function VenteDetailDrawer({
           <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
             <div className="text-xs">
               <span className="block font-extrabold text-slate-400 uppercase tracking-wider">Client</span>
-              <span className="block mt-1 font-bold text-slate-800">{sale.client?.nom || 'Client Comptoir'}</span>
+              <span className="block mt-1 font-bold text-slate-800">{(sale.client?.nom || sale.clientNom) || 'Client Comptoir'}</span>
               {sale.client?.telephone && <span className="block font-mono text-[11px] text-slate-500 mt-0.5">{sale.client.telephone}</span>}
             </div>
             <div className="text-xs">

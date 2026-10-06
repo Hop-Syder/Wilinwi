@@ -32,6 +32,7 @@ import { VentesSessionsTable } from '@/components/ventes/ventes-sessions-table';
 import { VenteDetailDrawer } from '@/components/ventes/vente-detail-drawer';
 import { VentePaymentModal } from '@/components/ventes/vente-payment-modal';
 import { VenteCancelModal } from '@/components/ventes/vente-cancel-modal';
+import { VentesRemises } from '@/components/ventes/ventes-remises';
 
 export default function VentesPage() {
   const { user } = useAuth();
@@ -39,7 +40,7 @@ export default function VentesPage() {
   const isGlobalView = user?.etablissementId === null && (user?.etablissements?.length ?? 0) > 1;
 
   // State principal
-  const [activeTab, setActiveTab] = useState<'SALES' | 'SESSIONS'>('SALES');
+  const [activeTab, setActiveTab] = useState<'SALES' | 'SESSIONS' | 'REMISES'>('SALES');
   const [sales, setSales] = useState<Sale[]>([]);
   const [sessions, setSessions] = useState<PosSessionDto[]>([]);
   const [clients, setClients] = useState<ClientDto[]>([]);
@@ -315,12 +316,24 @@ export default function VentesPage() {
               >
                 Clôtures de Caisse (Rapports Journaliers)
               </button>
+              {canCancel && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('REMISES')}
+                  className={`whitespace-nowrap px-3 py-1 text-xs font-bold rounded-lg transition-all ${activeTab === 'REMISES' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                >
+                  Remises accordées
+                </button>
+              )}
             </div>
           </div>
           <p className="text-xs text-slate-500">
             {activeTab === 'SALES'
               ? 'Consultez, filtrez et gérez les ventes de votre entreprise'
-              : 'Historique des clôtures de caisse et réimpression des rapports journaliers'}
+              : activeTab === 'REMISES'
+                ? 'Ventes passées sous le prix affiché : qui a accordé quelle remise, et à quel client'
+                : 'Historique des clôtures de caisse et réimpression des rapports journaliers'}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -367,11 +380,13 @@ export default function VentesPage() {
         </div>
       )}
 
+      {activeTab === 'REMISES' && <VentesRemises />}
+
       {/* KPIs financiers */}
-      <VentesKpis kpis={kpis} />
+      {activeTab !== 'REMISES' && <VentesKpis kpis={kpis} />}
 
       {/* Filtres de recherche */}
-      <div id="tour-ventes-filters">
+      <div id="tour-ventes-filters" className={activeTab === 'REMISES' ? 'hidden' : undefined}>
         <VentesFilters
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -398,7 +413,7 @@ export default function VentesPage() {
       {error && <p className="text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{error}</p>}
 
       {/* Contenu principal Onglet 1 vs Onglet 2 */}
-      <div id="tour-ventes-table">
+      <div id="tour-ventes-table" className={activeTab === 'REMISES' ? 'hidden' : undefined}>
         {activeTab === 'SALES' ? (
           <VentesTable
             sales={sales}

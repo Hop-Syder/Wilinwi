@@ -16,6 +16,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  salePriceBounds,
   defaultStockPolicy,
   DOWNGRADE_MAX_PRODUCTS,
   productAffectsStock,
@@ -864,14 +865,17 @@ export class StockService {
         label: u.label,
         factorToBase: u.factorToBase,
         salePrice: u.salePrice,
+        floorPrice: u.floorPrice,
       }));
     });
   }
 
   /**
    * Remplace intégralement les conditionnements d'un produit STANDARD.
-   * Règle F7 : un tarif de conditionnement ne peut pas passer sous
-   * prixPlancher × facteur (sinon le casier serait une braderie déguisée).
+   * Fourchette du conditionnement : minimum (floorPrice, défaut plancher × facteur)
+   * ≤ prix de vente (salePrice, défaut catalogue × facteur). Le minimum ne
+   * descend jamais sous le prix d'achat × facteur (jamais de vente à perte).
+   * Ex. casier de 12 : achat 5 800, minimum 5 900, vente 6 000.
    */
   async upsertUnits(
     ctx: AuthContext,
@@ -886,9 +890,21 @@ export class StockService {
         );
       }
       for (const u of input.units) {
-        if (u.salePrice != null && u.salePrice < product.prixPlancher * u.factorToBase) {
+        const { min, max } = salePriceBounds(product, u);
+        const cout = product.prixAchat * u.factorToBase;
+        if (u.salePrice != null && u.salePrice < min) {
           throw new BadRequestException(
-            `Tarif du conditionnement « ${u.label} » (${u.salePrice}) sous le plancher ramené à la base (${product.prixPlancher * u.factorToBase} = ${product.prixPlancher} × ${u.factorToBase}).`,
+            `Prix de vente du conditionnement « ${u.label} » (${u.salePrice}) inférieur à son prix minimum (${min}).`,
+          );
+        }
+        if (min < cout) {
+          throw new BadRequestException(
+            `Prix minimum du conditionnement « ${u.label} » (${min}) inférieur au prix d'achat (${cout} = ${product.prixAchat} × ${u.factorToBase}) : vente à perte refusée.`,
+          );
+        }
+        if (u.floorPrice != null && u.floorPrice > max) {
+          throw new BadRequestException(
+            `Prix minimum du conditionnement « ${u.label} » (${u.floorPrice}) supérieur à son prix de vente (${max}).`,
           );
         }
       }
@@ -903,6 +919,7 @@ export class StockService {
             label: u.label.trim(),
             factorToBase: u.factorToBase,
             salePrice: u.salePrice ?? null,
+            floorPrice: u.floorPrice ?? null,
           },
         });
       }

@@ -20,9 +20,32 @@ import {
   startOfCalendarDayInTz,
   startOfDayInTz,
   type AuthContext,
+  type DiscountLineDto,
+  type DiscountReportDto,
+  type DiscountTotalDto,
 } from '@wilinwi/types';
 import { PrismaService } from '../common/prisma.service';
 import { toDisplayItem } from '../pos/sale.mapper';
+
+/**
+ * Bornes d'une période de rapport, frontières de journée au fuseau de
+ * l'établissement (§19.2). Défaut : les 30 derniers jours.
+ */
+function periodBounds(ctx: AuthContext, fromStr?: string, toStr?: string): { from: Date; to: Date } {
+  const to =
+    toStr && toStr.length <= 10
+      ? endOfCalendarDayInTz(toStr, ctx.timezone)
+      : toStr
+        ? new Date(toStr)
+        : new Date();
+  const from =
+    fromStr && fromStr.length <= 10
+      ? startOfCalendarDayInTz(fromStr, ctx.timezone)
+      : fromStr
+        ? new Date(fromStr)
+        : addDays(startOfDayInTz(ctx.timezone, to), -29);
+  return { from, to };
+}
 
 /** Marge FCFA d'une ligne de vente (quantité affichée, lignes legacy décodées). */
 function lineMargin(it: { prixReel: number; coutUnitaire: number; quantite: number; quantityScale?: number | null; unitLabel?: string | null }): number {
@@ -195,19 +218,7 @@ export class AnalyticsService {
   async report(ctx: AuthContext, fromStr?: string, toStr?: string, compare = true) {
     const seeSensitive = canSeeSensitivePricing(ctx.role);
 
-    // Bornes de la période — défaut : 30 derniers jours.
-    const to =
-      toStr && toStr.length <= 10
-        ? endOfCalendarDayInTz(toStr, ctx.timezone)
-        : toStr
-          ? new Date(toStr)
-          : new Date();
-    const from =
-      fromStr && fromStr.length <= 10
-        ? startOfCalendarDayInTz(fromStr, ctx.timezone)
-        : fromStr
-          ? new Date(fromStr)
-          : addDays(startOfDayInTz(ctx.timezone, to), -29);
+    const { from, to } = periodBounds(ctx, fromStr, toStr);
 
     // Durée en jours et période précédente de même durée pour la comparaison
     const durationMs = Math.max(86400000, to.getTime() - from.getTime());
@@ -509,6 +520,86 @@ export class AnalyticsService {
         parPaiement,
         soldesTresorerie,
         alertes,
+      };
+    });
+  }
+
+  /**
+   * Suivi des remises : lignes vendues SOUS le prix de vente affiché (fourchette
+   * de prix à la caisse), avec caissier et nom du client, cumulées par caissier
+   * et par client. Quantités nettes des retours. Réservé à `reports:read_full`.
+   */
+  async discounts(ctx: AuthContext, fromStr?: string, toStr?: string): Promise<DiscountReportDto> {
+    const { from, to } = periodBounds(ctx, fromStr, toStr);
+    const etabFilter = ctx.etablissementId ? { etablissementId: ctx.etablissementId } : {};
+    return this.prisma.forTenant(ctx.tenantId, async (tx) => {
+      const items = await tx.saleItem.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          prixReference: { not: null },
+          sale: { ...etabFilter, createdAt: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+        },
+        include: {
+          product: { select: { nom: true } },
+          sale: {
+            select: {
+              id: true,
+              receiptCode: true,
+              createdAt: true,
+              vendeurId: true,
+              clientId: true,
+              clientNom: true,
+              vendeur: { select: { nom: true } },
+              client: { select: { nom: true } },
+            },
+          },
+        },
+        orderBy: { sale: { createdAt: 'desc' } },
+      });
+
+      const lignes: DiscountLineDto[] = [];
+      for (const it of items) {
+        if (it.prixReference == null || it.prixReel >= it.prixReference) continue;
+        const scale = it.quantityScale || 1;
+        const quantite = (it.quantite - (it.quantiteRetournee ?? 0)) / scale;
+        if (quantite <= 0) continue;
+        lignes.push({
+          saleId: it.sale.id,
+          receiptCode: it.sale.receiptCode,
+          date: it.sale.createdAt.toISOString(),
+          vendeurId: it.sale.vendeurId,
+          vendeurNom: it.sale.vendeur?.nom ?? 'Vendeur',
+          clientNom: it.sale.client?.nom ?? it.sale.clientNom ?? 'Client non renseigné',
+          productNom: it.product?.nom ?? 'Article',
+          unitLabel: it.unitLabel,
+          quantite,
+          prixReference: it.prixReference,
+          prixReel: it.prixReel,
+          remise: saleLineAmount(it.prixReference - it.prixReel, quantite),
+        });
+      }
+
+      const cumul = (key: (l: DiscountLineDto) => [string, string]) => {
+        const map = new Map<string, DiscountTotalDto>();
+        for (const l of lignes) {
+          const [id, nom] = key(l);
+          const cur = map.get(id) ?? { id, nom, remise: 0, lignes: 0 };
+          cur.remise += l.remise;
+          cur.lignes += 1;
+          map.set(id, cur);
+        }
+        return [...map.values()].sort((a, b) => b.remise - a.remise);
+      };
+
+      return {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        totalRemise: lignes.reduce((s, l) => s + l.remise, 0),
+        caRemise: lignes.reduce((s, l) => s + saleLineAmount(l.prixReel, l.quantite), 0),
+        parVendeur: cumul((l) => [l.vendeurId, l.vendeurNom]),
+        // Regroupement par nom normalisé : un client de passage revient sous le même nom.
+        parClient: cumul((l) => [l.clientNom.trim().toLowerCase(), l.clientNom]),
+        lignes,
       };
     });
   }

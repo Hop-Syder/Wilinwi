@@ -289,12 +289,12 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
 
       // Vérification préventive pour éviter les rejets API
       if (prixAchat > prixPlancher) {
-        setError('Le prix plancher (vente minimale) ne peut pas être inférieur au prix d’achat.');
+        setError('Le prix minimum autorisé ne peut pas être inférieur au prix d’achat (vente à perte).');
         setSaving(false);
         return;
       }
       if (prixPlancher > prixCatalogue) {
-        setError('Le prix catalogue (prix public) ne peut pas être inférieur au prix plancher.');
+        setError('Le prix de vente ne peut pas être inférieur au prix minimum autorisé.');
         setSaving(false);
         return;
       }
@@ -458,7 +458,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
             />
           </label>
           <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Prix plancher (Min)</span>
+            <span className="mb-1 block text-xs font-medium text-slate-600">Prix minimum autorisé</span>
             <input
               type="text"
               inputMode="numeric"
@@ -468,9 +468,10 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               required
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
+            <span className="mt-1 block text-[11px] text-slate-400">Le caissier peut baisser jusqu&apos;à ce prix.</span>
           </label>
           <label className="col-span-full sm:col-span-1">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Prix catalogue (Vente)</span>
+            <span className="mb-1 block text-xs font-medium text-slate-600">Prix de vente</span>
             <input
               type="text"
               inputMode="numeric"
@@ -480,6 +481,7 @@ export function ProductFormModal({ product, onClose, onSuccess }: ProductFormMod
               required
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
             />
+            <span className="mt-1 block text-[11px] text-slate-400">Prix affiché à la caisse — jamais dépassé.</span>
           </label>
 
           {hasStock && (
@@ -1165,6 +1167,7 @@ interface UnitRow {
   label: string;
   factorToBase: string;
   salePrice: string; // '' = prixCatalogue × facteur
+  floorPrice: string; // '' = prixPlancher × facteur
 }
 
 /**
@@ -1186,6 +1189,7 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
             label: u.label,
             factorToBase: String(u.factorToBase),
             salePrice: u.salePrice === null ? '' : String(u.salePrice),
+            floorPrice: u.floorPrice == null ? '' : String(u.floorPrice),
           })),
         ),
       )
@@ -1205,6 +1209,7 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
             label: r.label.trim(),
             factorToBase: Math.trunc(Number(r.factorToBase)),
             salePrice: r.salePrice.trim() === '' ? null : Math.trunc(Number(r.salePrice)),
+            floorPrice: r.floorPrice.trim() === '' ? null : Math.trunc(Number(r.floorPrice)),
           })),
       });
       onSuccess();
@@ -1225,9 +1230,17 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
           </button>
         </div>
         <p className="mb-4 text-xs text-slate-500">
-          Vendre 1 « Casier 24 » décrémente 24 unités de base. Prix vide = catalogue × facteur.
-          Le tarif ne peut pas passer sous le plancher × facteur.
+          Vendre 1 « Casier 12 » décrémente 12 unités de base. À la caisse, le prix se négocie
+          entre le <b>prix minimum</b> et le <b>prix de vente</b> (ex. casier : 5 900 – 6 000).
+          Vides = prix unitaire × facteur. Le minimum ne descend jamais sous le prix d&apos;achat.
         </p>
+        <div className="mb-1 hidden items-center gap-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:flex">
+          <span className="flex-1">Libellé</span>
+          <span className="w-16 text-right">Facteur</span>
+          <span className="w-24 text-right">Prix vente</span>
+          <span className="w-24 text-right">Prix min.</span>
+          <span className="w-7" />
+        </div>
 
         {loading ? (
           <p className="py-8 text-center text-sm text-slate-400">Chargement…</p>
@@ -1258,7 +1271,7 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
                   }}
                   required
                   placeholder="× base"
-                  className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                  className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
                 />
                 <input
                   type="number"
@@ -1269,8 +1282,22 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
                     n[idx] = { ...n[idx]!, salePrice: e.target.value };
                     setRows(n);
                   }}
-                  placeholder="Prix (auto)"
-                  className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                  placeholder="Vente"
+                  title="Prix de vente du conditionnement (borne haute)"
+                  className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  value={row.floorPrice}
+                  onChange={(e) => {
+                    const n = [...rows];
+                    n[idx] = { ...n[idx]!, floorPrice: e.target.value };
+                    setRows(n);
+                  }}
+                  placeholder="Minimum"
+                  title="Prix minimum autorisé à la caisse (borne basse)"
+                  className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-brand tabular"
                 />
                 <button
                   type="button"
@@ -1286,7 +1313,7 @@ export function UnitsModal({ product, onClose, onSuccess }: UnitsModalProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setRows([...rows, { label: '', factorToBase: '', salePrice: '' }])}
+              onClick={() => setRows([...rows, { label: '', factorToBase: '', salePrice: '', floorPrice: '' }])}
             >
               <Plus className="mr-1 h-4 w-4" /> Ajouter un conditionnement
             </Button>

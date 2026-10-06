@@ -91,6 +91,7 @@ export function toProductDto(
         label: u.label,
         factorToBase: u.factorToBase,
         salePrice: u.salePrice,
+        floorPrice: u.floorPrice,
       }),
     );
   }

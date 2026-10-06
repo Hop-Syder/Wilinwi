@@ -33,6 +33,7 @@ import { FloatingCartButtons } from '@/components/pos/floating-cart-buttons';
 import { MobileCartDrawer } from '@/components/pos/mobile-cart-drawer';
 import { PosProductSelectModal } from '@/components/pos/product-select-modal';
 import { quantityScale, saleLineAmount, saleQuantityStep } from '@wilinwi/types';
+import { cartLineBounds } from '@/components/pos/cart-line-price';
 
 export default function PosPage() {
   const { refreshPending, state } = useSync();
@@ -229,6 +230,12 @@ export default function PosPage() {
       copy[index].quantite = newQty;
       return copy;
     });
+  };
+
+  // Prix négocié d'une ligne : la fourchette (minimum ≤ prix ≤ prix de vente) est
+  // garantie par le sélecteur de prix et revérifiée par le serveur.
+  const handleUpdatePrice = (index: number, price: number) => {
+    setCart((prev) => prev.map((line, i) => (i === index ? { ...line, prixReel: price } : line)));
   };
 
   // Définition directe de la Quantité (saisie manuelle au clavier : 0.5, 0.75, 1.25, 1.5, etc.)
@@ -446,6 +453,7 @@ export default function PosPage() {
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
             onSetQuantity={handleSetQuantity}
+            onUpdatePrice={handleUpdatePrice}
             onRemoveLine={handleRemoveLine}
             onClearCart={() => setCart([])}
             clients={clients}
@@ -475,6 +483,8 @@ export default function PosPage() {
           clients={clients}
           livreurs={livreurs}
           initialClientId={selectedClient?.id}
+          // Remise accordée (prix sous le prix de vente) → nom du client obligatoire.
+          requiresClientName={cart.some((line) => line.prixReel < cartLineBounds(line).max)}
           onConfirm={handleConfirmCheckout}
         />
       )}
@@ -565,6 +575,7 @@ export default function PosPage() {
         cart={cart}
         onUpdateQuantity={handleUpdateQuantity}
         onSetQuantity={handleSetQuantity}
+            onUpdatePrice={handleUpdatePrice}
         onRemoveLine={handleRemoveLine}
         onClearCart={() => setCart([])}
         clients={clients}

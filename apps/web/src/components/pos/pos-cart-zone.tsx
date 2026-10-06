@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import type { ProductDto, ClientDto } from '@wilinwi/types';
 import { Button, formatFCFA } from '@wilinwi/ui';
-import { quantityScale, saleLineAmount } from '@wilinwi/types';
+import { checkSalePrice, quantityScale, saleLineAmount } from '@wilinwi/types';
 import { CartQuantityInput } from './cart-quantity-input';
+import { CartLinePrice, cartLineBounds } from './cart-line-price';
 
 export interface CartLine {
   product: ProductDto;
@@ -38,6 +39,8 @@ interface PosCartZoneProps {
   cart: CartLine[];
   onUpdateQuantity: (index: number, delta: number) => void;
   onSetQuantity?: (index: number, quantity: number) => void;
+  /** Prix négocié d'une ligne (borné par la fourchette du produit). */
+  onUpdatePrice?: (index: number, price: number) => void;
   onRemoveLine: (index: number) => void;
   onClearCart: () => void;
   clients: ClientDto[];
@@ -54,6 +57,7 @@ export function PosCartZone({
   cart,
   onUpdateQuantity,
   onSetQuantity,
+  onUpdatePrice,
   onRemoveLine,
   onClearCart,
   clients,
@@ -65,6 +69,8 @@ export function PosCartZone({
   clientSearchInputRef,
   disabled,
 }: PosCartZoneProps) {
+  // Un prix hors fourchette (catalogue modifié entre-temps) bloque l'encaissement.
+  const hasPriceOutOfRange = cart.some((l) => checkSalePrice(l.prixReel, cartLineBounds(l)) !== 'ok');
   const [clientSearch, setClientSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
 
@@ -269,14 +275,16 @@ export function PosCartZone({
                   <span className="text-[10px] font-semibold text-emerald-600">{line.variantLabel}</span>
                 )}
               </div>
-              <p className="font-mono text-xs font-black text-slate-700 mt-0.5">
-                {formatFCFA(line.prixReel)}
-                    {!line.unitId && quantityScale(line.product.unitKind) !== 1 && (
-                      <span className="font-sans text-[10px] font-semibold text-slate-400">
-                        {' '}/ {line.product.baseUnit || (line.product.unitKind === 'WEIGHT' ? 'kg' : 'L')}
-                      </span>
-                    )}
-              </p>
+              <CartLinePrice
+                line={line}
+                disabled={disabled}
+                onChange={(price) => onUpdatePrice?.(idx, price)}
+                suffix={
+                  !line.unitId && quantityScale(line.product.unitKind) !== 1
+                    ? line.product.baseUnit || (line.product.unitKind === 'WEIGHT' ? 'kg' : 'L')
+                    : null
+                }
+              />
             </div>
 
             {/* Ingrément/Décrément Tactile direct et saisie manuelle fluide [ - ] [ Qté ] [ + ] */}
@@ -321,7 +329,7 @@ export function PosCartZone({
         <Button
           variant="emerald"
           size="lg"
-          disabled={disabled || cart.length === 0}
+          disabled={disabled || cart.length === 0 || hasPriceOutOfRange}
           onClick={onCheckout}
           className="w-full py-4 text-base font-extrabold rounded-xl shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 active:scale-98 transition-all"
         >

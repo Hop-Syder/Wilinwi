@@ -87,3 +87,14 @@
   4. `publicReceiptUrl()` (`apps/web/src/lib/public-receipt-url.ts`) = source unique des liens/QR de reçu.
   5. `<PrintBrandLogo />` (chargement `priority`) pour les documents imprimés via `window.print`.
 - **Conséquences** : PDF ~66 Ko au lieu de 330 Ko ; tout nouveau document PDF doit réutiliser le kit (pas de `doc.rect`/couleurs en dur).
+
+## ADR-011 — Fourchette de Prix à la Caisse & Suivi des Remises (nom du client obligatoire)
+- **Date** : 2026-10-06
+- **Statut** : Accepté / Actif
+- **Contexte** : Dépôt de boissons — casier de grande Béninoise acheté 5 800, vendu 6 000 aux clients de passage et 5 900 aux habitués. Le plancher existait mais n'était ni visible ni réglable à la caisse ; rien n'empêchait de vendre AU-DESSUS du prix de vente ; le plancher d'un casier ne pouvait être que plancher × 12 (5 900 / 12 = 491,67 F, non entier).
+- **Décision** :
+  1. Fourchette `minimum ≤ prix ≤ prix de vente`, règle unique `salePriceBounds()` / `checkSalePrice()` (`packages/types/src/product.ts`) utilisée par le POS (sélecteur de prix) ET le serveur (refus en dessous comme au-dessus).
+  2. `ProductUnit.floorPrice` (nullable) : minimum propre à un conditionnement ; il ne descend jamais sous `prixAchat × facteur` (vente à perte refusée à l'enregistrement).
+  3. Vente sous le prix de vente → **nom du client obligatoire** (fiche CRM ou nom seul d'un client de passage, figé dans `Sale.clientNom`). Le téléphone reste exigé uniquement pour le crédit et la livraison.
+  4. `SaleItem.prixReference` (prix affiché au moment de la vente) → rapport `GET /api/analytics/discounts` (par caissier, par client, détail, CSV), onglet « Remises accordées » de /ventes (OWNER/MANAGER).
+- **Conséquences** : migration `20261006090000_price_range_discounts` à appliquer (3 colonnes nullables, idempotente). Lignes antérieures sans `prixReference` exclues du suivi. Vérifié par `apps/api/scripts/simulate-price-range.ts` (17/17).

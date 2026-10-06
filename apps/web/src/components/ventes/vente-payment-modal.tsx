@@ -46,7 +46,7 @@ export function VentePaymentModal({
             Vente : <span className="font-mono font-bold text-brand">#{sale.id.slice(0, 8).toUpperCase()}</span>
           </p>
           <p>
-            Client : <span className="font-bold">{sale.client?.nom || 'Client Comptoir'}</span>
+            Client : <span className="font-bold">{(sale.client?.nom || sale.clientNom) || 'Client Comptoir'}</span>
           </p>
           <div className="flex justify-between items-center bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
             <span className="text-xs text-amber-800 font-semibold uppercase tracking-wider">Reste à payer</span>

@@ -39,10 +39,12 @@ interface CheckoutModalProps {
   clients: ClientDto[];
   livreurs: { id: string; nom: string }[];
   initialClientId?: string;
+  /** Une remise a été accordée (prix sous le prix de vente) : client obligatoire. */
+  requiresClientName?: boolean;
   onConfirm: (result: CheckoutResult) => void;
 }
 
-export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, initialClientId, onConfirm }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, initialClientId, requiresClientName = false, onConfirm }: CheckoutModalProps) {
   const { currency, formatAmount } = useCurrency();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [clientId, setClientId] = useState<string>('');
@@ -117,12 +119,23 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
     if (aLivrer) setAssociateClient(true);
   }, [aLivrer]);
 
+  // Remise accordée : le client doit être identifié (suivi des remises).
+  useEffect(() => {
+    if (isOpen && requiresClientName) setAssociateClient(true);
+  }, [isOpen, requiresClientName]);
+
+  // Le téléphone n'est exigé que pour le crédit et la livraison : un client de
+  // passage qui obtient une remise peut être enregistré par son seul nom.
+  const phoneRequired = isCreditOrInstallment || aLivrer;
+  const clientForced = isCreditOrInstallment || aLivrer || requiresClientName;
+
   const isValid = () => {
-    if (isCreditOrInstallment && !associateClient) return false;
+    if (clientForced && !associateClient) return false;
 
     if (associateClient) {
       if (clientType === 'existing' && !clientId) return false;
-      if (clientType === 'new' && (!clientNom.trim() || !clientTelephone.trim())) return false;
+      if (clientType === 'new' && !clientNom.trim()) return false;
+      if (clientType === 'new' && phoneRequired && !clientTelephone.trim()) return false;
     }
 
     if (paymentMethod === 'INSTALLMENT') {
@@ -151,8 +164,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
       montantEspeces: isMixteEligible && Number(montantEspeces) > 0 ? Number(montantEspeces) : undefined,
       momoOperator: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
       momoReference: paymentMethod === 'MOBILE_MONEY' && momoReference.trim() ? momoReference.trim() : undefined,
-      clientNom: (associateClient && clientType === 'new') ? clientNom : undefined,
-      clientTelephone: (associateClient && clientType === 'new') ? clientTelephone : undefined,
+      clientNom: (associateClient && clientType === 'new') ? clientNom.trim() : undefined,
+      clientTelephone: (associateClient && clientType === 'new' && clientTelephone.trim()) ? clientTelephone.trim() : undefined,
       aLivrer,
       livreurId: (aLivrer && livreurId) ? livreurId : undefined,
       adresseLivraison: (aLivrer && adresseLivraison) ? adresseLivraison : undefined,
@@ -350,16 +363,21 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                 <input
                   type="checkbox"
                   checked={associateClient}
-                  disabled={isCreditOrInstallment || aLivrer}
+                  disabled={clientForced}
                   onChange={(e) => setAssociateClient(e.target.checked)}
                   className="rounded border-slate-300 text-brand focus:ring-brand"
                 />
                 <span>
                   {aLivrer ? 'Destinataire (nom + WhatsApp)' : 'Associer un client'}{' '}
-                  {(isCreditOrInstallment || aLivrer) && <span className="text-red-500 font-bold">*</span>}
+                  {clientForced && <span className="text-red-500 font-bold">*</span>}
                 </span>
               </label>
             </div>
+            {requiresClientName && (
+              <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-800">
+                Remise accordée : indiquez le client (un nom suffit pour un client de passage).
+              </p>
+            )}
 
             {associateClient && (
               <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -413,7 +431,9 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold mb-1 text-slate-600">Téléphone WhatsApp *</label>
+                      <label className="block text-xs font-semibold mb-1 text-slate-600">
+                        Téléphone WhatsApp {phoneRequired ? '*' : '(facultatif — crée une fiche client)'}
+                      </label>
                       <Input
                         type="text"
                         placeholder="Ex: +225 07070707"

@@ -71,6 +71,7 @@
 — [2026-10-04] Auto-création transparente de session d'inventaire sur point de stock → [decisions.md#ADR-008](file:///mnt/d/Projets/Wilinwi/.dexty/decisions.md)
 — [2026-10-04] Assistant import catalogue avec Auto-SKU et options Laisser vide → [decisions.md#ADR-009](file:///mnt/d/Projets/Wilinwi/.dexty/decisions.md)
 — [2026-10-04] Kit de marque PDF unique, logo Wilinwi à son ratio réel, montant en lettres → [decisions.md#ADR-010](file:///mnt/d/Projets/Wilinwi/.dexty/decisions.md)
+— [2026-10-06] Fourchette de prix à la caisse (min ≤ prix ≤ vente) + suivi des remises avec nom du client → [decisions.md#ADR-011](file:///mnt/d/Projets/Wilinwi/.dexty/decisions.md)
 
 ## Known issues
 — Divergence de 35 fichiers de conflit entre `main` et `main-mvp2` (fusion prévue via branche tampon) — PLANIFIÉ
@@ -82,3 +83,4 @@
 — [2026-10-04] Support décimal exact & régularisation point de stock
 — [2026-10-04] Auto-génération SKU et optimisation import catalogue
 — [2026-10-04] Refonte des documents PDF (factures, bons de commande) et logo Wilinwi sur les impressions
+— [2026-10-06] Fourchette de prix à la caisse et suivi des remises (dépôt de boissons)

@@ -157,3 +157,46 @@ export interface PosSessionDto {
 
 // NOTE : ApprovePriceOverrideSchema a été SUPPRIMÉ — la vente sous le plancher
 // est strictement refusée (anti-fraude absolu), aucun flux d'approbation.
+
+// ─────────────── Suivi des remises (fourchette de prix à la caisse) ───────────────
+
+/** Une ligne vendue SOUS le prix de vente affiché (remise accordée). */
+export interface DiscountLineDto {
+  saleId: string;
+  receiptCode: string | null;
+  date: string;
+  vendeurId: string;
+  vendeurNom: string;
+  /** Nom du client (fiche CRM ou nom saisi à la caisse). */
+  clientNom: string;
+  productNom: string;
+  /** Conditionnement vendu (« Casier 12 ») ou null pour l'unité. */
+  unitLabel: string | null;
+  /** Quantité affichée (2 casiers, 0,25 kg…). */
+  quantite: number;
+  /** Prix de vente affiché au moment de la vente. */
+  prixReference: number;
+  /** Prix réellement accordé. */
+  prixReel: number;
+  /** Remise totale de la ligne (FCFA) = (référence − accordé) × quantité. */
+  remise: number;
+}
+
+/** Cumul des remises par caissier ou par client. */
+export interface DiscountTotalDto {
+  id: string;
+  nom: string;
+  remise: number;
+  lignes: number;
+}
+
+export interface DiscountReportDto {
+  from: string;
+  to: string;
+  totalRemise: number;
+  /** Chiffre d'affaires des lignes remisées (pour le % de remise). */
+  caRemise: number;
+  parVendeur: DiscountTotalDto[];
+  parClient: DiscountTotalDto[];
+  lignes: DiscountLineDto[];
+}

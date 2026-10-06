@@ -357,6 +357,8 @@ export const ProductUnitInputSchema = z.object({
   factorToBase: z.number().int().min(2),
   /** Prix du conditionnement (FCFA). Null → prixCatalogue × facteur. */
   salePrice: MoneySchema.nullable().optional(),
+  /** Prix MINIMUM du conditionnement (FCFA). Null → prixPlancher × facteur. */
+  floorPrice: MoneySchema.nullable().optional(),
 });
 export type ProductUnitInput = z.infer<typeof ProductUnitInputSchema>;
 
@@ -377,6 +379,7 @@ export const ProductUnitDtoSchema = z.object({
   label: z.string(),
   factorToBase: z.number().int().min(1),
   salePrice: MoneySchema.nullable(),
+  floorPrice: MoneySchema.nullable().optional(),
 });
 export type ProductUnitDto = z.infer<typeof ProductUnitDtoSchema>;
 
@@ -386,6 +389,49 @@ export function unitDefaultPrice(
   prixCatalogue: number,
 ): number {
   return unit.salePrice ?? prixCatalogue * unit.factorToBase;
+}
+
+/** Prix minimum par défaut d'un conditionnement : tarif dédié, sinon plancher × facteur. */
+export function unitFloorPrice(
+  unit: Pick<ProductUnitDto, 'factorToBase'> & { floorPrice?: number | null },
+  prixPlancher: number,
+): number {
+  return unit.floorPrice ?? prixPlancher * unit.factorToBase;
+}
+
+/** Fourchette de prix autorisée à la caisse (FCFA, bornes incluses). */
+export interface SalePriceBounds {
+  /** Prix minimum : en dessous, la vente est refusée (anti-fraude). */
+  min: number;
+  /** Prix de vente affiché : au-dessus, la vente est refusée. */
+  max: number;
+}
+
+/**
+ * Fourchette de négociation d'une ligne de vente — MÊME règle au POS (saisie,
+ * hors-ligne) et au serveur (validation finale) :
+ * - à l'unité : prixPlancher ≤ prix ≤ prixCatalogue ;
+ * - conditionnement : floorPrice (ou plancher × facteur) ≤ prix ≤ salePrice
+ *   (ou catalogue × facteur). Ex. casier de Béninoise : 5 900 ≤ prix ≤ 6 000.
+ * Données incohérentes (min > max) : la borne basse prime, on ne vend jamais
+ * sous le minimum.
+ */
+export function salePriceBounds(
+  product: { prixPlancher: number; prixCatalogue: number },
+  unit?: { factorToBase: number; salePrice?: number | null; floorPrice?: number | null } | null,
+): SalePriceBounds {
+  const min = unit ? unitFloorPrice(unit, product.prixPlancher) : product.prixPlancher;
+  const max = unit
+    ? unitDefaultPrice({ factorToBase: unit.factorToBase, salePrice: unit.salePrice ?? null }, product.prixCatalogue)
+    : product.prixCatalogue;
+  return { min, max: Math.max(min, max) };
+}
+
+/** Position d'un prix dans sa fourchette : `low` (refus), `ok`, `high` (refus). */
+export function checkSalePrice(price: number, bounds: SalePriceBounds): 'low' | 'ok' | 'high' {
+  if (price < bounds.min) return 'low';
+  if (price > bounds.max) return 'high';
+  return 'ok';
 }
 
 /**

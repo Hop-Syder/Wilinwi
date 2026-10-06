@@ -485,6 +485,9 @@ model ProductUnit {
   factorToBase Int      @map("factor_to_base")
   /// Prix de vente du conditionnement (FCFA). Null → prixCatalogue × facteur.
   salePrice    Int?     @map("sale_price")
+  /// Prix MINIMUM du conditionnement (FCFA) — borne basse négociable à la caisse
+  /// (casier 6 000, minimum 5 900). Null → prixPlancher × facteur.
+  floorPrice   Int?     @map("floor_price")
   createdAt    DateTime @default(now()) @map("created_at")
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -674,6 +677,9 @@ model Sale {
   etablissementId  String?       @map("etablissement_id") @db.Uuid
   vendeurId        String        @map("vendeur_id") @db.Uuid
   clientId         String?       @map("client_id") @db.Uuid // CRM en MVP2
+  /// Nom du client SNAPSHOT (client de passage sans fiche CRM, ou nom de la fiche
+  /// au moment de la vente) — obligatoire dès qu'une remise est accordée.
+  clientNom        String?       @map("client_nom")
   status           SaleStatus    @default(COMPLETED)
   paymentMethod    PaymentMethod @map("payment_method")
   total            Int // somme des lignes (prix réel)
@@ -732,6 +738,10 @@ model SaleItem {
   quantite  Float
   quantiteRetournee Float @default(0) @map("quantite_retournee")
   prixReel  Int     @map("prix_reel") // 4ᵉ prix : réellement négocié (PAR conditionnement si unitId)
+  /// Prix de vente affiché (borne haute) au moment de la vente, même échelle que
+  /// prixReel. Remise accordée = (prixReference − prixReel) × quantité affichée.
+  /// Null sur les lignes antérieures au suivi des remises.
+  prixReference Int? @map("prix_reference")
   /// Coût figé au moment de la vente (prix d'achat × facteur), pour la marge.
   coutUnitaire Int  @map("cout_unitaire")
   /// Conditionnement vendu (Wholesale M5) — SNAPSHOT figé à la vente : le stock

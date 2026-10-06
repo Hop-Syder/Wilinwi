@@ -3,7 +3,7 @@
  * @organization Nexus Partners
  * @description Module d'injection de dépendances NestJS pour analytics
  * @created 2026-06-20
- * @updated 2026-06-20
+ * @updated 2026-10-06
  * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -34,6 +34,17 @@ class AnalyticsController {
     @Query('compare') compare?: string,
   ) {
     return this.analytics.report(user, from, to, compare !== 'false');
+  }
+
+  /** Suivi des remises (ventes sous le prix affiché) par caissier et par client. */
+  @RequireCapabilities('reports:read_full')
+  @Get('discounts')
+  discounts(
+    @CurrentUser() user: AuthContext,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.analytics.discounts(user, from, to);
   }
 
   @RequireCapabilities('reports:read')

@@ -60,6 +60,13 @@ packages:
   par le backend et l'UI (anti-fraude absolu). Le flux d'approbation a été **entièrement
   supprimé** (schéma, types, code) : ni `PENDING_APPROVAL`, ni `PriceOverride`,
   ni `sale:override_floor_price` n'existent plus.
+  **Fourchette de prix à la caisse** (2026-10-06) : le prix se négocie entre le minimum
+  (`prixPlancher`, ou `ProductUnit.floorPrice` pour un conditionnement) et le prix de
+  vente (`prixCatalogue` / `ProductUnit.salePrice`) — **au-dessus du prix de vente =
+  refusé aussi**. Règle unique `salePriceBounds()` (packages/types) au POS ET au serveur.
+  Toute vente sous le prix de vente exige le **nom du client** (`Sale.clientNom`) ; la
+  remise est tracée via `SaleItem.prixReference` → `GET /api/analytics/discounts`
+  (onglet « Remises accordées » de /ventes, `reports:read_full`).
 - **Architecture de Stock Centralisé (Hub & Spoke)** : 
   - Les commandes fournisseurs sont réceptionnées **uniquement** dans un `Magasin` (Entrepôt central).
   - Le stock est tracé par localisation géographique via un modèle dédié (`ProductStock`), et non plus globalement.

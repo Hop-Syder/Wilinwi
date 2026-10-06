@@ -65,7 +65,7 @@ export function VentesTable({
                 <div>
                   <span className="font-mono text-xs font-bold text-indigo-700">#{s.id.slice(0, 8).toUpperCase()}</span>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {isGlobalView ? (s.etablissement?.nom ?? '—') : (s.client?.nom || 'Comptoir')}
+                    {new Date(s.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {isGlobalView ? (s.etablissement?.nom ?? '—') : ((s.client?.nom || s.clientNom) || 'Comptoir')}
                   </p>
                 </div>
 
@@ -139,7 +139,7 @@ export function VentesTable({
                         {s.etablissement?.nom ?? <span className="text-slate-400 italic">—</span>}
                       </span>
                     ) : (
-                      s.client?.nom || <span className="text-slate-400 font-normal italic">Comptoir</span>
+                      (s.client?.nom || s.clientNom) || <span className="text-slate-400 font-normal italic">Comptoir</span>
                     )}
                   </td>
                   <td className="px-4 py-3.5">

@@ -28,6 +28,8 @@ export interface ReceiptSale {
   receiptCode?: string | null;
   items: { id: string; quantite: number; prixReel: number; product?: { nom: string } | null }[];
   client?: { nom: string; telephone?: string | null } | null;
+  /** Nom du client figé sur la vente (client de passage sans fiche CRM). */
+  clientNom?: string | null;
 }
 
 
@@ -152,7 +154,9 @@ export function ReceiptModal({ sale, onClose }: { sale: ReceiptSale; onClose: ()
               <span className="tabular">{formatFCFA(reste)}</span>
             </div>
           )}
-          {sale.client && <div className="mt-1 text-[11px]">Client : {sale.client.nom}</div>}
+          {(sale.client?.nom || sale.clientNom) && (
+            <div className="mt-1 text-[11px]">Client : {sale.client?.nom || sale.clientNom}</div>
+          )}
 
           {/* Bloc QR Code & Message en 1 ligne / 2 colonnes */}
           <div className="mt-3.5 flex items-center gap-3 pt-3 border-t border-dashed border-slate-300 print:page-break-inside-avoid">

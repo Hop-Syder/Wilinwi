@@ -18,6 +18,7 @@ import {
   quantityScale,
   saleLineAmount,
   saleQuantityStep,
+  salePriceBounds,
   saleStockBehavior,
   unitDefaultPrice,
 } from '@wilinwi/types';
@@ -163,12 +164,16 @@ export function PosProductSelectModal({
                   <span className="text-sm font-black text-slate-800 mt-1">
                     {formatFCFA(product.prixCatalogue)}
                   </span>
-                  <span className="text-[10px] text-slate-400">1 unité</span>
+                  <span className="text-[10px] text-slate-400">
+                    1 unité
+                    {product.prixPlancher < product.prixCatalogue && ` · min. ${formatFCFA(product.prixPlancher)}`}
+                  </span>
                 </button>
 
                 {/* Options Conditionnements (ex: Casier 24) */}
                 {units.map((u) => {
                   const unitPrice = unitDefaultPrice(u, product.prixCatalogue);
+                  const unitMin = salePriceBounds(product, u).min;
                   const isSelected = selectedUnitId === u.id;
                   return (
                     <button
@@ -188,7 +193,10 @@ export function PosProductSelectModal({
                       <span className="text-sm font-black text-slate-800 mt-1">
                         {formatFCFA(unitPrice)}
                       </span>
-                      <span className="text-[10px] text-slate-400">{u.factorToBase} bouteilles</span>
+                      <span className="text-[10px] text-slate-400">
+                        {u.factorToBase} unités
+                        {unitMin < unitPrice && ` · min. ${formatFCFA(unitMin)}`}
+                      </span>
                     </button>
                   );
                 })}
@@ -278,6 +286,9 @@ export function PosProductSelectModal({
 
           {/* Synthèse Prix & Bouton Ajout */}
           <div className="pt-2 border-t border-slate-100 space-y-3">
+            <p className="text-[11px] font-semibold text-slate-400">
+              Le prix pourra être ajusté dans le panier, entre le minimum et le prix de vente.
+            </p>
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-bold text-slate-400">Total ligne</span>
               <span className="font-mono text-xl font-black text-emerald-600">
