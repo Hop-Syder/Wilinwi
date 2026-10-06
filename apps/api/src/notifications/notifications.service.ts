@@ -29,13 +29,16 @@ function toDto(n: Notification): NotificationDto {
   };
 }
 
+/** Intervalle minimal entre deux scans de notifications d'un même tenant. */
+const SCAN_INTERVAL_MS = 2 * 60 * 1000;
+
 @Injectable()
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) { }
 
   /** Liste (50 récentes, non-lues d'abord) après synchronisation des alertes. */
   async list(ctx: AuthContext): Promise<NotificationDto[]> {
-    await this.scan(ctx);
+    await this.scan(ctx, true); // ouverture de la cloche : liste toujours fraîche
     const rows = await this.prisma.forTenant(ctx.tenantId, (tx) =>
       tx.notification.findMany({
         where: { tenantId: ctx.tenantId },
@@ -75,8 +78,20 @@ export class NotificationsService {
     return { ok: true };
   }
 
-  /** Synchronise les notifications dérivées avec l'état courant (idempotent). */
-  private async scan(ctx: AuthContext): Promise<void> {
+  /** Dernier scan par tenant (mémoire du processus) — cf. SCAN_INTERVAL_MS. */
+  private readonly lastScanAt = new Map<string, number>();
+
+  /**
+   * Synchronise les notifications dérivées avec l'état courant (idempotent).
+   * Limité à un scan par tenant toutes les SCAN_INTERVAL_MS : le compteur est
+   * interrogé toutes les 30 s par chaque onglet ouvert, rescanner tout le stock
+   * à chaque appel chargeait inutilement l'API (Render) et la base.
+   */
+  private async scan(ctx: AuthContext, force = false): Promise<void> {
+    const now = Date.now();
+    const last = this.lastScanAt.get(ctx.tenantId) ?? 0;
+    if (!force && now - last < SCAN_INTERVAL_MS) return;
+    this.lastScanAt.set(ctx.tenantId, now);
     await this.prisma.forTenant(ctx.tenantId, async (tx) => {
       await this.scanStockLow(tx, ctx);
       await this.scanPastDue(tx, ctx);
@@ -101,17 +116,18 @@ export class NotificationsService {
     });
     const existingKeys = new Set(existing.map((e) => `${e.etablissementId}|${e.entityId}`));
 
-    for (const s of low) {
-      if (existingKeys.has(`${s.etablissementId}|${s.productId}`)) continue;
-      await tx.notification.create({
-        data: {
+    // Création groupée (une seule requête) des nouvelles alertes.
+    const toCreate = low.filter((s) => !existingKeys.has(`${s.etablissementId}|${s.productId}`));
+    if (toCreate.length > 0) {
+      await tx.notification.createMany({
+        data: toCreate.map((s) => ({
           tenantId: ctx.tenantId,
           etablissementId: s.etablissementId,
-          type: 'STOCK_LOW',
+          type: 'STOCK_LOW' as const,
           titre: `Stock bas — ${s.product.nom}`,
           message: `${s.etablissement?.nom ?? 'Boutique'} : il reste ${s.quantite} (seuil ${s.quantiteMin}).`,
           entityId: s.productId,
-        },
+        })),
       });
     }
 

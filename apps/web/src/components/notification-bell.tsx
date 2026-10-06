@@ -52,7 +52,7 @@ export function NotificationBell() {
     }
   }, []);
 
-  const refreshCount = useCallback(async () => {
+  const refreshCount = useCallback(async (): Promise<boolean> => {
     try {
       const { count: newCount } = await apiGet<{ count: number }>('/api/notifications/count');
       setCount(newCount);
@@ -70,23 +70,56 @@ export function NotificationBell() {
         });
       }
       previousCountRef.current = newCount;
+      return true;
     } catch {
-      /* silencieux (mode offline) */
+      /* silencieux (mode offline / API en réveil) */
+      return false;
     }
   }, []);
 
-  // Polling temps réel toutes les 30s + au retour au premier plan
+  // Polling du compteur : toutes les 30 s quand tout va bien ; en cas d'échec
+  // (API Render en réveil, réseau coupé), attente croissante 30 s → 1 → 2 → 5 min
+  // au lieu de marteler le serveur. En pause onglet masqué ou hors ligne ;
+  // relance immédiate au retour au premier plan / du réseau.
   useEffect(() => {
     if (!isAdmin) return;
-    void refreshCount();
-    const interval = setInterval(() => void refreshCount(), 30_000);
+    const BASE = 30_000;
+    const MAX = 5 * 60_000;
+    let delay = BASE;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let stopped = false;
 
-    const onFocus = () => void refreshCount();
-    window.addEventListener('focus', onFocus);
+    const schedule = () => {
+      if (stopped) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void tick(), delay);
+    };
+    const tick = async () => {
+      if (stopped) return;
+      if (document.visibilityState === 'hidden' || !navigator.onLine) {
+        schedule(); // pas d'appel inutile : on revérifiera plus tard
+        return;
+      }
+      const ok = await refreshCount();
+      delay = ok ? BASE : Math.min(delay * 2, MAX);
+      schedule();
+    };
+    const wake = () => {
+      if (document.visibilityState === 'hidden') return;
+      delay = BASE;
+      void tick();
+    };
 
+    void tick();
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', wake);
+    document.addEventListener('visibilitychange', wake);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('focus', wake);
+      window.removeEventListener('online', wake);
+      document.removeEventListener('visibilitychange', wake);
     };
   }, [isAdmin, refreshCount, user?.etablissementId]);
 
