@@ -73,14 +73,16 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
       return;
     }
     setRefused(
-      draftStatus === 'high'
-        ? `Refusé : maximum ${formatFCFA(bounds.max)}`
-        : `Refusé : minimum ${formatFCFA(bounds.min)}`,
+      !negotiable
+        ? 'Prix fixe : aucun prix minimum défini pour ce produit (à fixer dans Stock › fiche produit)'
+        : draftStatus === 'high'
+          ? `Refusé : maximum ${formatFCFA(bounds.max)}`
+          : `Refusé : minimum ${formatFCFA(bounds.min)}`,
     );
     setDraft(String(line.prixReel));
   }
 
-  if (!negotiable || disabled) {
+  if (disabled) {
     return (
       <p className={`mt-0.5 font-mono text-xs font-black ${status === 'ok' ? 'text-slate-700' : 'text-rose-600'}`}>
         {formatFCFA(line.prixReel)}
@@ -106,7 +108,11 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
           <input
             type="text"
             inputMode="numeric"
-            aria-label={`Prix de vente (entre ${bounds.min} et ${bounds.max} FCFA)`}
+            aria-label={
+              negotiable
+                ? `Prix négocié (entre ${bounds.min} et ${bounds.max} FCFA)`
+                : `Prix de vente (${bounds.max} FCFA, pas de fourchette)`
+            }
             value={draft}
             onFocus={(e) => {
               setFocused(true);
@@ -128,6 +134,7 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
           />
           <span className="text-[10px] font-semibold text-slate-400">F{suffix ? ` / ${suffix}` : ''}</span>
         </div>
+        {negotiable && (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -137,10 +144,13 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
+        )}
       </div>
       <p className="mt-0.5 text-[10px] font-semibold text-slate-400">
         {refused ? (
           <span className="font-bold text-rose-600">{refused}</span>
+        ) : !negotiable ? (
+          <span>prix fixe — pas de prix minimum défini</span>
         ) : focused ? (
           <>
             entre {formatFCFA(bounds.min)} et {formatFCFA(bounds.max)}
