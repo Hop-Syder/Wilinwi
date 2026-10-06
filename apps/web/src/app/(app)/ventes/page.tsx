@@ -157,9 +157,10 @@ export default function VentesPage() {
   };
 
   useEffect(() => {
-    if (isGlobalView) return;
+    // Liste clients : module CRM uniquement (absent du plan STARTER → 403 sinon).
+    if (isGlobalView || !user?.modules.includes('CRM')) return;
     apiGet<ClientDto[]>('/api/crm/clients').then(setClients).catch(console.error);
-  }, [isGlobalView]);
+  }, [isGlobalView, user?.modules]);
 
   useEffect(() => {
     if (activeTab === 'SALES') {

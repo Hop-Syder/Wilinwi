@@ -79,7 +79,8 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
       setMomoOperator('MTN');
       setMomoReference('');
       setAssociateClient(Boolean(initialClientId));
-      setClientType('existing');
+      // Sans liste clients (pas de module CRM / aucun client), on saisit un nom.
+      setClientType(clients.length > 0 || initialClientId ? 'existing' : 'new');
       setClientNom('');
       setClientTelephone('');
       setALivrer(false);

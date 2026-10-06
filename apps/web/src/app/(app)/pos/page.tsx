@@ -38,6 +38,8 @@ import { cartLineBounds } from '@/components/pos/cart-line-price';
 export default function PosPage() {
   const { refreshPending, state } = useSync();
   const { user } = useAuth();
+  // Module CRM actif (plan / add-ons / droits) : conditionne la liste clients.
+  const hasCrm = user?.modules.includes('CRM') ?? false;
   const { formatAmount } = useCurrency();
   const isGlobalView = user?.etablissementId === 'ALL';
 
@@ -80,7 +82,8 @@ export default function PosPage() {
     try {
       const [prods, cls, livs] = await Promise.all([
         apiGet<ProductDto[]>('/api/stock/products'),
-        apiGet<ClientDto[]>('/api/crm/clients').catch(() => []),
+        // Liste clients : module CRM uniquement (absent du plan STARTER → 403 sinon).
+        hasCrm ? apiGet<ClientDto[]>('/api/crm/clients').catch(() => []) : Promise.resolve([] as ClientDto[]),
         apiGet<{ id: string; nom: string }[]>('/api/users/pos').catch(() => []),
       ]);
       setProducts(prods);
@@ -91,7 +94,7 @@ export default function PosPage() {
       const cachedProducts = await syncEngine.cachedProducts().catch(() => []);
       setProducts(cachedProducts);
     }
-  }, []);
+  }, [hasCrm]);
 
   // Récupération dynamique de la session de caisse active
   const fetchActiveSession = useCallback(async () => {
