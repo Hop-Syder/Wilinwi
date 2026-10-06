@@ -3,12 +3,13 @@
 /**
  * @author @hopsyder
  * @organization Nexus Partners
- * @description Prix négociable d'une ligne de panier POS, borné par la fourchette du
+ * @description Prix SAISISSABLE d'une ligne de panier POS, borné par la fourchette du
  *   produit (prix minimum ≤ prix ≤ prix de vente — `salePriceBounds`, même règle que
- *   le serveur). Affiche « min. 5 900 » et la remise accordée ; un appui ouvre un
- *   sélecteur : raccourcis (6 000 · 5 950 · 5 900), −/+ et saisie libre, toujours
- *   ramenés dans la fourchette.
+ *   le serveur). Champ de saisie directe dans la ligne (refus hors fourchette, motif
+ *   affiché) + « min. 5 900 » et remise ; le crayon ouvre un sélecteur de raccourcis
+ *   (6 000 · 5 950 · 5 900, −/+).
  * @created 2026-10-06
+ * @updated 2026-10-06
  * 🌐 nexus-partners.xyz
  * 📧 daoudaabassichristian@gmail.com
  */
@@ -51,36 +52,109 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
   const remise = bounds.max - line.prixReel;
   const negotiable = bounds.max > bounds.min;
 
+  // Saisie directe du prix dans la ligne : brouillon libre pendant la frappe,
+  // validé à la sortie du champ / Entrée. Hors fourchette → refusé, on revient
+  // au prix précédent avec le motif affiché (jamais d'arrondi silencieux).
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(String(line.prixReel));
+  const [refused, setRefused] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focused) setDraft(String(line.prixReel));
+  }, [line.prixReel, focused]);
+
+  const parsed = Math.round(Number(draft.replace(/\s/g, '').replace(',', '.')));
+  const draftStatus = Number.isFinite(parsed) && draft.trim() !== '' ? checkSalePrice(parsed, bounds) : 'low';
+
+  function commit() {
+    setFocused(false);
+    if (draftStatus === 'ok') {
+      setRefused(null);
+      if (parsed !== line.prixReel) onChange(parsed);
+      return;
+    }
+    setRefused(
+      draftStatus === 'high'
+        ? `Refusé : maximum ${formatFCFA(bounds.max)}`
+        : `Refusé : minimum ${formatFCFA(bounds.min)}`,
+    );
+    setDraft(String(line.prixReel));
+  }
+
+  if (!negotiable || disabled) {
+    return (
+      <p className={`mt-0.5 font-mono text-xs font-black ${status === 'ok' ? 'text-slate-700' : 'text-rose-600'}`}>
+        {formatFCFA(line.prixReel)}
+        {suffix && <span className="font-sans text-[10px] font-semibold text-slate-400"> / {suffix}</span>}
+      </p>
+    );
+  }
+
   return (
     <>
-      <button
-        type="button"
-        disabled={disabled || !negotiable}
-        onClick={() => setOpen(true)}
-        className={`group mt-0.5 flex flex-col items-start text-left ${negotiable && !disabled ? 'cursor-pointer' : 'cursor-default'}`}
-        title={negotiable ? 'Ajuster le prix (entre le minimum et le prix de vente)' : undefined}
-      >
-        <span
-          className={`flex items-center gap-1 font-mono text-xs font-black ${
-            status === 'ok' ? 'text-slate-700' : 'text-rose-600'
+      <div className="mt-1 flex items-center gap-1">
+        <div
+          className={`flex h-7 items-center rounded-lg border bg-white pr-1.5 transition-colors ${
+            focused
+              ? draftStatus === 'ok'
+                ? 'border-blue-600 ring-2 ring-blue-600/15'
+                : 'border-rose-400 ring-2 ring-rose-400/15'
+              : status === 'ok'
+                ? 'border-slate-200 hover:border-slate-300'
+                : 'border-rose-400'
           }`}
         >
-          {formatFCFA(line.prixReel)}
-          {suffix && <span className="font-sans text-[10px] font-semibold text-slate-400">/ {suffix}</span>}
-          {negotiable && !disabled && (
-            <Pencil className="h-3 w-3 text-slate-300 transition-colors group-hover:text-blue-600" />
-          )}
-        </span>
-        {negotiable && (
-          <span className="text-[10px] font-semibold text-slate-400">
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label={`Prix de vente (entre ${bounds.min} et ${bounds.max} FCFA)`}
+            value={draft}
+            onFocus={(e) => {
+              setFocused(true);
+              setRefused(null);
+              e.currentTarget.select();
+            }}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              if (e.key === 'Escape') {
+                setDraft(String(line.prixReel));
+                e.currentTarget.blur();
+              }
+            }}
+            className={`h-full w-[68px] rounded-lg bg-transparent px-1.5 text-right font-mono text-xs font-black outline-none ${
+              (focused ? draftStatus : status) === 'ok' ? 'text-slate-800' : 'text-rose-600'
+            }`}
+          />
+          <span className="text-[10px] font-semibold text-slate-400">F{suffix ? ` / ${suffix}` : ''}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-700"
+          title="Choisir un prix (raccourcis)"
+          aria-label="Choisir un prix dans la fourchette"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <p className="mt-0.5 text-[10px] font-semibold text-slate-400">
+        {refused ? (
+          <span className="font-bold text-rose-600">{refused}</span>
+        ) : focused ? (
+          <>
+            entre {formatFCFA(bounds.min)} et {formatFCFA(bounds.max)}
+          </>
+        ) : (
+          <>
             min. {formatFCFA(bounds.min)}
             {status === 'ok' && remise > 0 && (
               <span className="ml-1 rounded bg-amber-50 px-1 font-bold text-amber-700">−{formatFCFA(remise)}</span>
             )}
             {status !== 'ok' && <span className="ml-1 font-bold text-rose-600">hors fourchette</span>}
-          </span>
+          </>
         )}
-      </button>
+      </p>
 
       {open && (
         <PriceSheet
@@ -89,6 +163,7 @@ export function CartLinePrice({ line, onChange, disabled, suffix }: CartLinePric
           bounds={bounds}
           onClose={() => setOpen(false)}
           onConfirm={(p) => {
+            setRefused(null);
             onChange(p);
             setOpen(false);
           }}
