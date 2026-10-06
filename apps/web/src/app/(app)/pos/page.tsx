@@ -141,6 +141,12 @@ export default function PosPage() {
         e.preventDefault();
         clientSearchInputRef.current?.focus();
       } else if (e.key === 'Escape') {
+        // Échap dans un champ (prix, quantité, recherche) annule la saisie,
+        // il ne doit pas proposer de vider le panier.
+        const target = e.target;
+        if (target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable="true"]')) {
+          return;
+        }
         if (cart.length > 0) {
           e.preventDefault();
           if (confirm('Voulez-vous vraiment vider le panier en cours ?')) {
