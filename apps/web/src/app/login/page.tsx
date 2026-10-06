@@ -29,6 +29,7 @@ import {
   EyeOff,
   CheckCircle2,
 } from 'lucide-react';
+import { InstallAppPrompt } from '@/components/install-app-prompt';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -365,6 +366,8 @@ export default function LoginPage() {
           © 2026 Wilinwi by Nexus Partners
         </div>
       </div>
+      {/* Invitation à installer l'application (PWA) dès l'écran de connexion */}
+      <InstallAppPrompt className="!bottom-6" />
     </main>
   );
 }

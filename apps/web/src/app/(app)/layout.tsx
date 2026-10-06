@@ -45,6 +45,7 @@ import { CollapsibleSidebar } from '@/components/collapsible-sidebar';
 import { AppTopbar } from '@/components/app-topbar';
 import { MobileDock } from '@/components/mobile-dock';
 import { SyncConflictsModal } from '@/components/sync-conflicts-modal';
+import { InstallAppPrompt } from '@/components/install-app-prompt';
 
 // `infraCap` (optionnel) : capacité d'infrastructure requise pour voir l'entrée
 // (TDR v2) — les entrées verticales (Food, Santé…) se brancheront ici.
@@ -304,6 +305,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div key={user.etablissementId ?? 'none'}>{children}</div>
         </main>
       </div>
+
+      {/* Invitation à installer l'application (PWA) — au-dessus du dock mobile */}
+      <InstallAppPrompt />
 
       {/* Dock de navigation mobile adaptatif par profil (Floating Dynamic Island) */}
       <MobileDock

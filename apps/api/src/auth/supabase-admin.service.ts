@@ -9,13 +9,24 @@
  */
 // ──────────────────────────────────
 
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import type { Plan, Role } from '@wilinwi/types';
 
 /** Opérations d'administration Supabase Auth (service role). */
+/** Erreur Supabase « email rate limit exceeded » (429 / over_email_send_rate_limit). */
+function isEmailRateLimit(error: { message?: string; status?: number; code?: string } | null): boolean {
+  if (!error) return false;
+  return error.status === 429 || error.code === 'over_email_send_rate_limit' || /rate limit/i.test(error.message ?? '');
+}
+
 @Injectable()
 export class SupabaseAdminService {
   private readonly client: SupabaseClient;
@@ -54,19 +65,38 @@ export class SupabaseAdminService {
    * de lien de confirmation écrase la précédente pour cet utilisateur, ce qui
    * invaliderait le lien qui vient d'être envoyé dans l'email par `inviteUserByEmail`.
    */
-  async inviteByEmail(email: string): Promise<{ id: string }> {
+  async inviteByEmail(email: string): Promise<{ id: string; invitationLink?: string }> {
     const base = (this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000').replace(
       /\/$/,
       '',
     );
+    const redirectTo = `${base}/set-password`;
     const { data: inviteData, error: inviteError } = await this.client.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${base}/set-password`,
+      redirectTo,
     });
-    if (inviteError || !inviteData.user) {
-      throw new Error(`Invitation par email échouée: ${inviteError?.message ?? 'inconnue'}`);
-    }
+    if (!inviteError && inviteData.user) return { id: inviteData.user.id };
 
-    return { id: inviteData.user.id };
+    // Quota d'envoi d'emails Supabase atteint (SMTP intégré : quelques emails par
+    // heure) : on crée quand même le compte via un lien d'invitation GÉNÉRÉ sans
+    // email, renvoyé à l'écran pour être partagé (WhatsApp, SMS). Aucun lien n'a
+    // été envoyé, donc pas de risque d'écraser un lien déjà reçu.
+    if (isEmailRateLimit(inviteError)) {
+      const { data: linkData, error: linkError } = await this.client.auth.admin.generateLink({
+        type: 'invite',
+        email,
+        options: { redirectTo },
+      });
+      if (!linkError && linkData.user && linkData.properties?.action_link) {
+        return { id: linkData.user.id, invitationLink: linkData.properties.action_link };
+      }
+      throw new ServiceUnavailableException(
+        "Envoi d'emails momentanément limité par Supabase. Réessayez dans une heure, ou créez le collaborateur sans email (connexion par code PIN).",
+      );
+    }
+    if (/already|registered|exists/i.test(inviteError?.message ?? '')) {
+      throw new ConflictException(`Un compte existe déjà avec l'email ${email}.`);
+    }
+    throw new BadRequestException(`Invitation par email échouée : ${inviteError?.message ?? 'erreur inconnue'}`);
   }
 
   /** Recherche un compte auth par email (insensible à la casse, paginé). */

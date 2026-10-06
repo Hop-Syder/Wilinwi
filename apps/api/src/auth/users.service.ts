@@ -104,9 +104,13 @@ export class UsersService {
     // lien reçu) ; sinon utilisateur PIN-only (id applicatif, login sur poste partagé).
     let userId: string;
     let email: string;
+    // Lien d'invitation à partager quand Supabase n'a pas pu envoyer l'email
+    // (quota d'envoi atteint) — affiché à l'écran pour WhatsApp / SMS.
+    let invitationLink: string | undefined;
     if (input.email) {
       const res = await this.supabase.inviteByEmail(input.email);
       userId = res.id;
+      invitationLink = res.invitationLink;
       email = input.email;
     } else {
       userId = randomUUID();
@@ -163,7 +167,7 @@ export class UsersService {
         entityId: userId,
         metadata: { nom: input.nom, role: input.role },
       });
-      return toUserDto(user, etablissementIds);
+      return toUserDto(user, etablissementIds, invitationLink);
     } catch (err) {
       if (input.email) await this.supabase.deleteUser(userId).catch(() => undefined);
       throw err;
