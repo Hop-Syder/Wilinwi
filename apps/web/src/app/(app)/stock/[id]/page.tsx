@@ -165,7 +165,7 @@ export default function ProductStockDetailsPage() {
 
       {/* ── AXE 4 : Barre d'Onglets (Tabs UI) ── */}
       <div className="border-b border-slate-200" id="tour-stockdetail-tabs">
-        <nav className="flex space-x-6 text-sm font-bold">
+        <nav className="flex space-x-6 overflow-x-auto whitespace-nowrap text-sm font-bold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}

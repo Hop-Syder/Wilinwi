@@ -315,14 +315,14 @@ export function StockDataTable({
               key={p.id}
               className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3.5 transition-all active:scale-[0.99]"
             >
-              <div className="flex items-start gap-3.5">
+              <div className="flex items-start gap-2.5 min-[400px]:gap-3.5">
                 {/* 1. Photo Produit (w-16 h-16 rounded-xl) ou Visual Initials */}
                 {p.photos && p.photos.length > 0 ? (
-                  <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 shadow-2xs">
+                  <span className="relative h-12 w-12 min-[400px]:h-16 min-[400px]:w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 shadow-2xs">
                     <Image src={p.photos[0]} alt={p.nom} fill sizes="64px" className="object-cover" unoptimized />
                   </span>
                 ) : (
-                  <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 border border-slate-200/70 font-mono text-base font-extrabold shadow-2xs">
+                  <span className="flex h-12 w-12 min-[400px]:h-16 min-[400px]:w-16 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 border border-slate-200/70 font-mono text-base font-extrabold shadow-2xs">
                     {getProductInitials(p.nom)}
                   </span>
                 )}
@@ -347,7 +347,7 @@ export function StockDataTable({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 font-mono pt-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono pt-1">
                     <span className="text-sm font-black text-slate-900">{formatFCFA(prixVente)}</span>
                     {prixVente > 0 && prixAchat > 0 && (
                       <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 border border-emerald-200 font-sans">

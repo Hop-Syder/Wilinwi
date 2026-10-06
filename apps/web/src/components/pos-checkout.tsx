@@ -195,7 +195,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
 
         <div className="mb-6 rounded-lg bg-slate-50 p-4 text-center">
           <span className="block text-sm text-slate-500 mb-1">Total à payer</span>
-          <span className="text-3xl font-black text-brand">{cartTotal.toLocaleString()} F</span>
+          <span className="text-3xl font-black text-brand">{cartTotal.toLocaleString('fr-FR')} F</span>
           {currency !== 'XOF' && currency !== 'XAF' && (
             <span className="block text-xs font-semibold text-emerald-600 mt-1">
               Équivalent : {formatAmount(cartTotal)}
@@ -347,7 +347,7 @@ export function CheckoutModal({ isOpen, onClose, cartTotal, clients, livreurs, i
                     className={`font-bold ${Number(montantEspeces) > cartTotal ? 'text-red-500' : 'text-emerald-600'
                       }`}
                   >
-                    {Math.max(cartTotal - Number(montantEspeces), 0).toLocaleString()} F
+                    {Math.max(cartTotal - Number(montantEspeces), 0).toLocaleString('fr-FR')} F
                   </span>
                 </div>
               )}
@@ -598,7 +598,7 @@ export function SaleSuccessModal({
         </div>
         <h3 className="text-2xl font-bold mb-1">{head.title}</h3>
         <p className="text-text-secondary mb-4">
-          Montant total : <span className="font-bold text-text-primary">{total.toLocaleString()} F</span>
+          Montant total : <span className="font-bold text-text-primary">{total.toLocaleString('fr-FR')} F</span>
         </p>
 
         {/* Bandeau d'état de synchronisation */}

@@ -205,7 +205,7 @@ export default function EntrepotPage() {
 
       {/* ── AXE 1 : Navigation par Onglets (Tabs UI) ── */}
       <div className="border-b border-slate-200" id="tour-entrepot-tabs">
-        <nav className="flex space-x-6 text-sm font-bold">
+        <nav className="flex space-x-6 overflow-x-auto whitespace-nowrap text-sm font-bold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setActiveTab('dispatch')}

@@ -88,7 +88,7 @@ export default function ParametresLayout({ children }: { children: React.ReactNo
         {isMenuRoot ? (
           <h1 className="font-display text-xl font-bold tracking-tight text-slate-900">Paramètres</h1>
         ) : (
-          <div className="-mx-4 -mt-4 flex items-center gap-2 border-b border-slate-100 bg-white px-4 py-3">
+          <div className="-mx-3 -mt-4 flex items-center gap-2 border-b border-slate-100 bg-white px-3 py-3">
             <Link
               href="/parametres"
               aria-label="Retour aux paramètres"

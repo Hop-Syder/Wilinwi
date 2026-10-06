@@ -258,11 +258,11 @@ export function MobileCartDrawer({
             cart.map((item, idx) => (
               <div
                 key={`${item.product.id}-${item.unitId || 'default'}-${idx}`}
-                className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 shadow-2xs"
+                className="flex flex-wrap min-[400px]:flex-nowrap items-center justify-between gap-y-2 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 shadow-2xs"
               >
                 {/* Infos Produit */}
-                <div className="flex-1 pr-3 min-w-0">
-                  <h4 className="text-xs font-extrabold text-slate-900 truncate">{item.product.nom}</h4>
+                <div className="basis-full min-[400px]:basis-auto flex-1 min-[400px]:pr-3 min-w-0">
+                  <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2 min-[400px]:truncate">{item.product.nom}</h4>
                   {item.unitLabel && (
                     <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md mt-0.5">
                       {item.unitLabel}
@@ -281,7 +281,7 @@ export function MobileCartDrawer({
                 </div>
 
                 {/* Sélecteur de Quantité Aéré avec saisie manuelle fluide */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
                   <CartQuantityInput
                     value={item.quantite}
                     onChange={(newQty) => onSetQuantity?.(idx, newQty)}

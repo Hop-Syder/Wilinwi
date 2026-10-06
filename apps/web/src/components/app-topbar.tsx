@@ -322,7 +322,7 @@ export function AppTopbar({
 
         {/* Floating Glass Navbar */}
         <header className="w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-xl shadow-xs transition-all">
-          <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-3 sm:px-6 lg:px-8 gap-3">
+          <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-2.5 min-[400px]:px-3 sm:px-6 lg:px-8 gap-2 min-[400px]:gap-3">
             {/* Zone Gauche : Burger mobile + Logo + Boutique Switcher */}
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               <button
@@ -345,7 +345,8 @@ export function AppTopbar({
                   width={132}
                   height={132}
                   priority
-                  className="object-contain transition-transform duration-200 group-hover:scale-105"
+                  // Petits écrans (< 400 px) : logo réduit pour laisser la place aux actions.
+                  className="w-[104px] min-[400px]:w-[132px] h-auto object-contain transition-transform duration-200 group-hover:scale-105"
                 />
               </Link>
 
@@ -386,7 +387,7 @@ export function AppTopbar({
             </div>
 
             {/* Zone Droite : Télémétrie + Cloche + Profil + Contrôles */}
-            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div className="flex items-center gap-1.5 min-[400px]:gap-2 sm:gap-2.5 shrink-0">
               {/* Recherche rapide (Icône mobile/tablette) */}
               <button
                 type="button"
@@ -452,8 +453,9 @@ export function AppTopbar({
                 </div>
               </div>
 
-              {/* Contrôles de Poste de Travail */}
-              <div className="flex items-center gap-1.5">
+              {/* Contrôles de Poste de Travail — masqués sous 400 px : « Verrouiller »
+                  et « Quitter » restent accessibles dans le menu burger. */}
+              <div className="hidden min-[400px]:flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => void onLock()}

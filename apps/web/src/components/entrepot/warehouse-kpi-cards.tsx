@@ -31,7 +31,7 @@ export function WarehouseKpiCards({
   onSelectTab,
 }: WarehouseKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3.5">
       {/* KPI 1 : Valeur du Stock Réparti */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex flex-col justify-between space-y-2">
         <div className="flex items-center justify-between">
@@ -43,7 +43,7 @@ export function WarehouseKpiCards({
           </div>
         </div>
         <div>
-          <span className="font-mono text-xl font-black text-slate-900 tabular-nums">
+          <span className="font-mono text-lg sm:text-xl font-black break-words text-slate-900 tabular-nums">
             {formatFCFA(totalStockValue)}
           </span>
           <p className="text-[11px] text-slate-500 font-medium mt-0.5">Dépôt Central + Boutiques</p>
@@ -65,7 +65,7 @@ export function WarehouseKpiCards({
           </div>
         </div>
         <div>
-          <span className="font-mono text-xl font-black text-blue-950 tabular-nums">
+          <span className="font-mono text-lg sm:text-xl font-black break-words text-blue-950 tabular-nums">
             {inTransitCount} expédition{inTransitCount > 1 ? 's' : ''} 🔵
           </span>
           <p className="text-[11px] text-blue-700 font-semibold mt-0.5">Sur la route vers boutique</p>
@@ -87,7 +87,7 @@ export function WarehouseKpiCards({
           </div>
         </div>
         <div>
-          <span className="font-mono text-xl font-black text-amber-950 tabular-nums">
+          <span className="font-mono text-lg sm:text-xl font-black break-words text-amber-950 tabular-nums">
             {pendingOrdersCount} bon{pendingOrdersCount > 1 ? 's' : ''} 🟡
           </span>
           <p className="text-[11px] text-amber-700 font-semibold mt-0.5">En cours de livraison</p>
@@ -105,7 +105,7 @@ export function WarehouseKpiCards({
           </div>
         </div>
         <div>
-          <span className="font-mono text-xl font-black text-rose-950 tabular-nums">
+          <span className="font-mono text-lg sm:text-xl font-black break-words text-rose-950 tabular-nums">
             {reorderAlertsCount} article{reorderAlertsCount > 1 ? 's' : ''} 🔴
           </span>
           <p className="text-[11px] text-rose-700 font-semibold mt-0.5">Boutiques sous le seuil bas</p>

@@ -47,7 +47,7 @@ export default function ParametresMenuPage() {
   const visibleTabs = PARAMETRES_TABS.filter((tab) => !tab.ownerOnly || isOwner);
 
   return (
-    <div className="-mx-4 -mt-4 sm:hidden">
+    <div className="-mx-3 -mt-4 sm:hidden">
       <div className="divide-y divide-slate-100 bg-white">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;

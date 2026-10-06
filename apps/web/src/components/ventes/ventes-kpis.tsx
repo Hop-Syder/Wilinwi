@@ -35,7 +35,7 @@ export function VentesKpis({ kpis }: VentesKpisProps) {
   const { formatAmount } = useCurrency();
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-3.5">
       {/* KPI 1 : Chiffre d'Affaires Total Encaissé */}
       <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4 shadow-xs flex flex-col justify-between space-y-2">
         <div className="flex items-center justify-between">

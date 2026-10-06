@@ -225,7 +225,7 @@ export default function VentesPage() {
     const amount = Number(payAmount);
     const maxAllowed = paymentSale.total - paymentSale.montantVerse;
     if (amount <= 0 || amount > maxAllowed) {
-      alert(`Le montant doit être compris entre 1 F et ${maxAllowed.toLocaleString()} F`);
+      alert(`Le montant doit être compris entre 1 F et ${maxAllowed.toLocaleString('fr-FR')} F`);
       return;
     }
 

@@ -248,8 +248,8 @@ export default function UtilisateursPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-base font-extrabold text-slate-900">Collaborateurs & Codes PIN</h2>
           <p className="mt-0.5 text-xs text-slate-500 font-medium">Gestion des utilisateurs, attributions des rôles, permissions et codes secrets de caisse.</p>
         </div>

@@ -137,7 +137,7 @@ export function PosProductSelectModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-4 min-[400px]:p-6 space-y-5">
           {/* Sélection Conditionnement : Casier vs Bouteille */}
           {hasUnits && (
             <div className="space-y-2">
@@ -235,7 +235,7 @@ export function PosProductSelectModal({
 
           {/* Quantité à ajouter */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-xs font-black uppercase tracking-wider text-slate-400">
                 Quantité ({currentLabel})
               </label>
@@ -261,7 +261,7 @@ export function PosProductSelectModal({
               <button
                 type="button"
                 onClick={() => setQuantite((q) => Math.max(step, Number((q - step).toFixed(3))))}
-                className="h-11 w-11 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
+                className="h-11 w-11 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
               >
                 -
               </button>
@@ -272,12 +272,12 @@ export function PosProductSelectModal({
                 inputMode="decimal"
                 value={quantite}
                 onChange={(e) => setQuantite(parseFloat(e.target.value.replace(',', '.')) || 0)}
-                className="flex-1 h-11 rounded-2xl border border-slate-200 px-3 text-center font-mono text-base font-black text-slate-900 outline-none focus:border-emerald-500"
+                className="min-w-0 flex-1 h-11 rounded-2xl border border-slate-200 px-3 text-center font-mono text-base font-black text-slate-900 outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
                 onClick={() => setQuantite((q) => Number((q + step).toFixed(3)))}
-                className="h-11 w-11 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
+                className="h-11 w-11 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center text-lg"
               >
                 +
               </button>

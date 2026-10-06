@@ -242,7 +242,7 @@ export default function AbonnementPage() {
                 {tenantInfo?.subscriptionStatus ?? 'Actif'}
               </span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 font-display flex items-center gap-3">
+            <h2 className="text-xl min-[400px]:text-2xl font-black text-slate-900 font-display flex flex-wrap items-center gap-x-3 gap-y-1">
               Plan {currentPlanMeta.name}
               <span className="text-sm font-semibold text-slate-500 font-sans">
                 ({currentPlanMeta.badge})
